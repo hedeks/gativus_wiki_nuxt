@@ -18,6 +18,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 
+const emit = defineEmits(['scrolled']);
+
 const isVisible = ref(false);
 
 const checkScroll = () => {
@@ -30,6 +32,7 @@ const scrollToTop = () => {
         top: 0,
         behavior: 'smooth'
     });
+    emit('scrolled');
 };
 
 onMounted(() => {

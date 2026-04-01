@@ -21,7 +21,7 @@
         <div :class="[{ 'active': !isTheory }, { 'inactive': isTheory }]" class="flex w-full lg:h-[calc(100dvh_-_var(--header-height)_-_5rem)] dark:bg-gray-950 bg-gray-50  items-center justify-center h-[calc(100dvh_-_var(--header-height)_-_1.5rem)] col-span-10 view-transition">
             <theQuizView :quizJSON="quizJson" ref="quiz" />
         </div>
-        <theScrollToTop />
+        <theScrollToTop @scrolled="resetToFirstHeading" />
     </div>
 </template>
 
@@ -39,7 +39,22 @@ const handleTocClick = (id: string) => {
     activeID.value = id;
     isScrollingManually = true;
     clearTimeout(scrollTimeout);
-    // Блокируем обновление активного элемента обсервером на время плавной прокрутки
+    scrollTimeout = setTimeout(() => {
+        isScrollingManually = false;
+    }, 1000);
+}
+
+const resetToFirstHeading = () => {
+    // При нажатии "Наверх" сбрасываем активный элемент TOC на первый заголовок
+    const firstLink = ast.value?.toc?.links?.[0];
+    if (firstLink) {
+        activeID.value = firstLink.id;
+    } else {
+        activeID.value = '';
+    }
+    // Блокируем observer на время плавного скролла
+    isScrollingManually = true;
+    clearTimeout(scrollTimeout);
     scrollTimeout = setTimeout(() => {
         isScrollingManually = false;
     }, 1000);
