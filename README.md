@@ -31,16 +31,7 @@ Each digital entity is a flexible container of functions that model individual a
 
 ### NDDI — Network Digital Domain Instance
 
-The entire network is built from unified NDDI's — addressable instances with a global unique name (UNON) in IPv6 address space. Internal components are grouped into 6 functional types:
-
-| Type | Function |
-|:-----|:---------|
-| **V** | Information Values stored in addressable containers |
-| **B** | Autonomous Behavior — internal response of an NDDI |
-| **S** | Structure — skeletal information sufficient to replicate |
-| **G** | Security Management — rules and security controller |
-| **T** | Target Management — external response of an NDDI |
-| **A** | Aggregation |
+The entire network is built from unified NDDI's — addressable instances with a global unique name (UNON) in IPv6 address space.
 
 ## GATE — Gativus Edge Device
 
