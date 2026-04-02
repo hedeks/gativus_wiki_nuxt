@@ -141,7 +141,7 @@
         <div class="cta-buttons">
           <NuxtLink to="/courses" class="cta-button primary">
             <UIcon name="i-heroicons-book-open" />
-            Книги Gativus
+            Статьи Gativus
           </NuxtLink>
           <a href="mailto:gativusmedia@outlook.com" class="cta-button secondary">
             <UIcon name="i-heroicons-envelope" />
@@ -196,7 +196,7 @@ definePageMeta({ layout: 'default' })
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 30px;
+  gap: 10px;
   padding: 20px 10px 60px;
   max-width: 960px;
   margin: 0 auto;
@@ -208,10 +208,11 @@ definePageMeta({ layout: 'default' })
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 20px;
   min-height: calc(40vh - var(--header-height, 64px));
   text-align: center;
-  padding: 40px 20px 10px;
+  padding: 10px 20px 10px;
   width: 100%;
 }
 
@@ -219,6 +220,22 @@ definePageMeta({ layout: 'default' })
   display: flex;
   gap: 20px;
   align-items: center;
+}
+
+.hero-title {
+  margin: 0;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: 12px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #0c4a6e, #0ea5e9, #0284c7, #0c4a6e);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  padding-bottom: 8px;
+  animation: shine 15s linear infinite;
+  user-select: none;
 }
 
 .hero-logo {
@@ -314,8 +331,10 @@ definePageMeta({ layout: 'default' })
 }
 
 .card-badge {
-  background: linear-gradient(90deg, #e0f2fe, #bae6fd); /* sky-100 to 200 */
-  color: #0c4a6e; /* sky-900 */
+  background: linear-gradient(90deg, #e0f2fe, #bae6fd);
+  /* sky-100 to 200 */
+  color: #0c4a6e;
+  /* sky-900 */
   padding: 4px 12px;
   border-radius: 6px;
   font-weight: 700;
@@ -324,7 +343,8 @@ definePageMeta({ layout: 'default' })
 }
 
 .dark .card-badge {
-  background: linear-gradient(90deg, #0c4a6e, #082f49); /* sky-900 to 950 */
+  background: linear-gradient(90deg, #0c4a6e, #082f49);
+  /* sky-900 to 950 */
   color: #e0f2fe;
 }
 
@@ -710,7 +730,8 @@ definePageMeta({ layout: 'default' })
 }
 
 .cta-button.primary {
-  background: #0c4a6e; /* sky-900 */
+  background: #0c4a6e;
+  /* sky-900 */
   color: #fff;
   border: 1px solid #075985;
 }
@@ -722,7 +743,8 @@ definePageMeta({ layout: 'default' })
 }
 
 .dark .cta-button.primary {
-  background: #0ea5e9; /* sky-500 */
+  background: #0ea5e9;
+  /* sky-500 */
   color: #fff;
   border-color: #0284c7;
 }
@@ -773,5 +795,13 @@ definePageMeta({ layout: 'default' })
   .about-page {
     gap: 20px;
   }
+}
+
+.dark .hero-title {
+  background: linear-gradient(135deg, #7dd3fc, #38bdf8, #0ea5e9, #7dd3fc);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 </style>

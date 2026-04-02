@@ -15,7 +15,7 @@
       <div class="hero-cta">
         <NuxtLink to="/courses" class="cta-button primary">
           <UIcon name="i-heroicons-book-open" />
-          Книги Gativus
+          Статьи
         </NuxtLink>
         <NuxtLink to="/about" class="cta-button secondary">
           <UIcon name="i-heroicons-information-circle" />
@@ -23,81 +23,10 @@
         </NuxtLink>
       </div>
     </section>
-
-    <!-- Three Pillars -->
-    <section class="pillars-section">
-      <div v-for="pillar in pillars" :key="pillar.abbr" class="pillar-card" @mouseenter="hoveredPillar = pillar.abbr"
-        @mouseleave="hoveredPillar = null">
-        <div class="pillar-header">
-          <span class="pillar-badge">{{ pillar.abbr }}</span>
-          <h2 class="pillar-name">{{ pillar.name }}</h2>
-        </div>
-        <div class="pillar-body">
-          <p class="pillar-desc">{{ pillar.description }}</p>
-          <div v-if="pillar.details" class="pillar-details">
-            <div v-for="(detail, i) in pillar.details" :key="i" class="detail-item">
-              <span class="detail-number">{{ i + 1 }}</span>
-              <div>
-                <strong>{{ detail.title }}</strong>
-                <p>{{ detail.text }}</p>
-              </div>
-            </div>
-          </div>
-          <p v-if="pillar.fact" class="pillar-fact">{{ pillar.fact }}</p>
-        </div>
-      </div>
-    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-const hoveredPillar = ref<string | null>(null)
-
-const pillars = [
-  {
-    abbr: 'GTOM',
-    name: 'Gativus Theory of Mind',
-    description: 'Фундаментальная теория, определяющая архитектуру и механику сознания. Сознание моделируется как динамическая суперпозиция трёх независимых уровней:',
-    details: [
-      {
-        title: 'Spatial Consciousness',
-        text: 'Навигация и ориентация в 3D-пространстве. Система работает с генетически предопределёнными целями и строит топологические маршруты.'
-      },
-      {
-        title: 'Symbolic Consciousness',
-        text: 'Взаимодействие в пространстве концептов. Каждый концепт имеет свой вектор и символ. LLM/GPT имитируют этот слой, но одних символов недостаточно для субъективности.'
-      },
-      {
-        title: 'Qualitative Consciousness',
-        text: 'Формирование сложных целевых концептов — «красота», «правильность», «честь». Оператор Гегелевского Aufheben превращает систему из калькулятора в Субъект.'
-      }
-    ],
-    fact: 'Гипер-карта из 11 слоёв элементарных карт — от сенсорных входов до структур обработки качеств.'
-  },
-  {
-    abbr: 'GNET',
-    name: 'Gativus Network',
-    description: 'Спецификация сетевой топологии, описывающая физическую структуру сети в строгом соответствии с принципами GTOM.',
-    details: [
-      {
-        title: 'Nodes',
-        text: 'Цифровые сетевые сущности, размещённые на специализированных периферийных устройствах (GATE).'
-      },
-      {
-        title: 'Virtual Links (Synapses)',
-        text: 'Соединения, реализуемые через глобальную маршрутизацию Интернета на основе IPv6 без нарушения стандартов RFC.'
-      }
-    ],
-    fact: 'Каждая сущность — гибкий контейнер функций, моделирующий нейроны, кортикальные колонки и сложные иерархические группы.'
-  },
-  {
-    abbr: 'GATE',
-    name: 'Gativus Edge Device',
-    description: 'Физическое устройство для хранения, исполнения и защиты узлов нейронной сети. Построено на современных компьютерных архитектурах с горизонтальным масштабированием.',
-    details: null,
-    fact: 'Одно устройство GATE способно вместить до одного миллиарда искусственных нейронов. Реализация основана исключительно на open-source операционных системах.'
-  }
-]
 
 useSeoMeta({
   ogImage: '/images/121px-Logo.jpg',
@@ -117,11 +46,11 @@ useHead({
   flex-direction: column;
   align-items: center;
   gap: 40px;
-  padding: 0 10px 60px;
+  padding: 0 10px;
   max-width: 960px;
-  margin: 0 auto;
   width: 100%;
 }
+
 
 /* ─── Hero ─── */
 .hero-section {
@@ -130,9 +59,9 @@ useHead({
   align-items: center;
   justify-content: center;
   gap: 24px;
-  min-height: calc(80vh - var(--header-height, 64px));
+  min-height: calc(100dvh - var(--header-height, 65px));
   text-align: center;
-  padding: 40px 20px 0;
+  padding: 0;
   width: 100%;
 }
 
@@ -231,7 +160,8 @@ useHead({
 }
 
 .cta-button.primary {
-  background: #0c4a6e; /* sky-900 */
+  background: #0c4a6e;
+  /* sky-900 */
   color: #fff;
   border: 1px solid #075985;
 }
@@ -243,7 +173,8 @@ useHead({
 }
 
 .dark .cta-button.primary {
-  background: #0ea5e9; /* sky-500 */
+  background: #0ea5e9;
+  /* sky-500 */
   color: #fff;
   border-color: #0284c7;
 }
@@ -319,8 +250,10 @@ useHead({
 }
 
 .pillar-badge {
-  background: linear-gradient(90deg, #e0f2fe, #bae6fd); /* sky-100 to 200 */
-  color: #0c4a6e; /* sky-900 */
+  background: linear-gradient(90deg, #e0f2fe, #bae6fd);
+  /* sky-100 to 200 */
+  color: #0c4a6e;
+  /* sky-900 */
   padding: 4px 12px;
   border-radius: 6px;
   font-weight: 700;
@@ -329,7 +262,8 @@ useHead({
 }
 
 .dark .pillar-badge {
-  background: linear-gradient(90deg, #075985, #0c4a6e); /* sky-800 to 900 */
+  background: linear-gradient(90deg, #075985, #0c4a6e);
+  /* sky-800 to 900 */
   color: #e0f2fe;
 }
 

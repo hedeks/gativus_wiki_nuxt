@@ -16,12 +16,6 @@ const links = [{
 
 <template>
     <footer class="gativus-footer">
-        <div class="footer-nav">
-            <UHorizontalNavigation :links="links"
-                :ui="{container: 'flex items-center justify-center min-w-0 flex-wrap', label: 'xl:text-lg', active: 'after:bg-gray-500 dark:after:bg-gray-500-inverted' }"
-                class="text-lg flex flex-wrap w-fit justify-self-center col-span-1" />
-        </div>
-        <div class="footer-divider"></div>
         <div class="footer-content">
             <div class="footer-brand">
                 <img src="/images/121px-Logo.jpg" alt="Gativus" class="footer-logo" />
@@ -55,6 +49,7 @@ const links = [{
     border-top: 1px solid #c8c8c8;
     background: #f9f9f9;
 }
+
 .dark .gativus-footer {
     background: #1a1a1a;
     border-top-color: #333;
@@ -71,6 +66,7 @@ const links = [{
     height: 1px;
     background: #e0e0e0;
 }
+
 .dark .footer-divider {
     background: #333;
 }
@@ -88,16 +84,19 @@ const links = [{
     align-items: center;
     gap: 12px;
 }
+
 .footer-logo {
     height: 40px;
     width: auto;
     border-radius: 6px;
     filter: drop-shadow(0 0 2px rgba(186, 186, 186, 0.4));
 }
+
 .footer-brand-text {
     display: flex;
     flex-direction: column;
 }
+
 .footer-title {
     font-size: 16px;
     font-weight: 700;
@@ -105,7 +104,11 @@ const links = [{
     color: #333;
     line-height: 1;
 }
-.dark .footer-title { color: #e0e0e0; }
+
+.dark .footer-title {
+    color: #e0e0e0;
+}
+
 .footer-tagline {
     font-size: 11px;
     letter-spacing: 2px;
@@ -113,7 +116,10 @@ const links = [{
     text-transform: uppercase;
     margin-top: 3px;
 }
-.dark .footer-tagline { color: #777; }
+
+.dark .footer-tagline {
+    color: #777;
+}
 
 .footer-description {
     margin: 0;
@@ -121,7 +127,10 @@ const links = [{
     line-height: 1.6;
     color: #666;
 }
-.dark .footer-description { color: #999; }
+
+.dark .footer-description {
+    color: #999;
+}
 
 .footer-links {
     display: flex;
@@ -129,6 +138,7 @@ const links = [{
     flex-wrap: wrap;
     justify-content: center;
 }
+
 .footer-link {
     display: flex;
     align-items: center;
@@ -138,15 +148,31 @@ const links = [{
     text-decoration: none;
     transition: color 0.2s ease;
 }
-.footer-link:hover { color: #333; }
-.dark .footer-link { color: #aaa; }
-.dark .footer-link:hover { color: #e0e0e0; }
-.footer-link-icon { width: 16px; height: 16px; }
+
+.footer-link:hover {
+    color: #333;
+}
+
+.dark .footer-link {
+    color: #aaa;
+}
+
+.dark .footer-link:hover {
+    color: #e0e0e0;
+}
+
+.footer-link-icon {
+    width: 16px;
+    height: 16px;
+}
 
 .footer-copy {
     font-size: 12px;
     color: #999;
     letter-spacing: 0.5px;
 }
-.dark .footer-copy { color: #666; }
+
+.dark .footer-copy {
+    color: #666;
+}
 </style>
