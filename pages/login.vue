@@ -6,62 +6,55 @@ const email: Ref<HTMLInputElement> = ref() as Ref<HTMLInputElement>;
 const password: Ref<HTMLInputElement> = ref() as Ref<HTMLInputElement>;
 const login:  Ref<HTMLInputElement> = ref() as Ref<HTMLInputElement>;
 const isSignup: Ref<Boolean> = ref(false);
-const errorMain = ref<AuthError | null>(null);
+const errorMain = ref<{ message: string } | null>(null);
 const isLoading: Ref<boolean> = ref(false)
 
-// const signUp = async (): Promise<void> => {
-//     isLoading.value = true;
-//     const data = await $fetch("/api/auth/register",{
-//         email: email.value.value,
-//         password: password.value.value,
-//         login: login.value.value;
-//     });
-//     isLoading.value = false;
-//     const user = data.res.user;
-//     if (user) {
-//         toast.add({ title: `Подтвердите свой email ${user.email}`, ui: {
-//                 background: 'bg-white dark:bg-neutral-900',
-//                 progress: {
-//                     background: 'bg-black dark:bg-white',
-//                 }
-//             } });
-//     }
-//     if (error) {
-//         errorMain.value = error;
-//         store.isLoggedIn = false;
-//         store.userInfo = {};
-//     }
-// }
+const signUp = async (): Promise<void> => {
+    isLoading.value = true;
+    try {
+        const data = await $fetch("/api/auth/register", {
+            method: "POST",
+            body: {
+                email: email.value.value,
+                password: password.value.value,
+                login: login.value.value
+            }
+        });
+        const user = data.res.user;
+        if (user) {
+            store.setUser(user, data.res.access_token);
+            toast.add({ title: `Аккаунт создан! Добро пожаловать, ${user.login}`, ui: {
+                    background: 'bg-white dark:bg-neutral-900',
+                    progress: { background: 'bg-black dark:bg-white' }
+                } });
+            navigateTo('/profile');
+        }
+    } catch (err: any) {
+        errorMain.value = { message: err?.data?.message || 'Ошибка регистрации' };
+    }
+    isLoading.value = false;
+}
 
 const loginFunc = async (): Promise<void> => {
     isLoading.value = true;
-    const data = await $fetch( "/api/auth/login", { method: "POST", body: {
-        email: email.value.value,
-        password: password.value.value
-    }});
-    const user = data.res.user;
-    isLoading.value = false;
-    if (user) {
-        toast.add({ title: `Вы вошли в аккаунт ${user.email}`, ui: {
-                background: 'bg-white dark:bg-neutral-900',
-                progress: {
-                    background: 'bg-black dark:bg-white',
-                }
-            } });
-        store.isLoggedIn = true;
-        store.userInfo = user;
-        navigateTo('/profile');
-    } else {
-        console.log('ку');
+    try {
+        const data = await $fetch("/api/auth/login", { method: "POST", body: {
+            email: email.value.value,
+            password: password.value.value
+        }});
+        const user = data.res.user;
+        if (user) {
+            store.setUser(user, data.res.access_token);
+            toast.add({ title: `Вы вошли в аккаунт ${user.email}`, ui: {
+                    background: 'bg-white dark:bg-neutral-900',
+                    progress: { background: 'bg-black dark:bg-white' }
+                } });
+            navigateTo('/profile');
+        }
+    } catch (err: any) {
+        errorMain.value = { message: err?.data?.message || 'Ошибка входа' };
     }
-    // if (error) {
-    //     errorMain.value = error;
-    //     store.isLoggedIn = false;
-    //     console.log('awdawd');
-    //     store.userInfo = {};
-    // }
-
-
+    isLoading.value = false;
 }
 </script>
 

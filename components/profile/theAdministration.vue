@@ -1,14 +1,11 @@
 <script setup lang="ts">
-definePageMeta({
-  layout: 'default',
-})
-const user = useSupabaseUser();
-const role = ref(user.value?.role);
+const store = userStore();
+const role = computed(() => store.userInfo?.role);
 
 const { data, pending } = useFetch('/api/quiz');
 
 const courses = computed(() => {
-    return data.value?.sort((a, b) => a.course_id - b.course_id)
+    return (data.value as any[])?.sort((a: any, b: any) => a.course_id - b.course_id)
 });
 </script>
 

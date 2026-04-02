@@ -84,6 +84,9 @@ export default defineNuxtConfig({
       database: true
     }
   },
+  runtimeConfig: {
+    jwtSecret: process.env.JWT_SECRET || 'fallback-dev-secret',
+  },
   pinia: {
     storesDirs: ['./stores/**', './custom-folder/stores/**'],
   },

@@ -10,9 +10,7 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  layout: 'default',
-});
+// userStore recovers session automatically via useCookie
 </script>
 
 <style>

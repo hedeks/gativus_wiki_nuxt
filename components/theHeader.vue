@@ -15,11 +15,18 @@ const links = [{
   label: 'Главная',
   icon: 'i-heroicons-home',
   to: '/'
-},
-{
+}, {
   label: 'Книги Gativus',
   icon: 'i-heroicons-book-open',
-  to: '/courses'
+  to: '/books'
+}, {
+  label: 'Глоссарий',
+  icon: 'i-heroicons-document-magnifying-glass',
+  to: '/glossary'
+}, {
+  label: 'Граф знаний',
+  icon: 'i-heroicons-share',
+  to: '/knowledge-graph'
 }, {
   label: 'О проекте',
   icon: "i-heroicons-information-circle",

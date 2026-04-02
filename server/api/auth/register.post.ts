@@ -11,43 +11,74 @@ interface ReqBody {
 
 export default defineEventHandler(async (event) => {
     const db = useDatabase();
-    let user: User;
+    const config = useRuntimeConfig();
+
     setHeaders(event, {
         "Content-Type": "application/json; utf=8"
     })
+
     const body: ReqBody = await readBody(event);
-    if (body.email && body.password && body.login){
-        const stmt = db.prepare('SELECT * FROM users WHERE login=?');
-        const sql = await stmt.get(body.login);
-        const stmt1 = db.prepare('SELECT * FROM users WHERE email=?');
-        const sql1 = await stmt1.get(body.email);
-        if (sql || sql1) {
-            throw createError({
-                status: 406,
-                message: "Такой пользователь уже есть, почта и логин должны быть уникальными"
-            })
-        }
-        const encrypted_password = await bcrypt.hash(body.password, 10);
-        const uuid = uuidv4();
-        user = {
-            login: body.login,
-            email: body.email,
-            encrypted_password: encrypted_password,
-            created_at: new Date().toISOString(),
-            uuid: uuid
-        };
-        //добавление нового юзера
-        const stmt2 = db.prepare('INSERT INTO users (login, email, encrypted_password, created_at, uuid) VALUES (?,?,?,?,?)');
-        const result = await stmt2.run(user.login, user.email, user.encrypted_password, user.created_at, user.uuid);
-        if (result) {
-            return {
-                result: true
-            }
-        }
-    } else {
+
+    if (!body.email || !body.password || !body.login) {
         throw createError({
             status: 406,
             message: "Не все данные присутствуют в запросе"
         })
     }
-})  
+
+    // Check uniqueness
+    const existingLogin = await db.prepare('SELECT id FROM users WHERE login=?').get(body.login);
+    const existingEmail = await db.prepare('SELECT id FROM users WHERE email=?').get(body.email);
+
+    if (existingLogin || existingEmail) {
+        throw createError({
+            status: 406,
+            message: "Такой пользователь уже есть, почта и логин должны быть уникальными"
+        })
+    }
+
+    // Determine role: first user becomes admin
+    const userCount = await db.prepare('SELECT COUNT(*) as count FROM users').get() as any;
+    const role = (userCount?.count === 0) ? 'admin' : 'editor';
+
+    const encrypted_password = await bcrypt.hash(body.password, 10);
+    const uuid = uuidv4();
+    const created_at = new Date().toISOString();
+
+    // Insert user with role
+    const stmt = db.prepare(
+        'INSERT INTO users (login, email, encrypted_password, role, created_at, uuid) VALUES (?,?,?,?,?,?)'
+    );
+    const result = await stmt.run(body.login, body.email, encrypted_password, role, created_at, uuid);
+
+    if (!result) {
+        throw createError({
+            status: 500,
+            message: "Ошибка при создании пользователя"
+        })
+    }
+
+    // Build safe user for response
+    const safeUser: User = {
+        login: body.login,
+        email: body.email,
+        role: role as 'editor' | 'admin',
+        created_at: created_at,
+        uuid: uuid
+    }
+
+    // Auto-login: generate JWT
+    const tokenJWT = jwt.sign({
+        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24),
+        data: safeUser,
+        created_at: Date.now()
+    }, config.jwtSecret);
+
+    return {
+        res: {
+            access_token: tokenJWT,
+            token_type: 'bearer' as const,
+            user: safeUser
+        }
+    }
+})

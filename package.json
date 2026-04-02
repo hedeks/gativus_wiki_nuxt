@@ -12,9 +12,7 @@
   },
   "dependencies": {
     "@nuxt/ui": "^2.16.0",
-    "@nuxtjs/supabase": "^1.2.2",
     "@pinia/nuxt": "^0.5.1",
-    "@supabase/supabase-js": "^2.43.4",
     "bcrypt": "^5.1.1",
     "chart.js": "^4.4.3",
     "jsonwebtoken": "^9.0.2",
