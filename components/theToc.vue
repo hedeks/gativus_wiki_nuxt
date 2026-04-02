@@ -5,49 +5,40 @@
         'fixed top-[calc(var(--header-height)+0.75rem)] right-4 w-[240px] max-w-[85vw] sm:w-[320px] bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-gray-100 dark:border-gray-800 rounded-xl shadow-lg py-3 pl-3 pr-5 lg:static lg:z-auto lg:max-w-none'
     ]" class="toc-container">
         <!-- Overlay для мобилок -->
-        <div v-if="!isDesktop && isMobileOpen" 
-             class="fixed inset-0 bg-transparent backdrop-blur-sm z-[-1] rounded-xl transition-opacity duration-500"
-             style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);"
-             @click="isMobileOpen = false"></div>
+        <div v-if="!isDesktop && isMobileOpen"
+            class="fixed inset-0 bg-transparent backdrop-blur-sm z-[-1] rounded-xl transition-opacity duration-500"
+            style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);" @click="isMobileOpen = false">
+        </div>
 
-        <div class="flex items-center justify-between cursor-pointer select-none px-3 py-1 lg:sticky lg:top-0 lg:z-20 lg:bg-white/50 lg:dark:bg-zinc-900/50 lg:backdrop-blur-md" @click="toggleMobile">
+        <div class="flex items-center justify-between cursor-pointer select-none px-3 py-1 lg:sticky lg:top-0 lg:z-20 lg:bg-white/50 lg:dark:bg-zinc-900/50 lg:backdrop-blur-md"
+            @click="toggleMobile">
             <p class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase transition-all duration-500 mr-4 flex-shrink-0"
                 style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);">
                 {{ title }}
             </p>
             <div class="flex items-center gap-2 min-w-0">
-                <span v-if="!isDesktop && !isMobileOpen" class="text-[9px] text-black dark:text-white/80 font-medium truncate min-w-0 max-w-[100px] transition-all duration-500"
+                <span v-if="!isDesktop && !isMobileOpen"
+                    class="text-[9px] text-black dark:text-white/80 font-medium truncate min-w-0 max-w-[100px] transition-all duration-500"
                     style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);">
                     {{ activeText }}
                 </span>
-                <svg 
-                    :class="{'rotate-180': isMobileOpen}" 
-                    class="w-3 h-3 text-gray-400 flex-shrink-0 transition-all duration-500 lg:hidden" 
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);"
-                >
+                <svg :class="{ 'rotate-180': isMobileOpen }"
+                    class="w-3 h-3 text-gray-400 flex-shrink-0 transition-all duration-500 lg:hidden" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24"
+                    style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
             </div>
         </div>
-        
+
         <Transition name="expand">
-            <div v-show="isDesktop || isMobileOpen" 
-                :class="[
-                    'flex flex-col dark:text-gray-300 mt-2 overflow-y-auto overflow-x-hidden scrollable-toc lg:pr-2 lg:pb-5',
-                    !isDesktop && isMobileOpen ? 'max-h-[60vh] pt-2 pb-1' : 'lg:max-h-[calc(100dvh-var(--header-height)-10rem)] lg:mt-1'
-                ]">
-                <theTocItem
-                    v-for="item in links"
-                    :key="item.id"
-                    :link="item"
-                    :level="0"
-                    :activeID="activeID"
-                    :activeRootId="activeRootId"
-                    :manualState="manualStates[item.id]"
-                    @scroll="handleLinkClick"
-                    @toggle="handleToggle"
-                />
+            <div v-show="isDesktop || isMobileOpen" :class="[
+                'flex flex-col dark:text-gray-300 mt-2 overflow-y-auto overflow-x-hidden scrollable-toc lg:pr-2 lg:pb-5',
+                !isDesktop && isMobileOpen ? 'max-h-[60vh] pt-2 pb-1' : 'lg:max-h-[calc(100dvh-var(--header-height)-10rem)] lg:mt-1'
+            ]">
+                <theTocItem v-for="item in links" :key="item.id" :link="item" :level="0" :activeID="activeID"
+                    :activeRootId="activeRootId" :manualState="manualStates[item.id]" @scroll="handleLinkClick"
+                    @toggle="handleToggle" />
             </div>
         </Transition>
     </div>
@@ -122,10 +113,10 @@ watch(activeRootId, (newId) => {
 });
 
 const handleToggle = (id: string) => {
-    const currentState = manualStates.value[id] !== undefined 
-        ? manualStates.value[id] 
+    const currentState = manualStates.value[id] !== undefined
+        ? manualStates.value[id]
         : (id === activeRootId.value);
-    
+
     manualStates.value[id] = !currentState;
 }
 
@@ -154,11 +145,11 @@ const customScroll = (id: string) => {
     const elem: HTMLElement = document.getElementById(id) as HTMLElement;
     if (elem) {
         if (!isDesktop.value) isMobileOpen.value = false;
-        
+
         const headerHeight = document.getElementById('header')?.clientHeight || 80;
         // На мобильных добавляем смещение на высоту плавающего оглавления (~50px) + запас 20px
         const mobileExtraOffset = !isDesktop.value ? 70 : 10;
-        
+
         const offset = elem.getBoundingClientRect().top + window.scrollY - headerHeight - mobileExtraOffset;
         window.scrollTo({ top: offset, behavior: 'smooth' });
     }
@@ -166,8 +157,6 @@ const customScroll = (id: string) => {
 </script>
 
 <style scoped>
-
-
 /* Animations for Mobile Accordion */
 .expand-enter-active,
 .expand-leave-active {
@@ -184,7 +173,7 @@ const customScroll = (id: string) => {
 .expand-enter-to,
 .expand-leave-from {
     /* На мобильных ограничиваем высоту сразу */
-    max-height: 60vh; 
+    max-height: 60vh;
     opacity: 1;
 }
 
@@ -198,32 +187,38 @@ const customScroll = (id: string) => {
 .scrollable-toc::-webkit-scrollbar {
     width: 4px;
 }
+
 .scrollable-toc::-webkit-scrollbar-track {
     background: transparent;
 }
+
 .scrollable-toc::-webkit-scrollbar-thumb {
-    border-radius: 0px; 
-    background-color: #000000; 
+    border-radius: 0px;
+    background-color: #000000;
 }
+
 .scrollable-toc::-webkit-scrollbar-thumb:hover {
-    background-color: #374151; 
+    background-color: #374151;
 }
 </style>
 
 <style>
 /* Глобальный перехват состояния темной темы Tailwind для ползунков */
-html.dark .scrollable-toc, 
+html.dark .scrollable-toc,
 .dark .scrollable-toc {
-    scrollbar-color: #ffffff transparent; /* Белый в темной для Firefox */
+    scrollbar-color: #ffffff transparent;
+    /* Белый в темной для Firefox */
 }
 
 html.dark .scrollable-toc::-webkit-scrollbar-thumb,
 .dark .scrollable-toc::-webkit-scrollbar-thumb {
-    background-color: #ffffff; /* Белый в темной для Chrome/Edge */
+    background-color: #ffffff;
+    /* Белый в темной для Chrome/Edge */
 }
 
 html.dark .scrollable-toc::-webkit-scrollbar-thumb:hover,
 .dark .scrollable-toc::-webkit-scrollbar-thumb:hover {
-    background-color: #e5e7eb; /* Тонкий ховер в темной */
+    background-color: #e5e7eb;
+    /* Тонкий ховер в темной */
 }
 </style>

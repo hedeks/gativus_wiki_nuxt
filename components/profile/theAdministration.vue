@@ -13,7 +13,7 @@ const courses = computed(() => {
 <template>
     <div id="admistration" v-if="role === 'admin'" class="flex col-span-1 p-5 items-start h-full justify-center py-2">
         <UCard class="text-center dark:shadow-darkShadow w-fit sm:w-full"
-            :ui="{ ring:'dark:ring-gray-500', divide: 'dark:divide-gray-500' ,background: 'bg-gray-50 dark:bg-zinc-800', header: {base: 'dark:bg-black rounded-xl bg-gray-100'} }">
+            :ui="{ ring: 'dark:ring-gray-500', divide: 'dark:divide-gray-500', background: 'bg-gray-50 dark:bg-zinc-800', header: { base: 'dark:bg-black rounded-xl bg-gray-100' } }">
             <template #header>
                 <h2 class="text-xl font-bold text-center">
                     Администрирование

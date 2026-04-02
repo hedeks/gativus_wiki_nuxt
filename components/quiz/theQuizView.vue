@@ -97,9 +97,9 @@ const printScore = () => {
     if (emptyQuestions.length > 0) {
         toast.add({
             title: `Вы ответили не на все вопросы! ${JSON.stringify(emptyQuestions)}`, ui: {
-                background: 'bg-white dark:bg-neutral-900',
+                background: 'bg-white dark:bg-zinc-900',
                 progress: {
-                    background: 'bg-black dark:bg-white',
+                    background: 'bg-sky-600 dark:bg-sky-400',
                 }
             }
         });
@@ -113,9 +113,9 @@ const printScore = () => {
         chartData.value.datasets[0].data = [percentOfRight, 100 - percentOfRight];
         toast.add({
             title: `Поздравляем с прохождением теста, ваши ответы будут сохранены!`, ui: {
-                background: 'bg-white dark:bg-neutral-900',
+                background: 'bg-white dark:bg-zinc-900',
                 progress: {
-                    background: 'bg-black dark:bg-white',
+                    background: 'bg-sky-600 dark:bg-sky-400',
                 }
             }
         });
@@ -134,8 +134,8 @@ const isScoreOut = ref(false);
 const resetScore = () => {
     currentQuestion.value = 0;
     isScoreOut.value = true;
-    
-    setTimeout(()=>{
+
+    setTimeout(() => {
         isScore.value = false;
         isScoreOut.value = false;
     }, 500)
@@ -158,7 +158,7 @@ const chartData = computed(() => {
         labels: [`Правильных ответов: `, `Неправильных ответов: `],
         datasets: [
             {
-                backgroundColor: ['#CECECE', '#798081'],
+                backgroundColor: ['#0284c7', '#3f3f46'], /* sky-600, zinc-700 */
                 data: [0, 0]
             }
         ]
@@ -177,21 +177,21 @@ const options = {
 
 <template>
     <div class="w-full h-full relative">
-        <div class="w-full h-full select-none relative justify-between p-11 overflow-y-hidden overflow-x-hidden bg-gray-100 dark:bg-zinc-800 flex flex-col items-center transition-all ease-[cubic-bezier(0.705,0.010,0.000,0.915)] duration-500"
+        <div class="w-full h-full select-none relative justify-between p-11 overflow-y-hidden overflow-x-hidden bg-gray-50 dark:bg-zinc-950 flex flex-col items-center transition-all ease-[cubic-bezier(0.705,0.010,0.000,0.915)] duration-500"
             ref="quiz">
-            <div :class="{ 'fadeOUT': isScore }"
-                class="flex justify-center items-center max-w-full px-2 rounded-full h-fit dark:bg-white bg-black text-white dark:text-black">
-                {{ (currentQuestion + 1) + "/" + quizJSON.questions.length }}
+            <div :class="{ 'fadeOUT': isScore, 'pulse-top': !isScore }"
+                class="flex justify-center items-center max-w-full px-6 py-2 rounded-full h-fit bg-sky-600 text-white shadow-lg shadow-sky-500/20 font-bold mb-4 transition-all duration-500">
+                {{ (currentQuestion + 1) + " / " + quizJSON.questions.length }}
             </div>
             <div class="question py-2 border-t border-b top-1/3 sm:top-1/3 lg:w-3/4 absolute dark:border-neutral-700 flex-col gap-5 flex flex-col items-center justify-center transition-all ease-[cubic-bezier(0.705,0.010,0.000,0.915)] duration-500"
                 v-for="question in props.quizJSON.questions" :id="String(question.id)" :key="question.id"
                 :class="[{ 'active': currentQuestion === question.id }, { 'inactiveUP': currentQuestion < question.id }, { 'inactiveDOWN': currentQuestion > question.id }, { 'inactiveDOWN': isScore }]">
                 <span class="p-0 text-center text-2xl font-bold">{{ question.id + 1 + ". " + question.question }}</span>
-                <div class="answers relative flex flex-col w-fit mx-auto gap-2 h-fit items-start justify-center">
-                    <URadio :color="'gray'" v-for="(answer, index) in question.answers" :key="index" @click="index"
+                <div class="answers relative flex flex-col w-fit mx-auto gap-4 h-fit items-start justify-center mt-8">
+                    <URadio :color="'sky'" v-for="(answer, index) in question.answers" :key="index" @click="index"
                         v-model="questionsModelArray[question.id].answer" :value="question.question + '/' + index"
-                        :ui="{ wrapper: 'relative flex items-center', label: 'text-sm py-1 font-medium text-gray-700 dark:text-gray-200' }"
-                        class="p-1 w-fit hover:bg-gray-200 dark:hover:bg-zinc-500 rounded transition-all ease-[cubic-bezier(0.705,0.010,0.000,0.915)] duration-500">
+                        :ui="{ wrapper: 'relative flex items-center', label: 'text-lg py-2 font-medium text-gray-700 dark:text-gray-200' }"
+                        class="p-2 w-full hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg transition-all duration-300 active:scale-[0.98] hover:-translate-y-0.5">
                         <template #label>
                             <span class="text-lg cursor-pointer line">{{
                                 answer }}</span>
@@ -199,8 +199,8 @@ const options = {
                     </URadio>
                 </div>
             </div>
-            <div ref="score" :class="[{ 'inactiveUP': !isScore },{ 'inactiveUP': isScoreOut }, { 'active': isScore }]"
-                class=" max-w-full bg-gray-200 dark:bg-zinc-900 rounded p-0 flex flex-col lg:top-1/4 max-h-full lg:w-3/4 opacity-1 absolute dark:border-neutral-700 flex-col gap-5 flex flex-col items-center justify-center transition-all ease-[cubic-bezier(0.705,0.010,0.000,0.915)] duration-500">
+            <div ref="score" :class="[{ 'results-inactive': !isScore }, { 'results-inactive': isScoreOut }, { 'results-active': isScore }]"
+                class="max-w-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-8 flex flex-col lg:top-1/4 max-h-full lg:w-3/4 opacity-1 absolute flex-col gap-5 items-center justify-center transition-all ease-[cubic-bezier(0.705,0.010,0.000,0.915)] duration-700 shadow-2xl backdrop-blur-xl">
 
                 <div class="flex gap-1 justify-center items-center border-b border-zinc-400">
                     <span class="flex items-center text-xl lg:text-3xl font-bold text-center pb-1.5">Результаты
@@ -209,20 +209,20 @@ const options = {
                 </div>
                 <Doughnut class="chart max-h-72 w-full max-w-full" ref="chart" v-if="isScore" :data="chartData"
                     :options="options" />
-                <UButton icon="i-heroicons-arrow-path" size="xl" block trailing color="black"
+                <UButton icon="i-heroicons-arrow-path" size="xl" block trailing color="sky"
                     class="max-w-1/2 mt-5 mb-0" variant="solid" label="Перепройти тест"
                     :ui="{ rounded: 'rounded-none rounded-br rounded-bl' }" @click="resetScore" />
             </div>
-            <div class="flex flex-wrap justify-center items-center w-full gap-2" :class="{ 'fadeOUT': isScore }">
-                <UButton v-if="currentQuestion > 0" size="xl" icon="i-heroicons-arrow-left" color="black"
-                    class="mt-5 dark:shadow-darkShadow max-w-1/2" variant="solid" label="Предыдущий вопрос"
+            <div class="flex flex-wrap justify-center items-center w-full gap-4" :class="{ 'fadeOUT': isScore }">
+                <UButton v-if="currentQuestion > 0" size="xl" icon="i-heroicons-arrow-left" color="sky"
+                    class="mt-5 shadow-lg shadow-sky-500/20 max-w-1/2 uppercase tracking-widest font-bold" variant="soft" label="Назад"
                     @click="lastQuestion" />
                 <UButton v-if="currentQuestion + 1 === quizJSON.questions.length" size="xl"
-                    icon="i-heroicons-arrow-up-circle" trailing color="black"
-                    class="mt-5 dark:shadow-darkShadow max-w-1/2" variant="solid" label="Подвести итоги"
+                    icon="i-heroicons-check-circle" trailing color="sky"
+                    class="mt-5 shadow-lg shadow-sky-500/20 max-w-1/2 uppercase tracking-widest font-bold" variant="solid" label="Завершить"
                     @click="printScore" />
-                <UButton v-else icon="i-heroicons-arrow-right" size="xl" trailing color="black"
-                    class="mt-5 dark:shadow-darkShadow max-w-1/2" variant="solid" label="Следующий вопрос"
+                <UButton v-else icon="i-heroicons-arrow-right" size="xl" trailing color="sky"
+                    class="mt-5 shadow-lg shadow-sky-500/20 max-w-1/2 uppercase tracking-widest font-bold" variant="solid" label="Далее"
                     @click="nextQuestion" />
             </div>
         </div>
@@ -233,25 +233,49 @@ const options = {
 <style scoped>
 .active {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1.05);
+    @apply blur-0;
 }
 
 .fadeOUT {
     opacity: 0;
+    transform: scale(0.9);
 }
 
 .inactiveUP {
     opacity: 0;
     pointer-events: none;
-    transform: translateY(300px) scale(1.25);
-    @apply blur-sm;
+    transform: translateY(150px) scale(1.15);
+    filter: blur(8px);
 }
 
 .inactiveDOWN {
     opacity: 0;
     pointer-events: none;
-    transform: translateY(-300px) scale(0.75);
-    @apply blur-sm;
+    transform: translateY(-150px) scale(0.85);
+    filter: blur(8px);
+}
+
+.results-active {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    @apply blur-0;
+}
+
+.results-inactive {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(100px) scale(0.9);
+    filter: blur(10px);
+}
+
+.pulse-top {
+    animation: heartbeat 2s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
 }
 
 .chart p {

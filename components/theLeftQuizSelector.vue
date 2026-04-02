@@ -1,9 +1,15 @@
 <template>
-    <div class="flex flex-col dark:border-gray-600 lg:sticky h-fit">
-        <p class="text-sm tracking-widest font-bold text-black dark:text-white uppercase">От теории</p>
-        <span @click="$emit('changeView', 'lection')" :class="{'selectedToc': props.isTheory}" class="dark:border-gray-600 border-l-2 lg:border-l-0 lg:border-r-2 px-3 py-1 scroll-m-40 text-sm cursor-pointer hover:text-gray-300 dark:hover:text-gray-600 transition-all:ease duration-200">{{"Лекция. ".concat(props.quizTitle as string)}}</span>
-        <p class="text-sm tracking-widest font-bold text-black dark:text-white uppercase">К практике</p>
-        <span @click="$emit('changeView', 'quiz')" :class="{'selectedToc': !props.isTheory}" class="dark:border-gray-600 lg:border-r-2 lg:border-l-0 border-l-2 scroll-m-40 px-3 py-1 text-sm cursor-pointer hover:text-gray-300 dark:hover:text-gray-600 transition-all:ease duration-200">{{ "Тест. ".concat(props.quizTitle as string) }}</span>
+    <div class="flex flex-col dark:border-zinc-800 lg:sticky h-fit">
+        <p class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase mb-2">Текст</p>
+        <span @click="$emit('changeView', 'lection')" :class="{ 'selectedToc': props.isTheory }"
+            class="dark:border-zinc-800 border-l-2 lg:border-l-0 lg:border-r-2 px-3 py-2 text-sm cursor-pointer hover:text-sky-600 dark:hover:text-sky-400 transition-all duration-300 text-gray-900 dark:text-gray-100">
+            {{ "Статья: ".concat(props.quizTitle as string) }}
+        </span>
+        <p class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase my-2">Слайды</p>
+        <span @click="$emit('changeView', 'quiz')" :class="{ 'selectedToc': !props.isTheory }"
+            class="dark:border-zinc-800 lg:border-r-2 lg:border-l-0 border-l-2 px-3 py-2 text-sm cursor-pointer hover:text-sky-600 dark:hover:text-sky-400 transition-all duration-300 text-gray-900 dark:text-gray-100">
+            {{ "Презентация: ".concat(props.quizTitle as string) }}
+        </span>
     </div>
 </template>
 
@@ -18,6 +24,6 @@ const props = defineProps({
 
 <style scoped>
 .selectedToc {
-    @apply lg:border-r-2 lg:border-l-0 border-l-2 border-gray-950 dark:border-gray-200 bg-gray-200 dark:bg-zinc-800;
+    @apply lg:border-r-2 lg:border-l-0 border-l-2 border-sky-600 dark:border-sky-400 bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300;
 }
 </style>

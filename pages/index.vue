@@ -26,13 +26,8 @@
 
     <!-- Three Pillars -->
     <section class="pillars-section">
-      <div 
-        v-for="pillar in pillars" 
-        :key="pillar.abbr" 
-        class="pillar-card"
-        @mouseenter="hoveredPillar = pillar.abbr"
-        @mouseleave="hoveredPillar = null"
-      >
+      <div v-for="pillar in pillars" :key="pillar.abbr" class="pillar-card" @mouseenter="hoveredPillar = pillar.abbr"
+        @mouseleave="hoveredPillar = null">
         <div class="pillar-header">
           <span class="pillar-badge">{{ pillar.abbr }}</span>
           <h2 class="pillar-name">{{ pillar.name }}</h2>
@@ -140,33 +135,55 @@ useHead({
   padding: 40px 20px 0;
   width: 100%;
 }
+
 .hero-title-container {
   display: flex;
   gap: 20px;
   align-items: center;
 }
+
 .hero-logo {
   height: 80px;
   width: auto;
   filter: drop-shadow(0 0 3px rgba(186, 186, 186, 0.6));
   border-radius: 8px;
 }
+
 .hero-text {
   display: flex;
   flex-direction: column;
 }
+
 .hero-title {
   margin: 0;
   font-size: 56px;
   line-height: 1;
-  letter-spacing: 8px;
-  font-weight: 700;
-  color: #333;
-  border-bottom: 1px solid #bababa;
+  letter-spacing: 12px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #0c4a6e, #0ea5e9, #0284c7, #0c4a6e);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   padding-bottom: 8px;
-  filter: drop-shadow(0 0 2px #bababa);
+  animation: shine 15s linear infinite;
+  user-select: none;
 }
-.dark .hero-title { color: #e5e5e5; border-bottom-color: #555; }
+
+.dark .hero-title {
+  background: linear-gradient(135deg, #7dd3fc, #38bdf8, #0ea5e9, #7dd3fc);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@keyframes shine {
+  to {
+    background-position: 300% center;
+  }
+}
+
 .hero-subtitle {
   margin: 8px 0 0;
   font-size: 15px;
@@ -175,7 +192,11 @@ useHead({
   text-transform: uppercase;
   font-weight: 400;
 }
-.dark .hero-subtitle { color: #999; }
+
+.dark .hero-subtitle {
+  color: #999;
+}
+
 .hero-description {
   max-width: 640px;
   font-size: 17px;
@@ -183,7 +204,11 @@ useHead({
   color: #555;
   margin: 0;
 }
-.dark .hero-description { color: #aaa; }
+
+.dark .hero-description {
+  color: #aaa;
+}
+
 .hero-cta {
   display: flex;
   gap: 12px;
@@ -191,6 +216,7 @@ useHead({
   justify-content: center;
   margin-top: 4px;
 }
+
 .cta-button {
   display: flex;
   align-items: center;
@@ -203,33 +229,48 @@ useHead({
   transition: all 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
   cursor: pointer;
 }
+
 .cta-button.primary {
-  background: #454545;
+  background: #0c4a6e; /* sky-900 */
   color: #fff;
-  border: 1px solid #333;
+  border: 1px solid #075985;
 }
+
 .cta-button.primary:hover {
-  background: #333;
+  background: #0369a1;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(12, 74, 110, 0.2);
 }
+
 .dark .cta-button.primary {
-  background: #e0e0e0;
-  color: #1a1a1a;
-  border-color: #ccc;
+  background: #0ea5e9; /* sky-500 */
+  color: #fff;
+  border-color: #0284c7;
 }
-.dark .cta-button.primary:hover { background: #fff; }
+
+.dark .cta-button.primary:hover {
+  background: #38bdf8;
+}
+
 .cta-button.secondary {
   background: transparent;
   color: #555;
   border: 1px solid #c8c8c8;
 }
+
 .cta-button.secondary:hover {
   background: #f5f5f5;
   transform: translateY(-1px);
 }
-.dark .cta-button.secondary { color: #aaa; border-color: #444; }
-.dark .cta-button.secondary:hover { background: #2a2a2a; }
+
+.dark .cta-button.secondary {
+  color: #aaa;
+  border-color: #444;
+}
+
+.dark .cta-button.secondary:hover {
+  background: #2a2a2a;
+}
 
 /* ─── Pillars ─── */
 .pillars-section {
@@ -238,6 +279,7 @@ useHead({
   gap: 20px;
   width: 100%;
 }
+
 .pillar-card {
   width: 100%;
   border: 1px solid #c8c8c8;
@@ -247,17 +289,21 @@ useHead({
   overflow: hidden;
   transition: box-shadow 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
 }
+
 .pillar-card:hover {
   box-shadow: 0 2px 12px rgba(119, 119, 119, 0.15);
 }
+
 .dark .pillar-card {
   background: #1a1a1a;
   border-color: #333;
   box-shadow: 0 0 1px 1px rgba(50, 50, 50, 0.3);
 }
+
 .dark .pillar-card:hover {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
+
 .pillar-header {
   padding: 14px 20px;
   background-color: #f9f9f9;
@@ -266,20 +312,27 @@ useHead({
   align-items: center;
   gap: 12px;
 }
-.dark .pillar-header { background-color: #222; border-bottom-color: #333; }
+
+.dark .pillar-header {
+  background-color: #222;
+  border-bottom-color: #333;
+}
+
 .pillar-badge {
-  background: linear-gradient(90deg, #ededed, #ddd);
-  color: #333;
+  background: linear-gradient(90deg, #e0f2fe, #bae6fd); /* sky-100 to 200 */
+  color: #0c4a6e; /* sky-900 */
   padding: 4px 12px;
   border-radius: 6px;
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 1px;
 }
+
 .dark .pillar-badge {
-  background: linear-gradient(90deg, #3a3a3a, #444);
-  color: #e0e0e0;
+  background: linear-gradient(90deg, #075985, #0c4a6e); /* sky-800 to 900 */
+  color: #e0f2fe;
 }
+
 .pillar-name {
   margin: 0;
   font-size: 18px;
@@ -287,20 +340,28 @@ useHead({
   color: #333;
   letter-spacing: 0.5px;
 }
-.dark .pillar-name { color: #ddd; }
+
+.dark .pillar-name {
+  color: #ddd;
+}
+
 .pillar-body {
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
+
 .pillar-desc {
   margin: 0;
   font-size: 15px;
   line-height: 1.7;
   color: #444;
 }
-.dark .pillar-desc { color: #bbb; }
+
+.dark .pillar-desc {
+  color: #bbb;
+}
 
 /* Details */
 .pillar-details {
@@ -308,6 +369,7 @@ useHead({
   flex-direction: column;
   gap: 10px;
 }
+
 .detail-item {
   display: flex;
   align-items: flex-start;
@@ -318,41 +380,59 @@ useHead({
   background: #fff;
   transition: all 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
 }
+
 .detail-item:hover {
   box-shadow: 0 4px 16px rgba(34, 60, 80, 0.12);
   transform: translateY(-2px);
 }
-.dark .detail-item { background: #252525; border-color: #3a3a3a; }
-.dark .detail-item:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
+
+.dark .detail-item {
+  background: #252525;
+  border-color: #3a3a3a;
+}
+
+.dark .detail-item:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
 .detail-number {
   flex-shrink: 0;
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #ededed, #d5d5d5);
+  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 16px;
-  color: #454545;
+  color: #0284c7;
 }
+
 .dark .detail-number {
-  background: linear-gradient(135deg, #3a3a3a, #4a4a4a);
-  color: #ddd;
+  background: linear-gradient(135deg, #0c4a6e, #082f49);
+  color: #bae6fd;
 }
+
 .detail-item strong {
   font-size: 14px;
   color: #333;
 }
-.dark .detail-item strong { color: #e0e0e0; }
+
+.dark .detail-item strong {
+  color: #e0e0e0;
+}
+
 .detail-item p {
   margin: 3px 0 0;
   font-size: 13px;
   line-height: 1.55;
   color: #666;
 }
-.dark .detail-item p { color: #999; }
+
+.dark .detail-item p {
+  color: #999;
+}
 
 .pillar-fact {
   margin: 0;
@@ -365,6 +445,7 @@ useHead({
   background: #fafafa;
   border-radius: 0 8px 8px 0;
 }
+
 .dark .pillar-fact {
   background: #252525;
   border-left-color: #555;
@@ -373,10 +454,25 @@ useHead({
 
 /* ─── Responsive ─── */
 @media (max-width: 640px) {
-  .hero-title-container { flex-direction: column; }
-  .hero-title { font-size: 36px; letter-spacing: 5px; }
-  .hero-logo { height: 60px; }
-  .pillar-body { padding: 16px; }
-  .landing-page { gap: 28px; }
+  .hero-title-container {
+    flex-direction: column;
+  }
+
+  .hero-title {
+    font-size: 36px;
+    letter-spacing: 5px;
+  }
+
+  .hero-logo {
+    height: 60px;
+  }
+
+  .pillar-body {
+    padding: 16px;
+  }
+
+  .landing-page {
+    gap: 28px;
+  }
 }
 </style>

@@ -1,13 +1,25 @@
 <template>
     <div
-        class="flex flex-col flex-wrap-reverse lg:grid lg:grid-cols-12 lg:flex-nowrap gap-10 prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-slate dark:prose-invert w-full prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-200 prose-pre:border dark:prose-pre:border-gray-700 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold">
+        class="flex flex-col flex-wrap-reverse lg:grid lg:grid-cols-12 lg:flex-nowrap gap-10 prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert w-full prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold">
         <theLeftQuizSelector @changeView="changeView" :is-theory="isTheory" :title="ast?.data.title"
-            :quizTitle="ast?.data.metaTitle" class="lg:col-span-2 xl:col-span-3 lg:flex lg:sticky top-[--header-height] xl:justify-self-end xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]" />
+            :quizTitle="ast?.data.metaTitle"
+            class="lg:col-span-2 xl:col-span-3 lg:flex lg:sticky top-[--header-height] xl:justify-self-end xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]" />
         <div :class="[{ 'active': isTheory }, { 'inactive': !isTheory }]" ref="lection"
             class="flex flex-col-reverse lg:grid lg:grid-cols-10 xl:grid-cols-9 gap-10 w-full lg:col-span-10 xl:col-span-9 view-transition">
-            <div class="w-full max-w-[900px] 2xl:max-w-[1000px] mx-auto lg:col-span-8 xl:col-span-6 flex-col">
+            <div
+                class="w-full max-w-[900px] 2xl:max-w-[1000px] mx-auto lg:col-span-8 xl:col-span-6 flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm">
+                <div v-if="ast?.data" class="flex flex-col mb-4">
+                    <span v-if="ast.data.meta"
+                        class="text-xs tracking-[0.3em] uppercase font-bold text-sky-600 dark:text-sky-400 mb-0">
+                        {{ ast.data.meta }}
+                    </span>
+                    <h1
+                        class="text-3xl lg:text-4xl mb-0 font-bold text-gray-900 dark:text-gray-100 uppercase tracking-widest leading-tight m-0 mb-0">
+                        {{ ast.data.title }}
+                    </h1>
+                </div>
                 <ContentRendererMarkdown v-if="ast !== undefined" :value="ast"
-                    class="parent w-full lg:col-span-8 xl:col-span-6 flex-col bg-gray-100 dark:bg-zinc-800 lg:p-10 p-5 rounded-2xl">
+                    class="parent w-full lg:col-span-8 xl:col-span-6 flex-col">
                     <template #empty>
                         <p>Не найдено контента</p>
                     </template>
@@ -15,10 +27,11 @@
                 <toQuiz @changeView="changeView" class="mt-5 h-20">Перейти к тесту</toQuiz>
             </div>
             <theToc :activeID="activeID" @updateActiveID="handleTocClick" v-if="ast?.toc?.links.length"
-                class="lg:w-auto lg:col-span-2 xl:col-span-3 xl:justify-self-start xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]" title="Содержание"
-                :links="ast?.toc.links" />
+                class="lg:w-auto lg:col-span-2 xl:col-span-3 xl:justify-self-start xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]"
+                title="Содержание" :links="ast?.toc.links" />
         </div>
-        <div :class="[{ 'active': !isTheory }, { 'inactive': isTheory }]" class="flex w-full lg:h-[calc(100dvh_-_var(--header-height)_-_5rem)] dark:bg-gray-950 bg-gray-50  items-center justify-center h-[calc(100dvh_-_var(--header-height)_-_1.5rem)] col-span-10 view-transition">
+        <div :class="[{ 'active': !isTheory }, { 'inactive': isTheory }]"
+            class="flex w-full lg:h-[calc(100dvh_-_var(--header-height)_-_5rem)] dark:bg-zinc-950 bg-gray-50 items-center justify-center h-[calc(100dvh_-_var(--header-height)_-_1.5rem)] lg:col-span-10 xl:col-span-9 view-transition">
             <theQuizView :quizJSON="quizJson" ref="quiz" />
         </div>
         <theScrollToTop @scrolled="resetToFirstHeading" />

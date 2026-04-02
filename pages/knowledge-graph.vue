@@ -54,7 +54,7 @@ useSeoMeta({
 .placeholder-icon {
   width: 36px;
   height: 36px;
-  color: #8b5cf6;
+  color: #0284c7;
 }
 .placeholder-title {
   font-size: 28px;
@@ -76,14 +76,14 @@ useSeoMeta({
   gap: 8px;
   padding: 8px 18px;
   border-radius: 10px;
-  background: #fef3c7;
-  color: #92400e;
+  background: #e0f2fe;
+  color: #0c4a6e;
   font-size: 13px;
   font-weight: 600;
   margin-top: 8px;
 }
 .dark .placeholder-badge {
-  background: #3b2f1a;
-  color: #fbbf24;
+  background: #082f49;
+  color: #bae6fd;
 }
 </style>

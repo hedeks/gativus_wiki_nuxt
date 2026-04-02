@@ -1,16 +1,12 @@
 ---
-title: "Полный курс (мастер)"
-meta: "master"
-metaTitle: "Сшитый курс"
+title: "GTOM - Теория Разума Гативус"
+meta: "GTOM"
+metaTitle: "GTOM - Теория Разума Гативус"
 name: "book-gtom"
-description: "Сшитый документ из ODM"
+description: "GTOM описывает феномен сознания как динамическую суперпозицию трёх независимых уровней"
 courseID: 2
-imgPath: "/hacker.jpg"
+imgPath: "/logo.jpg"
 ---
-
-КНИГА 1
-
-GTOM – Gativus Theory of Mind
 
 ## Глава 1. Проблематика и основания
 

@@ -36,11 +36,16 @@ const links = [{
 
 <template>
   <div id="header" ref="header"
-    class="rounded-br rounded-bl flex flex-wrap px-2 lg:grid lg:grid-cols-4 gap-2 items-center justify-center border-b dark:border-gray-500 border-gray-200 ">
+    class="flex flex-wrap px-4 py-2 lg:grid lg:grid-cols-4 gap-4 items-center justify-between border-b dark:border-zinc-800 border-gray-100 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
     <theSiteLogo class="col-span-1" />
     <UHorizontalNavigation :links="links"
-      :ui="{ container: 'flex items-center justify-center min-w-0 flex-wrap', label: 'xl:text-lg', active: 'after:bg-gray-500 dark:after:bg-gray-500-inverted' }"
-      class="text-lg flex flex-wrap w-fit justify-self-center col-span-2" />
+      :ui="{ 
+        container: 'flex items-center justify-center min-w-0 flex-wrap gap-2', 
+        label: 'xl:text-base font-bold', 
+        active: 'after:bg-sky-600 dark:after:bg-sky-400 text-sky-600 dark:text-sky-400',
+        inactive: 'text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
+      }"
+      class="flex flex-wrap w-fit justify-self-center col-span-2" />
     <div class="flex items-center w-fit gap-4 col-span-1 justify-self-end">
       <theThemeChanger />
     </div>

@@ -1,31 +1,28 @@
 <template>
     <ClientOnly>
-        <UToggle on-icon="i-heroicons-sun" off-icon="i-heroicons-moon"
-            :ui="{ active: 'bg-yellow-300 dark:bg-yellow-400', icon: { on: 'text-black dark:text-white', off: 'text-black dark:text-white' } }"
-            :model-value="selected" @click="changeTheme" />
+        <UToggle 
+            on-icon="i-heroicons-moon-20-solid" 
+            off-icon="i-heroicons-sun-20-solid"
+            :ui="{ 
+                active: 'bg-sky-700 dark:bg-sky-600', 
+                inactive: 'bg-zinc-200 dark:bg-zinc-800',
+                icon: { 
+                    on: 'text-sky-50 dark:text-sky-100', 
+                    off: 'text-amber-600 dark:text-amber-400' 
+                } 
+            }"
+            v-model="selected" 
+        />
     </ClientOnly>
 </template>
 
 
 <script setup lang="ts">
 const colorMode = useColorMode();
-type Theme = {
-    light: boolean,
-    dark: boolean,
-}
-const themes: Theme = {
-    "light": true,
-    "dark": false,
-}
-const getTheme = (themeName: keyof Theme) => themes[themeName];
-const selected = ref(getTheme(colorMode.preference as keyof Theme));
-const changeTheme = () => {
-    if (getTheme(colorMode.preference as keyof Theme)) {
-        colorMode.preference = "dark"
-        selected.value = false;
-    } else {
-        colorMode.preference = "light"
-        selected.value = true;
+const selected = computed({
+    get: () => colorMode.preference === 'dark',
+    set: (val) => {
+        colorMode.preference = val ? 'dark' : 'light';
     }
-}
+});
 </script>

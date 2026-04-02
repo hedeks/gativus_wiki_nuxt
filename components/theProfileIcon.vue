@@ -16,12 +16,12 @@ const signOut = () => {
     toast.add({ title: "Вы вышли из аккаунта!" })
     store.$state.isLoggedIn = false;
     store.$state.userInfo = {
-       id: 0,
-        login: "anonymous",
-        email: "anonymous",
-        created_at: "0",
-        encrypted_password: "",
-        uuid: ""
+      id: 0,
+      login: "anonymous",
+      email: "anonymous",
+      created_at: "0",
+      encrypted_password: "",
+      uuid: ""
     };
     navigateTo('/login');
   } else {
@@ -64,7 +64,7 @@ const items =
 
 <template>
   <UDropdown :items="items as DropdownItem[][]" :ui="{ item: { disabled: 'cursor-text select-text' } }"
-  :popper="{ placement: 'bottom-start', arrow: true }">
+    :popper="{ placement: 'bottom-start', arrow: true }">
     <UAvatar v-if='store.isLoggedIn' :alt="store.userInfo.email" />
     <UAvatar v-else icon="i-heroicons-exclamation-circle" size="sm" />
 

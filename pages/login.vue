@@ -4,7 +4,7 @@ const toast = useToast()
 const store = userStore();
 const email: Ref<HTMLInputElement> = ref() as Ref<HTMLInputElement>;
 const password: Ref<HTMLInputElement> = ref() as Ref<HTMLInputElement>;
-const login:  Ref<HTMLInputElement> = ref() as Ref<HTMLInputElement>;
+const login: Ref<HTMLInputElement> = ref() as Ref<HTMLInputElement>;
 const isSignup: Ref<Boolean> = ref(false);
 const errorMain = ref<{ message: string } | null>(null);
 const isLoading: Ref<boolean> = ref(false)
@@ -23,10 +23,12 @@ const signUp = async (): Promise<void> => {
         const user = data.res.user;
         if (user) {
             store.setUser(user, data.res.access_token);
-            toast.add({ title: `Аккаунт создан! Добро пожаловать, ${user.login}`, ui: {
-                    background: 'bg-white dark:bg-neutral-900',
-                    progress: { background: 'bg-black dark:bg-white' }
-                } });
+            toast.add({
+                title: `Аккаунт создан! Добро пожаловать, ${user.login}`, ui: {
+                    background: 'bg-white dark:bg-zinc-900',
+                    progress: { background: 'bg-sky-600 dark:bg-sky-400' }
+                }
+            });
             navigateTo('/profile');
         }
     } catch (err: any) {
@@ -38,17 +40,21 @@ const signUp = async (): Promise<void> => {
 const loginFunc = async (): Promise<void> => {
     isLoading.value = true;
     try {
-        const data = await $fetch("/api/auth/login", { method: "POST", body: {
-            email: email.value.value,
-            password: password.value.value
-        }});
+        const data = await $fetch("/api/auth/login", {
+            method: "POST", body: {
+                email: email.value.value,
+                password: password.value.value
+            }
+        });
         const user = data.res.user;
         if (user) {
             store.setUser(user, data.res.access_token);
-            toast.add({ title: `Вы вошли в аккаунт ${user.email}`, ui: {
-                    background: 'bg-white dark:bg-neutral-900',
-                    progress: { background: 'bg-black dark:bg-white' }
-                } });
+            toast.add({
+                title: `Вы вошли в аккаунт ${user.email}`, ui: {
+                    background: 'bg-white dark:bg-zinc-900',
+                    progress: { background: 'bg-sky-600 dark:bg-sky-400' }
+                }
+            });
             navigateTo('/profile');
         }
     } catch (err: any) {
@@ -60,7 +66,8 @@ const loginFunc = async (): Promise<void> => {
 
 <template>
     <div class="container m-auto w-full h-full flex flex-col items-center justify-center">
-        <UCard class="max-w-sm w-80 dark:shadow-darkShadow" :ui="{ ring:'dark:ring-gray-500', divide: 'dark:divide-gray-500' ,background: 'bg-white dark:bg-neutral-900', header: {base: 'dark:bg-black rounded-xl bg-gray-50'} }">
+        <UCard class="max-w-sm w-80 dark:shadow-darkShadow"
+            :ui="{ ring: 'dark:ring-zinc-700', divide: 'dark:divide-zinc-700', background: 'bg-white dark:bg-zinc-900', header: { base: 'dark:bg-zinc-950 rounded-xl bg-gray-50' } }">
             <template #header>
                 <div class="h-3 flex items-center justify-start text-xl font-bold">
                     <span v-if="isSignup">Регистрация</span>
@@ -72,7 +79,9 @@ const loginFunc = async (): Promise<void> => {
                     <input placeholder="почта email" type="text" ref="email" class="input">
                     <input v-if="isSignup" ref="login" class="input" placeholder="логин" type="text">
                     <input placeholder="пароль" type="password" ref="password" class="input">
-                    <UButton block color="black" variant="solid" square type="submit" class="mt-7 shadow dark:shadow-darkShadow" :ui="{base: 'focus:outline-none focus-visible:outline-0 disabled:cursor-not-allowed disabled:opacity-75 flex-shrink-0'}"
+                    <UButton block color="sky" variant="solid" square type="submit"
+                        class="mt-7 shadow-lg shadow-sky-500/20"
+                        :ui="{ base: 'focus:outline-none focus-visible:outline-0 disabled:cursor-not-allowed disabled:opacity-75 flex-shrink-0' }"
                         label="Подтвердить" :loading="isLoading">
                         <template #trailing>
                             <UIcon name="i-heroicons-arrow-up-circle" class="w-5 h-5" />
@@ -85,21 +94,20 @@ const loginFunc = async (): Promise<void> => {
             </div>
             <template #footer>
                 <div class="h-8 flex items-center justify-center">
-                    <span @click="isSignup = !isSignup" v-if="isSignup" class="cursor-pointer">У вас уже есть аккаунт?
-                        Войти</span>
-                    <span @click="isSignup = !isSignup" v-else class="cursor-pointer">Зарегистрироваться</span>
+                    <span @click="isSignup = !isSignup" v-if="isSignup" class="cursor-pointer text-sky-600 dark:text-sky-400 hover:underline">У вас уже есть аккаунт? Войти</span>
+                    <span @click="isSignup = !isSignup" v-else class="cursor-pointer text-sky-600 dark:text-sky-400 hover:underline">Зарегистрироваться</span>
                 </div>
             </template>
         </UCard>
-        <span v-if="!store.isLoggedIn" class="alert mt-5">Просматривать
-            курсы и профиль можно только войдя в аккаунт</span>
+        <span v-if="!store.isLoggedIn" class="alert mt-5 border-none shadow-none text-gray-500 bg-transparent lowercase tracking-normal">Просматривать курсы и профиль можно только войдя в аккаунт</span>
     </div>
 </template>
 
 <style scoped>
 .input {
-    @apply dark:shadow-darkShadow shadow-sm rounded bg-white dark:bg-gray-800 border dark:border-gray-600 px-2 py-1 outline-none focus:border-black dark:focus:border-white transition-all duration-300 w-full;
+    @apply shadow-sm rounded bg-white dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 px-3 py-2 outline-none focus:border-sky-600 dark:focus:border-sky-400 transition-all duration-300 w-full;
 }
+
 
 @keyframes wrong {
     0% {

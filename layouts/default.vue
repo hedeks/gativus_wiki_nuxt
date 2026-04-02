@@ -28,9 +28,11 @@ const route = useRoute();
 :root {
     --footer-height: 93px;
 }
+
 .main {
     min-height: calc(100dvh - var(--header-height) - var(--footer-height));
 }
+
 .head {
     backdrop-filter: blur(10px);
 }

@@ -1,32 +1,18 @@
 <template>
   <div class="flex flex-col w-full">
-    <div
-      :data-title="link.id"
-      lang="ru"
-      :class="[
-        'toc py-1 pr-3 cursor-pointer transition-colors ease duration-300 hover:bg-gray-50 dark:hover:bg-zinc-800/20 break-words hyphens-auto',
-        isActive ? 'selectedToc text-black dark:text-white font-medium' : 'text-gray-900 dark:text-gray-200',
-        paddingClass
-      ]"
-      style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);"
-      @click="handleClick"
-    >
+    <div :data-title="link.id" lang="ru" :class="[
+      'toc py-1 pr-3 cursor-pointer transition-colors ease duration-300 hover:bg-gray-50 dark:hover:bg-zinc-800/20 break-words hyphens-auto',
+      isActive ? 'selectedToc text-black dark:text-white' : 'text-gray-900 dark:text-gray-200',
+      paddingClass
+    ]" style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);" @click="handleClick">
       <span v-if="level > 0" class="mr-1 opacity-50">{{ levelMarker }}</span><span>{{ link.text }}</span>
     </div>
-    
+
     <Transition name="expand">
       <div v-if="link.children && link.children.length && isOpen" class="flex flex-col">
-        <theTocItem
-          v-for="child in link.children"
-          :key="child.id"
-          :link="child"
-          :level="level + 1"
-          :activeID="activeID"
-          :activeRootId="activeRootId"
-          :manualState="undefined"
-          @scroll="$emit('scroll', $event)"
-          @toggle="$emit('toggle', $event)"
-        />
+        <theTocItem v-for="child in link.children" :key="child.id" :link="child" :level="level + 1" :activeID="activeID"
+          :activeRootId="activeRootId" :manualState="undefined" @scroll="$emit('scroll', $event)"
+          @toggle="$emit('toggle', $event)" />
       </div>
     </Transition>
   </div>
@@ -56,23 +42,23 @@ const isOpen = computed(() => {
 });
 
 const isActive = computed(() => {
-    // Стандартная подсветка
-    if (props.activeID === props.link.id) return true;
-    
-    // Спец-кейс: если это Глава, она активна (скролл внутри), но её дети СКРЫТЫ - подсвечиваем саму главу
-    if (props.level === 0 && props.link.id === props.activeRootId && !isOpen.value) {
-        return true;
-    }
-    
-    return false;
+  // Стандартная подсветка
+  if (props.activeID === props.link.id) return true;
+
+  // Спец-кейс: если это Глава, она активна (скролл внутри), но её дети СКРЫТЫ - подсвечиваем саму главу
+  if (props.level === 0 && props.link.id === props.activeRootId && !isOpen.value) {
+    return true;
+  }
+
+  return false;
 });
 
 const handleClick = () => {
-    if (props.level === 0 && props.link.children && props.link.children.length > 0) {
-        emit('toggle', props.link.id);
-    } else {
-        emit('scroll', props.link.id);
-    }
+  if (props.level === 0 && props.link.children && props.link.children.length > 0) {
+    emit('toggle', props.link.id);
+  } else {
+    emit('scroll', props.link.id);
+  }
 }
 
 const paddingClass = computed(() => {
@@ -94,21 +80,21 @@ const levelMarker = computed(() => {
 
 <style scoped>
 .selectedToc {
-    @apply border-l-2 border-gray-950 dark:border-gray-200 bg-gray-200 dark:bg-zinc-800;
+  @apply border-l-2 border-sky-600 dark:border-sky-400 bg-sky-50/50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300;
 }
 
 /* Animations for Accordion */
 .expand-enter-active,
 .expand-leave-active {
-    transition: all 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915), opacity 0.5s cubic-bezier(0.705, 0.010, 0.000, 0.915);
-    max-height: 500px;
-    overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915), opacity 0.5s cubic-bezier(0.705, 0.010, 0.000, 0.915);
+  max-height: 500px;
+  overflow: hidden;
 }
 
 .expand-enter-from,
 .expand-leave-to {
-    max-height: 0;
-    opacity: 0;
-    transform: translateY(-10px);
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>
