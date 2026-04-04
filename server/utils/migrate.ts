@@ -133,13 +133,46 @@ export async function runMigrations(db: Database) {
     )
   `)
 
-  // ─── 10. Indexes ───
+  // ─── 10. Locale & origin_id for articles (i18n readiness) ───
+  try {
+    const artCols = await db.prepare('PRAGMA table_info(articles)').all() as any[]
+    if (!artCols.some((c: any) => c.name === 'locale')) {
+      await db.exec(`ALTER TABLE articles ADD COLUMN locale TEXT NOT NULL DEFAULT 'en'`)
+      console.log('[migrate] Added "locale" column to articles')
+    }
+    if (!artCols.some((c: any) => c.name === 'origin_id')) {
+      await db.exec(`ALTER TABLE articles ADD COLUMN origin_id INTEGER`)
+      console.log('[migrate] Added "origin_id" column to articles')
+    }
+    if (!artCols.some((c: any) => c.name === 'presentation_path')) {
+      await db.exec(`ALTER TABLE articles ADD COLUMN presentation_path TEXT`)
+      console.log('[migrate] Added "presentation_path" column to articles')
+    }
+  } catch { /* table may not exist yet — created above */ }
+
+  // ─── 11. Locale & origin_id for books ───
+  try {
+    const bookCols = await db.prepare('PRAGMA table_info(books)').all() as any[]
+    if (!bookCols.some((c: any) => c.name === 'locale')) {
+      await db.exec(`ALTER TABLE books ADD COLUMN locale TEXT NOT NULL DEFAULT 'en'`)
+      console.log('[migrate] Added "locale" column to books')
+    }
+    if (!bookCols.some((c: any) => c.name === 'origin_id')) {
+      await db.exec(`ALTER TABLE books ADD COLUMN origin_id INTEGER`)
+      console.log('[migrate] Added "origin_id" column to books')
+    }
+  } catch { /* table may not exist yet — created above */ }
+
+  // ─── 12. Indexes ───
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_terms_slug ON terms(slug)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_book_id ON articles(book_id)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_category_id ON articles(category_id)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_terms_category_id ON terms(category_id)`)
+  await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_locale ON articles(locale)`)
+  await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_origin_id ON articles(origin_id)`)
+  await db.exec(`CREATE INDEX IF NOT EXISTS idx_books_locale ON books(locale)`)
 
   console.log('[migrate] All migrations completed ✓')
 }

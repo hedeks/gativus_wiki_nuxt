@@ -477,14 +477,15 @@ middleware/
 6. Базовый layout админки
 
 ### Фаза 2 — Контент (статьи + импорт)
-1. Перенести `odt_parser/index.js` → `server/utils/odtParser.ts` (рефакторинг JS→TS, ODT→HTML вместо MD)
+1. Написать парсер odt в `server/utils/odtParser.ts` (рефакторинг JS→TS, ODT→HTML вместо MD)
 2. Создать endpoints: `POST /api/import/odt`, `POST /api/import/preview`
 3. API для статей и книг (CRUD) + ревизии при каждом сохранении
 4. Страница импорта ODT в админке (`/admin/import`)
 5. Страница редактирования HTML (`/admin/articles/:id/edit`)
 6. Страница истории ревизий (`/admin/articles/:id/history`) с diff и откатом
-7. Публичные страницы: `/books`, `/books/:slug`, `/books/:slug/:article`
-8. Рендеринг HTML-статей с Prose-стилями
+7. Мультиязычность в админке нужно, чтобы можно было загружать разные версии статей на разных языках, одна статья может иметь несколько переводов
+8. Публичные страницы: `/articles`, `/articles/:slug`, `/articles/:slug/:article`
+9. Рендеринг HTML-статей с Prose-стилями
 
 ### Фаза 3 — Глоссарий
 1. API для терминов (CRUD)
@@ -504,7 +505,6 @@ middleware/
 1. Полнотекстовый поиск (SQLite FTS5)
 2. SEO: sitemap, meta-теги для каждой статьи
 3. Breadcrumbs на всех страницах
-
 ---
 
 ## 9. Схема базы данных (ER-диаграмма)

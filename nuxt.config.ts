@@ -47,7 +47,9 @@ export default defineNuxtConfig({
       ],
     }
   },
+  css: ['~/assets/css/article-prose.css'],
   modules: ['@nuxt/ui', '@pinia/nuxt', "@nuxt/content", "@nuxtjs/tailwindcss", 'nuxt-markdown-render', '@nuxtjs/color-mode'],
+
   colorMode: {
     classSuffix: 'selector'
   },
