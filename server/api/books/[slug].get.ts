@@ -11,15 +11,20 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Slug is required' })
   }
 
-  const book = await db.prepare('SELECT * FROM books WHERE slug = ?').get(slug) as any
+  const isId = /^\d+$/.test(slug)
+  const book = await db.prepare(isId ? 'SELECT * FROM books WHERE id = ?' : 'SELECT * FROM books WHERE slug = ?').get(slug) as any
   if (!book) {
     throw createError({ statusCode: 404, statusMessage: 'Книга не найдена' })
   }
 
+  // ─── 1. Fetch categories ───
+  const categoryRows = await db.prepare('SELECT category_id FROM book_categories WHERE book_id = ?').all(book.id) as any[]
+  book.category_ids = categoryRows.map(r => r.category_id)
+
   const articles = await db.prepare(`
     SELECT id, slug, title, excerpt, sort_order, locale, is_published, created_at, updated_at
     FROM articles
-    WHERE book_id = ? AND is_published = 1
+    WHERE book_id = ?
     ORDER BY sort_order ASC
   `).all(book.id) as any[]
 

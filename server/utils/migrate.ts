@@ -163,7 +163,16 @@ export async function runMigrations(db: Database) {
     }
   } catch { /* table may not exist yet — created above */ }
 
-  // ─── 12. Indexes ───
+  // ─── 12. Book ↔ Category (many-to-many) ───
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS book_categories (
+      book_id      INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+      category_id  INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+      PRIMARY KEY (book_id, category_id)
+    )
+  `)
+
+  // ─── 13. Indexes ───
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_terms_slug ON terms(slug)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug)`)
@@ -173,6 +182,8 @@ export async function runMigrations(db: Database) {
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_locale ON articles(locale)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_origin_id ON articles(origin_id)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_books_locale ON books(locale)`)
+  await db.exec(`CREATE INDEX IF NOT EXISTS idx_book_categories_book_id ON book_categories(book_id)`)
+  await db.exec(`CREATE INDEX IF NOT EXISTS idx_book_categories_category_id ON book_categories(category_id)`)
 
   console.log('[migrate] All migrations completed ✓')
 }

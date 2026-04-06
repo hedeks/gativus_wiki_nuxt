@@ -19,11 +19,19 @@ export default defineEventHandler(async (event) => {
   const books = await db.prepare(`
     SELECT 
       b.*,
-      (SELECT COUNT(*) FROM articles a WHERE a.book_id = b.id AND a.is_published = 1) as article_count
+      (SELECT COUNT(*) FROM articles a WHERE a.book_id = b.id AND a.is_published = 1) as article_count,
+      (
+        SELECT GROUP_CONCAT(category_id) 
+        FROM book_categories 
+        WHERE book_id = b.id
+      ) as category_ids
     FROM books b
     ${whereClause}
     ORDER BY b.sort_order ASC, b.created_at ASC
   `).all(...params) as any[]
 
-  return books || []
+  return (books || []).map(b => ({
+    ...b,
+    category_ids: b.category_ids ? b.category_ids.split(',').map(Number) : []
+  }))
 })

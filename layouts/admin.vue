@@ -69,9 +69,17 @@ const route = useRoute()
 const store = userStore()
 const sidebarOpen = ref(false)
 
-const navItems = [
+interface NavItem {
+  label: string
+  icon: string
+  to: string
+  badge?: string | number
+}
+
+const navItems: NavItem[] = [
   { label: 'Dashboard', icon: 'i-heroicons-squares-2x2', to: '/admin' },
   { label: 'Импорт ODT', icon: 'i-heroicons-arrow-up-tray', to: '/admin/import' },
+  { label: 'Книги', icon: 'i-heroicons-book-open', to: '/admin/books' },
   { label: 'Статьи', icon: 'i-heroicons-document-text', to: '/admin/articles' },
   { label: 'Глоссарий', icon: 'i-heroicons-document-magnifying-glass', to: '/admin/glossary' },
   { label: 'Категории', icon: 'i-heroicons-folder', to: '/admin/categories' },

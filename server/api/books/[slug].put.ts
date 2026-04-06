@@ -35,11 +35,24 @@ export default defineEventHandler(async (event) => {
     params.push(newSlug)
   }
 
-  if (updates.length === 0) {
-    throw createError({ statusCode: 400, statusMessage: 'Нет данных для обновления' })
+  // ─── 2. Update book record ───
+  if (updates.length > 0) {
+    await db.prepare(`UPDATE books SET ${updates.join(', ')} WHERE id = ?`).run(...params, existing.id)
   }
 
-  await db.prepare(`UPDATE books SET ${updates.join(', ')} WHERE id = ?`).run(...params, existing.id)
+  // ─── 3. Sync categories ───
+  if (body.category_ids !== undefined) {
+    const categoryIds = Array.isArray(body.category_ids) ? body.category_ids : []
+    // Delete existing
+    await db.prepare('DELETE FROM book_categories WHERE book_id = ?').run(existing.id)
+    // Insert new
+    if (categoryIds.length > 0) {
+      const insertStmt = db.prepare('INSERT INTO book_categories (book_id, category_id) VALUES (?, ?)')
+      for (const catId of categoryIds) {
+        await insertStmt.run(existing.id, catId)
+      }
+    }
+  }
 
   return { message: 'Книга обновлена' }
 })

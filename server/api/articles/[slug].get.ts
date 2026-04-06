@@ -43,13 +43,13 @@ export default defineEventHandler(async (event) => {
 
   if (article.book_id) {
     prevArticle = await db.prepare(`
-      SELECT slug, title FROM articles
+      SELECT slug, title, sort_order FROM articles
       WHERE book_id = ? AND sort_order < ? AND is_published = 1
       ORDER BY sort_order DESC LIMIT 1
     `).get(article.book_id, article.sort_order) as any
 
     nextArticle = await db.prepare(`
-      SELECT slug, title FROM articles
+      SELECT slug, title, sort_order FROM articles
       WHERE book_id = ? AND sort_order > ? AND is_published = 1
       ORDER BY sort_order ASC LIMIT 1
     `).get(article.book_id, article.sort_order) as any

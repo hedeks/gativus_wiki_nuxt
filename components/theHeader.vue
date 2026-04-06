@@ -35,7 +35,11 @@ const links = [{
 }, {
   label: 'Статьи',
   icon: 'i-heroicons-document-text',
-  to: '/courses'
+  to: '/articles'
+}, {
+  label: 'Библиотека',
+  icon: 'i-heroicons-building-library',
+  to: '/books'
 }, {
   label: 'Глоссарий',
   icon: 'i-heroicons-document-magnifying-glass',
