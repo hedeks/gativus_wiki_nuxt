@@ -12,16 +12,48 @@
         <div class="form-grid">
           <!-- Left Column: Basic Info -->
           <div class="form-column">
-            <UFormGroup label="Заголовок" required help="Название книги, например: Основы биологии">
-              <UInput v-model="form.title" placeholder="Введите заголовок" size="lg" />
-            </UFormGroup>
+            <div class="tabs-wrapper mb-6">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Название и описание</label>
+              <UTabs :items="[
+                { label: '🇬🇧 EN', slot: 'en' },
+                { label: '🇷🇺 RU', slot: 'ru' },
+                { label: '🇨🇳 ZH', slot: 'zh' }
+              ]" class="w-full">
+                <template #en>
+                  <div class="space-y-4 pt-4">
+                    <UFormGroup label="Title (English)" required>
+                      <UInput v-model="form.title" placeholder="Gativus: Core Concepts" size="lg" />
+                    </UFormGroup>
+                    <UFormGroup label="Description (English)">
+                      <UTextarea v-model="form.description" :rows="4" placeholder="Brief summary of the book..." />
+                    </UFormGroup>
+                  </div>
+                </template>
+                <template #ru>
+                  <div class="space-y-4 pt-4">
+                    <UFormGroup label="Заголовок (Русский)">
+                      <UInput v-model="form.title_ru" placeholder="Gativus: Базовые концепции" size="lg" />
+                    </UFormGroup>
+                    <UFormGroup label="Описание (Русский)">
+                      <UTextarea v-model="form.description_ru" :rows="4" placeholder="Краткое описание книги..." />
+                    </UFormGroup>
+                  </div>
+                </template>
+                <template #zh>
+                  <div class="space-y-4 pt-4">
+                    <UFormGroup label="标题 (中文)">
+                      <UInput v-model="form.title_zh" placeholder="Gativus：核心概念" size="lg" />
+                    </UFormGroup>
+                    <UFormGroup label="描述 (中文)">
+                      <UTextarea v-model="form.description_zh" :rows="4" placeholder="书的简要摘要..." />
+                    </UFormGroup>
+                  </div>
+                </template>
+              </UTabs>
+            </div>
 
             <UFormGroup label="Slug (URL)" help="Оставьте пустым для автогенерации">
-              <UInput v-model="form.slug" placeholder="osnovy-biologii" />
-            </UFormGroup>
-
-            <UFormGroup label="Описание" help="Краткая аннотация для витрины">
-              <UTextarea v-model="form.description" :rows="4" placeholder="О чем эта книга..." />
+              <UInput v-model="form.slug" placeholder="gativus-core-concepts" />
             </UFormGroup>
           </div>
 
@@ -41,12 +73,8 @@
             </UFormGroup>
 
             <div class="dual-row">
-              <UFormGroup label="Язык" class="flex-1">
-                <USelect v-model="form.locale" :options="['en', 'ru', 'zh']" />
-              </UFormGroup>
-
-              <UFormGroup label="Порядок" class="flex-1">
-                <UInput v-model.number="form.sort_order" type="number" />
+              <UFormGroup label="Порядок сортировки" class="flex-1" help="Позиция в списке книг">
+                <UInput v-model.number="form.sort_order" type="number" icon="i-heroicons-bars-3-center-left" />
               </UFormGroup>
             </div>
 
@@ -81,10 +109,13 @@ const { data: categories } = await useFetch<any[]>('/api/categories', {
 
 const form = ref({
   title: '',
+  title_ru: '',
+  title_zh: '',
   slug: '',
   description: '',
+  description_ru: '',
+  description_zh: '',
   cover_image: '',
-  locale: 'ru',
   sort_order: 0,
   category_ids: [] as number[]
 })

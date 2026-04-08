@@ -82,13 +82,17 @@ export async function runMigrations(db: Database) {
   // ─── 6. Books ───
   await db.exec(`
     CREATE TABLE IF NOT EXISTS books (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      slug        TEXT UNIQUE NOT NULL,
-      title       TEXT NOT NULL,
-      description TEXT,
-      cover_image TEXT,
-      sort_order  INTEGER DEFAULT 0,
-      created_at  DATETIME DEFAULT (datetime('now'))
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug           TEXT UNIQUE NOT NULL,
+      title          TEXT NOT NULL,
+      title_ru       TEXT,
+      title_zh       TEXT,
+      description    TEXT,
+      description_ru TEXT,
+      description_zh TEXT,
+      cover_image    TEXT,
+      sort_order     INTEGER DEFAULT 0,
+      created_at     DATETIME DEFAULT (datetime('now'))
     )
   `)
 
@@ -150,18 +154,23 @@ export async function runMigrations(db: Database) {
     }
   } catch { /* table may not exist yet — created above */ }
 
-  // ─── 11. Locale & origin_id for books ───
+  // ─── 11. Multi-language columns for books (title/description variants) ───
   try {
     const bookCols = await db.prepare('PRAGMA table_info(books)').all() as any[]
-    if (!bookCols.some((c: any) => c.name === 'locale')) {
-      await db.exec(`ALTER TABLE books ADD COLUMN locale TEXT NOT NULL DEFAULT 'en'`)
-      console.log('[migrate] Added "locale" column to books')
-    }
-    if (!bookCols.some((c: any) => c.name === 'origin_id')) {
-      await db.exec(`ALTER TABLE books ADD COLUMN origin_id INTEGER`)
-      console.log('[migrate] Added "origin_id" column to books')
+    if (!bookCols.some((c: any) => c.name === 'title_ru')) {
+      await db.exec(`ALTER TABLE books ADD COLUMN title_ru TEXT`)
+      await db.exec(`ALTER TABLE books ADD COLUMN title_zh TEXT`)
+      await db.exec(`ALTER TABLE books ADD COLUMN description_ru TEXT`)
+      await db.exec(`ALTER TABLE books ADD COLUMN description_zh TEXT`)
+      console.log('[migrate] Added localized title/description columns to books')
     }
   } catch { /* table may not exist yet — created above */ }
+  
+  // Try to drop obsolete locale columns from books
+  try {
+    await db.exec(`ALTER TABLE books DROP COLUMN locale`)
+    await db.exec(`ALTER TABLE books DROP COLUMN origin_id`)
+  } catch { /* graceful fail if columns don't exist or sqlite version is too old */ }
 
   // ─── 12. Book ↔ Category (many-to-many) ───
   await db.exec(`

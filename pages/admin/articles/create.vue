@@ -4,38 +4,8 @@ definePageMeta({
   middleware: ['auth']
 })
 
-const route = useRoute()
 const store = userStore()
 const toast = useToast()
-
-const articleId = route.params.id as string
-
-// Fetch article data
-const { data: articleData, refresh } = await useFetch(`/api/articles/${articleId}`, {
-  headers: store.getAuthHeader(),
-  // Article endpoints use slug, but admin uses id — we need to resolve
-  // Actually, we receive ID from URL, need to fetch by ID. Let's query the list.
-})
-
-// We need a way to get article by ID. For now, let's fetch the articles list and find by ID.
-// Better approach: fetch all articles with admin flag and find the one
-const { data: allArticlesData } = await useFetch('/api/articles', {
-  query: { limit: 1000, published_only: 'false' },
-  headers: store.getAuthHeader(),
-})
-
-const currentArticle = computed(() => {
-  const items = (allArticlesData.value as any)?.items || []
-  return items.find((a: any) => a.id === parseInt(articleId))
-})
-
-const slug = computed(() => currentArticle.value?.slug || '')
-
-// If we found the slug, fetch full article
-const { data: fullArticle } = await useFetch(() => `/api/articles/${slug.value}`, {
-  headers: store.getAuthHeader(),
-  immediate: !!slug.value,
-})
 
 // Form state
 const title = ref('')
@@ -45,96 +15,7 @@ const categoryId = ref<number | null>(null)
 const locale = ref('ru')
 const isPublished = ref(true)
 const sortOrder = ref(0)
-const changeSummary = ref('')
-const presentationPath = ref<string | null>(null)
-const isUploadingPresentation = ref(false)
-
-// Populate form when data loads
-watch(fullArticle, (article: any) => {
-  if (article) {
-    title.value = article.title || ''
-    htmlContent.value = article.html_content || ''
-    articleSlug.value = article.slug || ''
-    categoryId.value = article.category_id || null
-    locale.value = article.locale || 'ru'
-    isPublished.value = Boolean(article.is_published)
-    sortOrder.value = article.sort_order || 0
-    presentationPath.value = article.presentation_path || null
-  }
-}, { immediate: true })
-
-useHead({ title: computed(() => `${title.value || 'Редактирование'} — Gativus Admin`) })
-
-// Books & categories
-const { data: categoriesData } = await useFetch('/api/categories')
-const categories = computed(() => (Array.isArray(categoriesData.value) ? categoriesData.value : []) as any[])
-
-// Save
-const isSaving = ref(false)
-const showPreview = ref(false)
-
-async function save() {
-  if (!slug.value) return
-  isSaving.value = true
-
-  try {
-    await $fetch(`/api/articles/${slug.value}`, {
-      method: 'PUT',
-      headers: {
-        ...store.getAuthHeader(),
-        'Content-Type': 'application/json',
-      },
-      body: {
-        title: title.value,
-        html_content: htmlContent.value,
-        slug: articleSlug.value,
-        category_id: categoryId.value,
-        locale: locale.value,
-        is_published: isPublished.value,
-        sort_order: sortOrder.value,
-        change_summary: changeSummary.value || undefined,
-      },
-    })
-
-    toast.add({ title: 'Статья сохранена', color: 'green' })
-    changeSummary.value = ''
-  } catch (err: any) {
-    toast.add({
-      title: 'Ошибка сохранения',
-      description: err?.data?.statusMessage || err.message,
-      color: 'red'
-    })
-  }
-
-  isSaving.value = false
-}
-
-// Presentation upload
-async function uploadPresentation(e: Event) {
-  const input = e.target as HTMLInputElement
-  if (!input.files?.length || !slug.value) return
-
-  isUploadingPresentation.value = true
-  try {
-    const formData = new FormData()
-    formData.append('file', input.files[0])
-
-    const result = await $fetch<any>(`/api/articles/${slug.value}/presentation`, {
-      method: 'POST',
-      body: formData,
-      headers: store.getAuthHeader(),
-    })
-
-    presentationPath.value = result.presentation_path
-    toast.add({ title: 'Презентация загружена', color: 'green' })
-  } catch (err: any) {
-    toast.add({ title: 'Ошибка загрузки', description: err?.data?.statusMessage || err.message, color: 'red' })
-  }
-  isUploadingPresentation.value = false
-  input.value = ''
-}
-
-const syncSlug = ref(false)
+const syncSlug = ref(true)
 
 // Transliteration map for slug generation
 const CYRILLIC_MAP: Record<string, string> = {
@@ -165,6 +46,52 @@ watch(title, (newTitle) => {
     articleSlug.value = frontendSlugify(newTitle)
   }
 })
+
+// Books & categories
+const { data: categoriesData } = await useFetch('/api/categories')
+const categories = computed(() => (Array.isArray(categoriesData.value) ? categoriesData.value : []) as any[])
+
+// Save
+const isSaving = ref(false)
+const showPreview = ref(false)
+
+async function save() {
+  if (!title.value) {
+    toast.add({ title: 'Заголовок обязателен', color: 'red' })
+    return
+  }
+  isSaving.value = true
+
+  try {
+    const response = await $fetch<any>('/api/articles', {
+      method: 'POST',
+      headers: {
+        ...store.getAuthHeader(),
+        'Content-Type': 'application/json',
+      },
+      body: {
+        title: title.value,
+        html_content: htmlContent.value,
+        slug: articleSlug.value,
+        category_id: categoryId.value,
+        locale: locale.value,
+        is_published: isPublished.value,
+        sort_order: sortOrder.value,
+      },
+    })
+
+    toast.add({ title: 'Статья создана', color: 'green' })
+    navigateTo(`/admin/articles/${response.id}/edit`)
+  } catch (err: any) {
+    toast.add({
+      title: 'Ошибка создания',
+      description: err?.data?.statusMessage || err.message,
+      color: 'red'
+    })
+  }
+
+  isSaving.value = false
+}
 
 // Toolbar Logic
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -246,6 +173,8 @@ const localeOptions = [
   { label: '🇷🇺 RU', value: 'ru' },
   { label: '🇨🇳 ZH', value: 'zh' },
 ]
+
+useHead({ title: 'Создание статьи — Gativus Admin' })
 </script>
 
 <template>
@@ -256,21 +185,17 @@ const localeOptions = [
         <NuxtLink to="/admin/articles" class="back-btn">
           <UIcon name="i-heroicons-arrow-left" />
         </NuxtLink>
-        <h1 class="editor-title">{{ title || 'Без названия' }}</h1>
+        <h1 class="editor-title">{{ title || 'Новая статья' }}</h1>
       </div>
       <div class="editor-topbar-right">
         <button class="toggle-preview" @click="showPreview = !showPreview">
           <UIcon :name="showPreview ? 'i-heroicons-code-bracket' : 'i-heroicons-eye'" />
           <span>{{ showPreview ? 'Код' : 'Preview' }}</span>
         </button>
-        <NuxtLink v-if="slug" :to="`/admin/articles/${articleId}/history`" class="history-btn">
-          <UIcon name="i-heroicons-clock" />
-          <span>История</span>
-        </NuxtLink>
         <button class="save-btn" @click="save" :disabled="isSaving">
           <UIcon v-if="!isSaving" name="i-heroicons-check" />
           <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
-          <span>Сохранить</span>
+          <span>Создать</span>
         </button>
       </div>
     </div>
@@ -318,26 +243,6 @@ const localeOptions = [
           <label class="meta-toggle">
             <input type="checkbox" v-model="isPublished" />
             <span>Опубликовано</span>
-          </label>
-        </div>
-
-        <div class="meta-group">
-          <label class="meta-label">Описание изменений</label>
-          <input v-model="changeSummary" class="meta-input" placeholder="Что изменилось?" />
-        </div>
-
-        <!-- Presentation Upload -->
-        <div class="meta-group">
-          <label class="meta-label">Презентация</label>
-          <div v-if="presentationPath" class="pres-attached">
-            <UIcon name="i-heroicons-presentation-chart-bar" class="pres-icon" />
-            <span class="pres-filename">{{ presentationPath.split('/').pop() }}</span>
-          </div>
-          <label class="pres-upload-btn" :class="{ 'pres-upload-btn--loading': isUploadingPresentation }">
-            <input type="file" accept=".odp,.pptx,.pdf" class="sr-only" @change="uploadPresentation" :disabled="isUploadingPresentation" />
-            <UIcon v-if="!isUploadingPresentation" name="i-heroicons-arrow-up-tray" />
-            <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
-            <span>{{ presentationPath ? 'Заменить' : 'Загрузить' }}</span>
           </label>
         </div>
       </aside>
@@ -451,7 +356,7 @@ const localeOptions = [
   flex-shrink: 0;
 }
 
-.toggle-preview, .history-btn {
+.toggle-preview {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -463,19 +368,11 @@ const localeOptions = [
   font-size: 13px;
   font-weight: 500;
   color: #555;
-  text-decoration: none;
   transition: all 0.2s;
 }
-.toggle-preview:hover, .history-btn:hover {
-  background: #f3f4f6;
-}
-.dark .toggle-preview, .dark .history-btn {
-  border-color: #333;
-  color: #aaa;
-}
-.dark .toggle-preview:hover, .dark .history-btn:hover {
-  background: #252528;
-}
+.toggle-preview:hover { background: #f3f4f6; }
+.dark .toggle-preview { border-color: #333; color: #aaa; }
+.dark .toggle-preview:hover { background: #252528; }
 
 .save-btn {
   display: flex;
@@ -565,7 +462,6 @@ const localeOptions = [
   cursor: pointer;
 }
 .dark .meta-toggle { color: #aaa; }
-.meta-toggle input { cursor: pointer; }
 
 /* ─── Editor Main ─── */
 .editor-main-container {
@@ -665,50 +561,6 @@ const localeOptions = [
   background: #111113;
 }
 
-/* ─── Presentation Upload ─── */
-.pres-attached {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: #ecfdf5;
-  margin-bottom: 6px;
-}
-.dark .pres-attached { background: #064e3b; }
-
-.pres-icon { width: 16px; height: 16px; color: #059669; }
-.dark .pres-icon { color: #34d399; }
-
-.pres-filename {
-  font-size: 11px;
-  font-weight: 600;
-  color: #059669;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.dark .pres-filename { color: #34d399; }
-
-.pres-upload-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: 8px;
-  background: #f3f4f6;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  color: #555;
-  transition: all 0.2s;
-}
-.pres-upload-btn:hover { background: #e5e7eb; }
-.dark .pres-upload-btn { background: #252528; color: #aaa; }
-.dark .pres-upload-btn:hover { background: #333; }
-.pres-upload-btn--loading { opacity: 0.6; cursor: wait; }
-
-/* ─── Responsive ─── */
 @media (max-width: 768px) {
   .editor-body { flex-direction: column; }
   .editor-sidebar {
@@ -717,7 +569,5 @@ const localeOptions = [
     border-bottom: 1px solid #e5e7eb;
     max-height: 200px;
   }
-  .dark .editor-sidebar { border-bottom-color: #2a2a2e; }
-  .editor-topbar-right span { display: none; }
 }
 </style>

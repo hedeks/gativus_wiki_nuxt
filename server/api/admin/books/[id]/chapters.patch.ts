@@ -15,15 +15,31 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Book ID is required' })
   }
 
-  const { article_ids } = body
+  const { article_ids, locale } = body
 
   if (!Array.isArray(article_ids)) {
     throw createError({ statusCode: 400, statusMessage: 'article_ids must be an array' })
   }
 
-  // ─── 1. Reset book_id for articles that were in this book but are not in the new list ───
-  // (Optional: Depends on UI. If UI sends ALL articles for the book, we should clear others)
-  // For now, let's just update the provided ones.
+  // ─── 1. Reset book_id for articles that were in this book (in this locale) but are not in the new list ───
+  if (locale) {
+    if (article_ids.length > 0) {
+      const placeholders = article_ids.map(() => '?').join(',')
+      db.prepare(`UPDATE articles SET book_id = NULL, sort_order = 0 WHERE book_id = ? AND locale = ? AND id NOT IN (${placeholders})`)
+        .run(bookId, locale, ...article_ids)
+    } else {
+      db.prepare('UPDATE articles SET book_id = NULL, sort_order = 0 WHERE book_id = ? AND locale = ?').run(bookId, locale)
+    }
+  } else {
+    // Legacy / fallback: if no locale, we use old behavior (dangerous if multi-lang)
+    if (article_ids.length > 0) {
+      const placeholders = article_ids.map(() => '?').join(',')
+      db.prepare(`UPDATE articles SET book_id = NULL, sort_order = 0 WHERE book_id = ? AND id NOT IN (${placeholders})`)
+        .run(bookId, ...article_ids)
+    } else {
+      db.prepare('UPDATE articles SET book_id = NULL, sort_order = 0 WHERE book_id = ?').run(bookId)
+    }
+  }
 
   const updateStmt = db.prepare('UPDATE articles SET book_id = ?, sort_order = ? WHERE id = ?')
 

@@ -63,7 +63,9 @@ export default defineEventHandler(async (event) => {
     SELECT 
       a.id, a.slug, a.title, a.excerpt, a.book_id, a.category_id,
       a.locale, a.sort_order, a.is_published, a.created_at, a.updated_at, a.presentation_path,
-      b.title as book_title,
+      b.title as book_title_en,
+      b.title_ru as book_title_ru,
+      b.title_zh as book_title_zh,
       c.title as category_title
     FROM articles a
     LEFT JOIN books b ON a.book_id = b.id
@@ -74,7 +76,10 @@ export default defineEventHandler(async (event) => {
   `).all(...params, limit, offset) as any[]
 
   return {
-    items: items || [],
+    items: (items || []).map(a => ({
+      ...a,
+      book_title: (a.locale === 'ru' ? a.book_title_ru : (a.locale === 'zh' ? a.book_title_zh : a.book_title_en)) || a.book_title_en
+    })),
     total,
     page,
     pages,

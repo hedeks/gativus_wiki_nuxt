@@ -34,6 +34,7 @@ interface StyleInfo {
   strikethrough: boolean
   fontName?: string
   fontSize?: string
+  parentStyleName?: string // Track hierarchy for semantic detection (e.g., Quotations)
   // Graphic properties
   fillColor?: string
   strokeColor?: string
@@ -141,12 +142,15 @@ function parseAutomaticStyles(doc: any): Map<string, StyleInfo> {
     const name = styleNode.getAttribute('style:name')
     if (!name) continue
 
+    const parentName = styleNode.getAttribute('style:parent-style-name')
     const textProps = styleNode.getElementsByTagName('style:text-properties')[0]
+    
     const info: StyleInfo = {
       bold: false,
       italic: false,
       underline: false,
       strikethrough: false,
+      parentStyleName: parentName || undefined,
     }
 
     if (textProps) {
@@ -231,9 +235,16 @@ function convertNode(
 
     // ─── Paragraphs ───
     case 'text:p': {
+      const styleName = node.getAttribute('text:style-name')
       const content = convertChildren(node, styles, imageMap)
       // Don't emit empty paragraphs
       if (!content.trim()) return ''
+
+      // Detect if this paragraph should be a blockquote
+      if (isQuoteStyle(styleName, styles)) {
+        return `<blockquote>${content}</blockquote>\n`
+      }
+      
       return `<p>${content}</p>\n`
     }
 
@@ -427,6 +438,24 @@ function convertNode(
       }
       return convertChildren(node, styles, imageMap)
   }
+}
+
+/**
+ * Determine if a style represents a quotation.
+ * Recursively checks parent styles.
+ */
+function isQuoteStyle(styleName: string | null, styles: Map<string, StyleInfo>): boolean {
+  if (!styleName) return false
+  
+  const lowerName = styleName.toLowerCase()
+  if (lowerName.includes('quote') || lowerName.includes('quotation')) return true
+  
+  const style = styles.get(styleName)
+  if (style?.parentStyleName) {
+    return isQuoteStyle(style.parentStyleName, styles)
+  }
+  
+  return false
 }
 
 // ─── Post-Processing ───

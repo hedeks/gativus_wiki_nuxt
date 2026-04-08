@@ -84,10 +84,16 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
         <h1 class="articles-title">Статьи</h1>
         <p class="articles-subtitle">{{ totalItems }} статей в базе</p>
       </div>
-      <NuxtLink to="/admin/import" class="header-btn">
-        <UIcon name="i-heroicons-arrow-up-tray" />
-        <span>Импорт ODT</span>
-      </NuxtLink>
+      <div class="flex gap-3">
+        <NuxtLink to="/admin/import" class="header-btn header-btn--secondary">
+          <UIcon name="i-heroicons-arrow-up-tray" />
+          <span>Импорт ODT</span>
+        </NuxtLink>
+        <NuxtLink to="/admin/articles/create" class="header-btn">
+          <UIcon name="i-heroicons-plus" />
+          <span>Создать статью</span>
+        </NuxtLink>
+      </div>
     </div>
 
     <!-- Filters -->
@@ -248,6 +254,10 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   transition: all 0.2s;
 }
 .header-btn:hover { background: #4f46e5; transform: translateY(-1px); }
+.header-btn--secondary { background: #f3f4f6; color: #555; }
+.dark .header-btn--secondary { background: #252528; color: #aaa; }
+.header-btn--secondary:hover { background: #e5e7eb; }
+.dark .header-btn--secondary:hover { background: #333; }
 
 /* ─── Filters ─── */
 .filters-bar {

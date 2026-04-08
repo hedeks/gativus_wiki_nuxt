@@ -107,15 +107,27 @@
 </template>
 
 <script setup lang="ts">
-const { data: books, pending } = await useFetch<any[]>('/api/books')
-const { data: categories } = await useFetch<any[]>('/api/categories')
+import { useLanguageStore } from '~/stores/language'
+
+const langStore = useLanguageStore()
+const { data: books, pending, refresh } = await useFetch<any[]>('/api/books', {
+  query: computed(() => ({ locale: langStore.currentLang }))
+})
+const { data: categories } = await useFetch<any[]>('/api/categories', {
+  query: computed(() => ({ locale: langStore.currentLang }))
+})
+
+// Refresh data when language changes
+watch(() => langStore.currentLang, () => {
+  refresh()
+})
 
 const activeCategory = ref<number | null>(null)
 const searchQuery = ref('')
 const debouncedSearch = ref('')
 const isTyping = ref(false)
 
-let searchTimer: NodeJS.Timeout
+let searchTimer: any
 watch(searchQuery, (newVal) => {
   isTyping.value = true
   clearTimeout(searchTimer)

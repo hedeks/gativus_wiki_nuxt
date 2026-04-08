@@ -24,10 +24,13 @@ export default defineEventHandler(async (event) => {
   const params: any[] = []
 
   if (body.title !== undefined) { updates.push('title = ?'); params.push(body.title) }
+  if (body.title_ru !== undefined) { updates.push('title_ru = ?'); params.push(body.title_ru) }
+  if (body.title_zh !== undefined) { updates.push('title_zh = ?'); params.push(body.title_zh) }
   if (body.description !== undefined) { updates.push('description = ?'); params.push(body.description) }
+  if (body.description_ru !== undefined) { updates.push('description_ru = ?'); params.push(body.description_ru) }
+  if (body.description_zh !== undefined) { updates.push('description_zh = ?'); params.push(body.description_zh) }
   if (body.cover_image !== undefined) { updates.push('cover_image = ?'); params.push(body.cover_image) }
   if (body.sort_order !== undefined) { updates.push('sort_order = ?'); params.push(body.sort_order) }
-  if (body.locale !== undefined) { updates.push('locale = ?'); params.push(body.locale) }
 
   if (body.slug && body.slug !== existing.slug) {
     const newSlug = await ensureUniqueSlug(db, 'books', slugify(body.slug), existing.id)

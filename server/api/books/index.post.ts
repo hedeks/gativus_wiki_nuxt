@@ -10,19 +10,31 @@ export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const body = await readBody(event)
 
-  const { title, description, cover_image, locale, sort_order, category_ids } = body
+  const { 
+    title, title_ru, title_zh, 
+    description, description_ru, description_zh, 
+    cover_image, sort_order, category_ids 
+  } = body
 
   if (!title) {
-    throw createError({ statusCode: 400, statusMessage: 'title обязателен' })
+    throw createError({ statusCode: 400, statusMessage: 'title (English) обязателен' })
   }
 
   const baseSlug = body.slug ? slugify(body.slug) : slugify(title)
   const slug = await ensureUniqueSlug(db, 'books', baseSlug)
 
   const result = await db.prepare(`
-    INSERT INTO books (slug, title, description, cover_image, sort_order, locale)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(slug, title, description || null, cover_image || null, sort_order || 0, locale || 'en')
+    INSERT INTO books (
+      slug, title, title_ru, title_zh, 
+      description, description_ru, description_zh, 
+      cover_image, sort_order
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    slug, title, title_ru || null, title_zh || null, 
+    description || null, description_ru || null, description_zh || null, 
+    cover_image || null, sort_order || 0
+  )
 
   const bookId = (result as any).lastInsertRowid || (result as any).lastID
 

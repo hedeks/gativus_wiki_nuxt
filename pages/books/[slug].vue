@@ -49,10 +49,6 @@
                 <UIcon name="i-heroicons-document-text" />
                 <span>{{ book.articles?.length || 0 }} глав</span>
               </div>
-              <div class="flex items-center gap-2">
-                <UIcon name="i-heroicons-language" />
-                <span>{{ book.locale }}</span>
-              </div>
             </div>
           </div>
         </header>
@@ -78,7 +74,7 @@
 
           <div v-else class="inner-card w-full text-center py-20 border-dashed justify-center">
              <UIcon name="i-heroicons-clock" class="text-4xl text-gray-300 mb-4" />
-             <p class="text-gray-500 font-medium tracking-wide">Главы этой книги еще не опубликованы.</p>
+             <p class="text-gray-500 font-medium tracking-wide">Главы этой книги еще не опубликованы на этом языке.</p>
           </div>
         </section>
       </div>
@@ -88,11 +84,21 @@
 </template>
 
 <script setup lang="ts">
+import { useLanguageStore } from '~/stores/language'
+
 const route = useRoute()
 const slug = route.params.slug
+const langStore = useLanguageStore()
 
-const { data: book, pending, error } = await useFetch<any>(`/api/books/${slug}`)
+const { data: book, pending, error, refresh } = await useFetch<any>(`/api/books/${slug}`, {
+  query: computed(() => ({ locale: langStore.currentLang }))
+})
 const { data: categories } = await useFetch<any[]>('/api/categories')
+
+// Watch for language changes to refresh book data (localized title/description/chapters)
+watch(() => langStore.currentLang, () => {
+  refresh()
+})
 
 function getCategoryTitle(id: number) {
   const cat = categories.value?.find(c => c.id === id)

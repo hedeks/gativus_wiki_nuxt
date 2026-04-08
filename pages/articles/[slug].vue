@@ -9,7 +9,7 @@
       <div
         class="w-full max-w-[900px] 2xl:max-w-[1100px] mx-auto lg:col-span-8 xl:col-span-7 flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm">
         <!-- Article Header -->
-        <div v-if="article" class="flex flex-col mb-6">
+        <div v-if="article" class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800">
           <!-- Dynamic Breadcrumbs -->
           <div
             class="flex items-center gap-2 text-[10px] font-bold text-sky-600 dark:text-sky-400 mb-4 uppercase tracking-[0.25em]">
@@ -31,7 +31,7 @@
           </div>
 
           <h1
-            class="text-3xl lg:text-4xl mb-0 font-bold text-gray-900 dark:text-gray-100 uppercase tracking-widest leading-tight m-0 mb-0">
+            class="text-3xl lg:text-4xl mb-0 font-bold text-[#233a4d] dark:text-gray-100 uppercase tracking-widest leading-tight m-0 mb-0">
             {{ article.title }}
           </h1>
         </div>

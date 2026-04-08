@@ -26,9 +26,8 @@
             <th>ID</th>
             <th>Обложка</th>
             <th>Заголовок</th>
-            <th>Язык</th>
             <th>Категории</th>
-            <th>Глав</th>
+            <th class="text-center">Глав (RU | EN | ZH)</th>
             <th>Действия</th>
           </tr>
         </thead>
@@ -49,9 +48,6 @@
                 <span class="book-slug">/{{ book.slug }}</span>
               </div>
             </td>
-            <td class="text-center">
-              <span class="locale-badge">{{ book.locale }}</span>
-            </td>
             <td>
               <div class="category-tags">
                 <span v-for="catId in (book.category_ids || [])" :key="catId" class="cat-tag">
@@ -59,8 +55,21 @@
                 </span>
               </div>
             </td>
-            <td class="text-center">
-              <span class="article-count">{{ book.article_count }}</span>
+            <td>
+              <div class="flex items-center justify-center gap-3">
+                <div class="flex items-center gap-1" title="Русский">
+                  <span class="text-xs opacity-70">🇷🇺</span>
+                  <span class="article-count" :class="{ 'opacity-20': !book.count_ru }">{{ book.count_ru || 0 }}</span>
+                </div>
+                <div class="flex items-center gap-1" title="English">
+                  <span class="text-xs opacity-70">🇬🇧</span>
+                  <span class="article-count" :class="{ 'opacity-20': !book.count_en }">{{ book.count_en || 0 }}</span>
+                </div>
+                <div class="flex items-center gap-1" title="Chinese">
+                  <span class="text-xs opacity-70">🇨🇳</span>
+                  <span class="article-count" :class="{ 'opacity-20': !book.count_zh }">{{ book.count_zh || 0 }}</span>
+                </div>
+              </div>
             </td>
             <td>
               <div class="actions-cell">
@@ -139,6 +148,8 @@ async function handleDelete() {
     deleting.value = false
   }
 }
+
+const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', zh: '🇨🇳' }
 </script>
 
 <style scoped>

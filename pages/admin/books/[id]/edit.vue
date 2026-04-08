@@ -13,21 +13,64 @@
 
     <div v-if="book" class="edit-container">
       <!-- Section 1: Metadata -->
-      <div class="card p-6 mb-8">
+      <div class="card p-6 mb-8 mt-6">
         <h3 class="section-title mb-6">Основная информация</h3>
         <form @submit.prevent="updateMetadata" class="edit-form">
-          <div class="form-grid">
-            <div class="form-column">
-              <UFormGroup label="Заголовок" required>
-                <UInput v-model="form.title" size="lg" />
-              </UFormGroup>
+          <div class="tabs-wrapper mb-6">
+            <UTabs :items="[
+              { label: '🇬🇧 EN', slot: 'en' },
+              { label: '🇷🇺 RU', slot: 'ru' },
+              { label: '🇨🇳 ZH', slot: 'zh' }
+            ]" v-model="activeTabIndex" class="w-full">
+              <template #en>
+                <div class="form-grid pt-4">
+                  <div class="form-column">
+                    <UFormGroup label="Title (English)" required>
+                      <UInput v-model="form.title" size="lg" />
+                    </UFormGroup>
+                    <UFormGroup label="Description (English)">
+                      <UTextarea v-model="form.description" :rows="3" />
+                    </UFormGroup>
+                  </div>
+                  <div class="form-column">
+                  </div>
+                </div>
+              </template>
+              <template #ru>
+                <div class="form-grid pt-4">
+                  <div class="form-column">
+                    <UFormGroup label="Заголовок (Русский)">
+                      <UInput v-model="form.title_ru" size="lg" />
+                    </UFormGroup>
+                    <UFormGroup label="Описание (Русский)">
+                      <UTextarea v-model="form.description_ru" :rows="3" />
+                    </UFormGroup>
+                  </div>
+                </div>
+              </template>
+              <template #zh>
+                <div class="form-grid pt-4">
+                  <div class="form-column">
+                    <UFormGroup label="标题 (中文)">
+                      <UInput v-model="form.title_zh" size="lg" />
+                    </UFormGroup>
+                    <UFormGroup label="描述 (中文)">
+                      <UTextarea v-model="form.description_zh" :rows="3" />
+                    </UFormGroup>
+                  </div>
+                </div>
+              </template>
+            </UTabs>
+          </div>
 
+          <div class="form-grid border-t border-gray-100 dark:border-gray-800 pt-6">
+            <div class="form-column">
               <UFormGroup label="Slug (URL)">
                 <UInput v-model="form.slug" />
               </UFormGroup>
-
-              <UFormGroup label="Описание">
-                <UTextarea v-model="form.description" :rows="3" />
+              <UFormGroup label="Категории">
+                <USelectMenu v-model="form.category_ids" :options="categories || []" multiple value-attribute="id"
+                  option-attribute="title" searchable />
               </UFormGroup>
             </div>
 
@@ -45,25 +88,16 @@
               </UFormGroup>
 
               <div class="dual-row">
-                <UFormGroup label="Язык" class="flex-1">
-                  <USelect v-model="form.locale" :options="['en', 'ru', 'zh']" />
-                </UFormGroup>
-
-                <UFormGroup label="Порядок" class="flex-1">
+                <UFormGroup label="Порядок сортировки" class="flex-1">
                   <UInput v-model.number="form.sort_order" type="number" />
                 </UFormGroup>
               </div>
-
-              <UFormGroup label="Категории">
-                <USelectMenu v-model="form.category_ids" :options="categories || []" multiple value-attribute="id"
-                  option-attribute="title" searchable />
-              </UFormGroup>
             </div>
           </div>
 
           <div class="form-footer mt-6 flex justify-end">
             <UButton type="submit" color="primary" :loading="savingMetadata" icon="i-heroicons-check">
-              Сохранить метаданные
+              Сохранить все метаданные
             </UButton>
           </div>
         </form>
@@ -72,10 +106,10 @@
       <!-- Section 2: Chapter Management -->
       <div class="card p-6">
         <div class="section-header mb-6">
-          <h3 class="section-title">Управление главами (статьями)</h3>
-          <div class="add-chapter-box">
+          <h3 class="section-title">Состав глав ({{ activeLocale.toUpperCase() }})</h3>
+          <div class="add-chapter-box flex items-center gap-4">
             <USelectMenu v-model="selectedArticleToAdd" :options="availableArticles" option-attribute="title" searchable
-              class="w-64" placeholder="Добавить статью..." @update:model-value="addArticleToBook">
+              class="w-64" :placeholder="`Добавить статью (${activeLocale.toUpperCase()})...`" @update:model-value="addArticleToBook">
               <template #option="{ option }">
                 <div class="article-option">
                   <span class="text-sm font-medium">{{ option.title }}</span>
@@ -86,12 +120,12 @@
           </div>
         </div>
 
-        <div v-if="chapters.length === 0" class="empty-chapters">
-          В этой книге пока нет глав. Используйте поиск выше, чтобы добавить существующие статьи.
+        <div v-if="currentChapters.length === 0" class="empty-chapters">
+          В составе книги на языке <b>{{ activeLocale.toUpperCase() }}</b> пока нет глав.
         </div>
 
         <div v-else class="chapters-list">
-          <div v-for="(chapter, index) in chapters" :key="chapter.id" class="chapter-item"
+          <div v-for="(chapter, index) in currentChapters" :key="chapter.id" class="chapter-item"
             :class="{ 'is-dragging': draggedIndex === index, 'drag-over': dragOverIndex === index }" draggable="true"
             @dragstart="handleDragStart(index)" @dragover.prevent @dragenter="handleDragEnter(index)"
             @dragend="handleDragEnd" @drop="handleDrop(index)">
@@ -107,19 +141,19 @@
               <UButton icon="i-heroicons-chevron-up" variant="ghost" color="gray" size="xs" :disabled="index === 0"
                 @click="moveChapter(index, -1)" />
               <UButton icon="i-heroicons-chevron-down" variant="ghost" color="gray" size="xs"
-                :disabled="index === chapters.length - 1" @click="moveChapter(index, 1)" />
+                :disabled="index === currentChapters.length - 1" @click="moveChapter(index, 1)" />
               <UButton icon="i-heroicons-trash" variant="ghost" color="red" size="xs" @click="removeChapter(index)" />
             </div>
           </div>
         </div>
 
-        <div v-if="chaptersChanged"
+        <div v-if="chaptersChangedMap[activeLocale]"
           class="chapters-footer mt-6 flex justify-between items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
           <span class="text-sm text-blue-700 dark:text-blue-300">
-            Порядок глав изменен. Не забудьте сохранить изменения.
+            Порядок глав ({{ activeLocale.toUpperCase() }}) изменен.
           </span>
           <UButton color="blue" :loading="savingChapters" icon="i-heroicons-check" @click="saveChapters">
-            Сохранить порядок
+            Сохранить состав ({{ activeLocale.toUpperCase() }})
           </UButton>
         </div>
       </div>
@@ -150,16 +184,33 @@ const { data: allArticles } = await useFetch<any>('/api/articles?limit=500&publi
 
 const form = ref({
   title: '',
+  title_ru: '',
+  title_zh: '',
   slug: '',
   description: '',
+  description_ru: '',
+  description_zh: '',
   cover_image: '',
-  locale: 'ru',
   sort_order: 0,
   category_ids: [] as number[]
 })
 
-const chapters = ref<any[]>([])
-const chaptersChanged = ref(false)
+const activeTabIndex = ref(1); // Default to RU tab
+const activeLocale = computed(() => ['en', 'ru', 'zh'][activeTabIndex.value]);
+
+const chaptersMap = ref<Record<string, any[]>>({
+  en: [],
+  ru: [],
+  zh: []
+})
+const currentChapters = computed(() => chaptersMap.value[activeLocale.value] || [])
+
+const chaptersChangedMap = ref<Record<string, boolean>>({
+  en: false,
+  ru: false,
+  zh: false
+})
+
 const selectedArticleToAdd = ref<any>(null)
 
 // ─── Native Drag & Drop ───
@@ -182,12 +233,12 @@ function handleDragEnd() {
 function handleDrop(toIndex: number) {
   if (draggedIndex.value === null || draggedIndex.value === toIndex) return
 
-  const items = [...chapters.value]
+  const items = [...chaptersMap.value[activeLocale.value]]
   const draggedItem = items.splice(draggedIndex.value, 1)[0]
   items.splice(toIndex, 0, draggedItem)
 
-  chapters.value = items
-  chaptersChanged.value = true
+  chaptersMap.value[activeLocale.value] = items
+  chaptersChangedMap.value[activeLocale.value] = true
   handleDragEnd()
 }
 
@@ -196,22 +247,37 @@ watch(book, (newBook) => {
   if (newBook) {
     form.value = {
       title: newBook.title,
+      title_ru: newBook.title_ru || '',
+      title_zh: newBook.title_zh || '',
       slug: newBook.slug,
       description: newBook.description || '',
+      description_ru: newBook.description_ru || '',
+      description_zh: newBook.description_zh || '',
       cover_image: newBook.cover_image || '',
-      locale: newBook.locale || 'ru',
       sort_order: newBook.sort_order || 0,
       category_ids: newBook.category_ids || []
     }
-    chapters.value = [...(newBook.articles || [])]
+    
+    // Group articles by locale
+    const map: Record<string, any[]> = { en: [], ru: [], zh: [] }
+    if (newBook.articles) {
+      newBook.articles.forEach((a: any) => {
+        if (map[a.locale]) map[a.locale].push(a)
+      })
+    }
+    chaptersMap.value = map
   }
 }, { immediate: true })
 
 // ─── Available Articles logic ───
 const availableArticles = computed(() => {
   if (!allArticles.value?.items) return []
-  // Filter out articles already in any book
-  return allArticles.value.items.filter((a: any) => !a.book_id && !chapters.value.find(c => c.id === a.id))
+  // Filter by active locale AND exclude articles already in THIS locale for THIS book
+  return allArticles.value.items.filter((a: any) => 
+    a.locale === activeLocale.value && 
+    !a.book_id && 
+    !currentChapters.value.find((c: any) => c.id === a.id)
+  )
 })
 
 // ─── Metadata Management ───
@@ -261,24 +327,27 @@ async function updateMetadata() {
 // ─── Chapter Management ───
 function addArticleToBook(article: any) {
   if (!article) return
-  chapters.value.push(article)
-  chaptersChanged.value = true
+  chaptersMap.value[activeLocale.value].push(article)
+  chaptersChangedMap.value[activeLocale.value] = true
   selectedArticleToAdd.value = null
 }
 
 function moveChapter(index: number, direction: number) {
   const newIndex = index + direction
-  if (newIndex < 0 || newIndex >= chapters.value.length) return
+  const list = [...chaptersMap.value[activeLocale.value]]
+  if (newIndex < 0 || newIndex >= list.length) return
 
-  const temp = chapters.value[index]
-  chapters.value[index] = chapters.value[newIndex]
-  chapters.value[newIndex] = temp
-  chaptersChanged.value = true
+  const temp = list[index]
+  list[index] = list[newIndex]
+  list[newIndex] = temp
+  
+  chaptersMap.value[activeLocale.value] = list
+  chaptersChangedMap.value[activeLocale.value] = true
 }
 
 function removeChapter(index: number) {
-  chapters.value.splice(index, 1)
-  chaptersChanged.value = true
+  chaptersMap.value[activeLocale.value].splice(index, 1)
+  chaptersChangedMap.value[activeLocale.value] = true
 }
 
 const savingChapters = ref(false)
@@ -288,11 +357,12 @@ async function saveChapters() {
     await $fetch(`/api/admin/books/${book.value.id}/chapters`, {
       method: 'PATCH',
       body: {
-        article_ids: chapters.value.map(c => c.id)
+        article_ids: currentChapters.value.map((c: any) => c.id),
+        locale: activeLocale.value
       },
       headers: store.getAuthHeader()
     })
-    chaptersChanged.value = false
+    chaptersChangedMap.value[activeLocale.value] = false
     await refresh()
   } catch (err: any) {
     alert('Ошибка при сохранении глав: ' + (err.data?.statusMessage || err.message))
