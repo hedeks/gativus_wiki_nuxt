@@ -32,21 +32,30 @@
 ### 1.1 Модель данных
 
 ```
-┌─────────────────────────────────────────┐
-│ terms                                   │
-├─────────────────────────────────────────┤
-│ id          INTEGER PRIMARY KEY         │
-│ slug        TEXT UNIQUE NOT NULL        │  ← URL-friendly: "b-vektor", "srnt"
-│ title       TEXT NOT NULL               │  ← Отображаемое: "b-вектор", "SRNT"
-│ aliases     TEXT (JSON array)           │  ← Синонимы: ["вектор поведения"]
-│ definition  TEXT NOT NULL               │  ← Краткое определение (plain text)
-│ full_html   TEXT                        │  ← Полная статья (HTML)
-│ category_id INTEGER REFERENCES categories(id) │
-│ created_at  DATETIME                    │
-│ updated_at  DATETIME                    │
-│ created_by  INTEGER REFERENCES users(id)│
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│ terms                                                   │
+├─────────────────────────────────────────────────────────┤
+│ id               INTEGER PRIMARY KEY                    │
+│ slug             TEXT UNIQUE NOT NULL                   │  ← URL-friendly: "b-vektor", "srnt"
+│ title            TEXT NOT NULL                          │  ← Отображаемое: "b-вектор", "SRNT"
+│ aliases          TEXT (JSON array)                      │  ← Синонимы: ["вектор поведения"]
+│ definition       TEXT NOT NULL                          │  ← Краткое определение (plain text)
+│ term_article_id  INTEGER REFERENCES articles(id) NULL   │  ← Ссылка на расширенную статью-раскрытие
+│ created_at       DATETIME                               │
+│ updated_at       DATETIME                               │
+│ created_by       INTEGER REFERENCES users(id)           │
+└─────────────────────────────────────────────────────────┘
 ```
+
+> **Архитектурное решение (Противоречие 2 — Вариант B):**  
+> `full_html` удалён из `terms`. Расширенное содержание термина хранится как обычная статья
+> (`articles.is_term_article = TRUE`), на которую указывает `term_article_id`.
+> Это даёт версионность (`article_revisions`), богатое форматирование и единый ODT-пайплайн.
+>
+> **Архитектурное решение (Противоречие 3):**  
+> `category_id` убран из `terms`. Категория термина определяется через его статью:
+> `terms → term_article_id → articles.category_id`. Это устраняет возможность рассинхронизации.
+> Если у термина нет `term_article_id` (только `definition`), категория не назначается.
 
 ### 1.2 API эндпоинты
 
@@ -266,23 +275,29 @@ POST /api/import/odt (multipart/form-data)
 ### 4.4 Модель данных — Статьи
 
 ```
-┌──────────────────────────────────────────┐
-│ articles                                 │
-├──────────────────────────────────────────┤
-│ id             INTEGER PRIMARY KEY       │
-│ slug           TEXT UNIQUE NOT NULL       │
-│ title          TEXT NOT NULL              │
-│ html_content   TEXT NOT NULL              │  ← Обработанный HTML
-│ raw_odt_path   TEXT                       │  ← Путь к оригинальному ODT (если сохраняем)
-│ category_id    INTEGER REFERENCES categories(id) │
-│ book_id        INTEGER REFERENCES books(id) NULL │ ← К какой книге принадлежит
-│ sort_order     INTEGER DEFAULT 0          │
-│ excerpt        TEXT                       │  ← Автогенерируемый отрывок
-│ created_at     DATETIME                  │
-│ updated_at     DATETIME                  │
-│ created_by     INTEGER REFERENCES users(id) │
-│ is_published   BOOLEAN DEFAULT true       │
-└──────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│ articles                                                         │
+├──────────────────────────────────────────────────────────────────┤
+│ id               INTEGER PRIMARY KEY                             │
+│ slug             TEXT UNIQUE NOT NULL                            │
+│ title            TEXT NOT NULL                                   │
+│ html_content     TEXT NOT NULL                                   │  ← Обработанный HTML
+│ raw_odt_path     TEXT                                            │  ← Путь к оригинальному ODT
+│ category_id      INTEGER REFERENCES categories(id)               │
+│ book_id          INTEGER REFERENCES books(id) NULL               │  ← К какой книге принадлежит
+│ sort_order       INTEGER DEFAULT 0                               │
+│ excerpt          TEXT                                            │  ← Автогенерируемый отрывок
+│ created_at       DATETIME                                        │
+│ updated_at       DATETIME                                        │
+│ created_by       INTEGER REFERENCES users(id)                    │
+│ is_published     BOOLEAN DEFAULT true                            │
+│ is_term_article  BOOLEAN DEFAULT false                           │  ← Скрыта из /articles, видна только через /glossary/:slug
+└──────────────────────────────────────────────────────────────────┘
+
+> **Архитектурное решение (Противоречие 1 — булевый флаг):**  
+> `is_term_article = TRUE` означает, что статья является раскрытием термина, а не самостоятельным  
+> контентом. Такие статьи **не отображаются** в общем списке `/articles`, в книгах и поиске по умолчанию.  
+> Они доступны только через `GET /api/articles/:slug` напрямую или через страницу `/glossary/:slug`.
 
 ┌──────────────────────────────────────────┐
 │ books                                    │
@@ -488,11 +503,27 @@ middleware/
 9. Рендеринг HTML-статей с Prose-стилями
 
 ### Фаза 3 — Глоссарий
-1. API для терминов (CRUD)
-2. Страницы: `/glossary`, `/glossary/:slug`
-3. Админка: управление терминами
-4. Автолинкинг терминов в HTML статей
-5. Компонент `<TermPopover>`
+
+#### Архитектурные изменения (относительно базовой схемы)
+> Три противоречия, выявленных при анализе philosophy.md, решены следующим образом:
+>
+> **П1 — «Статья о термине» vs «Статья»**: В таблицу `articles` добавлен флаг `is_term_article BOOLEAN DEFAULT false`.
+> Статьи с `is_term_article = TRUE` отфильтровываются из всех публичных списков (кроме `/glossary`).
+>
+> **П2 — `full_html` в `terms` vs отдельная статья**: `full_html` убран. Термин ссылается на
+> статью через `term_article_id`. Это даёт версионность, ODT-импорт и богатое форматирование.
+>
+> **П3 — Дублирование `category_id`**: `category_id` удалён из `terms`. Категория термина
+> наследуется через `terms.term_article_id → articles.category_id`. Нет риска рассинхронизации.
+
+#### Задачи
+1. **Миграция БД**: добавить `is_term_article` в `articles`; убрать `full_html` и `category_id` из `terms`; добавить `term_article_id` в `terms`
+2. **API для терминов (CRUD)** — при создании термина с расширенной статьёй: автоматически создавать `articles` запись с `is_term_article = TRUE` и записывать её `id` в `term_article_id`
+3. **Фильтр в `/api/articles`** — по умолчанию исключать записи с `is_term_article = TRUE`; добавить `?include_term_articles=true` для явного включения
+4. **Страницы**: `/glossary` (алфавитный список), `/glossary/:slug` (термин + его статья-раскрытие, если есть)
+5. **Админка** (`/admin/glossary`): управление терминами; редактирование статьи-раскрытия через встроенный HTML-редактор
+6. **Автолинкинг терминов** в HTML статей (алгоритм из §3.2)
+7. **Компонент `<TermPopover>`**
 
 ### Фаза 4 — Категории и граф знаний (D3.js)
 1. API для категорий (CRUD + reorder)

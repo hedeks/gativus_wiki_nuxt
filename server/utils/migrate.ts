@@ -58,7 +58,6 @@ export async function runMigrations(db: Database) {
       description TEXT,
       icon        TEXT,
       sort_order  INTEGER DEFAULT 0,
-      color       TEXT,
       created_at  DATETIME DEFAULT (datetime('now'))
     )
   `)
@@ -193,6 +192,34 @@ export async function runMigrations(db: Database) {
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_books_locale ON books(locale)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_book_categories_book_id ON book_categories(book_id)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_book_categories_category_id ON book_categories(category_id)`)
+
+  // ─── 14. Phase 3: Glossary ───
+  // Add is_term_article flag to articles
+  try {
+    const artCols3 = await db.prepare('PRAGMA table_info(articles)').all() as any[]
+    if (!artCols3.some((c: any) => c.name === 'is_term_article')) {
+      await db.exec(`ALTER TABLE articles ADD COLUMN is_term_article INTEGER NOT NULL DEFAULT 0`)
+      console.log('[migrate] Added "is_term_article" column to articles')
+    }
+  } catch { /* table may not exist yet */ }
+
+  // Add term_article_id to terms (replaces full_html + category_id)
+  try {
+    const termCols = await db.prepare('PRAGMA table_info(terms)').all() as any[]
+    if (!termCols.some((c: any) => c.name === 'term_article_id')) {
+      await db.exec(`ALTER TABLE terms ADD COLUMN term_article_id INTEGER REFERENCES articles(id) ON DELETE SET NULL`)
+      console.log('[migrate] Added "term_article_id" column to terms')
+    }
+    // Drop deprecated columns (graceful fail for older SQLite versions)
+    if (termCols.some((c: any) => c.name === 'full_html')) {
+      try { await db.exec(`ALTER TABLE terms DROP COLUMN full_html`) } catch { /* ignore */ }
+    }
+    if (termCols.some((c: any) => c.name === 'category_id')) {
+      try { await db.exec(`ALTER TABLE terms DROP COLUMN category_id`) } catch { /* ignore */ }
+    }
+  } catch { /* table may not exist yet */ }
+
+  await db.exec(`CREATE INDEX IF NOT EXISTS idx_terms_term_article_id ON terms(term_article_id)`)
 
   console.log('[migrate] All migrations completed ✓')
 }

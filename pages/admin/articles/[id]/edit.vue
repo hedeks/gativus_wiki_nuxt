@@ -66,12 +66,36 @@ watch(fullArticle, (article: any) => {
 useHead({ title: computed(() => `${title.value || 'Редактирование'} — Gativus Admin`) })
 
 // Books & categories
-const { data: categoriesData } = await useFetch('/api/categories')
+const { data: categoriesData } = await useFetch('/api/categories', {
+  headers: store.getAuthHeader()
+})
 const categories = computed(() => (Array.isArray(categoriesData.value) ? categoriesData.value : []) as any[])
 
 // Save
 const isSaving = ref(false)
 const showPreview = ref(false)
+const showTermModal = ref(false)
+
+function insertTerm(term: any) {
+  const el = textareaRef.value
+  if (!el) return
+
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  const text = el.value
+  const selectedText = text.substring(start, end) || term.title
+  
+  const insertion = `<a class="wiki-term" data-term-slug="${term.slug}">${selectedText}</a>`
+
+  el.value = text.substring(0, start) + insertion + text.substring(end)
+  htmlContent.value = el.value
+  
+  nextTick(() => {
+    el.focus()
+    const newPos = start + insertion.length
+    el.setSelectionRange(newPos, newPos)
+  })
+}
 
 async function save() {
   if (!slug.value) return
@@ -362,6 +386,7 @@ const localeOptions = [
             <button @click="insertTag('strong')" title="Жирный"><UIcon name="i-heroicons-bold" /></button>
             <button @click="insertTag('em')" title="Курсив"><UIcon name="i-heroicons-italic" /></button>
             <button @click="insertTag('a')" title="Ссылка"><UIcon name="i-heroicons-link" /></button>
+            <button @click="showTermModal = true" title="Связать с термином"><UIcon name="i-heroicons-book-open" class="text-sky-500" /></button>
           </div>
           <div class="toolbar-sep"></div>
           <div class="toolbar-group">
@@ -391,6 +416,9 @@ const localeOptions = [
         </div>
       </div>
     </div>
+
+    <!-- Modal for glossary terms -->
+    <AdminTermSelectorModal v-model="showTermModal" @select="insertTerm" />
   </div>
 </template>
 

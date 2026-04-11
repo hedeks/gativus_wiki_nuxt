@@ -15,16 +15,16 @@ export async function runSeed(db: Database) {
     console.log('[seed] Creating root categories...')
 
     await db.prepare(
-      `INSERT INTO categories (slug, title, description, icon, sort_order, color) VALUES (?, ?, ?, ?, ?, ?)`
-    ).run('gtom', 'GTOM — Gativus Theory of Mind', 'Фундаментальная теория, определяющая архитектуру и механику сознания', 'i-heroicons-light-bulb', 1, '#6366f1')
+      `INSERT INTO categories (slug, title, description, icon, sort_order) VALUES (?, ?, ?, ?, ?)`
+    ).run('gtom', 'GTOM — Gativus Theory of Mind', 'Фундаментальная теория, определяющая архитектуру и механику сознания', 'i-heroicons-light-bulb', 1)
 
     await db.prepare(
-      `INSERT INTO categories (slug, title, description, icon, sort_order, color) VALUES (?, ?, ?, ?, ?, ?)`
-    ).run('gnet', 'GNET — Gativus Network', 'Спецификация сетевой топологии, описывающая физическую структуру сети', 'i-heroicons-globe-alt', 2, '#8b5cf6')
+      `INSERT INTO categories (slug, title, description, icon, sort_order) VALUES (?, ?, ?, ?, ?)`
+    ).run('gnet', 'GNET — Gativus Network', 'Спецификация сетевой топологии, описывающая физическую структуру сети', 'i-heroicons-globe-alt', 2)
 
     await db.prepare(
-      `INSERT INTO categories (slug, title, description, icon, sort_order, color) VALUES (?, ?, ?, ?, ?, ?)`
-    ).run('gate', 'GATE — Gativus Edge Device', 'Физическое устройство для хранения, исполнения и защиты узлов нейронной сети', 'i-heroicons-cpu-chip', 3, '#a855f7')
+      `INSERT INTO categories (slug, title, description, icon, sort_order) VALUES (?, ?, ?, ?, ?)`
+    ).run('gate', 'GATE — Gativus Edge Device', 'Физическое устройство для хранения, исполнения и защиты узлов нейронной сети', 'i-heroicons-cpu-chip', 3)
 
     console.log('[seed] Root categories created ✓')
   }

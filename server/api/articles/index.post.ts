@@ -5,6 +5,7 @@
  */
 
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
+import { buildTermsMap, linkTermsInHtml } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
@@ -20,7 +21,11 @@ export default defineEventHandler(async (event) => {
   const baseSlug = body.slug ? slugify(body.slug) : slugify(title)
   const slug = await ensureUniqueSlug(db, 'articles', baseSlug)
 
-  const finalExcerpt = excerpt || generateExcerptFromHtml(html_content)
+  // ─── Phase 3: Auto-linking terms ───
+  const termsMap = await buildTermsMap(db)
+  const processedHtml = linkTermsInHtml(html_content, termsMap)
+
+  const finalExcerpt = excerpt || generateExcerptFromHtml(processedHtml)
 
   await db.prepare(`
     INSERT INTO articles (slug, title, html_content, book_id, category_id, sort_order, excerpt, locale, created_by, is_published)
@@ -28,7 +33,7 @@ export default defineEventHandler(async (event) => {
   `).run(
     slug,
     title,
-    html_content,
+    processedHtml,
     book_id || null,
     category_id || null,
     sort_order || 0,
@@ -45,7 +50,7 @@ export default defineEventHandler(async (event) => {
   await db.prepare(`
     INSERT INTO article_revisions (article_id, html_content, revision_num, change_summary, created_by)
     VALUES (?, ?, 1, ?, ?)
-  `).run(articleId, html_content, 'Initial version', auth.id)
+  `).run(articleId, processedHtml, 'Initial version', auth.id)
 
   return {
     id: articleId,

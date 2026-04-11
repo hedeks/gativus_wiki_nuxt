@@ -68,6 +68,11 @@ const statCards = computed(() => [
           <span class="action-desc">Создать вручную</span>
         </NuxtLink>
         <NuxtLink to="/admin/glossary" class="action-card">
+          <UIcon name="i-heroicons-document-magnifying-glass" class="action-icon" />
+          <span class="action-label">Глоссарий</span>
+          <span class="action-desc">Управление терминами</span>
+        </NuxtLink>
+        <NuxtLink to="/admin/glossary/create" class="action-card">
           <UIcon name="i-heroicons-document-plus" class="action-icon" />
           <span class="action-label">Новый термин</span>
           <span class="action-desc">Добавить в глоссарий</span>

@@ -48,12 +48,38 @@ watch(title, (newTitle) => {
 })
 
 // Books & categories
-const { data: categoriesData } = await useFetch('/api/categories')
+const { data: categoriesData } = await useFetch('/api/categories', {
+  headers: store.getAuthHeader()
+})
 const categories = computed(() => (Array.isArray(categoriesData.value) ? categoriesData.value : []) as any[])
 
 // Save
 const isSaving = ref(false)
 const showPreview = ref(false)
+const showTermModal = ref(false)
+
+function insertTerm(term: any) {
+  insertTag('a', 'a') // dummy call to get selection range logic if needed, but we do it manually below
+  
+  const el = textareaRef.value
+  if (!el) return
+
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  const text = el.value
+  const selectedText = text.substring(start, end) || term.title
+  
+  const insertion = `<a class="wiki-term" data-term-slug="${term.slug}">${selectedText}</a>`
+
+  el.value = text.substring(0, start) + insertion + text.substring(end)
+  htmlContent.value = el.value
+  
+  nextTick(() => {
+    el.focus()
+    const newPos = start + insertion.length
+    el.setSelectionRange(newPos, newPos)
+  })
+}
 
 async function save() {
   if (!title.value) {
@@ -267,6 +293,7 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
             <button @click="insertTag('strong')" title="Жирный"><UIcon name="i-heroicons-bold" /></button>
             <button @click="insertTag('em')" title="Курсив"><UIcon name="i-heroicons-italic" /></button>
             <button @click="insertTag('a')" title="Ссылка"><UIcon name="i-heroicons-link" /></button>
+            <button @click="showTermModal = true" title="Связать с термином"><UIcon name="i-heroicons-book-open" class="text-sky-500" /></button>
           </div>
           <div class="toolbar-sep"></div>
           <div class="toolbar-group">
@@ -296,6 +323,9 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
         </div>
       </div>
     </div>
+
+    <!-- Modal for glossary terms -->
+    <AdminTermSelectorModal v-model="showTermModal" @select="insertTerm" />
   </div>
 </template>
 

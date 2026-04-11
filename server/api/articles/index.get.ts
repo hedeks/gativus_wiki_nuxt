@@ -17,6 +17,7 @@ export default defineEventHandler(async (event) => {
   const locale = (query.locale as string) || null
   const search = (query.search as string) || null
   const publishedOnly = query.published_only !== 'false'
+  const includeTermArticles = query.include_term_articles === 'true'
 
   // Check if user is editor+
   const auth = event.context.auth
@@ -28,6 +29,10 @@ export default defineEventHandler(async (event) => {
 
   if (publishedOnly && !isEditor) {
     conditions.push('a.is_published = 1')
+  }
+  // Hide term-articles from public listings by default
+  if (!includeTermArticles) {
+    conditions.push('(a.is_term_article = 0 OR a.is_term_article IS NULL)')
   }
   if (bookId) {
     conditions.push('a.book_id = ?')

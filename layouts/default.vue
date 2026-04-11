@@ -5,6 +5,8 @@
             <slot />
         </main>
         <theFooter class="flex w-full p-1" />
+        <!-- Global term popover — handles all .wiki-term clicks -->
+        <theTermPopover />
     </div>
 </template>
 

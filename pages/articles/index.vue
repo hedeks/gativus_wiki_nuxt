@@ -27,6 +27,21 @@
               </button>
             </div>
           </div>
+
+          <!-- Category Filter -->
+          <div v-if="categories && categories.length" class="categories-nav mt-6 flex flex-wrap justify-center gap-2">
+            <button
+              v-for="cat in categories"
+              :key="cat.id"
+              class="cat-pill"
+              :class="{ active: activeCategory === cat.id }"
+              @click="toggleCategory(cat.id)"
+              :style="activeCategory === cat.id ? { backgroundColor: cat.color, borderColor: cat.color } : {}"
+            >
+              <UIcon :name="cat.icon || 'i-heroicons-tag'" class="mr-1" />
+              {{ cat.title.split('—')[0].trim() }}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -100,6 +115,7 @@ const langStore = useLanguageStore()
 
 const page = ref(parseInt(route.query.page as string) || 1)
 const searchQuery = ref((route.query.search as string) || '')
+const activeCategory = ref<number | null>(route.query.category_id ? parseInt(route.query.category_id as string) : null)
 const debouncedSearch = ref(searchQuery.value)
 const isTyping = ref(false)
 
@@ -117,16 +133,30 @@ watch(searchQuery, (newVal) => {
 watch(page, (newPage) => {
   navigateTo({
     path: '/articles',
-    query: { ...route.query, page: newPage.toString(), search: searchQuery.value || undefined }
+    query: { 
+      ...route.query, 
+      page: newPage.toString(), 
+      search: searchQuery.value || undefined,
+      category_id: activeCategory.value?.toString() || undefined
+    }
   })
 })
+
+function toggleCategory(id: number) {
+  activeCategory.value = activeCategory.value === id ? null : id
+  page.value = 1
+}
+
+const { data: categoriesData } = await useFetch<any[]>('/api/categories')
+const categories = computed(() => categoriesData.value || [])
 
 const { data: articlesData, pending, error, refresh } = await useFetch<any>('/api/articles', {
   query: computed(() => ({
     page: page.value,
     limit: 10,
     locale: langStore.currentLang,
-    search: debouncedSearch.value || undefined
+    search: debouncedSearch.value || undefined,
+    category_id: activeCategory.value || undefined
   }))
 })
 
@@ -391,6 +421,44 @@ useHead({
 
 .dark .premium-search-input::placeholder {
   color: #666;
+}
+
+/* Category Filter (Reusable styles) */
+.categories-nav {
+  max-width: 800px;
+}
+.cat-pill {
+  height: 32px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+}
+.dark .cat-pill {
+  background: #1a1a1d;
+  border-color: #2a2a2e;
+  color: #94a3b8;
+}
+.cat-pill:hover {
+  background: #e2e8f0;
+  color: #0ea5e9;
+}
+.dark .cat-pill:hover {
+  background: #252528;
+}
+.cat-pill.active {
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 /* Pagination (Manifest 380) */

@@ -5,6 +5,7 @@
  */
 
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
+import { buildTermsMap, linkTermsInHtml } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
@@ -31,14 +32,21 @@ export default defineEventHandler(async (event) => {
     newSlug = await ensureUniqueSlug(db, 'articles', baseSlug, existing.id)
   }
 
-  const finalExcerpt = excerpt || (html_content ? generateExcerptFromHtml(html_content) : undefined)
+  // ─── Phase 3: Auto-linking terms ───
+  let processedHtml = html_content
+  if (html_content !== undefined) {
+    const termsMap = await buildTermsMap(db)
+    processedHtml = linkTermsInHtml(html_content, termsMap)
+  }
+
+  const finalExcerpt = excerpt || (processedHtml ? generateExcerptFromHtml(processedHtml) : undefined)
 
   // Build update
   const updates: string[] = []
   const params: any[] = []
 
   if (title !== undefined) { updates.push('title = ?'); params.push(title) }
-  if (html_content !== undefined) { updates.push('html_content = ?'); params.push(html_content) }
+  if (html_content !== undefined) { updates.push('html_content = ?'); params.push(processedHtml) }
   if (newSlug !== existing.slug) { updates.push('slug = ?'); params.push(newSlug) }
   if (book_id !== undefined) { updates.push('book_id = ?'); params.push(book_id || null) }
   if (category_id !== undefined) { updates.push('category_id = ?'); params.push(category_id || null) }
@@ -68,7 +76,7 @@ export default defineEventHandler(async (event) => {
     await db.prepare(`
       INSERT INTO article_revisions (article_id, html_content, revision_num, change_summary, created_by)
       VALUES (?, ?, ?, ?, ?)
-    `).run(existing.id, html_content, nextNum, change_summary || null, auth.id)
+    `).run(existing.id, processedHtml, nextNum, change_summary || null, auth.id)
   }
 
   return {

@@ -31,7 +31,9 @@ const totalPages = computed(() => (articlesData.value as any)?.pages || 1)
 const totalItems = computed(() => (articlesData.value as any)?.total || 0)
 
 // Books for filter
-const { data: booksData } = await useFetch('/api/books')
+const { data: booksData } = await useFetch('/api/books', {
+  headers: store.getAuthHeader()
+})
 const books = computed(() => (booksData.value || []) as any[])
 
 // Search with debounce
