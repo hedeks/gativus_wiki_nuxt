@@ -6,6 +6,17 @@ const props = defineProps<{
 
 const hasPresentation = computed(() => !!props.presentationPath)
 const isPdf = computed(() => props.presentationPath?.toLowerCase().endsWith('.pdf'))
+
+// Resolve the path to the API endpoint
+const resolvedPath = computed(() => {
+  if (!props.presentationPath) return ''
+  // If it's already an absolute URL, return as is
+  if (props.presentationPath.startsWith('http') || props.presentationPath.startsWith('/')) {
+    return props.presentationPath
+  }
+  // Otherwise, prefix with the uploads API
+  return `/api/uploads/${props.presentationPath}`
+})
 </script>
 
 <template>
@@ -13,11 +24,7 @@ const isPdf = computed(() => props.presentationPath?.toLowerCase().endsWith('.pd
 
     <!-- PDF Embed -->
     <template v-if="hasPresentation && isPdf">
-      <iframe
-        :src="presentationPath"
-        class="w-full h-full border-none"
-        :title="`Презентация: ${articleTitle}`"
-      />
+      <ThePdfViewer :src="resolvedPath" />
     </template>
 
     <!-- ODP / Other format — Download + Preview -->

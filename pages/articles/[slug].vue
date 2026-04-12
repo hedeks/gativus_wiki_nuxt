@@ -82,8 +82,73 @@
         title="Содержание" :links="tocLinks" />
     </div>
     <div v-if="hasPresentation" :class="[{ 'active': !isTheory }, { 'inactive': isTheory }]"
-      class="flex w-full lg:h-[calc(100dvh_-_var(--header-height)_-_5rem)] dark:bg-zinc-950 bg-gray-50 items-center justify-center h-[calc(100dvh_-_var(--header-height)_-_1.5rem)] lg:col-span-10 xl:col-span-9 view-transition">
-      <thePresentationView :presentationPath="article?.presentation_path" :articleTitle="article?.title" />
+      class="lg:grid lg:grid-cols-10 xl:grid-cols-10 gap-10 w-full lg:col-span-10 xl:col-span-9 view-transition">
+      
+      <!-- Main Presentation Column -->
+      <div class="w-full max-w-[900px] 2xl:max-w-[1100px] mx-auto lg:col-span-8 xl:col-span-7 h-[calc(100dvh_-_var(--header-height)_-_5rem)] flex flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+        <thePresentationView :presentationPath="article?.presentation_path" :articleTitle="article?.title" />
+      </div>
+
+      <!-- Right Side Info Panel (Symmetry with TOC) -->
+      <aside :class="[
+        'flex flex-col z-30 transition-all duration-500 overflow-x-hidden',
+        'lg:sticky lg:top-[--header-height] lg:bg-transparent lg:border-none lg:shadow-none lg:p-0 lg:h-fit lg:w-full lg:col-span-2 xl:col-span-3',
+        'fixed top-[calc(var(--header-height)+0.75rem)] right-4 w-[240px] max-w-[85vw] sm:w-[320px] bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-gray-100 dark:border-zinc-800 rounded-xl shadow-lg py-3 pl-3 pr-5 lg:static lg:z-auto lg:max-w-none'
+      ]" class="presentation-sidebar">
+        
+        <!-- Mobile Toggle (Matching TOC Style) -->
+        <div class="flex items-center justify-between cursor-pointer select-none px-3 py-1 lg:sticky lg:top-0 lg:z-20 lg:bg-white/50 lg:dark:bg-zinc-900/50 lg:backdrop-blur-md"
+            @click="isPresSidebarOpen = !isPresSidebarOpen">
+            <p class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase transition-all duration-500 mr-4 flex-shrink-0">
+                Инфо
+            </p>
+            <div class="flex items-center gap-2 min-w-0">
+                <span v-if="!isDesktop && !isPresSidebarOpen" class="text-[9px] text-black dark:text-white/80 font-medium truncate min-w-0 max-w-[100px]">
+                    Клавиши и PDF
+                </span>
+                <svg :class="{ 'rotate-180': isPresSidebarOpen }" class="w-3 h-3 text-gray-400 flex-shrink-0 transition-all duration-500 lg:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+        </div>
+
+        <Transition name="expand-pres">
+          <div v-show="isDesktop || isPresSidebarOpen" class="flex flex-col gap-4 mt-4 lg:mt-2">
+            <div class="flex flex-col gap-2 p-1">
+              <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">{{ article?.title }}</h3>
+              
+              <div class="mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800 flex flex-col gap-3">
+                <div class="flex items-center gap-2 text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest">
+                  <UIcon name="i-heroicons-computer-desktop" class="w-4 h-4" />
+                  Управление
+                </div>
+                <div class="grid grid-cols-1 gap-3 text-[11px]">
+                  <div class="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/50 p-2 rounded-lg">
+                    <span class="text-gray-500 uppercase font-bold text-[9px]">Далее</span>
+                    <span class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">SPACE / →</span>
+                  </div>
+                  <div class="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/50 p-2 rounded-lg">
+                    <span class="text-gray-500 uppercase font-bold text-[9px]">Назад</span>
+                    <span class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">←</span>
+                  </div>
+                  <div class="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/50 p-2 rounded-lg">
+                    <span class="text-gray-500 uppercase font-bold text-[9px]">Zoom</span>
+                    <span class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">Wheel / ±</span>
+                  </div>
+                </div>
+              </div>
+
+              <a v-if="article?.presentation_path" 
+                 :href="`/api/uploads/${article.presentation_path}`" 
+                 download
+                 class="mt-4 flex items-center justify-center gap-2 py-3 px-4 bg-black dark:bg-white text-white dark:text-black hover:bg-sky-600 dark:hover:bg-sky-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-xl active:scale-95">
+                <UIcon name="i-heroicons-arrow-down-tray" class="w-4 h-4" />
+                Скачать оригинал
+              </a>
+            </div>
+          </div>
+        </Transition>
+      </aside>
     </div>
     <theScrollToTop @scrolled="resetToFirstHeading" />
   </div>
@@ -201,6 +266,14 @@ const activeID = ref('')
 const isTheory = ref(true)
 const lection = ref<HTMLElement | undefined>()
 
+// Presentation Sidebar State (Symmetry with TOC)
+const isPresSidebarOpen = ref(false)
+const isDesktop = ref(true)
+
+const checkSize = () => {
+  isDesktop.value = window.innerWidth >= 1024
+}
+
 // ─── Lightbox logic ───
 const isLightboxOpen = ref(false)
 const isZoomed = ref(false)
@@ -310,16 +383,19 @@ const currentPosition = ref<number>()
 
 const changeView = (name: string) => {
   if (name === 'quiz') {
+    // Capture position BEFORE changing state to avoid race condition with scrollTo(0)
+    currentPosition.value = window.scrollY
     isTheory.value = false
-  } else {
-    isTheory.value = true
-  }
-  if (isTheory.value && currentPosition.value) {
     nextTick(() => {
-      scrollTo({ top: currentPosition.value })
+      window.scrollTo({ top: 0 })
     })
   } else {
-    scrollTo({ top: 0 })
+    isTheory.value = true
+    if (currentPosition.value) {
+      nextTick(() => {
+        window.scrollTo({ top: currentPosition.value })
+      })
+    }
   }
 }
 
@@ -329,6 +405,8 @@ watch(() => article.value?.html_content, () => {
 }, { immediate: true })
 
 onMounted(() => {
+  checkSize()
+  window.addEventListener('resize', checkSize)
   window?.addEventListener('scroll', () => {
     if (isTheory.value) {
       currentPosition.value = scrollY
@@ -340,6 +418,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('resize', checkSize)
 })
 </script>
 
@@ -459,5 +538,24 @@ onUnmounted(() => {
 
 .nav-card--next:hover::after {
   opacity: 1;
+}
+
+/* Animations for Presentation Info Accordion (Matching TOC) */
+.expand-pres-enter-active,
+.expand-pres-leave-active {
+    transition: max-height 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915), opacity 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915);
+    overflow: hidden;
+}
+
+.expand-pres-enter-from,
+.expand-pres-leave-to {
+    max-height: 0;
+    opacity: 0;
+}
+
+.expand-pres-enter-to,
+.expand-pres-leave-from {
+    max-height: 60vh;
+    opacity: 1;
 }
 </style>

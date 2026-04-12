@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const body = await readBody(event)
 
-  const { title, html_content, book_id, category_id, locale, is_published, sort_order, excerpt } = body
+  const { title, html_content, book_id, category_id, locale, is_published, sort_order, excerpt, presentation_path } = body
 
   if (!title || !html_content) {
     throw createError({ statusCode: 400, statusMessage: 'title и html_content обязательны' })
@@ -28,8 +28,8 @@ export default defineEventHandler(async (event) => {
   const finalExcerpt = excerpt || generateExcerptFromHtml(processedHtml)
 
   await db.prepare(`
-    INSERT INTO articles (slug, title, html_content, book_id, category_id, sort_order, excerpt, locale, created_by, is_published)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO articles (slug, title, html_content, book_id, category_id, sort_order, excerpt, locale, created_by, is_published, presentation_path)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     slug,
     title,
@@ -40,7 +40,8 @@ export default defineEventHandler(async (event) => {
     finalExcerpt,
     locale || 'en',
     auth.id,
-    is_published !== false ? 1 : 0
+    is_published !== false ? 1 : 0,
+    presentation_path || null
   )
 
   const inserted = await db.prepare('SELECT last_insert_rowid() as id').get() as any

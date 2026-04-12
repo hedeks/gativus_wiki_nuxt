@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' })
   }
 
-  const { title, html_content, book_id, category_id, locale, is_published, sort_order, excerpt, change_summary } = body
+  const { title, html_content, book_id, category_id, locale, is_published, sort_order, excerpt, change_summary, presentation_path } = body
 
   // Handle slug change
   let newSlug = existing.slug
@@ -54,6 +54,7 @@ export default defineEventHandler(async (event) => {
   if (is_published !== undefined) { updates.push('is_published = ?'); params.push(is_published ? 1 : 0) }
   if (sort_order !== undefined) { updates.push('sort_order = ?'); params.push(sort_order) }
   if (finalExcerpt !== undefined) { updates.push('excerpt = ?'); params.push(finalExcerpt) }
+  if (presentation_path !== undefined) { updates.push('presentation_path = ?'); params.push(presentation_path) }
 
   updates.push("updated_at = datetime('now')")
 
