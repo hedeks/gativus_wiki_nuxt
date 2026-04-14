@@ -3,7 +3,7 @@
     class="flex flex-col p-3 lg:p-10 flex-wrap-reverse lg:grid lg:grid-cols-12 lg:flex-nowrap gap-10 prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert w-full prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold">
     <theLeftQuizSelector @changeView="changeView" :is-theory="isTheory" :title="article?.title"
       :quizTitle="article?.title" :hasPresentation="hasPresentation"
-      class="lg:col-span-2 xl:col-span-3 lg:flex lg:sticky top-[--header-height] xl:justify-self-end xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]" />
+      class="lg:col-span-2 xl:col-span-3 lg:sticky top-[--header-height] xl:justify-self-end xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]" />
     <div :class="[{ 'active': !hasPresentation || isTheory, 'inactive': hasPresentation && !isTheory }]" ref="lection"
       class="flex flex-col-reverse lg:grid lg:grid-cols-10 xl:grid-cols-10 gap-10 w-full lg:col-span-10 xl:col-span-9 view-transition">
       <div
@@ -14,17 +14,17 @@
           <div
             class="flex items-center gap-2 text-[10px] font-bold text-sky-600 dark:text-sky-400 mb-4 uppercase tracking-[0.25em]">
             <template v-if="article.book_id">
-              <NuxtLink to="/books" class="hover:underline transition-all whitespace-nowrap">БИБЛИОТЕКА</NuxtLink>
+              <NuxtLink to="/books" class="hover:underline transition-all whitespace-nowrap">{{ t.library }}</NuxtLink>
               <span class="opacity-30">/</span>
               <NuxtLink :to="`/books/${article.book_slug}`"
                 class="hover:underline transition-all max-w-[200px] truncate">
                 {{ article.book_title }}
               </NuxtLink>
               <span class="opacity-30">/</span>
-              <span class="whitespace-nowrap">ГЛАВА {{ article.sort_order }}</span>
+              <span class="whitespace-nowrap">{{ t.chapter }} {{ article.sort_order }}</span>
             </template>
             <template v-else>
-              <NuxtLink to="/articles" class="hover:underline transition-all">СТАТЬИ</NuxtLink>
+              <NuxtLink to="/articles" class="hover:underline transition-all">{{ t.articles }}</NuxtLink>
               <span class="opacity-30">/</span>
               <span class="truncate">{{ article.title }}</span>
             </template>
@@ -39,7 +39,7 @@
         <div v-if="article?.html_content" class="parent w-full lg:col-span-8 xl:col-span-7 flex-col article-prose"
           v-html="article.html_content" @click="handleArticleClick" />
         <div v-else class="text-gray-400 py-10 text-center">
-          <p>Контент не найден</p>
+          <p>{{ t.noContent }}</p>
         </div>
 
         <!-- Lightbox Overlay -->
@@ -54,13 +54,13 @@
         </Transition>
         <!-- Button to switch to presentation (only if presentation exists) -->
         <UButton v-if="hasPresentation" @click="changeView('quiz')" variant="solid" block color="black"
-          class="rounded-none lg:text-xl sm:text-lg mt-5 h-20 not-prose" label="Перейти к презентации" />
+          class="rounded-none lg:text-xl sm:text-lg mt-5 h-20 not-prose" :label="t.presentation" />
 
         <!-- Book Navigation -->
         <div v-if="article.book_id && (article.prev || article.next)"
           class="mt-12 pt-8 border-t border-gray-100 dark:border-zinc-800 flex flex-col sm:flex-row gap-4 not-prose">
           <NuxtLink v-if="article.prev" :to="`/articles/${article.prev.slug}`" class="nav-card nav-card--prev">
-            <div class="nav-card-label uppercase">ПРЕДЫДУЩАЯ ГЛАВА {{ article.prev.sort_order != null ?
+            <div class="nav-card-label uppercase">{{ t.prevChapter }} {{ article.prev.sort_order != null ?
               `№${article.prev.sort_order}` :
               '' }}</div>
             <div class="nav-card-title">{{ article.prev.title }}</div>
@@ -69,7 +69,7 @@
 
           <NuxtLink v-if="article.next" :to="`/articles/${article.next.slug}`"
             class="nav-card nav-card--next text-right">
-            <div class="nav-card-label uppercase">СЛЕДУЮЩАЯ ГЛАВА {{ article.next.sort_order != null ?
+            <div class="nav-card-label uppercase">{{ t.nextChapter }} {{ article.next.sort_order != null ?
               `№${article.next.sort_order}` :
               '' }}</div>
             <div class="nav-card-title">{{ article.next.title }}</div>
@@ -79,7 +79,7 @@
       </div>
       <theToc :activeID="activeID" @updateActiveID="handleTocClick" v-if="tocLinks.length"
         class="lg:w-auto lg:col-span-2 xl:col-span-3 xl:justify-self-start xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]"
-        title="Содержание" :links="tocLinks" />
+        :title="t.toc" :links="tocLinks" />
     </div>
     <div v-if="hasPresentation" :class="[{ 'active': !isTheory }, { 'inactive': isTheory }]"
       class="lg:grid lg:grid-cols-10 xl:grid-cols-10 gap-10 w-full lg:col-span-10 xl:col-span-9 view-transition">
@@ -100,11 +100,11 @@
         <div class="flex items-center justify-between cursor-pointer select-none px-3 py-1 lg:sticky lg:top-0 lg:z-20 lg:bg-white/50 lg:dark:bg-zinc-900/50 lg:backdrop-blur-md"
             @click="isPresSidebarOpen = !isPresSidebarOpen">
             <p class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase transition-all duration-500 mr-4 flex-shrink-0">
-                Инфо
+                {{ t.info }}
             </p>
             <div class="flex items-center gap-2 min-w-0">
                 <span v-if="!isDesktop && !isPresSidebarOpen" class="text-[9px] text-black dark:text-white/80 font-medium truncate min-w-0 max-w-[100px]">
-                    Клавиши и PDF
+                    {{ t.mobileControls }}
                 </span>
                 <svg :class="{ 'rotate-180': isPresSidebarOpen }" class="w-3 h-3 text-gray-400 flex-shrink-0 transition-all duration-500 lg:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -120,19 +120,19 @@
               <div class="mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800 flex flex-col gap-3">
                 <div class="flex items-center gap-2 text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest">
                   <UIcon name="i-heroicons-computer-desktop" class="w-4 h-4" />
-                  Управление
+                  {{ t.controls }}
                 </div>
                 <div class="grid grid-cols-1 gap-3 text-[11px]">
                   <div class="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/50 p-2 rounded-lg">
-                    <span class="text-gray-500 uppercase font-bold text-[9px]">Далее</span>
+                    <span class="text-gray-500 uppercase font-bold text-[9px]">{{ t.next }}</span>
                     <span class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">SPACE / →</span>
                   </div>
                   <div class="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/50 p-2 rounded-lg">
-                    <span class="text-gray-500 uppercase font-bold text-[9px]">Назад</span>
+                    <span class="text-gray-500 uppercase font-bold text-[9px]">{{ t.back }}</span>
                     <span class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">←</span>
                   </div>
                   <div class="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/50 p-2 rounded-lg">
-                    <span class="text-gray-500 uppercase font-bold text-[9px]">Zoom</span>
+                    <span class="text-gray-500 uppercase font-bold text-[9px]">{{ t.zoom }}</span>
                     <span class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">Wheel / ±</span>
                   </div>
                 </div>
@@ -143,7 +143,7 @@
                  download
                  class="mt-4 flex items-center justify-center gap-2 py-3 px-4 bg-black dark:bg-white text-white dark:text-black hover:bg-sky-600 dark:hover:bg-sky-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-xl active:scale-95">
                 <UIcon name="i-heroicons-arrow-down-tray" class="w-4 h-4" />
-                Скачать оригинал
+                {{ t.download }}
               </a>
             </div>
           </div>
@@ -155,13 +155,88 @@
 </template>
 
 <script setup lang="ts">
-import { onUnmounted } from 'vue'
+import { onUnmounted, ref, computed, watch, nextTick, onMounted } from 'vue'
+import { useLanguageStore } from '~/stores/language'
+
+const langStore = useLanguageStore()
 const route = useRoute()
 const slug = route.params.slug as string
 
-const { data: article, error } = await useFetch<any>(`/api/articles/${slug}`)
+const uiDict: Record<string, any> = {
+  en: {
+    library: 'LIBRARY',
+    chapter: 'CHAPTER',
+    articles: 'ARTICLES',
+    noContent: 'Content not found',
+    presentation: 'Go to Presentation',
+    prevChapter: 'PREVIOUS CHAPTER',
+    nextChapter: 'NEXT CHAPTER',
+    toc: 'Contents',
+    info: 'Info',
+    mobileControls: 'Keys & PDF',
+    controls: 'Controls',
+    next: 'Next',
+    back: 'Back',
+    zoom: 'Zoom',
+    download: 'Download Original',
+    backToText: 'Back to Text'
+  },
+  ru: {
+    library: 'БИБЛИОТЕКА',
+    chapter: 'ГЛАВА',
+    articles: 'СТАТЬИ',
+    noContent: 'Контент не найден',
+    presentation: 'Перейти к презентации',
+    prevChapter: 'ПРЕДЫДУЩАЯ ГЛАВА',
+    nextChapter: 'СЛЕДУЮЩАЯ ГЛАВА',
+    toc: 'Содержание',
+    info: 'Инфо',
+    mobileControls: 'Клавиши и PDF',
+    controls: 'Управление',
+    next: 'Далее',
+    back: 'Назад',
+    zoom: 'Zoom',
+    download: 'Скачать оригинал',
+    backToText: 'Вернуться к тексту'
+  }
+}
 
-if (error.value) {
+const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+
+// Declared placeholders before await to avoid ReferenceError in template during suspension
+const articleData = ref<any | null>(null)
+const pending = ref(true)
+const error = ref<any>(null)
+
+const article = computed(() => articleData.value)
+const hasPresentation = computed(() => !!article.value?.presentation_path)
+
+const refresh = async () => {
+  pending.value = true
+  try {
+    const res = await $fetch<any>(`/api/articles/${slug}`, {
+      params: { lang: langStore.currentLang }
+    })
+    articleData.value = res
+  } catch (e) {
+    error.value = e
+  } finally {
+    pending.value = false
+  }
+}
+
+// Initial Fetch
+const initialData = await $fetch<any>(`/api/articles/${slug}`, {
+  params: { lang: langStore.currentLang }
+}).catch(e => {
+  error.value = e
+  return null
+})
+
+articleData.value = initialData
+pending.value = false
+
+if (error.value && !articleData.value) {
   throw createError({
     statusCode: error.value.statusCode || 404,
     statusMessage: 'Статья не найдена',
@@ -169,13 +244,16 @@ if (error.value) {
   })
 }
 
-const hasPresentation = computed(() => !!article.value?.presentation_path)
-
 useSeoMeta({
-  title: article.value?.title ? `${article.value.title} — Gativus Wiki` : 'Gativus Wiki',
-  ogTitle: article.value?.title,
-  description: article.value?.excerpt || '',
-  ogDescription: article.value?.excerpt || '',
+  title: () => article.value?.title ? `${article.value.title} — Gativus Wiki` : 'Gativus Wiki',
+  ogTitle: () => article.value?.title,
+  description: () => article.value?.excerpt || '',
+  ogDescription: () => article.value?.excerpt || '',
+})
+
+// Watch for language changes to refresh
+watch(() => langStore.currentLang, () => {
+  refresh()
 })
 
 // ─── TOC generation from HTML headings ───

@@ -5,6 +5,7 @@
  */
 
 .article-prose {
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
   font-size: 18px;
   line-height: 1.5;
   color: #000000;

@@ -1,5 +1,6 @@
 <template>
   <div>
+    <NuxtLoadingIndicator color="#0ea5e9" :height="3" />
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
@@ -42,7 +43,7 @@ body {
   @apply dark:bg-zinc-900;
   overflow-y: scroll;
   line-height: 1.15;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
 }
 
 ::selection {

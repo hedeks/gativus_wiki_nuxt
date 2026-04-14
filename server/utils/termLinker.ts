@@ -54,7 +54,9 @@ export function linkTermsInHtml(html: string, termsMap: Map<string, { id: number
       if (linkedSlugs.has(slug)) continue
 
       const escaped = escapeRegex(phrase)
-      const regex = new RegExp(`(?<![\\w\\u0400-\\u04FF])(${escaped})(?![\\w\\u0400-\\u04FF])`, 'i')
+      const range = 'a-zA-Z0-9_\\u0400-\\u04FF'
+      const suffixRange = 'a-zA-Z\\u0400-\\u04FF'
+      const regex = new RegExp(`(?<![${range}])(${escaped}[${suffixRange}]*)(?![${range}])`, 'i')
       const match = regex.exec(text)
       if (match) {
         const originalWord = match[1]

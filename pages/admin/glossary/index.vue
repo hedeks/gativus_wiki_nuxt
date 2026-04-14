@@ -83,9 +83,13 @@
             </td>
             <td>
               <div class="actions-cell">
-                <NuxtLink :to="`/admin/glossary/${term.id}/edit`">
-                  <UButton icon="i-heroicons-pencil-square" color="gray" variant="ghost" size="xs" />
-                </NuxtLink>
+                <UButton 
+                  icon="i-heroicons-pencil-square" 
+                  color="gray" 
+                  variant="ghost" 
+                  size="xs" 
+                  :to="`/admin/glossary/${term.id}/edit`" 
+                />
                 <UButton icon="i-heroicons-trash" color="red" variant="ghost" size="xs" @click="confirmDelete(term)" />
               </div>
             </td>
@@ -310,9 +314,10 @@ function refDebounced<T>(source: Ref<T>, delay: number) {
 /* Table */
 .terms-table-wrap {
   background: white;
-  border: 1.5px solid #f1f5f9;
-  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
   overflow: hidden;
+  box-shadow: 0 0 1px 1px rgba(119, 119, 119, 0.05);
 }
 
 .dark .terms-table-wrap {

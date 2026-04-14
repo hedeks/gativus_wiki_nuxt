@@ -9,20 +9,29 @@ export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const query = getQuery(event)
   const isTree = query.tree === '1' || query.tree === 'true'
+  const lang = (query.lang as string) || 'ru'
 
   // Fetch all categories ordered by sort_order
   const categories = await db.prepare(`
-    SELECT id, slug, title, parent_id, description, icon, sort_order 
+    SELECT id, slug, slug_ru, title, title_ru, parent_id, description, description_ru, icon, sort_order 
     FROM categories
     ORDER BY sort_order ASC, title ASC
   `).all() as any[]
 
+  const isRu = lang === 'ru'
+  const mappedCategories = categories.map(cat => ({
+    ...cat,
+    title: (isRu && cat.title_ru) ? cat.title_ru : cat.title,
+    slug: (isRu && cat.slug_ru) ? cat.slug_ru : cat.slug,
+    description: (isRu && cat.description_ru) ? cat.description_ru : cat.description
+  }))
+
   if (!isTree) {
-    return categories
+    return mappedCategories
   }
 
   // Build tree structure
-  return buildCategoryTree(categories)
+  return buildCategoryTree(mappedCategories)
 })
 
 /**

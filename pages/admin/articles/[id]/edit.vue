@@ -11,31 +11,11 @@ const toast = useToast()
 const articleId = route.params.id as string
 
 // Fetch article data
-const { data: articleData, refresh } = await useFetch(`/api/articles/${articleId}`, {
-  headers: store.getAuthHeader(),
-  // Article endpoints use slug, but admin uses id — we need to resolve
-  // Actually, we receive ID from URL, need to fetch by ID. Let's query the list.
-})
-
-// We need a way to get article by ID. For now, let's fetch the articles list and find by ID.
-// Better approach: fetch all articles with admin flag and find the one
-const { data: allArticlesData } = await useFetch('/api/articles', {
-  query: { limit: 1000, published_only: 'false' },
+const { data: fullArticle, refresh, pending } = await useFetch(`/api/admin/articles/${articleId}`, {
   headers: store.getAuthHeader(),
 })
-
-const currentArticle = computed(() => {
-  const items = (allArticlesData.value as any)?.items || []
-  return items.find((a: any) => a.id === parseInt(articleId))
-})
-
-const slug = computed(() => currentArticle.value?.slug || '')
-
-// If we found the slug, fetch full article
-const { data: fullArticle } = await useFetch(() => `/api/articles/${slug.value}`, {
-  headers: store.getAuthHeader(),
-  immediate: !!slug.value,
-})
+const currentArticle = fullArticle // For backward compatibility in computes if any
+const slug = computed(() => fullArticle.value?.slug || '')
 
 // Form state
 const title = ref('')
@@ -281,6 +261,13 @@ const localeOptions = [
           <UIcon name="i-heroicons-arrow-left" />
         </NuxtLink>
         <h1 class="editor-title">{{ title || 'Без названия' }}</h1>
+        <div v-if="fullArticle?.is_term_article" class="term-ref-badge">
+          <UIcon name="i-heroicons-book-open" />
+          <span>Disclosure for: </span>
+          <NuxtLink :to="`/admin/glossary/${fullArticle.term_id}/edit`" class="term-ref-link">
+            {{ fullArticle.term_title }}
+          </NuxtLink>
+        </div>
       </div>
       <div class="editor-topbar-right">
         <button class="toggle-preview" @click="showPreview = !showPreview">
@@ -471,6 +458,31 @@ const localeOptions = [
   text-overflow: ellipsis;
 }
 .dark .editor-title { color: #e5e5e5; }
+
+.term-ref-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #0369a1;
+  font-weight: 500;
+}
+.dark .term-ref-badge {
+  background: #082f49;
+  border-color: #0c4a6e;
+  color: #7dd3fc;
+}
+.term-ref-link {
+  font-weight: 700;
+  color: #0284c7;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.dark .term-ref-link { color: #38bdf8; }
 
 .editor-topbar-right {
   display: flex;

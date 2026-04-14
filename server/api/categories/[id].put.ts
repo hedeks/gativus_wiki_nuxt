@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Check if exists
-  const existing = await db.prepare('SELECT id, slug FROM categories WHERE id = ?').get(id) as any
+  const existing = await db.prepare('SELECT id, slug, slug_ru, title, title_ru, description, description_ru, icon, sort_order, parent_id FROM categories WHERE id = ?').get(id) as any
   if (!existing) {
     throw createError({ statusCode: 404, statusMessage: 'Category not found' })
   }
@@ -30,16 +30,19 @@ export default defineEventHandler(async (event) => {
   let slug = existing.slug
   if (body.slug && body.slug !== existing.slug) {
     slug = await ensureUniqueSlug(db, 'categories', slugify(body.slug), parseInt(id))
-  } else if (body.title && body.title !== existing.title && !body.slug) {
-    // Optionally re-generate slug if title changed and slug wasn't explicitly provided
-    // But usually for SEO we keep the slug stable unless explicitly changed.
-    // For now, only change if slug is in body.
+  }
+
+  let slug_ru = existing.slug_ru
+  if (body.slug_ru !== undefined && body.slug_ru !== existing.slug_ru) {
+    slug_ru = body.slug_ru ? await ensureUniqueSlug(db, 'categories', slugify(body.slug_ru), parseInt(id)) : null
   }
 
   const {
     title = existing.title,
+    title_ru = existing.title_ru,
     parent_id = existing.parent_id,
     description = existing.description,
+    description_ru = existing.description_ru,
     icon = existing.icon,
     sort_order = existing.sort_order
   } = body
@@ -51,9 +54,18 @@ export default defineEventHandler(async (event) => {
 
   await db.prepare(`
     UPDATE categories
-    SET slug = ?, title = ?, parent_id = ?, description = ?, icon = ?, sort_order = ?
+    SET 
+      slug = ?, 
+      slug_ru = ?,
+      title = ?, 
+      title_ru = ?,
+      parent_id = ?, 
+      description = ?, 
+      description_ru = ?,
+      icon = ?, 
+      sort_order = ?
     WHERE id = ?
-  `).run(slug, title, parent_id, description, icon, sort_order, id)
+  `).run(slug, slug_ru, title, title_ru, parent_id, description, description_ru, icon, sort_order, id)
 
   return {
     message: 'Category updated successfully',

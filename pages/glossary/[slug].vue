@@ -19,7 +19,7 @@
           <!-- Breadcrumbs -->
           <div
             class="flex items-center gap-2 text-[10px] font-bold text-sky-600 dark:text-sky-400 mb-4 uppercase tracking-[0.25em]">
-            <NuxtLink to="/glossary" class="hover:underline transition-all whitespace-nowrap">ГЛОССАРИЙ</NuxtLink>
+            <NuxtLink to="/glossary" class="hover:underline transition-all whitespace-nowrap">{{ t.glossary }}</NuxtLink>
             <span class="opacity-30">/</span>
             <span class="truncate">{{ term.title }}</span>
           </div>
@@ -47,29 +47,29 @@
         <div v-if="contentHtml" class="parent w-full lg:col-span-8 xl:col-span-7 flex-col glossary-prose"
           v-html="contentHtml" @click="handleArticleClick" />
         <div v-else class="text-gray-400 py-10 text-center">
-          Контент отсутствует
+          {{ t.noContent }}
         </div>
 
         <!-- Presentation Toggle -->
         <UButton v-if="term.presentation_path" @click="changeView('quiz')" variant="solid" block color="black"
-          class="rounded-none lg:text-xl sm:text-lg mt-10 h-20 not-prose" label="Открыть презентацию" />
+          class="rounded-none lg:text-xl sm:text-lg mt-10 h-20 not-prose" :label="t.presentation" />
 
         <!-- Actions -->
         <div class="mt-12 pt-8 border-t border-gray-100 dark:border-zinc-800 flex justify-between gap-4 not-prose">
           <NuxtLink to="/glossary"
             class="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-sky-600 transition-colors">
-            <UIcon name="i-heroicons-arrow-left" /> Назад в глоссарий
+            <UIcon name="i-heroicons-arrow-left" /> {{ t.back }}
           </NuxtLink>
           <button @click="copyLink"
             :class="['flex items-center gap-2 text-sm font-bold transition-colors', copied ? 'text-green-500' : 'text-gray-500 hover:text-sky-600']">
             <UIcon :name="copied ? 'i-heroicons-check' : 'i-heroicons-link'" />
-            {{ copied ? 'Ссылка скопирована' : 'Поделиться' }}
+            {{ copied ? t.copied : t.share }}
           </button>
         </div>
       </div>
 
       <!-- Table of Contents -->
-      <theToc v-if="tocLinks.length && isTheory" :links="tocLinks" :activeID="activeID" title="Содержание"
+      <theToc v-if="tocLinks.length && isTheory" :links="tocLinks" :activeID="activeID" :title="t.toc"
         @updateActiveID="handleTocClick"
         class="lg:w-auto lg:col-span-2 xl:col-span-3 xl:justify-self-start xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]" />
     </div>
@@ -78,8 +78,7 @@
     <div v-if="term.presentation_path" :class="[{ 'active': !isTheory }, { 'inactive': isTheory }]"
       class="flex w-full lg:h-[calc(100dvh_-_var(--header-height)_-_5rem)] dark:bg-zinc-950 bg-gray-50 items-center justify-center h-[calc(100dvh_-_var(--header-height)_-_1.5rem)] lg:col-span-10 xl:col-span-9 view-transition">
       <div class="absolute top-4 left-4 z-50">
-        <UButton icon="i-heroicons-chevron-left" variant="ghost" color="gray" @click="changeView('theory')">Вернуться к
-          тексту</UButton>
+        <UButton icon="i-heroicons-chevron-left" variant="ghost" color="gray" @click="changeView('theory')">{{ t.theory }}</UButton>
       </div>
       <thePresentationView :presentationPath="term.presentation_path" :articleTitle="term.title" />
     </div>
@@ -104,21 +103,83 @@
   </div>
   <div v-else class="text-center py-24">
     <UIcon name="i-heroicons-exclamation-triangle" class="text-5xl text-rose-500 mb-4" />
-    <h2 class="text-xl font-bold">Термин не найден</h2>
-    <NuxtLink to="/glossary" class="mt-4 inline-block text-sky-600 font-bold hover:underline">Вернуться в глоссарий
+    <h2 class="text-xl font-bold">{{ t.notFound }}</h2>
+    <NuxtLink to="/glossary" class="mt-4 inline-block text-sky-600 font-bold hover:underline">{{ t.back }}
     </NuxtLink>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onUnmounted, ref, computed, watch, nextTick, onMounted } from 'vue'
+import { useLanguageStore } from '~/stores/language'
 
+const langStore = useLanguageStore()
 const route = useRoute()
 const slug = route.params.slug as string
 
-const { data: term, pending, error } = await useFetch<any>(`/api/terms/${slug}`)
+const uiDict: Record<string, any> = {
+  en: {
+    back: 'Back to Glossary',
+    share: 'Share',
+    copied: 'Link copied',
+    theory: 'Back to text',
+    presentation: 'Open Presentation',
+    notFound: 'Term not found',
+    noContent: 'No content available',
+    toc: 'Contents',
+    glossary: 'GLOSSARY'
+  },
+  ru: {
+    back: 'Назад в глоссарий',
+    share: 'Поделиться',
+    copied: 'Ссылка скопирована',
+    theory: 'Вернуться к тексту',
+    presentation: 'Открыть презентацию',
+    notFound: 'Термин не найден',
+    noContent: 'Контент отсутствует',
+    toc: 'Содержание',
+    glossary: 'ГЛОССАРИЙ'
+  }
+}
 
-if (error.value) {
+const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+
+// Declared placeholders before await to avoid ReferenceError in template during suspension
+const termData = ref<any | null>(null)
+const pending = ref(true)
+const error = ref<any>(null)
+
+const term = computed(() => termData.value)
+const isTheory = ref(true)
+const activeID = ref('')
+const contentHtml = computed(() => term.value?.article_html || term.value?.definition || '')
+
+const refresh = async () => {
+  pending.value = true
+  try {
+    const res = await $fetch<any>(`/api/terms/${slug}`, {
+      params: { lang: langStore.currentLang }
+    })
+    termData.value = res
+  } catch (e) {
+    error.value = e
+  } finally {
+    pending.value = false
+  }
+}
+
+// Initial Fetch
+const initialData = await $fetch<any>(`/api/terms/${slug}`, {
+  params: { lang: langStore.currentLang }
+}).catch(e => {
+  error.value = e
+  return null
+})
+
+termData.value = initialData
+pending.value = false
+
+if (error.value && !termData.value) {
   throw createError({
     statusCode: error.value.statusCode || 404,
     statusMessage: 'Термин не найден',
@@ -131,9 +192,9 @@ useSeoMeta({
   description: computed(() => term.value?.definition || ''),
 })
 
-const isTheory = ref(true)
-const activeID = ref('')
-const contentHtml = computed(() => term.value?.article_html || term.value?.definition || '')
+watch(() => langStore.currentLang, () => {
+  refresh()
+})
 
 // ─── TOC generation (Tree as expected by theToc) ───
 

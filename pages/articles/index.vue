@@ -4,10 +4,9 @@
     <div class="page-container">
       <header class="articles-hero w-full">
         <div class="hero-content flex flex-col items-center text-center">
-          <h1 class="hero-title uppercase">СТАТЬИ</h1>
+          <h1 class="hero-title uppercase">{{ t.heroTitle }}</h1>
           <p class="hero-description mt-8">
-            Архитектура, фундаментальные принципы и методология Gativus.
-            Исследуйте базу знаний по заголовкам и аннотациям материалов.
+            {{ t.heroDesc }}
           </p>
 
           <!-- Search Capsule -->
@@ -19,7 +18,7 @@
               <UIcon v-else name="i-heroicons-magnifying-glass" class="w-5 h-5" />
             </div>
             <input v-model="searchQuery" type="text" class="premium-search-input"
-              placeholder="Поиск по архитектуре, концепциям и статьям..." />
+              :placeholder="t.searchPlaceholder" />
             <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
               <button v-show="searchQuery !== ''" @click="searchQuery = ''"
                 class="text-gray-300 hover:text-sky-500 transition-colors duration-300 p-2">
@@ -47,7 +46,7 @@
 
       <!-- Section Divider -->
       <div class="section-divider my-16">
-        <span class="divider-text uppercase">СПИСОК СТАТЕЙ</span>
+        <span class="divider-text uppercase">{{ t.articlesList }}</span>
       </div>
 
       <!-- Main Articles List -->
@@ -55,14 +54,14 @@
         <!-- Error State -->
         <div v-if="error" class="error-card p-10 text-center">
           <UIcon name="i-heroicons-exclamation-triangle" class="text-5xl text-red-500 mb-4 mx-auto" />
-          <h3 class="font-bold">ОШИБКА ЗАГРУЗКИ</h3>
-          <p class="text-sm mt-2 opacity-60">Пожалуйста, попробуйте обновить страницу.</p>
+          <h3 class="font-bold">{{ t.loadingError }}</h3>
+          <p class="text-sm mt-2 opacity-60">{{ t.refreshHint }}</p>
         </div>
 
         <!-- Empty State -->
         <div v-else-if="!pending && !isTyping && articles.length === 0"
           class="empty-state py-20 text-center border-dashed border-2 border-gray-100 dark:border-zinc-800 rounded-2xl">
-          <p class="text-gray-500 uppercase tracking-widest text-sm font-bold">Ничего не найдено</p>
+          <p class="text-gray-500 uppercase tracking-widest text-sm font-bold">{{ t.notFound }}</p>
         </div>
 
         <!-- Grid of Articles -->
@@ -113,11 +112,45 @@ import { useLanguageStore } from '~/stores/language'
 const route = useRoute()
 const langStore = useLanguageStore()
 
+const uiDict: Record<string, any> = {
+  en: {
+    heroTitle: 'ARTICLES',
+    heroDesc: 'Architecture, fundamental principles, and Gativus methodology. Explore the knowledge base through material titles and annotations.',
+    searchPlaceholder: 'Search architecture, concepts, and articles...',
+    articlesList: 'ARTICLES LIST',
+    loadingError: 'LOADING ERROR',
+    refreshHint: 'Please try refreshing the page.',
+    notFound: 'Nothing found'
+  },
+  ru: {
+    heroTitle: 'СТАТЬИ',
+    heroDesc: 'Архитектура, фундаментальные принципы и методология Gativus. Исследуйте базу знаний по заголовкам и аннотациям материалов.',
+    searchPlaceholder: 'Поиск по архитектуре, концепциям и статьям...',
+    articlesList: 'СПИСОК СТАТЕЙ',
+    loadingError: 'ОШИБКА ЗАГРУЗКИ',
+    refreshHint: 'Пожалуйста, попробуйте обновить страницу.',
+    notFound: 'Ничего не найдено'
+  }
+}
+
+const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+
 const page = ref(parseInt(route.query.page as string) || 1)
 const searchQuery = ref((route.query.search as string) || '')
 const activeCategory = ref<number | null>(route.query.category_id ? parseInt(route.query.category_id as string) : null)
 const debouncedSearch = ref(searchQuery.value)
 const isTyping = ref(false)
+
+// Define placeholders for data that will be loaded
+const categoriesData = ref<any[] | null>(null)
+const articlesData = ref<any | null>(null)
+const pending = ref(true)
+const error = ref<any>(null)
+
+const categories = computed(() => categoriesData.value || [])
+const articles = computed(() => articlesData.value?.items || [])
+const totalItems = computed(() => articlesData.value?.total || 0)
+const totalPages = computed(() => articlesData.value?.pages || 1)
 
 let searchTimer: any
 watch(searchQuery, (newVal) => {
@@ -147,18 +180,48 @@ function toggleCategory(id: number) {
   page.value = 1
 }
 
-const { data: categoriesData } = await useFetch<any[]>('/api/categories')
-const categories = computed(() => categoriesData.value || [])
+// Perform fetches
+const [catRes, artRes] = await Promise.all([
+  $fetch<any[]>('/api/categories', {
+    query: { lang: langStore.currentLang }
+  }),
+  $fetch<any>('/api/articles', {
+    query: {
+      page: page.value,
+      limit: 10,
+      lang: langStore.currentLang,
+      search: debouncedSearch.value || undefined,
+      category_id: activeCategory.value || undefined
+    }
+  }).catch(e => {
+    error.value = e
+    return null
+  })
+])
 
-const { data: articlesData, pending, error, refresh } = await useFetch<any>('/api/articles', {
-  query: computed(() => ({
-    page: page.value,
-    limit: 10,
-    locale: langStore.currentLang,
-    search: debouncedSearch.value || undefined,
-    category_id: activeCategory.value || undefined
-  }))
-})
+categoriesData.value = catRes
+articlesData.value = artRes
+pending.value = false
+
+const refresh = async () => {
+  pending.value = true
+  try {
+    const res = await $fetch<any>('/api/articles', {
+      query: {
+        page: page.value,
+        limit: 10,
+        lang: langStore.currentLang,
+        search: debouncedSearch.value || undefined,
+        category_id: activeCategory.value || undefined
+      }
+    })
+    articlesData.value = res
+  } catch (e) {
+    error.value = e
+  } finally {
+    pending.value = false
+  }
+}
 
 // Reset page and refresh when language changes
 watch(() => langStore.currentLang, () => {
@@ -166,13 +229,8 @@ watch(() => langStore.currentLang, () => {
   refresh()
 })
 
-const articles = computed(() => articlesData.value?.items || [])
-const totalItems = computed(() => articlesData.value?.total || 0)
-const totalPages = computed(() => articlesData.value?.pages || 1)
-
-
 useHead({
-  title: 'Статьи — Gativus Wiki',
+  title: () => `${t.value.heroTitle} — Gativus Wiki`,
 })
 </script>
 

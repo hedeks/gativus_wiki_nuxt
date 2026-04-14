@@ -4,11 +4,10 @@
     <div class="page-container">
       <header class="glossary-hero w-full">
         <div class="hero-content flex flex-col items-center text-center">
-          <div class="hero-meta uppercase mb-4">Glossary & Terms</div>
-          <h1 class="hero-title uppercase">ГЛОССАРИЙ</h1>
+          <div class="hero-meta uppercase mb-4">{{ t.heroMeta }}</div>
+          <h1 class="hero-title uppercase">{{ t.heroTitle }}</h1>
           <p class="hero-description mt-4">
-            Систематизированный свод знаний Gativus. 
-            Определения, теоретические выкладки и взаимосвязи концепций.
+            {{ t.heroDesc }}
           </p>
 
           <!-- Search Capsule -->
@@ -20,7 +19,7 @@
               <UIcon v-else name="i-heroicons-magnifying-glass" class="w-5 h-5" />
             </div>
             <input v-model="searchQuery" type="text" class="premium-search-input"
-              placeholder="Поиск по базе знаний, концепциям и терминам..." />
+              :placeholder="t.searchPlaceholder" />
             <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
               <button v-show="searchQuery !== ''" @click="searchQuery = ''"
                 class="text-gray-300 hover:text-sky-500 transition-colors duration-300 p-2">
@@ -36,7 +35,7 @@
               :class="{ active: !activeLetter }"
               @click="activeLetter = null"
             >
-              ВСЕ
+              {{ t.allLetters }}
             </button>
             <button
               v-for="letter in availableLetters"
@@ -68,7 +67,7 @@
 
       <!-- Section Divider -->
       <div class="section-divider my-16">
-        <span class="divider-text uppercase">СПИСОК ТЕРМИНОВ</span>
+        <span class="divider-text uppercase">{{ t.termsList }}</span>
       </div>
 
       <!-- Main Terms List -->
@@ -76,8 +75,8 @@
         <!-- Error State -->
         <div v-if="error" class="error-card p-10 text-center">
           <UIcon name="i-heroicons-exclamation-triangle" class="text-5xl text-red-500 mb-4 mx-auto" />
-          <h3 class="font-bold">ОШИБКА ЗАГРУЗКИ</h3>
-          <p class="text-sm mt-2 opacity-60">Пожалуйста, попробуйте обновить страницу.</p>
+          <h3 class="font-bold">{{ t.loadingError }}</h3>
+          <p class="text-sm mt-2 opacity-60">{{ t.refreshHint }}</p>
         </div>
 
         <!-- Empty State -->
@@ -86,8 +85,8 @@
           <div class="empty-icon-wrap mb-4 mx-auto">
             <UIcon name="i-heroicons-beaker" class="text-4xl text-gray-300" />
           </div>
-          <p class="text-gray-500 uppercase tracking-widest text-sm font-bold">Ничего не найдено</p>
-          <button v-if="searchQuery || activeLetter" @click="resetFilters" class="mt-4 text-sky-500 hover:underline text-sm font-bold uppercase tracking-wider">Сбросить фильтры</button>
+          <p class="text-gray-500 uppercase tracking-widest text-sm font-bold">{{ t.notFound }}</p>
+          <button v-if="searchQuery || activeLetter" @click="resetFilters" class="mt-4 text-sky-500 hover:underline text-sm font-bold uppercase tracking-wider">{{ t.resetFilters }}</button>
         </div>
 
         <!-- List of Terms -->
@@ -114,7 +113,7 @@
                 </span>
                 <span v-if="term.has_article" class="badge-secondary transition-colors duration-300">
                   <UIcon name="i-heroicons-document-text" class="mr-1" />
-                  ЕСТЬ ОПИСАНИЕ
+                  {{ t.hasArticle }}
                 </span>
               </div>
               <h3 class="chapter-title">{{ term.title }}</h3>
@@ -140,11 +139,48 @@
 </template>
 
 <script setup lang="ts">
+import { useLanguageStore } from '~/stores/language'
+const langStore = useLanguageStore()
 const route = useRoute()
 
+const uiDict: Record<string, any> = {
+  en: {
+    metaTitle: 'Glossary — Gativus Wiki',
+    metaDesc: 'Gativus system terms and definitions (GTOM, GNET, GATE).',
+    heroMeta: 'Glossary & Terms',
+    heroTitle: 'GLOSSARY',
+    heroDesc: 'Systematized body of Gativus knowledge. Definitions, theoretical foundations, and conceptual relationships.',
+    searchPlaceholder: 'Search knowledge base, concepts and terms...',
+    allLetters: 'ALL',
+    termsList: 'TERMS LIST',
+    loadingError: 'LOADING ERROR',
+    refreshHint: 'Please try refreshing the page.',
+    notFound: 'Nothing found',
+    resetFilters: 'Reset filters',
+    hasArticle: 'HAS ARTICLE'
+  },
+  ru: {
+    metaTitle: 'Глоссарий — Gativus Wiki',
+    metaDesc: 'Термины и определения систем Gativus (GTOM, GNET, GATE). Только английские оригиналы названий.',
+    heroMeta: 'Glossary & Terms',
+    heroTitle: 'ГЛОССАРИЙ',
+    heroDesc: 'Систематизированный свод знаний Gativus. Определения, теоретические выкладки и взаимосвязи концепций.',
+    searchPlaceholder: 'Поиск по базе знаний, концепциям и терминам...',
+    allLetters: 'ВСЕ',
+    termsList: 'СПИСОК ТЕРМИНОВ',
+    loadingError: 'ОШИБКА ЗАГРУЗКИ',
+    refreshHint: 'Пожалуйста, попробуйте обновить страницу.',
+    notFound: 'Ничего не найдено',
+    resetFilters: 'Сбросить фильтры',
+    hasArticle: 'ЕСТЬ ОПИСАНИЕ'
+  }
+}
+
+const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+
 useSeoMeta({
-  title: 'Глоссарий — Gativus Wiki',
-  description: 'Термины и определения систем Gativus (GTOM, GNET, GATE). Только английские оригиналы названий.',
+  title: () => t.value.metaTitle,
+  description: () => t.value.metaDesc,
 })
 
 const searchQuery = ref('')
@@ -153,6 +189,15 @@ const activeCategory = ref<number | null>(null)
 const currentPage = ref(1)
 const isTyping = ref(false)
 const debouncedSearch = ref('')
+
+const categoriesData = ref<any[] | null>(null)
+const termsData = ref<any | null>(null)
+const pending = ref(true)
+const error = ref<any>(null)
+
+const categories = computed(() => categoriesData.value || [])
+const data = computed(() => termsData.value)
+const availableLetters = computed(() => termsData.value?.availableLetters || [])
 
 let searchTimer: any
 watch(searchQuery, (newVal) => {
@@ -167,26 +212,54 @@ watch(searchQuery, (newVal) => {
 
 watch(activeLetter, () => { currentPage.value = 1 })
 
-const { data: categoriesData } = await useFetch<any[]>('/api/categories')
-const categories = computed(() => categoriesData.value || [])
-
-const { data, pending, error } = await useAsyncData(
-  'glossary-terms',
-  () => $fetch<any>('/api/terms', {
+// Initial Fetch
+const [catRes, termRes] = await Promise.all([
+  $fetch<any[]>('/api/categories', {
+    query: { lang: langStore.currentLang }
+  }),
+  $fetch<any>('/api/terms', {
     params: {
       search: debouncedSearch.value || undefined,
       letter: activeLetter.value || undefined,
       category_id: activeCategory.value || undefined,
+      lang: langStore.currentLang,
       page: currentPage.value,
       limit: 20,
     }
-  }),
-  { 
-    watch: [debouncedSearch, activeLetter, activeCategory, currentPage]
-  }
-)
+  }).catch(e => {
+    error.value = e
+    return null
+  })
+])
 
-const availableLetters = computed(() => data.value?.availableLetters || [])
+categoriesData.value = catRes
+termsData.value = termRes
+pending.value = false
+
+const refreshData = async () => {
+  pending.value = true
+  try {
+    const res = await $fetch<any>('/api/terms', {
+      params: {
+        search: debouncedSearch.value || undefined,
+        letter: activeLetter.value || undefined,
+        category_id: activeCategory.value || undefined,
+        lang: langStore.currentLang,
+        page: currentPage.value,
+        limit: 20,
+      }
+    })
+    termsData.value = res
+  } catch (e) {
+    error.value = e
+  } finally {
+    pending.value = false
+  }
+}
+
+watch([debouncedSearch, activeLetter, activeCategory, currentPage, () => langStore.currentLang], () => {
+  refreshData()
+})
 
 function toggleLetter(letter: string) {
   activeLetter.value = activeLetter.value === letter ? null : letter

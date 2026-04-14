@@ -5,13 +5,12 @@
       <div class="hero-title-container">
         <img src="/images/121px-Logo.jpg" alt="Gativus Logo" class="hero-logo" />
         <div class="hero-text">
-          <h1 class="hero-title">О ПРОЕКТЕ</h1>
-          <p class="hero-subtitle">Gativus Wiki — база знаний</p>
+          <h1 class="hero-title uppercase">{{ t.heroTitle }}</h1>
+          <p class="hero-subtitle">{{ t.heroSubtitle }}</p>
         </div>
       </div>
       <p class="hero-description">
-        Проект GATIVUS состоит из трёх фундаментальных и неразрывно связанных подсистем,
-        реализующих переход от абстрактной теории к сетевому протоколу и физическому оборудованию.
+        {{ t.heroDescription }}
       </p>
     </section>
 
@@ -23,11 +22,10 @@
       </div>
       <div class="card-body">
         <p>
-          GTOM рассматривает феномен сознания не как монолитную структуру, а как динамическую
-          суперпозицию трёх независимых уровней (компонентов).
+          {{ t.gtomBrief }}
         </p>
         <div class="levels-grid">
-          <div v-for="level in gtomLevels" :key="level.title" class="level-card">
+          <div v-for="level in localizedGtomLevels" :key="level.title" class="level-card">
             <div class="level-icon-wrapper">
               <span class="level-number">{{ level.num }}</span>
             </div>
@@ -38,9 +36,7 @@
           </div>
         </div>
         <blockquote class="info-quote">
-          Сознание моделируется как гипер-карта из 11 слоёв элементарных карт — от сенсорных входов
-          до структур обработки качеств. Теория строго утверждает, что полное сознание имеет
-          техническую, вычислимую природу и может быть полностью реализовано аппаратно.
+          {{ t.gtomQuote }}
         </blockquote>
       </div>
     </section>
@@ -53,8 +49,7 @@
       </div>
       <div class="card-body">
         <p>
-          Принципы GTOM используются для проектирования физической распределённой сети
-          на основе существующих технологий и инфраструктуры, придавая им новую логику когерентности.
+          {{ t.gnetBrief }}
         </p>
         <div class="net-grid">
           <div class="net-concept">
@@ -62,19 +57,18 @@
               <UIcon name="i-heroicons-circle-stack" class="net-icon-svg" />
             </div>
             <h3>Nodes</h3>
-            <p>Цифровые сетевые сущности, размещённые на специализированных периферийных устройствах (GATE)</p>
+            <p>{{ t.gnetNodes }}</p>
           </div>
           <div class="net-concept">
             <div class="net-icon">
               <UIcon name="i-heroicons-arrow-path-rounded-square" class="net-icon-svg" />
             </div>
             <h3>Virtual Links</h3>
-            <p>Синаптические соединения через глобальную маршрутизацию Интернета на базе IPv6</p>
+            <p>{{ t.gnetLinks }}</p>
           </div>
         </div>
         <blockquote class="info-quote">
-          Основа GNET — существующая инфраструктура IPv6, обеспечивающая уникальную глобальную адресацию
-          с расширениями протокола без нарушения текущих стандартов RFC.
+          {{ t.gnetQuote }}
         </blockquote>
       </div>
     </section>
@@ -87,26 +81,24 @@
       </div>
       <div class="card-body">
         <p>
-          GATE — физическое устройство для хранения, исполнения и защиты узлов нейронной сети.
-          Построено на современных компьютерных архитектурах с возможностью горизонтального масштабирования.
+          {{ t.gateBrief }}
         </p>
         <div class="gate-stats">
           <div class="stat-item">
             <span class="stat-value">10⁹</span>
-            <span class="stat-label">искусственных нейронов на одно устройство</span>
+            <span class="stat-label">{{ t.gateNeurons }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-value">IPv6</span>
-            <span class="stat-label">глобальная адресация каждого узла</span>
+            <span class="stat-label">{{ t.gateIpv6 }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-value">OSS</span>
-            <span class="stat-label">исключительно open-source основа</span>
+            <span class="stat-label">{{ t.gateOss }}</span>
           </div>
         </div>
         <blockquote class="info-quote">
-          Практическая реализация GATE строго опирается на операционные системы с открытым исходным кодом,
-          предоставляя Qualitative Consciousness (GTOM) надёжный физический субстрат для непрерывной работы.
+          {{ t.gateQuote }}
         </blockquote>
       </div>
     </section>
@@ -114,16 +106,14 @@
     <!-- NDDI -->
     <section class="section-card">
       <div class="card-header">
-        <h2 class="card-header-title">NDDI — Network Digital Domain Instance</h2>
+        <h2 class="card-header-title">{{ t.nddiTitle }}</h2>
       </div>
       <div class="card-body">
         <p>
-          Вся сеть построена из унифицированных NDDI — адресуемых экземпляров,
-          существующих в рамках домена Gativus. Каждый NDDI обладает глобально уникальным именем (UNON)
-          в пространстве IPv6. Внутренние компоненты NDDI группируются в 6 функциональных типов:
+          {{ t.nddiBrief }}
         </p>
         <div class="nddi-tags">
-          <div v-for="section in nddiSections" :key="section.letter" class="nddi-tag">
+          <div v-for="section in localizedNddiSections" :key="section.letter" class="nddi-tag">
             <span class="nddi-letter">{{ section.letter }}</span>
             <span class="nddi-label">{{ section.label }}</span>
           </div>
@@ -134,14 +124,14 @@
     <!-- CTA -->
     <section class="section-card cta-card">
       <div class="card-body cta-body">
-        <h2 class="cta-title">Начните изучение</h2>
+        <h2 class="cta-title">{{ t.ctaTitle }}</h2>
         <p class="cta-text">
-          Перейдите к книгам Gativus, чтобы погрузиться в полную теорию и спецификации проекта.
+          {{ t.ctaText }}
         </p>
         <div class="cta-buttons">
-          <NuxtLink to="/courses" class="cta-button primary">
+          <NuxtLink to="/articles" class="cta-button primary">
             <UIcon name="i-heroicons-book-open" />
-            Статьи Gativus
+            {{ t.ctaArticles }}
           </NuxtLink>
           <a href="mailto:gativusmedia@outlook.com" class="cta-button secondary">
             <UIcon name="i-heroicons-envelope" />
@@ -154,37 +144,125 @@
 </template>
 
 <script setup lang="ts">
-const gtomLevels = [
-  {
-    num: '1',
-    title: 'Spatial Consciousness',
-    description: 'Навигация и ориентация в 3D-пространстве. Система работает с генетически предопределёнными целями и строит топологические маршруты для их достижения.'
-  },
-  {
-    num: '2',
-    title: 'Symbolic Consciousness',
-    description: 'Взаимодействие в многомерном пространстве концептов. Каждый концепт имеет свой вектор и символ. LLM/GPT имитируют этот слой, но манипуляция символами недостаточна для субъективности.'
-  },
-  {
-    num: '3',
-    title: 'Qualitative Consciousness',
-    description: 'Формирование сложных целевых концептов — «красота», «правильность», «честь». Оператор Гегелевского Aufheben превращает систему из калькулятора в Субъект с интенцией к самосовершенствованию.'
-  }
-]
+import { useLanguageStore } from '~/stores/language'
 
-const nddiSections = [
-  { letter: 'V', label: 'Information Values — значения в адресуемых контейнерах' },
-  { letter: 'B', label: 'Autonomous Behavior — внутренний отклик NDDI' },
-  { letter: 'S', label: 'Structure — скелетная информация для репликации' },
-  { letter: 'G', label: 'Security Management — правила и безопасность' },
-  { letter: 'T', label: 'Target Management — внешний отклик NDDI' },
-  { letter: 'A', label: 'Aggregation — агрегация данных' }
-]
+const langStore = useLanguageStore()
+
+const uiDict: Record<string, any> = {
+  en: {
+    heroTitle: 'ABOUT PROJECT',
+    heroSubtitle: 'Gativus Wiki — Knowledge Base',
+    heroDescription: 'The GATIVUS project consists of three fundamental and inextricably linked subsystems, realizing the transition from abstract theory to network protocol and physical hardware.',
+    gtomBrief: 'GTOM considers the phenomenon of consciousness not as a monolithic structure, but as a dynamic superposition of three independent levels (components).',
+    gtomQuote: 'Consciousness is modeled as a hyper-map of 11 layers of elementary maps — from sensory inputs to quality processing structures. The theory strictly states that full consciousness has a technical, computable nature and can be fully realized in hardware.',
+    gnetBrief: 'GTOM principles are used to design a physical distributed network based on existing technologies and infrastructure, giving them a new logic of coherence.',
+    gnetNodes: 'Digital network entities hosted on specialized edge devices (GATE)',
+    gnetLinks: 'Synaptic connections via global Internet routing on IPv6 base',
+    gnetQuote: 'The basis of GNET is the existing IPv6 infrastructure, providing unique global addressing with protocol extensions without breaking current RFC standards.',
+    gateBrief: 'GATE is a physical device for storing, executing, and protecting neural network nodes. Built on modern computer architectures with horizontal scaling capability.',
+    gateNeurons: 'artificial neurons per device',
+    gateIpv6: 'global addressing for each node',
+    gateOss: 'exclusively open-source base',
+    gateQuote: 'The practical implementation of GATE strictly relies on open-source operating systems, providing Qualitative Consciousness (GTOM) with a reliable physical substrate for continuous operation.',
+    nddiTitle: 'NDDI — Network Digital Domain Instance',
+    nddiBrief: 'The entire network is built from unified NDDIs — addressable instances existing within the Gativus domain. Each NDDI has a globally unique name (UNON) in IPv6 space. Internal NDDI components are grouped into 6 functional types:',
+    ctaTitle: 'Start Exploring',
+    ctaText: 'Explore Gativus articles to dive deep into the full theory and project specifications.',
+    ctaArticles: 'Gativus Articles',
+    metaTitle: 'About — Gativus Wiki',
+    metaDesc: 'GTOM · GNET · GATE — from theory of mind to physical device. Full Gativus project architecture.'
+  },
+  ru: {
+    heroTitle: 'О ПРОЕКТЕ',
+    heroSubtitle: 'Gativus Wiki — база знаний',
+    heroDescription: 'Проект GATIVUS состоит из трёх фундаментальных и неразрывно связанных подсистем, реализующих переход от абстрактной теории к сетевому протоколу и физическому оборудованию.',
+    gtomBrief: 'GTOM рассматривает феномен сознания не как монолитную структуру, а как динамическую суперпозицию трёх независимых уровней (компонентов).',
+    gtomQuote: 'Сознание моделируется как гипер-карта из 11 слоёв элементарных карт — от сенсорных входов до структур обработки качеств. Теория строго утверждает, что полное сознание имеет техническую, вычислимую природу и может быть полностью реализовано аппаратно.',
+    gnetBrief: 'Принципы GTOM используются для проектирования физической распределённой сети на основе существующих технологий и инфраструктуры, придавая им новую логику когерентности.',
+    gnetNodes: 'Цифровые сетевые сущности, размещённые на специализированных периферийных устройствах (GATE)',
+    gnetLinks: 'Синаптические соединения через глобальную маршрутизацию Интернета на базе IPv6',
+    gnetQuote: 'Основа GNET — существующая инфраструктура IPv6, обеспечивающая уникальную глобальную адресацию с расширениями протокола без нарушения текущих стандартов RFC.',
+    gateBrief: 'GATE — физическое устройство для хранения, исполнения и защиты узлов нейронной сети. Построено на современных компьютерных архитектурах с возможностью горизонтального масштабирования.',
+    gateNeurons: 'искусственных нейронов на одно устройство',
+    gateIpv6: 'глобальная адресация каждого узла',
+    gateOss: 'исключительно open-source основа',
+    gateQuote: 'Практическая реализация GATE строго опирается на операционные системы с открытым исходным кодом, предоставляя Qualitative Consciousness (GTOM) надёжный физический субстрат для непрерывной работы.',
+    nddiTitle: 'NDDI — Network Digital Domain Instance',
+    nddiBrief: 'Вся сеть построена из унифицированных NDDI — адресуемых экземпляров, существующих в рамках домена Gativus. Каждый NDDI обладает глобально уникальным именем (UNON) в пространстве IPv6. Внутренние компоненты NDDI группируются в 6 функциональных типов:',
+    ctaTitle: 'Начните изучение',
+    ctaText: 'Перейдите к статьям Gativus, чтобы погрузиться в полную теорию и спецификации проекта.',
+    ctaArticles: 'Статьи Gativus',
+    metaTitle: 'О проекте — Gativus Wiki',
+    metaDesc: 'GTOM · GNET · GATE — от теории сознания к физическому устройству. Полная архитектура проекта Gativus.'
+  }
+}
+
+const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+
+const localizedGtomLevels = computed(() => {
+  if (langStore.currentLang === 'en') {
+    return [
+      {
+        num: '1',
+        title: 'Spatial Consciousness',
+        description: 'Navigation and orientation in 3D space. The system works with genetically predefined goals and builds topological routes to achieve them.'
+      },
+      {
+        num: '2',
+        title: 'Symbolic Consciousness',
+        description: 'Interaction in multidimensional space of concepts. Each concept has its vector and symbol. LLMs/GPTs mimic this layer, but symbol manipulation is insufficient for subjectivity.'
+      },
+      {
+        num: '3',
+        title: 'Qualitative Consciousness',
+        description: 'Formation of complex target concepts — "beauty", "correctness", "honor". The Hegelian Aufheben operator turns the system from a calculator into a Subject with intention for self-improvement.'
+      }
+    ]
+  }
+  return [
+    {
+      num: '1',
+      title: 'Spatial Consciousness',
+      description: 'Навигация и ориентация в 3D-пространстве. Система работает с генетически предопределёнными целями и строит топологические маршруты для их достижения.'
+    },
+    {
+      num: '2',
+      title: 'Symbolic Consciousness',
+      description: 'Взаимодействие в многомерном пространстве концептов. Каждый концепт имеет свой вектор и символ. LLM/GPT имитируют этот слой, но манипуляция символами недостаточна для субъективности.'
+    },
+    {
+      num: '3',
+      title: 'Qualitative Consciousness',
+      description: 'Формирование сложных целевых концептов — «красота», «правильность», «честь». Оператор Гегелевского Aufheben превращает систему из калькулятора в Субъект с интенцией к самосовершенствованию.'
+    }
+  ]
+})
+
+const localizedNddiSections = computed(() => {
+  if (langStore.currentLang === 'en') {
+    return [
+      { letter: 'V', label: 'Information Values — values in addressable containers' },
+      { letter: 'B', label: 'Autonomous Behavior — internal NDDI response' },
+      { letter: 'S', label: 'Structure — skeletal information for replication' },
+      { letter: 'G', label: 'Security Management — rules and security' },
+      { letter: 'T', label: 'Target Management — external NDDI response' },
+      { letter: 'A', label: 'Aggregation — data aggregation' }
+    ]
+  }
+  return [
+    { letter: 'V', label: 'Information Values — значения в адресуемых контейнерах' },
+    { letter: 'B', label: 'Autonomous Behavior — внутренний отклик NDDI' },
+    { letter: 'S', label: 'Structure — скелетная информация для репликации' },
+    { letter: 'G', label: 'Security Management — правила и безопасность' },
+    { letter: 'T', label: 'Target Management — внешний отклик NDDI' },
+    { letter: 'A', label: 'Aggregation — агрегация данных' }
+  ]
+})
 
 useSeoMeta({
-  title: 'Gativus Wiki — О проекте',
-  description: 'GTOM · GNET · GATE — от теории сознания к физическому устройству. Полная архитектура проекта Gativus.',
-  ogDescription: 'Gativus — от теории сознания к физическому устройству.',
+  title: () => t.value.metaTitle,
+  description: () => t.value.metaDesc,
+  ogDescription: () => t.value.metaDesc,
   ogImage: '/images/121px-Logo.jpg',
 })
 

@@ -221,5 +221,42 @@ export async function runMigrations(db: Database) {
 
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_terms_term_article_id ON terms(term_article_id)`)
 
+  // ─── 15. Phase 4: Universal Edges & i18n ───
+  // Localized Terms
+  try {
+    const termCols = await db.prepare('PRAGMA table_info(terms)').all() as any[]
+    if (!termCols.some((c: any) => c.name === 'title_ru')) {
+      await db.exec(`ALTER TABLE terms ADD COLUMN title_ru TEXT`)
+      await db.exec(`ALTER TABLE terms ADD COLUMN definition_ru TEXT`)
+      await db.exec(`ALTER TABLE terms ADD COLUMN slug_ru TEXT`)
+      console.log('[migrate] Added Russian localization columns to terms')
+    }
+  } catch { /* ignore */ }
+
+  // Localized Categories
+  try {
+    const catCols = await db.prepare('PRAGMA table_info(categories)').all() as any[]
+    if (!catCols.some((c: any) => c.name === 'title_ru')) {
+      await db.exec(`ALTER TABLE categories ADD COLUMN title_ru TEXT`)
+      await db.exec(`ALTER TABLE categories ADD COLUMN description_ru TEXT`)
+      await db.exec(`ALTER TABLE categories ADD COLUMN slug_ru TEXT`)
+      console.log('[migrate] Added Russian localization columns to categories')
+    }
+  } catch { /* ignore */ }
+
+  // Synchronize Article Category/Book across translations
+  try {
+    console.log('[migrate] Synchronizing article metadata (category/book) across translations...')
+    await db.exec(`
+      UPDATE articles 
+      SET 
+        category_id = (SELECT category_id FROM articles origin WHERE origin.id = articles.origin_id),
+        book_id = (SELECT book_id FROM articles origin WHERE origin.id = articles.origin_id)
+      WHERE origin_id IS NOT NULL AND origin_id != id
+    `)
+  } catch (e) {
+    console.log('[migrate] Article synchronization failed (possibly origin_id NULL):', e)
+  }
+
   console.log('[migrate] All migrations completed ✓')
 }

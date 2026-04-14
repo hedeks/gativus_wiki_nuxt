@@ -22,6 +22,7 @@ const { data: articlesData, refresh } = await useFetch('/api/articles', {
     search: search.value || undefined,
     book_id: filterBookId.value || undefined,
     published_only: 'false',
+    include_term_articles: 'true',
   })),
   headers: store.getAuthHeader(),
 })
@@ -154,6 +155,7 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
               >
                 {{ article.is_published ? 'Опубликовано' : 'Черновик' }}
               </span>
+              <span v-if="article.is_term_article" class="term-badge" title="Раскрытие термина">Термин</span>
               <UIcon v-if="article.presentation_path" name="i-heroicons-presentation-chart-bar" class="pres-indicator" title="Есть презентация" />
             </td>
             <td class="text-muted">{{ formatDate(article.updated_at) }}</td>
@@ -248,18 +250,18 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   gap: 8px;
   padding: 10px 18px;
   border-radius: 10px;
-  background: #6366f1;
+  background: #0ea5e9;
   color: #fff;
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
   transition: all 0.2s;
 }
-.header-btn:hover { background: #4f46e5; transform: translateY(-1px); }
-.header-btn--secondary { background: #f3f4f6; color: #555; }
-.dark .header-btn--secondary { background: #252528; color: #aaa; }
-.header-btn--secondary:hover { background: #e5e7eb; }
-.dark .header-btn--secondary:hover { background: #333; }
+.header-btn:hover { background: #0284c7; transform: translateY(-1px); }
+.header-btn--secondary { background: #f1f5f9; color: #555; }
+.dark .header-btn--secondary { background: #27272a; color: #aaa; }
+.header-btn--secondary:hover { background: #e2e8f0; }
+.dark .header-btn--secondary:hover { background: #3f3f46; }
 
 /* ─── Filters ─── */
 .filters-bar {
@@ -321,13 +323,14 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
 /* ─── Table ─── */
 .table-wrap {
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
   overflow: hidden;
+  box-shadow: 0 0 1px 1px rgba(119, 119, 119, 0.05);
 }
 .dark .table-wrap {
-  background: #1e1e21;
-  border-color: #2a2a2e;
+  background: #18181b;
+  border-color: #27272a;
 }
 
 .articles-table {
@@ -406,6 +409,23 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
 .dark .status--published { background: #064e3b; color: #34d399; }
 .status--draft { background: #fef3c7; color: #d97706; }
 .dark .status--draft { background: #451a03; color: #fbbf24; }
+.term-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #f0f9ff;
+  color: #0ea5e9;
+  border: 1px solid #bae6fd;
+  text-transform: uppercase;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.dark .term-badge {
+  background: #082f49;
+  color: #7dd3fc;
+  border-color: #0c4a6e;
+}
 
 .text-muted { color: #888; font-size: 13px; }
 

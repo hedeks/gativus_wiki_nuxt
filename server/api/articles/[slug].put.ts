@@ -34,9 +34,13 @@ export default defineEventHandler(async (event) => {
 
   // ─── Phase 3: Auto-linking terms ───
   let processedHtml = html_content
+  let linkedTermIds: number[] = []
+  
   if (html_content !== undefined) {
     const termsMap = await buildTermsMap(db)
-    processedHtml = linkTermsInHtml(html_content, termsMap)
+    const result = linkTermsInHtml(html_content, termsMap)
+    processedHtml = result.html
+    linkedTermIds = result.linkedTermIds
   }
 
   const finalExcerpt = excerpt || (processedHtml ? generateExcerptFromHtml(processedHtml) : undefined)
@@ -65,6 +69,17 @@ export default defineEventHandler(async (event) => {
   await db.prepare(
     `UPDATE articles SET ${updates.join(', ')} WHERE id = ?`
   ).run(...params, existing.id)
+
+  // ─── Phase 4: Sync Knowledge Graph ───
+  if (html_content !== undefined) {
+    await db.prepare('DELETE FROM article_terms WHERE article_id = ?').run(existing.id)
+    if (linkedTermIds.length > 0) {
+      const insertStmt = db.prepare('INSERT INTO article_terms (article_id, term_id) VALUES (?, ?)')
+      for (const termId of linkedTermIds) {
+        insertStmt.run(existing.id, termId)
+      }
+    }
+  }
 
   // Create new revision if html_content changed
   if (html_content !== undefined) {

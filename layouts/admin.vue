@@ -84,6 +84,7 @@ const navItems: NavItem[] = [
   { label: 'Глоссарий', icon: 'i-heroicons-document-magnifying-glass', to: '/admin/glossary' },
   { label: 'Категории', icon: 'i-heroicons-folder', to: '/admin/categories' },
   { label: 'Пользователи', icon: 'i-heroicons-users', to: '/admin/users' },
+  { label: 'Синхронизация', icon: 'i-heroicons-cloud', to: '/admin/sync' },
 ]
 
 function handleLogout() {
@@ -116,7 +117,7 @@ function handleLogout() {
   left: 0;
   bottom: 0;
   z-index: 40;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.4s cubic-bezier(0.705, 0.010, 0.000, 0.915);
 }
 
 .dark .admin-sidebar {
@@ -330,8 +331,8 @@ function handleLogout() {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(8px);
   z-index: 35;
 }
 

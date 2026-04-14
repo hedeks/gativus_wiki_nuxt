@@ -23,13 +23,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Термин не найден' })
   }
 
-  const { title, definition, aliases, html_content, category_id, change_summary, presentation_path } = body
+  const { title, title_ru, definition, definition_ru, slug_ru, aliases, html_content, category_id, change_summary, presentation_path } = body
 
   const updates: string[] = []
   const params: any[] = []
 
   if (title !== undefined) { updates.push('title = ?'); params.push(title) }
+  if (title_ru !== undefined) { updates.push('title_ru = ?'); params.push(title_ru) }
   if (definition !== undefined) { updates.push('definition = ?'); params.push(definition) }
+  if (definition_ru !== undefined) { updates.push('definition_ru = ?'); params.push(definition_ru) }
+  
   if (aliases !== undefined) {
     const json = Array.isArray(aliases) ? JSON.stringify(aliases) : JSON.stringify([aliases])
     updates.push('aliases = ?')
@@ -44,6 +47,19 @@ export default defineEventHandler(async (event) => {
     params.push(newSlug)
   }
 
+  // Handle slug_ru change
+  if (slug_ru !== undefined) {
+    let finalSlugRu = slug_ru ? slugify(slug_ru) : null
+    if (finalSlugRu) {
+       // Ensure uniqueness check for slug_ru if needed, but let's just use it for now 
+       // or assume it's same namespace as slug
+       updates.push('slug_ru = ?')
+       params.push(finalSlugRu)
+    } else {
+       updates.push('slug_ru = NULL')
+    }
+  }
+
   // Handle html_content and presentation_path — create or update linked article
   if (html_content !== undefined || presentation_path !== undefined) {
     const termsMap = await buildTermsMap(db)
@@ -54,9 +70,16 @@ export default defineEventHandler(async (event) => {
       currentArticle = await db.prepare('SELECT html_content, presentation_path FROM articles WHERE id = ?').get(existing.term_article_id)
     }
 
-    const finalHtml = html_content !== undefined 
-      ? linkTermsInHtml(html_content, termsMap)
-      : (currentArticle?.html_content || '')
+    let finalHtml = ''
+    let linkedTermIds: number[] = []
+
+    if (html_content !== undefined) {
+      const result = linkTermsInHtml(html_content, termsMap)
+      finalHtml = result.html
+      linkedTermIds = result.linkedTermIds
+    } else {
+      finalHtml = currentArticle?.html_content || ''
+    }
     
     const finalPresPath = presentation_path !== undefined
       ? presentation_path
@@ -83,6 +106,17 @@ export default defineEventHandler(async (event) => {
           VALUES (?, ?, ?, ?, ?)
         `).run(existing.term_article_id, finalHtml, nextNum, change_summary || null, auth.id)
       }
+
+      // Sync article_terms for the disclosure article
+      if (html_content !== undefined) {
+        await db.prepare('DELETE FROM article_terms WHERE article_id = ?').run(existing.term_article_id)
+        if (linkedTermIds.length > 0) {
+          const insertStmt = db.prepare('INSERT INTO article_terms (article_id, term_id) VALUES (?, ?)')
+          for (const tId of linkedTermIds) {
+            insertStmt.run(existing.term_article_id, tId)
+          }
+        }
+      }
     } else {
       // Create new linked article
       const termTitle = title || (await db.prepare('SELECT title FROM terms WHERE id = ?').get(existing.id) as any)?.title
@@ -101,6 +135,14 @@ export default defineEventHandler(async (event) => {
         INSERT INTO article_revisions (article_id, html_content, revision_num, change_summary, created_by)
         VALUES (?, ?, 1, 'Initial version (term article)', ?)
       `).run(newArticleId, finalHtml, auth.id)
+
+      // Sync article_terms for the NEW disclosure article
+      if (linkedTermIds.length > 0) {
+        const insertStmt = db.prepare('INSERT INTO article_terms (article_id, term_id) VALUES (?, ?)')
+        for (const tId of linkedTermIds) {
+          insertStmt.run(newArticleId, tId)
+        }
+      }
 
       updates.push('term_article_id = ?')
       params.push(newArticleId)

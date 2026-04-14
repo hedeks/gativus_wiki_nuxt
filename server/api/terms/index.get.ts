@@ -16,17 +16,28 @@ export default defineEventHandler(async (event) => {
   const search = (query.search as string) || null
   const letter = (query.letter as string) || null   // e.g. "A" or "А"
   const categoryId = query.category_id ? parseInt(query.category_id as string) : null
+  const lang = (query.lang as string) || 'ru'
 
   const conditions: string[] = []
   const params: any[] = []
 
   if (search) {
-    conditions.push('(t.title LIKE ? OR t.aliases LIKE ? OR t.definition LIKE ?)')
-    params.push(`%${search}%`, `%${search}%`, `%${search}%`)
+    if (lang === 'ru') {
+      conditions.push('(t.title_ru LIKE ? OR t.title LIKE ? OR t.aliases LIKE ? OR t.definition_ru LIKE ? OR t.definition LIKE ?)')
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`)
+    } else {
+      conditions.push('(t.title LIKE ? OR t.aliases LIKE ? OR t.definition LIKE ?)')
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`)
+    }
   }
   if (letter) {
-    conditions.push('(t.title LIKE ? OR t.title LIKE ?)')
-    params.push(`${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`)
+    if (lang === 'ru') {
+      conditions.push('(t.title_ru LIKE ? OR t.title_ru LIKE ? OR t.title LIKE ? OR t.title LIKE ?)')
+      params.push(`${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`, `${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`)
+    } else {
+      conditions.push('(t.title LIKE ? OR t.title LIKE ?)')
+      params.push(`${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`)
+    }
   }
   if (categoryId) {
     conditions.push('a.category_id = ?')
@@ -47,20 +58,22 @@ export default defineEventHandler(async (event) => {
 
   const items = await db.prepare(`
     SELECT
-      t.id, t.slug, t.title, t.aliases, t.definition,
+      t.id, t.slug, t.slug_ru, t.title, t.title_ru, t.aliases, t.definition, t.definition_ru,
       t.term_article_id, t.created_at, t.updated_at,
       a.category_id,
       c.title as category_title,
+      c.title_ru as category_title_ru,
       c.slug as category_slug,
+      c.slug_ru as category_slug_ru,
       c.icon as category_icon,
       c.color as category_color
     FROM terms t
     LEFT JOIN articles a ON t.term_article_id = a.id
     LEFT JOIN categories c ON a.category_id = c.id
     ${whereClause}
-    ORDER BY t.title ASC
+    ORDER BY CASE WHEN ? = 'ru' AND t.title_ru IS NOT NULL THEN t.title_ru ELSE t.title END ASC
     LIMIT ? OFFSET ?
-  `).all(...params, limit, offset) as any[]
+  `).all(...params, lang, limit, offset) as any[]
 
   // Fetch available letters for the alphabet filter
   // We take the first character of each title (in uppercase)
@@ -72,11 +85,18 @@ export default defineEventHandler(async (event) => {
   const availableLetters = lettersResult.map(r => r.letter).filter(l => /^[A-ZА-Я]$/i.test(l))
 
   return {
-    items: (items || []).map(t => ({
-      ...t,
-      aliases: t.aliases ? JSON.parse(t.aliases) : [],
-      has_article: Boolean(t.term_article_id),
-    })),
+    items: (items || []).map(t => {
+      const isRu = lang === 'ru'
+      return {
+        ...t,
+        title: (isRu && t.title_ru) ? t.title_ru : t.title,
+        definition: (isRu && t.definition_ru) ? t.definition_ru : t.definition,
+        category_title: (isRu && t.category_title_ru) ? t.category_title_ru : t.category_title,
+        // We keep the primary slug for stability but could support slug_ru if needed
+        aliases: t.aliases ? JSON.parse(t.aliases) : [],
+        has_article: Boolean(t.term_article_id),
+      }
+    }),
     total,
     page,
     pages,

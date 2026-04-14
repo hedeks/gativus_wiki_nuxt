@@ -8,20 +8,58 @@
     </div>
 
     <form class="term-form" @submit.prevent="handleSubmit">
-
-      <!-- Title -->
-      <div class="field">
-        <label class="field-label">Название <span class="required">*</span></label>
-        <input v-model="form.title" class="field-input" placeholder="Например: b-вектор" required />
-        <p class="field-hint">Отображаемое название термина</p>
+      
+      <!-- ODT Upload Section -->
+      <div class="odt-upload-section mb-6">
+        <label class="field-label">Импорт из ODT</label>
+        <div class="odt-dropzone">
+          <input type="file" ref="odtFileInput" class="hidden" accept=".odt" @change="handleOdtUpload" />
+          <UButton 
+            color="gray" 
+            variant="soft" 
+            icon="i-heroicons-arrow-up-tray" 
+            :loading="odtUploading"
+            @click="$refs.odtFileInput.click()"
+          >
+            Выбрать .odt файл
+          </UButton>
+          <p class="text-xs text-gray-500 mt-2">Текст из ODT можно вставить в определение или в статью-раскрытие</p>
+        </div>
       </div>
 
-      <!-- Slug -->
-      <div class="field">
-        <label class="field-label">Slug</label>
-        <input v-model="form.slug" class="field-input mono" :placeholder="autoSlug" />
-        <p class="field-hint">URL-идентификатор. Оставьте пустым — сгенерируется автоматически</p>
-      </div>
+      <UTabs :items="tabItems" class="mb-8">
+        <template #item="{ item }">
+          <div v-if="item.key === 'ru'" class="tab-content">
+            <div class="field">
+              <label class="field-label">Название (RU) <span class="required">*</span></label>
+              <input v-model="form.title_ru" class="field-input" placeholder="Название на русском" />
+            </div>
+            <div class="field">
+              <label class="field-label">Slug (RU)</label>
+              <input v-model="form.slug_ru" class="field-input" placeholder="slug-na-russkom" />
+            </div>
+            <div class="field">
+              <label class="field-label">Определение (RU) <span class="required">*</span></label>
+              <UTextarea v-model="form.definition_ru" :rows="4" class="field-textarea" placeholder="Краткое определение на русском..." />
+            </div>
+          </div>
+          
+          <div v-else-if="item.key === 'en'" class="tab-content">
+            <div class="field">
+              <label class="field-label">Название (EN/Default) <span class="required">*</span></label>
+              <input v-model="form.title" class="field-input" required placeholder="Term title" />
+            </div>
+            <div class="field">
+              <label class="field-label">Slug (EN/Default)</label>
+              <input v-model="form.slug" class="field-input mono" :placeholder="autoSlug" />
+            </div>
+            <div class="field">
+              <label class="field-label">Определение (EN/Default) <span class="required">*</span></label>
+              <UTextarea v-model="form.definition" :rows="4" class="field-textarea" required placeholder="Brief definition in English..." />
+            </div>
+          </div>
+        </template>
+      </UTabs>
 
       <!-- Aliases -->
       <div class="field">
@@ -41,38 +79,23 @@
             @keydown.comma.prevent="addAlias"
           />
         </div>
-        <p class="field-hint">Нажмите Enter или запятую для добавления</p>
-      </div>
-
-      <!-- Definition -->
-      <div class="field">
-        <label class="field-label">Определение <span class="required">*</span></label>
-        <textarea
-          v-model="form.definition"
-          class="field-textarea"
-          rows="3"
-          placeholder="Краткое определение в 1–2 предложения (plain text). Отображается в попапе и карточке."
-          required
-        />
       </div>
 
       <!-- Category -->
       <div class="field">
-        <label class="field-label">Категория</label>
+        <label class="field-label">Категория (Универсальная)</label>
         <select v-model="form.category_id" class="field-input">
           <option :value="null">Без категории</option>
           <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-            {{ cat.title }}
+            {{ cat.title_ru || cat.title }}
           </option>
         </select>
-        <p class="field-hint">Категория применяется к статье-раскрытию. Если статьи нет — не используется.</p>
       </div>
 
       <!-- Presentation -->
       <div class="field">
         <label class="field-label">Путь к презентации</label>
         <input v-model="form.presentation_path" class="field-input" placeholder="/presentations/your-file.pdf" />
-        <p class="field-hint">Опционально. Если указано, будет создана статья с этой презентацией.</p>
       </div>
 
       <!-- Full article -->
@@ -100,11 +123,10 @@
             ref="editorRef"
             v-model="form.html_content"
             class="field-textarea editor-textarea"
-            rows="16"
-            placeholder="Опционально. Расширенное раскрытие термина в HTML-формате.&#10;Будет отображаться на странице /glossary/:slug."
+            rows="12"
+            placeholder="Опционально. Расширенное раскрытие термина в HTML-формате. Будет отображаться на странице /glossary/:slug."
           />
         </div>
-        <p class="field-hint">Если заполнено — будет создана скрытая статья-раскрытие (is_term_article = true)</p>
       </div>
 
       <!-- Actions -->
@@ -135,23 +157,64 @@ definePageMeta({ layout: 'admin', middleware: 'auth' })
 useSeoMeta({ title: 'Создать термин — Admin' })
 
 const router = useRouter()
+const store = userStore()
+const toast = useToast()
+
+const tabItems = [
+  { key: 'ru', label: 'Русский (RU)', icon: 'i-heroicons-language' },
+  { key: 'en', label: 'English (EN)', icon: 'i-heroicons-globe-alt' }
+]
 
 const form = reactive({
   title: '',
+  title_ru: '',
   slug: '',
+  slug_ru: '',
   aliases: [] as string[],
   definition: '',
+  definition_ru: '',
   html_content: '',
   presentation_path: '',
   category_id: null as number | null,
 })
 
 const aliasInput = ref('')
-const store = userStore()
 const submitting = ref(false)
+const odtUploading = ref(false)
 const error = ref('')
 const editorRef = ref<HTMLTextAreaElement>()
 const showTermModal = ref(false)
+
+async function handleOdtUpload(event: Event) {
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length) return
+  
+  const file = input.files[0]
+  const formData = new FormData()
+  formData.append('file', file)
+
+  odtUploading.value = true
+  try {
+    const { html } = await $fetch<{ html: string }>('/api/admin/uploads/odt-to-html', {
+      method: 'POST',
+      headers: store.getAuthHeader(),
+      body: formData
+    })
+
+    // Populate both full article and definitions as defaults
+    form.html_content = html
+    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    if (!form.definition_ru) form.definition_ru = text
+    else if (!form.definition) form.definition = text
+    
+    toast.add({ title: 'ODT импортирован', description: 'Контент добавлен в форму', color: 'green' })
+  } catch (e: any) {
+    toast.add({ title: 'Ошибка импорта', description: e.data?.statusMessage || e.message, color: 'red' })
+  } finally {
+    odtUploading.value = false
+    input.value = ''
+  }
+}
 
 function insertTerm(term: any) {
   const ta = editorRef.value
@@ -179,7 +242,8 @@ const { data: categoriesData } = await useAsyncData('admin-cats', () =>
     headers: store.getAuthHeader(),
   })
 )
-const categories = computed(() => categoriesData.value?.items || [])
+// categoriesData.value is { items: [...] } based on previous view
+const categories = computed(() => categoriesData.value?.items || (Array.isArray(categoriesData.value) ? categoriesData.value : []))
 
 function addAlias() {
   const val = aliasInput.value.trim().replace(/,$/, '')
@@ -218,9 +282,12 @@ async function handleSubmit() {
       },
       body: {
         title: form.title,
+        title_ru: form.title_ru || undefined,
         slug: form.slug || undefined,
+        slug_ru: form.slug_ru || undefined,
         aliases: form.aliases,
         definition: form.definition,
+        definition_ru: form.definition_ru || undefined,
         html_content: form.html_content || undefined,
         presentation_path: form.presentation_path || undefined,
         category_id: form.category_id,

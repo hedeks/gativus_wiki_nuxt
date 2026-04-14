@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
 
   const bookId = query.book_id ? parseInt(query.book_id as string) : null
   const categoryId = query.category_id ? parseInt(query.category_id as string) : null
-  const locale = (query.locale as string) || null
+  const lang = (query.lang as string) || (query.locale as string) || null
   const search = (query.search as string) || null
   const publishedOnly = query.published_only !== 'false'
   const includeTermArticles = query.include_term_articles === 'true'
@@ -42,10 +42,13 @@ export default defineEventHandler(async (event) => {
     conditions.push('a.category_id = ?')
     params.push(categoryId)
   }
-  if (locale) {
+  
+  // If we want to filter by the selected language (now optional)
+  if (lang) {
     conditions.push('a.locale = ?')
-    params.push(locale)
+    params.push(lang)
   }
+
   if (search) {
     conditions.push('(a.title LIKE ? OR a.excerpt LIKE ?)')
     params.push(`%${search}%`, `%${search}%`)
@@ -67,11 +70,12 @@ export default defineEventHandler(async (event) => {
   const items = await db.prepare(`
     SELECT 
       a.id, a.slug, a.title, a.excerpt, a.book_id, a.category_id,
-      a.locale, a.sort_order, a.is_published, a.created_at, a.updated_at, a.presentation_path,
+      a.locale, a.sort_order, a.is_published, a.is_term_article, a.created_at, a.updated_at, a.presentation_path,
       b.title as book_title_en,
       b.title_ru as book_title_ru,
       b.title_zh as book_title_zh,
-      c.title as category_title
+      c.title as category_title,
+      c.title_ru as category_title_ru
     FROM articles a
     LEFT JOIN books b ON a.book_id = b.id
     LEFT JOIN categories c ON a.category_id = c.id
@@ -81,10 +85,15 @@ export default defineEventHandler(async (event) => {
   `).all(...params, limit, offset) as any[]
 
   return {
-    items: (items || []).map(a => ({
-      ...a,
-      book_title: (a.locale === 'ru' ? a.book_title_ru : (a.locale === 'zh' ? a.book_title_zh : a.book_title_en)) || a.book_title_en
-    })),
+    items: (items || []).map(a => {
+      const isRu = lang === 'ru'
+      const isZh = lang === 'zh'
+      return {
+        ...a,
+        book_title: (isRu ? a.book_title_ru : (isZh ? a.book_title_zh : a.book_title_en)) || a.book_title_en,
+        category_title: (isRu && a.category_title_ru) ? a.category_title_ru : a.category_title
+      }
+    }),
     total,
     page,
     pages,

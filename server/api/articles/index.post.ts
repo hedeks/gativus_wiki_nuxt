@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
 
   // ─── Phase 3: Auto-linking terms ───
   const termsMap = await buildTermsMap(db)
-  const processedHtml = linkTermsInHtml(html_content, termsMap)
+  const { html: processedHtml, linkedTermIds } = linkTermsInHtml(html_content, termsMap)
 
   const finalExcerpt = excerpt || generateExcerptFromHtml(processedHtml)
 
@@ -52,6 +52,14 @@ export default defineEventHandler(async (event) => {
     INSERT INTO article_revisions (article_id, html_content, revision_num, change_summary, created_by)
     VALUES (?, ?, 1, ?, ?)
   `).run(articleId, processedHtml, 'Initial version', auth.id)
+
+  // ─── Phase 4: Sync Knowledge Graph ───
+  if (linkedTermIds.length > 0) {
+    const insertStmt = db.prepare('INSERT INTO article_terms (article_id, term_id) VALUES (?, ?)')
+    for (const termId of linkedTermIds) {
+      insertStmt.run(articleId, termId)
+    }
+  }
 
   return {
     id: articleId,

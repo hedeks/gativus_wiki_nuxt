@@ -10,16 +10,16 @@
         </div>
       </div>
       <p class="hero-description">
-        Реализация перехода от абстрактной теории сознания к сетевому протоколу и физическому оборудованию
+        {{ t.heroDescription }}
       </p>
       <div class="hero-cta">
-        <NuxtLink to="/courses" class="cta-button primary">
+        <NuxtLink to="/articles" class="cta-button primary">
           <UIcon name="i-heroicons-book-open" />
-          Статьи
+          {{ t.articles }}
         </NuxtLink>
         <NuxtLink to="/about" class="cta-button secondary">
           <UIcon name="i-heroicons-information-circle" />
-          О проекте
+          {{ t.about }}
         </NuxtLink>
       </div>
     </section>
@@ -27,15 +27,38 @@
 </template>
 
 <script setup lang="ts">
+import { useLanguageStore } from '~/stores/language'
+
+const langStore = useLanguageStore()
+
+const uiDict: Record<string, any> = {
+  en: {
+    heroDescription: 'Implementation of the transition from abstract theory of mind to network protocol and physical hardware.',
+    articles: 'Articles',
+    about: 'About Project',
+    metaTitle: 'Gativus Wiki — Home',
+    metaDesc: 'Gativus — from theory of mind (GTOM) through network (GNET) to physical device (GATE). Official knowledge base.'
+  },
+  ru: {
+    heroDescription: 'Реализация перехода от абстрактной теории сознания к сетевому протоколу и физическому оборудованию.',
+    articles: 'Статьи',
+    about: 'О проекте',
+    metaTitle: 'Gativus Wiki — Главная',
+    metaDesc: 'Gativus — от теории сознания (GTOM) через сеть (GNET) к физическому устройству (GATE). Официальная база знаний.'
+  }
+}
+
+const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 
 useSeoMeta({
   ogImage: '/images/121px-Logo.jpg',
-  description: 'Gativus — от теории сознания (GTOM) через сеть (GNET) к физическому устройству (GATE). Официальная база знаний.',
-  ogDescription: 'Gativus — от теории сознания к физическому устройству. Официальная база знаний.',
-  title: 'Gativus Wiki — Главная',
+  description: () => t.value.metaDesc,
+  ogDescription: () => t.value.metaDesc,
+  title: () => t.value.metaTitle,
 })
+
 useHead({
-  htmlAttrs: { lang: 'ru' },
+  htmlAttrs: { lang: () => langStore.currentLang },
   link: [{ rel: 'icon', type: 'image/svg', href: '/logo.svg' }]
 })
 </script>

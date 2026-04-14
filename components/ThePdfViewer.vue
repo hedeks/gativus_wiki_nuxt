@@ -1,25 +1,15 @@
 <template>
-  <div 
-    class="w-full h-full relative overflow-hidden bg-gray-50 dark:bg-zinc-950 flex flex-col items-center group/viewer" 
-    ref="viewerRoot"
-    @keydown="handleKeyDown"
-    tabindex="0"
-  >
+  <div
+    class="w-full h-full relative overflow-hidden bg-gray-50 dark:bg-zinc-950 flex flex-col items-center group/viewer"
+    ref="viewerRoot" @keydown="handleKeyDown" tabindex="0">
     <!-- Top Page Pill (Floating) - MINIMIZED -->
-    <div
-      v-if="numPages > 0"
-      class="absolute top-5 z-20 flex justify-center items-center px-3 py-1.5 rounded-full h-fit bg-sky-600/80 backdrop-blur-md text-white shadow-lg transition-all duration-300 hover:scale-105 opacity-60 hover:opacity-100"
-    >
+    <div v-if="numPages > 0"
+      class="absolute top-5 z-20 flex justify-center items-center px-3 py-1.5 rounded-full h-fit bg-sky-600/80 backdrop-blur-md text-white shadow-lg transition-all duration-300 hover:scale-105 opacity-60 hover:opacity-100">
       <div class="flex items-center gap-1">
         <div class="relative flex items-center group">
-          <input
-            v-model.number="jumpPage"
-            type="number"
-            min="1"
-            :max="numPages"
+          <input v-model.number="jumpPage" type="number" min="1" :max="numPages"
             class="w-10 bg-white/20 border-none text-center rounded-md font-bold text-xs focus:ring-1 focus:ring-white/50 outline-none p-0 transition-all"
-            @input="handleJumpInput"
-          />
+            @input="handleJumpInput" />
         </div>
         <span class="opacity-70 text-xs">/</span>
         <span class="font-bold text-xs mr-1">{{ numPages }}</span>
@@ -27,108 +17,61 @@
     </div>
 
     <!-- Right Control Panel (Zoom & Fullscreen) - MINIMIZED -->
-    <div class="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2 opacity-50 hover:opacity-100 transition-opacity">
-      <UButton
-        icon="i-heroicons-plus"
-        size="sm"
-        color="sky"
-        variant="soft"
-        class="rounded-full shadow-md backdrop-blur-md bg-white/50 dark:bg-zinc-900/50"
-        @click="zoomIn"
-      />
-      <div class="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md px-1 py-0.5 rounded text-[10px] font-black text-center shadow-sm border border-gray-100 dark:border-zinc-800">
+    <div
+      class="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2 opacity-50 hover:opacity-100 transition-opacity">
+      <UButton icon="i-heroicons-plus" size="sm" color="sky" variant="soft"
+        class="rounded-full shadow-md backdrop-blur-md bg-white/50 dark:bg-zinc-900/50" @click="zoomIn" />
+      <div
+        class="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md px-1 py-0.5 rounded text-[10px] font-black text-center shadow-sm border border-gray-100 dark:border-zinc-800">
         {{ Math.round(scale * 100) }}%
       </div>
-      <UButton
-        icon="i-heroicons-minus"
-        size="sm"
-        color="sky"
-        variant="soft"
-        class="rounded-full shadow-md backdrop-blur-md bg-white/50 dark:bg-zinc-900/50"
-        @click="zoomOut"
-      />
-      <UButton
-        :icon="isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
-        size="sm"
-        color="rose"
-        variant="soft"
+      <UButton icon="i-heroicons-minus" size="sm" color="sky" variant="soft"
+        class="rounded-full shadow-md backdrop-blur-md bg-white/50 dark:bg-zinc-900/50" @click="zoomOut" />
+      <UButton :icon="isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'" size="sm"
+        color="rose" variant="soft"
         class="rounded-full shadow-md backdrop-blur-md bg-rose-50/50 dark:bg-rose-900/20 mt-2"
-        @click="toggleFullscreen"
-      />
-      <UButton
-        icon="i-heroicons-arrow-path"
-        size="xs"
-        color="gray"
-        variant="ghost"
-        class="rounded-full opacity-50 hover:opacity-100"
-        @click="resetZoom"
-      />
+        @click="toggleFullscreen" />
+      <UButton icon="i-heroicons-arrow-path" size="xs" color="gray" variant="ghost"
+        class="rounded-full opacity-50 hover:opacity-100" @click="resetZoom" />
     </div>
 
     <!-- Main View Area (Panning Container) -->
-    <div 
-      class="w-full flex-1 relative overflow-hidden h-full p-4 transition-all duration-300 flex" 
-      ref="container"
-      :class="{ 'cursor-grab': scale > 1 && !isDragging, 'cursor-grabbing': isDragging }"
-      @mousedown="startDragging"
-      @mousemove="onDragging"
-      @mouseup="stopDragging"
-      @mouseleave="stopDragging"
-      @wheel.prevent="handleWheel"
-    >
+    <div class="w-full flex-1 relative overflow-hidden h-full p-4 transition-all duration-300 flex" ref="container"
+      :class="{ 'cursor-grab': scale > 1 && !isDragging, 'cursor-grabbing': isDragging }" @mousedown="startDragging"
+      @mousemove="onDragging" @mouseup="stopDragging" @mouseleave="stopDragging" @wheel.prevent="handleWheel">
       <!-- Center Wrapper: margin auto centers it when smaller than container, scroll works when larger -->
       <div class="m-auto relative flex items-center justify-center">
-        <div
-          v-for="p in visiblePages"
-          :key="p"
+        <div v-for="p in visiblePages" :key="p"
           class="page-container transition-all ease-[cubic-bezier(0.705,0.010,0.000,0.915)] duration-700 flex items-center justify-center pointer-events-none"
           :class="[
-            { 'active-page relative z-10': pageNum === p }, 
+            { 'active-page relative z-10': pageNum === p },
             { 'inactive-page absolute z-0': pageNum !== p },
             { 'translate-y-[150px] scale-[1.15] opacity-0 blur-lg': pageNum < p },
             { 'translate-y-[-150px] scale-[0.85] opacity-0 blur-lg': pageNum > p },
             { 'opacity-100 blur-0 translate-y-0': pageNum === p }
-          ]"
-        >
-          <PdfPage 
-            :pdfDoc="pdfDoc" 
-            :pageNum="p" 
-            :scale="scale" 
-            class="shadow-2xl rounded-lg pointer-events-auto"
-          />
+          ]">
+          <PdfPage :pdfDoc="pdfDoc" :pageNum="p" :scale="scale" class="shadow-2xl rounded-lg pointer-events-auto" />
         </div>
       </div>
 
       <!-- Loading Overlay -->
-      <div v-if="loading" class="absolute inset-0 flex items-center justify-center bg-gray-50/50 dark:bg-zinc-950/50 backdrop-blur-sm z-30">
+      <div v-if="loading"
+        class="absolute inset-0 flex items-center justify-center bg-gray-50/50 dark:bg-zinc-950/50 backdrop-blur-sm z-30">
         <UIcon name="i-heroicons-arrow-path" class="w-12 h-12 text-sky-600 animate-spin" />
       </div>
     </div>
 
     <!-- Floating Navigation Bar (Overlay) - MINIMIZED -->
-    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 dark:bg-black/5 backdrop-blur-md border border-white/10 dark:border-white/5 shadow-xl z-40 transition-all duration-500 opacity-40 hover:opacity-100 hover:bg-white/20 dark:hover:bg-black/20">
-      <UButton
-        v-if="pageNum > 1"
-        size="md"
-        icon="i-heroicons-chevron-left"
-        color="sky"
-        variant="ghost"
-        class="hover:bg-sky-500/10 rounded-lg"
-        @click="prevPage"
-      />
+    <div
+      class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 dark:bg-black/5 backdrop-blur-md border border-white/10 dark:border-white/5 shadow-xl z-40 transition-all duration-500 opacity-40 hover:opacity-100 hover:bg-white/20 dark:hover:bg-black/20">
+      <UButton v-if="pageNum > 1" size="md" icon="i-heroicons-chevron-left" color="sky" variant="ghost"
+        class="hover:bg-sky-500/10 rounded-lg" @click="prevPage" />
       <div v-else class="w-8"></div>
 
       <div class="h-4 w-[1px] bg-white/10"></div>
 
-      <UButton
-        v-if="numPages > 0"
-        size="md"
-        icon="i-heroicons-chevron-right"
-        color="sky"
-        variant="ghost"
-        class="hover:bg-sky-500/10 rounded-lg"
-        @click="nextPage"
-      />
+      <UButton v-if="numPages > 0" size="md" icon="i-heroicons-chevron-right" color="sky" variant="ghost"
+        class="hover:bg-sky-500/10 rounded-lg" @click="nextPage" />
       <div v-else class="w-8"></div>
     </div>
   </div>
@@ -259,7 +202,7 @@ const handleWheel = (e: WheelEvent) => {
   if (newScale !== oldScale && container.value) {
     const ratio = newScale / oldScale
     const rect = container.value.getBoundingClientRect()
-    
+
     let targetX, targetY
 
     if (isZoomIn) {
@@ -365,10 +308,17 @@ input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 input[type=number] {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
-.cursor-grab { cursor: grab; }
-.cursor-grabbing { cursor: grabbing; }
+.cursor-grab {
+  cursor: grab;
+}
+
+.cursor-grabbing {
+  cursor: grabbing;
+}
 </style>

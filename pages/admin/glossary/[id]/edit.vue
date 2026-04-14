@@ -4,17 +4,63 @@
       <NuxtLink to="/admin/glossary" class="back-link">
         <UIcon name="i-heroicons-arrow-left" /> Назад к глоссарию
       </NuxtLink>
-      <h1 class="form-title">Редактировать термин</h1>
-      <code class="term-slug-display">{{ term.slug }}</code>
+      <div class="flex items-center gap-4">
+        <h1 class="form-title">Редактировать термин</h1>
+        <code class="term-slug-display">{{ term.slug }}</code>
+      </div>
     </div>
 
     <form class="term-form" @submit.prevent="handleSubmit">
-
-      <div class="field">
-        <label class="field-label">Название <span class="required">*</span></label>
-        <input v-model="form.title" class="field-input" required />
+      
+      <!-- ODT Upload Section -->
+      <div class="odt-upload-section mb-6">
+        <label class="field-label">Импорт из ODT</label>
+        <div class="odt-dropzone">
+          <input type="file" ref="odtFileInput" class="hidden" accept=".odt" @change="handleOdtUpload" />
+          <UButton 
+            color="gray" 
+            variant="soft" 
+            icon="i-heroicons-arrow-up-tray" 
+            :loading="odtUploading"
+            @click="$refs.odtFileInput.click()"
+          >
+            Выбрать .odt файл
+          </UButton>
+          <p class="text-xs text-gray-500 mt-2">Текст из ODT можно вставить в определение или в статью-раскрытие</p>
+        </div>
       </div>
 
+      <UTabs :items="tabItems" class="mb-8">
+        <template #item="{ item }">
+          <div v-if="item.key === 'ru'" class="tab-content">
+            <div class="field">
+              <label class="field-label">Название (RU) <span class="required">*</span></label>
+              <input v-model="form.title_ru" class="field-input" placeholder="Название на русском" />
+            </div>
+            <div class="field">
+              <label class="field-label">Slug (RU)</label>
+              <input v-model="form.slug_ru" class="field-input" placeholder="slug-na-russkom" />
+            </div>
+            <div class="field">
+              <label class="field-label">Определение (RU) <span class="required">*</span></label>
+              <UTextarea v-model="form.definition_ru" :rows="4" class="field-textarea" placeholder="Краткое определение на русском..." />
+            </div>
+          </div>
+          
+          <div v-else-if="item.key === 'en'" class="tab-content">
+            <div class="field">
+              <label class="field-label">Название (EN/Default) <span class="required">*</span></label>
+              <input v-model="form.title" class="field-input" required placeholder="Term title" />
+            </div>
+            <div class="field">
+              <label class="field-label">Определение (EN/Default) <span class="required">*</span></label>
+              <UTextarea v-model="form.definition" :rows="4" class="field-textarea" required placeholder="Brief definition in English..." />
+            </div>
+          </div>
+        </template>
+      </UTabs>
+
+      <!-- Common Fields -->
       <div class="field">
         <label class="field-label">Синонимы (aliases)</label>
         <div class="aliases-input">
@@ -35,49 +81,63 @@
       </div>
 
       <div class="field">
-        <label class="field-label">Определение <span class="required">*</span></label>
-        <textarea v-model="form.definition" class="field-textarea" rows="3" required />
-      </div>
-
-      <div class="field">
-        <label class="field-label">Категория</label>
+        <label class="field-label">Категория (Универсальная)</label>
         <select v-model="form.category_id" class="field-input">
           <option :value="null">Без категории</option>
-          <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.title }}</option>
+          <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+            {{ cat.title_ru || cat.title }}
+          </option>
         </select>
       </div>
 
       <div class="field">
-        <label class="field-label">Путь к презентации</label>
+        <label class="field-label">
+          Путь к презентации
+          <UBadge v-if="form.presentation_path" color="green" variant="soft" size="xs">Подключена</UBadge>
+        </label>
         <input v-model="form.presentation_path" class="field-input" placeholder="/presentations/your-file.pdf" />
       </div>
 
+      <!-- Article Management -->
       <div class="field">
-        <label class="field-label">
-          Статья-раскрытие (HTML)
-          <span v-if="term.has_article" class="has-article-badge">
-            <UIcon name="i-heroicons-check-circle" /> Статья существует
-          </span>
-        </label>
-        <div class="editor-wrap">
-          <div class="editor-toolbar">
-            <button type="button" class="toolbar-btn" @click="wrapSelection('strong')"><strong>B</strong></button>
-            <button type="button" class="toolbar-btn" @click="wrapSelection('em')"><em>I</em></button>
-            <button type="button" class="toolbar-btn" @click="wrapSelection('code')">&lt;/&gt;</button>
-            <button type="button" class="toolbar-btn" @click="insertTag('h2')">H2</button>
-            <button type="button" class="toolbar-btn" @click="insertTag('h3')">H3</button>
-            <button type="button" class="toolbar-btn" @click="showTermModal = true" title="Wiki Link">
-              <UIcon name="i-heroicons-book-open" class="text-sky-500" />
-            </button>
-            <button type="button" class="toolbar-btn" @click="insertTag('p')">¶</button>
+        <label class="field-label">Статья-раскрытие</label>
+        
+        <div v-if="term.term_article_id" class="article-manager-card">
+          <div class="article-info">
+            <UIcon name="i-heroicons-document-text" class="article-icon" />
+            <div class="article-details">
+              <span class="article-status">Связана со статьёй (ID: {{ term.term_article_id }})</span>
+              <span class="article-slug">/articles/{{ term.article_slug }}</span>
+            </div>
           </div>
-          <textarea
-            ref="editorRef"
-            v-model="form.html_content"
-            class="field-textarea editor-textarea"
-            rows="18"
-            placeholder="HTML статьи-раскрытия термина..."
-          />
+          <div class="article-actions">
+            <NuxtLink :to="`/admin/articles/${term.term_article_id}/edit`" class="btn-manage">
+              <UIcon name="i-heroicons-pencil-square" />
+              Редактировать статью
+            </NuxtLink>
+            <UButton 
+              color="red" 
+              variant="ghost" 
+              size="xs" 
+              icon="i-heroicons-trash" 
+              @click="confirmDeleteArticle = true"
+            >
+              Удалить связь
+            </UButton>
+          </div>
+        </div>
+
+        <div v-else class="no-article-placeholder">
+          <p>У данного термина пока нет расширенной статьи-раскрытия.</p>
+          <UButton 
+            color="sky" 
+            variant="outline" 
+            icon="i-heroicons-plus"
+            :loading="creatingArticle"
+            @click="createDisclosureArticle"
+          >
+            Создать статью-раскрытие
+          </UButton>
         </div>
       </div>
 
@@ -105,9 +165,6 @@
         <UIcon name="i-heroicons-exclamation-circle" /> {{ error }}
       </div>
     </form>
-
-    <!-- Modal for glossary terms -->
-    <AdminTermSelectorModal v-model="showTermModal" @select="insertTerm" />
   </div>
 
   <div v-else-if="!pending" class="not-found">
@@ -117,93 +174,67 @@
 </template>
 
 <script setup lang="ts">
+import { ref, reactive, computed, watch } from 'vue'
+
+interface AdminTerm {
+  id: number
+  slug: string
+  slug_ru: string | null
+  title: string
+  title_ru: string | null
+  aliases: string[]
+  definition: string
+  definition_ru: string | null
+  term_article_id: number | null
+  article_html?: string
+  article_slug?: string
+  category_id: number | null
+  presentation_path: string
+  category_title?: string
+  has_article: boolean
+}
+
+interface Category {
+  id: number
+  slug: string
+  title: string
+  title_ru: string | null
+}
+
+const tabItems = [
+  { key: 'ru', label: 'Русский (RU)', icon: 'i-heroicons-language' },
+  { key: 'en', label: 'English (EN)', icon: 'i-heroicons-globe-alt' }
+]
+
 definePageMeta({ layout: 'admin', middleware: 'auth' })
 
 const route = useRoute()
+const store = userStore()
+const toast = useToast()
 const termId = route.params.id as string
 
-// Load by ID: we use GET /api/terms?id= workaround — actually load all and find
-// Better: load via slug, but we have id. Let's call the admin terms list and find by id
-const { data: listData, pending } = await useAsyncData(`admin-term-edit-${termId}`,
-  () => $fetch<any>('/api/terms', { 
-    params: { limit: 1000 },
-    headers: store.getAuthHeader()
-  })
-)
-
-const term = computed(() => listData.value?.items?.find((t: any) => String(t.id) === termId))
-
-// Pre-fill form from loaded term
+// 1. Reactive state definitions
 const form = reactive({
   title: '',
+  title_ru: '',
+  slug_ru: '',
   aliases: [] as string[],
   definition: '',
-  html_content: '',
+  definition_ru: '',
   presentation_path: '',
   category_id: null as number | null,
   change_summary: '',
 })
 
-watch(term, (t) => {
-  if (!t) return
-  form.title = t.title
-  form.aliases = Array.isArray(t.aliases) ? [...t.aliases] : []
-  form.definition = t.definition
-  form.html_content = t.article_html || ''
-  form.presentation_path = t.presentation_path || ''
-  form.category_id = t.category_id || null
-}, { immediate: true })
-
-// Also fetch full term with html if it has an article
-const { data: fullTerm } = await useAsyncData(`admin-term-full-${termId}`,
-  async () => {
-    const slug = term.value?.slug
-    if (!slug) return null
-    return $fetch<any>(`/api/terms/${slug}`, {
-      headers: store.getAuthHeader()
-    })
-  },
-  { watch: [term] }
-)
-watch(fullTerm, (ft) => {
-  if (ft?.article_html) form.html_content = ft.article_html
-}, { immediate: true })
-
-useSeoMeta({ title: computed(() => `Редактировать: ${term.value?.title || '...'} — Admin`) })
-
 const aliasInput = ref('')
-const store = userStore()
 const submitting = ref(false)
+const odtUploading = ref(false)
 const error = ref('')
 const success = ref(false)
-const editorRef = ref<HTMLTextAreaElement>()
-const showTermModal = ref(false)
+const creatingArticle = ref(false)
+const confirmDeleteArticle = ref(false)
 
-function insertTerm(term: any) {
-  const ta = editorRef.value
-  if (!ta) return
-  const { selectionStart: s, selectionEnd: e } = ta
-  const text = ta.value
-  const selectedText = text.substring(s, e) || term.title
-  
-  const insertion = `<a class="wiki-term" data-term-slug="${term.slug}">${selectedText}</a>`
-
-  form.html_content = text.substring(0, s) + insertion + text.substring(e)
-  
-  nextTick(() => {
-    ta.focus()
-    const newPos = s + insertion.length
-    ta.setSelectionRange(newPos, newPos)
-  })
-}
-
-const { data: categoriesData } = await useAsyncData('admin-cats-edit', () => 
-  $fetch<any>('/api/categories', {
-    headers: store.getAuthHeader()
-  })
-)
-const categories = computed(() => categoriesData.value?.items || [])
-
+// 2. Pure functions
 function addAlias() {
   const val = aliasInput.value.trim().replace(/,$/, '')
   if (val && !form.aliases.includes(val)) form.aliases.push(val)
@@ -211,24 +242,100 @@ function addAlias() {
 }
 function removeAlias(i: number) { form.aliases.splice(i, 1) }
 
-function wrapSelection(tag: string) {
-  const ta = editorRef.value; if (!ta) return
-  const { selectionStart: s, selectionEnd: e } = ta
-  const sel = ta.value.slice(s, e)
-  const wrapped = `<${tag}>${sel}</${tag}>`
-  form.html_content = ta.value.slice(0, s) + wrapped + ta.value.slice(e)
-  nextTick(() => ta.setSelectionRange(s, s + wrapped.length))
+// 3. Data fetching
+const { data: term, pending, refresh } = await useAsyncData<AdminTerm>(`admin-term-edit-${termId}`,
+  () => $fetch<AdminTerm>(`/api/admin/terms/${termId}`, { 
+    headers: store.getAuthHeader()
+  })
+)
+
+const { data: categories } = await useAsyncData<Category[]>('admin-cats-edit', () => 
+  $fetch<Category[]>('/api/categories', {
+    headers: store.getAuthHeader()
+  })
+)
+
+// 4. Watchers and SEO
+watch(term, (t) => {
+  if (!t) return
+  form.title = t.title
+  form.title_ru = t.title_ru || ''
+  form.slug_ru = t.slug_ru || ''
+  form.aliases = Array.isArray(t.aliases) ? [...t.aliases] : []
+  form.definition = t.definition
+  form.definition_ru = t.definition_ru || ''
+  form.presentation_path = t.presentation_path || ''
+  form.category_id = t.category_id || null
+}, { immediate: true })
+
+useSeoMeta({ title: computed(() => `Редактировать: ${term.value?.title || '...'} — Admin`) })
+
+// 5. Async actions and handlers
+async function handleOdtUpload(event: Event) {
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length) return
+  
+  const file = input.files[0]
+  const formData = new FormData()
+  formData.append('file', file)
+
+  odtUploading.value = true
+  try {
+    const { html } = await $fetch<{ html: string }>('/api/admin/uploads/odt-to-html', {
+      method: 'POST',
+      headers: store.getAuthHeader(),
+      body: formData
+    })
+
+    // For now, simplicity: set the RU definition to the converted text (stripped of HTML tags for the definition field)
+    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    
+    // We could show a choice here, but let's just populate the current tab's definition
+    // or provide a simple toast with an option.
+    // For now: populate RU definition if it's empty, otherwise EN.
+    if (!form.definition_ru) form.definition_ru = text
+    else if (!form.definition) form.definition = text
+    
+    toast.add({ title: 'ODT импортирован', description: 'Текст добавлен в поле определения', color: 'green' })
+  } catch (e: any) {
+    toast.add({ title: 'Ошибка импорта', description: e.data?.statusMessage || e.message, color: 'red' })
+  } finally {
+    odtUploading.value = false
+    input.value = ''
+  }
 }
-function insertTag(tag: string) {
-  const ta = editorRef.value; if (!ta) return
-  const insert = `<${tag}></${tag}>`
-  const pos = ta.selectionStart
-  form.html_content = ta.value.slice(0, pos) + insert + ta.value.slice(pos)
+
+async function createDisclosureArticle() {
+  if (!term.value) return
+  creatingArticle.value = true
+  try {
+    await $fetch<any>(`/api/terms/${term.value.slug}`, {
+      method: 'PUT',
+      headers: store.getAuthHeader(),
+      body: {
+        html_content: `<h2>${term.value.title}</h2><p>${term.value.definition}</p>`,
+        change_summary: 'Auto-created disclosure article'
+      }
+    })
+    toast.add({ title: 'Статья создана', color: 'green' })
+    refresh()
+    setTimeout(() => {
+      if (term.value?.term_article_id) {
+        navigateTo(`/admin/articles/${term.value.term_article_id}/edit`)
+      }
+    }, 500)
+  } catch (e: any) {
+    toast.add({ title: 'Ошибка', description: e.data?.statusMessage || e.message, color: 'red' })
+  } finally {
+    creatingArticle.value = false
+  }
 }
 
 async function handleSubmit() {
   if (!term.value) return
-  submitting.value = true; error.value = ''; success.value = false
+  submitting.value = true
+  error.value = ''
+  success.value = false
   try {
     await $fetch(`/api/terms/${term.value.slug}`, {
       method: 'PUT' as any,
@@ -237,9 +344,11 @@ async function handleSubmit() {
       },
       body: {
         title: form.title,
-        aliases: form.aliases,
+        title_ru: form.title_ru || undefined,
         definition: form.definition,
-        html_content: form.html_content || undefined,
+        definition_ru: form.definition_ru || undefined,
+        slug_ru: form.slug_ru || undefined,
+        aliases: form.aliases,
         presentation_path: form.presentation_path || undefined,
         category_id: form.category_id,
         change_summary: form.change_summary || undefined,
@@ -247,6 +356,7 @@ async function handleSubmit() {
     })
     success.value = true
     setTimeout(() => { success.value = false }, 3000)
+    refresh()
   } catch (e: any) {
     error.value = e.data?.statusMessage || 'Ошибка при сохранении'
   } finally {
@@ -281,14 +391,6 @@ async function handleSubmit() {
 }
 .dark .field-label { color: #d1d5db; }
 .required { color: #ef4444; }
-
-.has-article-badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 11px; color: #16a34a; font-weight: 600;
-  background: #dcfce7; padding: 3px 8px; border-radius: 100px;
-  text-transform: none; letter-spacing: 0;
-}
-.dark .has-article-badge { background: #14532d; color: #4ade80; }
 
 .field-input, .field-textarea {
   padding: 11px 14px; border-radius: 10px;
@@ -330,28 +432,31 @@ async function handleSubmit() {
 }
 .dark .alias-field { color: #e2e8f0; }
 
-.editor-wrap {
-  border: 1.5px solid #e2e8f0; border-radius: 10px; overflow: hidden;
-  transition: border-color 0.2s;
+.article-manager-card {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
 }
-.dark .editor-wrap { border-color: #3f3f46; }
-.editor-wrap:focus-within { border-color: #0ea5e9; }
-.editor-toolbar {
-  display: flex; gap: 2px; padding: 8px 10px;
-  background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+.dark .article-manager-card { background: #18181b; border-color: #27272a; }
+.article-info { display: flex; align-items: center; gap: 12px; }
+.article-icon { width: 32px; height: 32px; color: #64748b; }
+.article-details { display: flex; flex-direction: column; }
+.article-status { font-size: 13px; font-weight: 700; color: #1e293b; }
+.dark .article-status { color: #e2e8f0; }
+.article-slug { font-size: 11px; color: #64748b; font-family: monospace; }
+.article-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.btn-manage {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 8px; background: #0ea5e9; color: white;
+  font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.2s;
 }
-.dark .editor-toolbar { background: #1c1c1f; border-color: #3f3f46; }
-.toolbar-btn {
-  padding: 5px 10px; border-radius: 6px; border: none;
-  background: transparent; cursor: pointer; font-size: 13px;
-  color: #64748b; font-family: inherit; transition: background 0.15s;
+.btn-manage:hover { background: #0284c7; transform: translateY(-1px); }
+
+.no-article-placeholder {
+  padding: 32px; text-align: center; background: #fdfdfd; border: 2px dashed #e2e8f0; border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
 }
-.toolbar-btn:hover { background: #e0f2fe; color: #0284c7; }
-.editor-textarea {
-  border: none; border-radius: 0; resize: vertical;
-  font-family: 'JetBrains Mono', monospace; font-size: 13px;
-}
-.editor-textarea:focus { box-shadow: none; }
+.dark .no-article-placeholder { background: #111113; border-color: #27272a; }
+.no-article-placeholder p { font-size: 14px; color: #64748b; margin: 0; }
 
 .form-actions {
   display: flex; gap: 12px; padding-top: 8px;
