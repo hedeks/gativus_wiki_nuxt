@@ -8,7 +8,7 @@
       <UButton to="/admin/books" icon="i-heroicons-arrow-left" variant="ghost" color="gray">
         Назад к списку
       </UButton>
-      <h2 class="page-title">Редактирование книги</h2>
+      <h2 class="page-title">Книга: {{ book?.title }}</h2>
     </div>
 
     <div v-if="book" class="edit-container">
@@ -96,8 +96,9 @@
           </div>
 
           <div class="form-footer mt-6 flex justify-end">
-            <UButton type="submit" color="primary" :loading="savingMetadata" icon="i-heroicons-check">
-              Сохранить все метаданные
+            <UButton type="submit" color="black" :loading="savingMetadata" icon="i-heroicons-check"
+              class="rounded-xl px-8">
+              Сохранить метаданные
             </UButton>
           </div>
         </form>
@@ -109,7 +110,8 @@
           <h3 class="section-title">Состав глав ({{ activeLocale.toUpperCase() }})</h3>
           <div class="add-chapter-box flex items-center gap-4">
             <USelectMenu v-model="selectedArticleToAdd" :options="availableArticles" option-attribute="title" searchable
-              class="w-64" :placeholder="`Добавить статью (${activeLocale.toUpperCase()})...`" @update:model-value="addArticleToBook">
+              class="w-64" :placeholder="`Добавить статью (${activeLocale.toUpperCase()})...`"
+              @update:model-value="addArticleToBook">
               <template #option="{ option }">
                 <div class="article-option">
                   <span class="text-sm font-medium">{{ option.title }}</span>
@@ -152,8 +154,9 @@
           <span class="text-sm text-blue-700 dark:text-blue-300">
             Порядок глав ({{ activeLocale.toUpperCase() }}) изменен.
           </span>
-          <UButton color="blue" :loading="savingChapters" icon="i-heroicons-check" @click="saveChapters">
-            Сохранить состав ({{ activeLocale.toUpperCase() }})
+          <UButton color="black" :loading="savingChapters" icon="i-heroicons-check" class="rounded-xl"
+            @click="saveChapters">
+            Сохранить состав
           </UButton>
         </div>
       </div>
@@ -164,7 +167,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['auth']
+  middleware: ['auth', 'role']
 })
 
 const store = userStore()
@@ -257,7 +260,7 @@ watch(book, (newBook) => {
       sort_order: newBook.sort_order || 0,
       category_ids: newBook.category_ids || []
     }
-    
+
     // Group articles by locale
     const map: Record<string, any[]> = { en: [], ru: [], zh: [] }
     if (newBook.articles) {
@@ -273,9 +276,9 @@ watch(book, (newBook) => {
 const availableArticles = computed(() => {
   if (!allArticles.value?.items) return []
   // Filter by active locale AND exclude articles already in THIS locale for THIS book
-  return allArticles.value.items.filter((a: any) => 
-    a.locale === activeLocale.value && 
-    !a.book_id && 
+  return allArticles.value.items.filter((a: any) =>
+    a.locale === activeLocale.value &&
+    !a.book_id &&
     !currentChapters.value.find((c: any) => c.id === a.id)
   )
 })
@@ -340,7 +343,7 @@ function moveChapter(index: number, direction: number) {
   const temp = list[index]
   list[index] = list[newIndex]
   list[newIndex] = temp
-  
+
   chaptersMap.value[activeLocale.value] = list
   chaptersChangedMap.value[activeLocale.value] = true
 }
@@ -381,10 +384,10 @@ async function saveChapters() {
 }
 
 .page-title {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.2em;
+  letter-spacing: 2px;
   color: #1a1a1a;
 }
 
@@ -394,9 +397,9 @@ async function saveChapters() {
 
 .card {
   background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: 15px;
+  border: 1px solid #c8c8c8;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.05);
 }
 
 .dark .card {
@@ -502,7 +505,7 @@ async function saveChapters() {
 }
 
 .chapter-item.drag-over {
-  border-top: 2px solid #0ea5e9;
+  border-top: 2px solid #000;
   transform: translateY(2px);
 }
 

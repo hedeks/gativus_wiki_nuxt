@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['auth']
+  middleware: ['auth', 'role']
 })
 
 useHead({ title: 'Импорт ODT — Gativus Admin' })
@@ -311,9 +311,11 @@ function formatFileSize(bytes: number): string {
 
 .import-title {
   font-size: 26px;
-  font-weight: 700;
+  font-weight: 800;
   color: #1a1a1a;
   margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 2px;
 }
 
 .dark .import-title {
@@ -413,9 +415,10 @@ function formatFileSize(bytes: number): string {
 /* ─── File Card ─── */
 .file-card {
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 20px;
+  border: 1px solid #c8c8c8;
+  border-radius: 15px;
+  padding: 24px;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.05);
 }
 
 .dark .file-card {
@@ -505,9 +508,9 @@ function formatFileSize(bytes: number): string {
 /* ─── Options ─── */
 .import-options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
 }
 
 .option-group {
@@ -526,7 +529,8 @@ function formatFileSize(bytes: number): string {
 
 .option-row {
   display: flex;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .option-btn {
@@ -583,7 +587,14 @@ function formatFileSize(bytes: number): string {
 /* ─── Actions ─── */
 .import-actions {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .import-actions button {
+    width: 100%;
+  }
 }
 
 .action-btn {

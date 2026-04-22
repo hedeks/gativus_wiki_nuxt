@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
   rawArticles.forEach(a => {
     const cid = a.concept_id
     const existing = articleConceptsMap.get(cid)
-    
+
     // Logic: Prefer the article that matches the requested locale. 
     // If no match, prefer the origin (where id == concept_id).
     // Otherwise, keep what we have.
@@ -93,11 +93,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const nodes = [
-    ...categories.map(c => ({ 
-      ...c, 
-      id: `cat-${c.id}`, 
-      originalId: c.id, 
-      depth: getCategoryDepth(c.id) 
+    ...categories.map(c => ({
+      ...c,
+      id: `cat-${c.id}`,
+      originalId: c.id,
+      depth: getCategoryDepth(c.id)
     })),
     ...books.map(b => ({ ...b, id: `book-${b.id}`, originalId: b.id })),
     ...articles.map(a => ({ ...a, id: `art-${a.concept_id}`, originalId: a.concept_id })),
@@ -151,7 +151,7 @@ export default defineEventHandler(async (event) => {
   crossLinksRaw.forEach(cl => {
     // Check if this article concept itself is a disclosure article for some term
     const termForArticleInfo = terms.find(t => t.article_concept_id === cl.article_concept_id)
-    
+
     if (termForArticleInfo) {
       addLink(`term-${termForArticleInfo.id}`, `term-${cl.term_id}`, 'reference')
     } else {

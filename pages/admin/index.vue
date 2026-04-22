@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['auth']
+  middleware: ['auth', 'role']
 })
 
 useHead({ title: 'Dashboard — Gativus Admin' })
@@ -20,7 +20,7 @@ try {
   if (data.value) {
     db.value = data.value as any
   }
-} catch {}
+} catch { }
 
 const statCards = computed(() => [
   { label: 'Статьи', value: db.value.articles, icon: 'i-heroicons-document-text', color: '#6366f1' },
@@ -39,11 +39,7 @@ const statCards = computed(() => [
     </div>
 
     <div class="stats-grid">
-      <div
-        v-for="stat in statCards"
-        :key="stat.label"
-        class="stat-card"
-      >
+      <div v-for="stat in statCards" :key="stat.label" class="stat-card">
         <div class="stat-icon-wrap" :style="{ background: stat.color + '15' }">
           <UIcon :name="stat.icon" class="stat-icon" :style="{ color: stat.color }" />
         </div>
@@ -90,13 +86,18 @@ const statCards = computed(() => [
 .dashboard-header {
   margin-bottom: 28px;
 }
+
 .dashboard-title {
   font-size: 26px;
   font-weight: 700;
   color: #1a1a1a;
   margin: 0;
 }
-.dark .dashboard-title { color: #e5e5e5; }
+
+.dark .dashboard-title {
+  color: #e5e5e5;
+}
+
 .dashboard-subtitle {
   color: #888;
   font-size: 14px;
@@ -121,14 +122,17 @@ const statCards = computed(() => [
   border: 1px solid #e5e7eb;
   transition: all 0.25s ease;
 }
+
 .stat-card:hover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   transform: translateY(-2px);
 }
+
 .dark .stat-card {
   background: #1e1e21;
   border-color: #2a2a2e;
 }
+
 .dark .stat-card:hover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
@@ -142,21 +146,28 @@ const statCards = computed(() => [
   justify-content: center;
   flex-shrink: 0;
 }
+
 .stat-icon {
   width: 22px;
   height: 22px;
 }
+
 .stat-info {
   display: flex;
   flex-direction: column;
 }
+
 .stat-value {
   font-size: 22px;
   font-weight: 700;
   color: #1a1a1a;
   line-height: 1.1;
 }
-.dark .stat-value { color: #e5e5e5; }
+
+.dark .stat-value {
+  color: #e5e5e5;
+}
+
 .stat-label {
   font-size: 12px;
   color: #888;
@@ -167,13 +178,17 @@ const statCards = computed(() => [
 .dashboard-section {
   margin-bottom: 28px;
 }
+
 .section-title {
   font-size: 16px;
   font-weight: 600;
   color: #1a1a1a;
   margin: 0 0 14px;
 }
-.dark .section-title { color: #e5e5e5; }
+
+.dark .section-title {
+  color: #e5e5e5;
+}
 
 .actions-grid {
   display: grid;
@@ -193,15 +208,18 @@ const statCards = computed(() => [
   transition: all 0.25s ease;
   cursor: pointer;
 }
+
 .action-card:hover {
   border-color: #c5c7cb;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   transform: translateY(-2px);
 }
+
 .dark .action-card {
   background: #1e1e21;
   border-color: #2a2a2e;
 }
+
 .dark .action-card:hover {
   border-color: #444;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
@@ -212,12 +230,17 @@ const statCards = computed(() => [
   height: 24px;
   color: #6366f1;
 }
+
 .action-label {
   font-size: 15px;
   font-weight: 600;
   color: #1a1a1a;
 }
-.dark .action-label { color: #e5e5e5; }
+
+.dark .action-label {
+  color: #e5e5e5;
+}
+
 .action-desc {
   font-size: 12px;
   color: #888;

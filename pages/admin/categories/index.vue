@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['auth']
+  middleware: ['auth', 'role']
 })
 
 const store = userStore()
@@ -59,13 +59,13 @@ const saveCategory = async () => {
   try {
     const method = form.id ? 'PUT' : 'POST'
     const url = form.id ? `/api/categories/${form.id}` : '/api/categories'
-    
+
     await $fetch(url, {
       method,
       body: { ...form },
       headers: store.getAuthHeader()
     })
-    
+
     isModalOpen.value = false
     refresh()
   } catch (err: any) {
@@ -75,9 +75,9 @@ const saveCategory = async () => {
 
 const deleteCategory = async (id: number) => {
   if (!confirm('Вы уверены? Подкатегории будут перемещены на уровень выше.')) return
-  
+
   try {
-    await $fetch(`/api/categories/${id}`, { 
+    await $fetch(`/api/categories/${id}`, {
       method: 'DELETE',
       headers: store.getAuthHeader()
     })
@@ -134,11 +134,7 @@ const selectIcon = (icon: string) => {
         <h1 class="page-title">Управление категориями</h1>
         <p class="page-subtitle">Дерево категорий проекта Gativus</p>
       </div>
-      <UButton
-        icon="i-heroicons-plus"
-        color="primary"
-        @click="openCreate()"
-      >
+      <UButton icon="i-heroicons-plus" color="primary" @click="openCreate()">
         Добавить корень
       </UButton>
     </div>
@@ -147,17 +143,9 @@ const selectIcon = (icon: string) => {
       <div v-if="!tree || tree.length === 0" class="empty-state">
         Категории не найдены.
       </div>
-      
-      <AdminCategoryItem
-        v-for="cat in tree"
-        :key="cat.id"
-        :category="cat"
-        @edit="openEdit"
-        @delete="deleteCategory"
-        @create-child="openCreate"
-        @move-up="moveUp"
-        @move-down="moveDown"
-      />
+
+      <AdminCategoryItem v-for="cat in tree" :key="cat.id" :category="cat" @edit="openEdit" @delete="deleteCategory"
+        @create-child="openCreate" @move-up="moveUp" @move-down="moveDown" />
     </div>
 
     <!-- Edit Modal -->
@@ -168,12 +156,13 @@ const selectIcon = (icon: string) => {
             <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
               {{ form.id ? 'Редактировать категорию' : 'Новая категория' }}
             </h3>
-            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark" class="-my-1" @click="isModalOpen = false" />
+            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark" class="-my-1"
+              @click="isModalOpen = false" />
           </div>
         </template>
 
         <UForm :state="form" @submit="saveCategory" class="space-y-4">
-          
+
           <UTabs :items="[
             { key: 'ru', label: 'Русский (RU)', icon: 'i-heroicons-language' },
             { key: 'en', label: 'English (EN)', icon: 'i-heroicons-globe-alt' }
@@ -209,17 +198,13 @@ const selectIcon = (icon: string) => {
               <UInput v-model="form.icon" class="flex-1" />
               <UPopover v-model:open="showIconSelector">
                 <UButton color="gray" variant="solid" :icon="form.icon" />
-                
+
                 <template #panel>
                   <div class="p-3 grid grid-cols-6 gap-1 max-h-[300px] overflow-y-auto w-[240px]">
-                    <button
-                      v-for="icon in commonIcons"
-                      :key="icon"
-                      type="button"
+                    <button v-for="icon in commonIcons" :key="icon" type="button"
                       class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center transition-colors"
                       :class="{ 'bg-sky-50 dark:bg-sky-900/30 text-sky-600': form.icon === icon }"
-                      @click="selectIcon(icon)"
-                    >
+                      @click="selectIcon(icon)">
                       <UIcon :name="icon" class="w-5 h-5" />
                     </button>
                   </div>
@@ -249,17 +234,22 @@ const selectIcon = (icon: string) => {
   align-items: flex-start;
   margin-bottom: 24px;
 }
+
 .page-title {
   font-size: 24px;
   font-weight: 700;
   margin: 0;
 }
+
 .page-subtitle {
   color: #666;
   font-size: 14px;
   margin-top: 4px;
 }
-.dark .page-subtitle { color: #999; }
+
+.dark .page-subtitle {
+  color: #999;
+}
 
 .category-tree {
   background: #fff;
@@ -267,6 +257,7 @@ const selectIcon = (icon: string) => {
   border-radius: 12px;
   overflow: hidden;
 }
+
 .dark .category-tree {
   background: #1a1a1d;
   border-color: #2a2a2e;

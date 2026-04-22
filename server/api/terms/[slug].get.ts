@@ -18,11 +18,11 @@ export default defineEventHandler(async (event) => {
     SELECT
       t.id, t.slug, t.slug_ru, t.title, t.title_ru, t.aliases, t.definition, t.definition_ru,
       t.term_article_id, t.created_at, t.updated_at,
-      t.created_by,
+      t.created_by, t.image_url, t.video_url, t.presentation_path,
       a.html_content as article_html,
       a.excerpt as article_excerpt,
       a.category_id,
-      a.presentation_path,
+      a.presentation_path as article_presentation_path,
       a.updated_at as article_updated_at,
       c.title as category_title,
       c.title_ru as category_title_ru,
@@ -51,6 +51,7 @@ export default defineEventHandler(async (event) => {
     category_title: (isRu && term.category_title_ru) ? term.category_title_ru : term.category_title,
     aliases: term.aliases ? JSON.parse(term.aliases) : [],
     has_article: Boolean(term.term_article_id),
+    presentation_path: term.presentation_path || term.article_presentation_path
   }
 }
 )

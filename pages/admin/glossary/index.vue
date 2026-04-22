@@ -83,13 +83,8 @@
             </td>
             <td>
               <div class="actions-cell">
-                <UButton 
-                  icon="i-heroicons-pencil-square" 
-                  color="gray" 
-                  variant="ghost" 
-                  size="xs" 
-                  :to="`/admin/glossary/${term.id}/edit`" 
-                />
+                <UButton icon="i-heroicons-pencil-square" color="gray" variant="ghost" size="xs"
+                  :to="`/admin/glossary/${term.id}/edit`" />
                 <UButton icon="i-heroicons-trash" color="red" variant="ghost" size="xs" @click="confirmDelete(term)" />
               </div>
             </td>
@@ -122,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: 'admin', middleware: 'auth' })
+definePageMeta({ layout: 'admin', middleware: ['auth', 'role'] })
 
 useSeoMeta({ title: 'Глоссарий — Admin — Gativus Wiki' })
 
@@ -140,7 +135,7 @@ const categories = computed(() => categoriesData.value?.items || [])
 
 const { data, pending, refresh } = await useAsyncData(
   'admin-terms',
-  () => $fetch<any>('/api/terms', { 
+  () => $fetch<any>('/api/terms', {
     params: { search: dSearch.value || undefined, limit: 100 },
     headers: store.getAuthHeader()
   }),

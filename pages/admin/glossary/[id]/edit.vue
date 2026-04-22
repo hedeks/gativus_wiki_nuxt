@@ -22,7 +22,7 @@
             variant="soft" 
             icon="i-heroicons-arrow-up-tray" 
             :loading="odtUploading"
-            @click="$refs.odtFileInput.click()"
+            @click="(odtFileInput as HTMLInputElement).click()"
           >
             Выбрать .odt файл
           </UButton>
@@ -90,10 +90,32 @@
         </select>
       </div>
 
+      <!-- Media Section -->
+      <div class="field">
+        <label class="field-label">Медиа-материалы</label>
+        <div class="media-inputs grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="media-field">
+             <label class="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Изображение (URL или загрузка)</label>
+             <div class="flex gap-2">
+                <UInput v-model="form.image_url" class="flex-1" placeholder="https://..." />
+                <UButton icon="i-heroicons-paper-clip" color="gray" variant="soft" @click="triggerMediaUpload('image')" />
+             </div>
+          </div>
+          <div class="media-field">
+             <label class="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Видео (URL или загрузка)</label>
+             <div class="flex gap-2">
+                <UInput v-model="form.video_url" class="flex-1" placeholder="https://..." />
+                <UButton icon="i-heroicons-paper-clip" color="gray" variant="soft" @click="triggerMediaUpload('video')" />
+             </div>
+          </div>
+        </div>
+        <input type="file" ref="mediaFileInput" class="hidden" @change="handleMediaUpload" />
+      </div>
+
       <div class="field">
         <label class="field-label">
           Путь к презентации
-          <UBadge v-if="form.presentation_path" color="green" variant="soft" size="xs">Подключена</UBadge>
+          <UBadge v-if="form.presentation_path" color="sky" variant="soft" size="xs" class="rounded-md">PDF Подключен</UBadge>
         </label>
         <input v-model="form.presentation_path" class="field-input" placeholder="/presentations/your-file.pdf" />
       </div>
@@ -128,12 +150,14 @@
         </div>
 
         <div v-else class="no-article-placeholder">
-          <p>У данного термина пока нет расширенной статьи-раскрытия.</p>
+          <UIcon name="i-heroicons-document-plus" class="text-3xl text-gray-300 mb-2" />
+          <p class="font-medium text-gray-500 mb-4">У данного термина пока нет расширенной статьи-раскрытия.</p>
           <UButton 
-            color="sky" 
-            variant="outline" 
+            color="black" 
+            variant="solid" 
             icon="i-heroicons-plus"
             :loading="creatingArticle"
+            class="rounded-xl px-6"
             @click="createDisclosureArticle"
           >
             Создать статью-раскрытие
@@ -148,13 +172,13 @@
 
       <div class="form-actions">
         <NuxtLink to="/admin/glossary">
-          <UButton color="gray" variant="soft">Отмена</UButton>
+          <UButton color="gray" variant="soft" size="lg">Отмена</UButton>
         </NuxtLink>
         <NuxtLink :to="`/glossary/${term.slug}`" target="_blank">
-          <UButton color="gray" variant="ghost" icon="i-heroicons-eye">Просмотр</UButton>
+          <UButton color="gray" variant="ghost" size="lg" icon="i-heroicons-eye">Просмотр</UButton>
         </NuxtLink>
-        <UButton type="submit" color="sky" :loading="submitting" icon="i-heroicons-check">
-          Сохранить
+        <UButton type="submit" color="black" :loading="submitting" size="lg" icon="i-heroicons-check" class="rounded-xl px-8">
+          Сохранить изменения
         </UButton>
       </div>
 
@@ -175,6 +199,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
+
+const odtFileInput = ref<HTMLInputElement>()
 
 interface AdminTerm {
   id: number
@@ -222,6 +248,8 @@ const form = reactive({
   definition: '',
   definition_ru: '',
   presentation_path: '',
+  image_url: '',
+  video_url: '',
   category_id: null as number | null,
   change_summary: '',
 })
@@ -233,6 +261,40 @@ const error = ref('')
 const success = ref(false)
 const creatingArticle = ref(false)
 const confirmDeleteArticle = ref(false)
+
+const mediaFileInput = ref<HTMLInputElement>()
+const currentUploadTarget = ref<'image' | 'video'>('image')
+
+function triggerMediaUpload(type: 'image' | 'video') {
+  currentUploadTarget.value = type
+  mediaFileInput.value?.click()
+}
+
+async function handleMediaUpload(event: Event) {
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length) return
+  
+  const file = input.files[0]
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const res = await $fetch<any>('/api/admin/uploads/term-media', {
+      method: 'POST',
+      headers: store.getAuthHeader(),
+      body: formData
+    })
+    
+    if (currentUploadTarget.value === 'image') form.image_url = res.url
+    else form.video_url = res.url
+    
+    toast.add({ title: 'Файл загружен', color: 'green' })
+  } catch (e: any) {
+    toast.add({ title: 'Ошибка загрузки', description: e.data?.statusMessage || e.message, color: 'red' })
+  } finally {
+    input.value = ''
+  }
+}
 
 // 2. Pure functions
 function addAlias() {
@@ -265,6 +327,8 @@ watch(term, (t) => {
   form.definition = t.definition
   form.definition_ru = t.definition_ru || ''
   form.presentation_path = t.presentation_path || ''
+  form.image_url = (t as any).image_url || ''
+  form.video_url = (t as any).video_url || ''
   form.category_id = t.category_id || null
 }, { immediate: true })
 
@@ -350,6 +414,8 @@ async function handleSubmit() {
         slug_ru: form.slug_ru || undefined,
         aliases: form.aliases,
         presentation_path: form.presentation_path || undefined,
+        image_url: form.image_url || undefined,
+        video_url: form.video_url || undefined,
         category_id: form.category_id,
         change_summary: form.change_summary || undefined,
       },
@@ -366,7 +432,18 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.glossary-form-page { max-width: 800px; }
+.glossary-form-page { 
+  max-width: 900px;
+  background: white;
+  border: 1px solid #c8c8c8;
+  border-radius: 15px;
+  padding: 40px;
+  margin-bottom: 60px;
+}
+.dark .glossary-form-page {
+  background: #1e1e21;
+  border-color: #2a2a2e;
+}
 .form-header { margin-bottom: 28px; display: flex; flex-direction: column; gap: 6px; }
 .back-link {
   display: inline-flex; align-items: center; gap: 6px;
@@ -374,11 +451,11 @@ async function handleSubmit() {
   text-decoration: none; transition: color 0.15s;
 }
 .back-link:hover { color: #0ea5e9; }
-.form-title { font-size: 24px; font-weight: 800; margin: 0; }
+.form-title { font-size: 26px; font-weight: 800; margin: 0; text-transform: uppercase; letter-spacing: 2px; }
 .term-slug-display {
-  font-family: monospace; font-size: 13px; color: #94a3b8;
-  background: #f1f5f9; padding: 3px 8px; border-radius: 6px;
-  align-self: flex-start;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #94a3b8;
+  background: #f1f5f9; padding: 4px 10px; border-radius: 8px;
+  align-self: center; border: 1px solid #e9e9e9;
 }
 .dark .term-slug-display { background: #27272a; }
 

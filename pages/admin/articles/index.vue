@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['auth']
+  middleware: ['auth', 'role']
 })
 
 useHead({ title: 'Статьи — Gativus Admin' })
@@ -103,12 +103,7 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
     <div class="filters-bar">
       <div class="search-wrap">
         <UIcon name="i-heroicons-magnifying-glass" class="search-icon" />
-        <input
-          v-model="search"
-          @input="onSearchInput"
-          placeholder="Поиск по названию..."
-          class="search-input"
-        />
+        <input v-model="search" @input="onSearchInput" placeholder="Поиск по названию..." class="search-input" />
       </div>
       <select v-model="filterBookId" class="filter-select" @change="currentPage = 1; refresh()">
         <option value="">Все книги</option>
@@ -149,14 +144,12 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
               <span class="locale-badge">{{ localeFlagMap[article.locale] || article.locale }}</span>
             </td>
             <td>
-              <span
-                class="status-badge"
-                :class="article.is_published ? 'status--published' : 'status--draft'"
-              >
+              <span class="status-badge" :class="article.is_published ? 'status--published' : 'status--draft'">
                 {{ article.is_published ? 'Опубликовано' : 'Черновик' }}
               </span>
               <span v-if="article.is_term_article" class="term-badge" title="Раскрытие термина">Термин</span>
-              <UIcon v-if="article.presentation_path" name="i-heroicons-presentation-chart-bar" class="pres-indicator" title="Есть презентация" />
+              <UIcon v-if="article.presentation_path" name="i-heroicons-presentation-chart-bar" class="pres-indicator"
+                title="Есть презентация" />
             </td>
             <td class="text-muted">{{ formatDate(article.updated_at) }}</td>
             <td class="td-actions">
@@ -189,19 +182,11 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
 
     <!-- Pagination -->
     <div v-if="totalPages > 1" class="pagination">
-      <button
-        class="page-btn"
-        :disabled="currentPage <= 1"
-        @click="currentPage--; refresh()"
-      >
+      <button class="page-btn" :disabled="currentPage <= 1" @click="currentPage--; refresh()">
         <UIcon name="i-heroicons-chevron-left" />
       </button>
       <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
-      <button
-        class="page-btn"
-        :disabled="currentPage >= totalPages"
-        @click="currentPage++; refresh()"
-      >
+      <button class="page-btn" :disabled="currentPage >= totalPages" @click="currentPage++; refresh()">
         <UIcon name="i-heroicons-chevron-right" />
       </button>
     </div>
@@ -226,7 +211,9 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
 </template>
 
 <style scoped>
-.articles-page { max-width: 1100px; }
+.articles-page {
+  max-width: 1100px;
+}
 
 .articles-header {
   display: flex;
@@ -241,8 +228,16 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   color: #1a1a1a;
   margin: 0;
 }
-.dark .articles-title { color: #e5e5e5; }
-.articles-subtitle { color: #888; font-size: 14px; margin: 4px 0 0; }
+
+.dark .articles-title {
+  color: #e5e5e5;
+}
+
+.articles-subtitle {
+  color: #888;
+  font-size: 14px;
+  margin: 4px 0 0;
+}
 
 .header-btn {
   display: flex;
@@ -257,11 +252,29 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   text-decoration: none;
   transition: all 0.2s;
 }
-.header-btn:hover { background: #0284c7; transform: translateY(-1px); }
-.header-btn--secondary { background: #f1f5f9; color: #555; }
-.dark .header-btn--secondary { background: #27272a; color: #aaa; }
-.header-btn--secondary:hover { background: #e2e8f0; }
-.dark .header-btn--secondary:hover { background: #3f3f46; }
+
+.header-btn:hover {
+  background: #0284c7;
+  transform: translateY(-1px);
+}
+
+.header-btn--secondary {
+  background: #f1f5f9;
+  color: #555;
+}
+
+.dark .header-btn--secondary {
+  background: #27272a;
+  color: #aaa;
+}
+
+.header-btn--secondary:hover {
+  background: #e2e8f0;
+}
+
+.dark .header-btn--secondary:hover {
+  background: #3f3f46;
+}
 
 /* ─── Filters ─── */
 .filters-bar {
@@ -296,13 +309,20 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   outline: none;
   transition: border-color 0.2s;
 }
-.search-input:focus { border-color: #6366f1; }
+
+.search-input:focus {
+  border-color: #6366f1;
+}
+
 .dark .search-input {
   background: #1e1e21;
   border-color: #2a2a2e;
   color: #e5e5e5;
 }
-.dark .search-input:focus { border-color: #6366f1; }
+
+.dark .search-input:focus {
+  border-color: #6366f1;
+}
 
 .filter-select {
   padding: 10px 14px;
@@ -314,6 +334,7 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   cursor: pointer;
   min-width: 160px;
 }
+
 .dark .filter-select {
   background: #1e1e21;
   border-color: #2a2a2e;
@@ -328,6 +349,7 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   overflow: hidden;
   box-shadow: 0 0 1px 1px rgba(119, 119, 119, 0.05);
 }
+
 .dark .table-wrap {
   background: #18181b;
   border-color: #27272a;
@@ -341,7 +363,10 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
 .articles-table thead {
   background: #f8fafc;
 }
-.dark .articles-table thead { background: #252528; }
+
+.dark .articles-table thead {
+  background: #252528;
+}
 
 .articles-table th {
   padding: 12px 16px;
@@ -353,19 +378,32 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   letter-spacing: 0.05em;
   border-bottom: 1px solid #e5e7eb;
 }
-.dark .articles-table th { border-bottom-color: #2a2a2e; }
+
+.dark .articles-table th {
+  border-bottom-color: #2a2a2e;
+}
 
 .table-row td {
   padding: 14px 16px;
   border-bottom: 1px solid #f0f0f2;
   font-size: 14px;
 }
-.dark .table-row td { border-bottom-color: #232326; }
 
-.table-row:last-child td { border-bottom: none; }
+.dark .table-row td {
+  border-bottom-color: #232326;
+}
 
-.table-row:hover { background: #fafafa; }
-.dark .table-row:hover { background: #232326; }
+.table-row:last-child td {
+  border-bottom: none;
+}
+
+.table-row:hover {
+  background: #fafafa;
+}
+
+.dark .table-row:hover {
+  background: #232326;
+}
 
 .article-cell {
   display: flex;
@@ -379,11 +417,24 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   text-decoration: none;
   transition: color 0.2s;
 }
-.article-link:hover { color: #6366f1; }
-.dark .article-link { color: #e5e5e5; }
-.dark .article-link:hover { color: #818cf8; }
 
-.article-slug { font-size: 11px; color: #999; font-family: monospace; }
+.article-link:hover {
+  color: #6366f1;
+}
+
+.dark .article-link {
+  color: #e5e5e5;
+}
+
+.dark .article-link:hover {
+  color: #818cf8;
+}
+
+.article-slug {
+  font-size: 11px;
+  color: #999;
+  font-family: monospace;
+}
 
 .book-badge {
   font-size: 12px;
@@ -393,9 +444,15 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   color: #6366f1;
   font-weight: 600;
 }
-.dark .book-badge { background: #1e1b4b; color: #818cf8; }
 
-.locale-badge { font-size: 16px; }
+.dark .book-badge {
+  background: #1e1b4b;
+  color: #818cf8;
+}
+
+.locale-badge {
+  font-size: 16px;
+}
 
 .status-badge {
   font-size: 11px;
@@ -405,10 +462,27 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
-.status--published { background: #ecfdf5; color: #059669; }
-.dark .status--published { background: #064e3b; color: #34d399; }
-.status--draft { background: #fef3c7; color: #d97706; }
-.dark .status--draft { background: #451a03; color: #fbbf24; }
+
+.status--published {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.dark .status--published {
+  background: #064e3b;
+  color: #34d399;
+}
+
+.status--draft {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.dark .status--draft {
+  background: #451a03;
+  color: #fbbf24;
+}
+
 .term-badge {
   font-size: 10px;
   font-weight: 800;
@@ -421,13 +495,17 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   margin-left: 6px;
   vertical-align: middle;
 }
+
 .dark .term-badge {
   background: #082f49;
   color: #7dd3fc;
   border-color: #0c4a6e;
 }
 
-.text-muted { color: #888; font-size: 13px; }
+.text-muted {
+  color: #888;
+  font-size: 13px;
+}
 
 .pres-indicator {
   display: inline-block;
@@ -438,7 +516,10 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   vertical-align: middle;
 }
 
-.th-actions { width: 160px; }
+.th-actions {
+  width: 160px;
+}
+
 .td-actions {
   display: flex;
   gap: 4px;
@@ -455,13 +536,32 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   display: flex;
   align-items: center;
 }
-.row-btn:hover { background: #f3f4f6; color: #1a1a1a; }
-.dark .row-btn:hover { background: #252528; color: #e5e5e5; }
-.row-btn--danger:hover { background: #fef2f2; color: #ef4444; }
-.dark .row-btn--danger:hover { background: #2a1a1a; color: #f87171; }
+
+.row-btn:hover {
+  background: #f3f4f6;
+  color: #1a1a1a;
+}
+
+.dark .row-btn:hover {
+  background: #252528;
+  color: #e5e5e5;
+}
+
+.row-btn--danger:hover {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.dark .row-btn--danger:hover {
+  background: #2a1a1a;
+  color: #f87171;
+}
 
 /* ─── Empty State ─── */
-.empty-row { text-align: center; }
+.empty-row {
+  text-align: center;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -470,9 +570,21 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   padding: 40px;
   color: #999;
 }
-.empty-icon { width: 36px; height: 36px; }
-.empty-link { color: #6366f1; text-decoration: none; font-weight: 600; }
-.empty-link:hover { text-decoration: underline; }
+
+.empty-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.empty-link {
+  color: #6366f1;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.empty-link:hover {
+  text-decoration: underline;
+}
 
 /* ─── Pagination ─── */
 .pagination {
@@ -482,6 +594,7 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   gap: 12px;
   margin-top: 16px;
 }
+
 .page-btn {
   padding: 8px;
   border-radius: 8px;
@@ -491,40 +604,75 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   color: #555;
   transition: all 0.2s;
 }
-.page-btn:hover:not(:disabled) { background: #f3f4f6; }
-.page-btn:disabled { opacity: 0.4; cursor: default; }
-.dark .page-btn { border-color: #333; background: #1e1e21; color: #aaa; }
-.page-info { font-size: 14px; color: #888; font-weight: 600; }
+
+.page-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.dark .page-btn {
+  border-color: #333;
+  background: #1e1e21;
+  color: #aaa;
+}
+
+.page-info {
+  font-size: 14px;
+  color: #888;
+  font-weight: 600;
+}
 
 /* ─── Modal ─── */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
 }
+
 .modal-card {
   background: #fff;
   border-radius: 16px;
   padding: 28px;
   max-width: 400px;
   width: 90%;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
-.dark .modal-card { background: #1e1e21; }
+
+.dark .modal-card {
+  background: #1e1e21;
+}
+
 .modal-title {
   font-size: 18px;
   font-weight: 700;
   color: #1a1a1a;
   margin: 0 0 8px;
 }
-.dark .modal-title { color: #e5e5e5; }
-.modal-desc { color: #888; font-size: 14px; margin: 0 0 20px; }
-.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+.dark .modal-title {
+  color: #e5e5e5;
+}
+
+.modal-desc {
+  color: #888;
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
 
 .action-btn {
   display: flex;
@@ -538,15 +686,42 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   font-weight: 600;
   transition: all 0.2s;
 }
-.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.action-btn--preview { background: #f3f4f6; color: #555; }
-.dark .action-btn--preview { background: #252528; color: #aaa; }
-.action-btn--danger { background: #ef4444; color: #fff; }
-.action-btn--danger:hover { background: #dc2626; }
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn--preview {
+  background: #f3f4f6;
+  color: #555;
+}
+
+.dark .action-btn--preview {
+  background: #252528;
+  color: #aaa;
+}
+
+.action-btn--danger {
+  background: #ef4444;
+  color: #fff;
+}
+
+.action-btn--danger:hover {
+  background: #dc2626;
+}
 
 @media (max-width: 768px) {
-  .filters-bar { flex-direction: column; }
-  .td-actions { flex-wrap: wrap; }
-  .articles-table { font-size: 13px; }
+  .filters-bar {
+    flex-direction: column;
+  }
+
+  .td-actions {
+    flex-wrap: wrap;
+  }
+
+  .articles-table {
+    font-size: 13px;
+  }
 }
 </style>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['auth']
+  middleware: ['auth', 'role']
 })
 
 const store = userStore()
@@ -60,7 +60,7 @@ const showTermModal = ref(false)
 
 function insertTerm(term: any) {
   insertTag('a', 'a') // dummy call to get selection range logic if needed, but we do it manually below
-  
+
   const el = textareaRef.value
   if (!el) return
 
@@ -68,12 +68,12 @@ function insertTerm(term: any) {
   const end = el.selectionEnd
   const text = el.value
   const selectedText = text.substring(start, end) || term.title
-  
+
   const insertion = `<a class="wiki-term" data-term-slug="${term.slug}">${selectedText}</a>`
 
   el.value = text.substring(0, start) + insertion + text.substring(end)
   htmlContent.value = el.value
-  
+
   nextTick(() => {
     el.focus()
     const newPos = start + insertion.length
@@ -130,7 +130,7 @@ function insertTag(tag: string, closingTag?: string) {
   const end = el.selectionEnd
   const text = el.value
   const selectedText = text.substring(start, end)
-  
+
   let insertion = ''
   if (closingTag) {
     insertion = `<${tag}>${selectedText}</${closingTag}>`
@@ -144,7 +144,7 @@ function insertTag(tag: string, closingTag?: string) {
 
   el.value = text.substring(0, start) + insertion + text.substring(end)
   htmlContent.value = el.value
-  
+
   // Focus back and set cursor
   nextTick(() => {
     el.focus()
@@ -173,7 +173,7 @@ async function uploadImage(e: Event) {
     })
 
     const imgTag = `<img src="${result.url}" alt="" />`
-    
+
     // Insert at cursor
     const el = textareaRef.value
     if (el) {
@@ -237,7 +237,8 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
         <div class="meta-group">
           <div class="flex items-center justify-between">
             <label class="meta-label">Slug</label>
-            <button @click="syncSlug = !syncSlug" class="text-[10px] font-bold" :class="syncSlug ? 'text-indigo-500' : 'text-gray-400'">
+            <button @click="syncSlug = !syncSlug" class="text-[10px] font-bold"
+              :class="syncSlug ? 'text-indigo-500' : 'text-gray-400'">
               {{ syncSlug ? 'AUTO' : 'MANUAL' }}
             </button>
           </div>
@@ -284,20 +285,36 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
           </div>
           <div class="toolbar-sep"></div>
           <div class="toolbar-group">
-            <button @click="insertTag('p')" title="Абзац"><UIcon name="i-heroicons-bars-3-bottom-left" /></button>
-            <button @click="insertTag('blockquote')" title="Цитата"><UIcon name="i-heroicons-chat-bubble-bottom-center-text" /></button>
-            <button @click="insertTag('pre')" title="Код"><UIcon name="i-heroicons-code-bracket" /></button>
+            <button @click="insertTag('p')" title="Абзац">
+              <UIcon name="i-heroicons-bars-3-bottom-left" />
+            </button>
+            <button @click="insertTag('blockquote')" title="Цитата">
+              <UIcon name="i-heroicons-chat-bubble-bottom-center-text" />
+            </button>
+            <button @click="insertTag('pre')" title="Код">
+              <UIcon name="i-heroicons-code-bracket" />
+            </button>
           </div>
           <div class="toolbar-sep"></div>
           <div class="toolbar-group">
-            <button @click="insertTag('strong')" title="Жирный"><UIcon name="i-heroicons-bold" /></button>
-            <button @click="insertTag('em')" title="Курсив"><UIcon name="i-heroicons-italic" /></button>
-            <button @click="insertTag('a')" title="Ссылка"><UIcon name="i-heroicons-link" /></button>
-            <button @click="showTermModal = true" title="Связать с термином"><UIcon name="i-heroicons-book-open" class="text-sky-500" /></button>
+            <button @click="insertTag('strong')" title="Жирный">
+              <UIcon name="i-heroicons-bold" />
+            </button>
+            <button @click="insertTag('em')" title="Курсив">
+              <UIcon name="i-heroicons-italic" />
+            </button>
+            <button @click="insertTag('a')" title="Ссылка">
+              <UIcon name="i-heroicons-link" />
+            </button>
+            <button @click="showTermModal = true" title="Связать с термином">
+              <UIcon name="i-heroicons-book-open" class="text-sky-500" />
+            </button>
           </div>
           <div class="toolbar-sep"></div>
           <div class="toolbar-group">
-            <button @click="insertTag('table')" title="Таблица"><UIcon name="i-heroicons-table-cells" /></button>
+            <button @click="insertTag('table')" title="Таблица">
+              <UIcon name="i-heroicons-table-cells" />
+            </button>
             <button @click="imageInput?.click()" title="Загрузить изображение" :disabled="isUploadingImage">
               <UIcon v-if="!isUploadingImage" name="i-heroicons-photo" />
               <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
@@ -307,19 +324,9 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
         </div>
 
         <div class="editor-main">
-          <textarea
-            v-if="!showPreview"
-            ref="textareaRef"
-            v-model="htmlContent"
-            class="html-editor"
-            placeholder="HTML-контент статьи..."
-            spellcheck="false"
-          />
-          <div
-            v-else
-            class="preview-pane article-prose"
-            v-html="htmlContent"
-          />
+          <textarea v-if="!showPreview" ref="textareaRef" v-model="htmlContent" class="html-editor"
+            placeholder="HTML-контент статьи..." spellcheck="false" />
+          <div v-else class="preview-pane article-prose" v-html="htmlContent" />
         </div>
       </div>
     </div>
@@ -347,6 +354,7 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   background: #fff;
   flex-shrink: 0;
 }
+
 .dark .editor-topbar {
   background: #1a1a1d;
   border-bottom-color: #2a2a2e;
@@ -365,8 +373,16 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   color: #888;
   transition: all 0.2s;
 }
-.back-btn:hover { background: #f3f4f6; color: #1a1a1a; }
-.dark .back-btn:hover { background: #252528; color: #e5e5e5; }
+
+.back-btn:hover {
+  background: #f3f4f6;
+  color: #1a1a1a;
+}
+
+.dark .back-btn:hover {
+  background: #252528;
+  color: #e5e5e5;
+}
 
 .editor-title {
   font-size: 16px;
@@ -377,7 +393,10 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.dark .editor-title { color: #e5e5e5; }
+
+.dark .editor-title {
+  color: #e5e5e5;
+}
 
 .editor-topbar-right {
   display: flex;
@@ -400,9 +419,19 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   color: #555;
   transition: all 0.2s;
 }
-.toggle-preview:hover { background: #f3f4f6; }
-.dark .toggle-preview { border-color: #333; color: #aaa; }
-.dark .toggle-preview:hover { background: #252528; }
+
+.toggle-preview:hover {
+  background: #f3f4f6;
+}
+
+.dark .toggle-preview {
+  border-color: #333;
+  color: #aaa;
+}
+
+.dark .toggle-preview:hover {
+  background: #252528;
+}
 
 .save-btn {
   display: flex;
@@ -418,8 +447,15 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   font-weight: 600;
   transition: all 0.2s;
 }
-.save-btn:hover { background: #4f46e5; }
-.save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.save-btn:hover {
+  background: #4f46e5;
+}
+
+.save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ─── Body ─── */
 .editor-body {
@@ -440,6 +476,7 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   flex-direction: column;
   gap: 14px;
 }
+
 .dark .editor-sidebar {
   background: #161618;
   border-right-color: #2a2a2e;
@@ -469,19 +506,30 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   outline: none;
   transition: border-color 0.2s;
 }
-.meta-input:focus { border-color: #6366f1; }
+
+.meta-input:focus {
+  border-color: #6366f1;
+}
+
 .dark .meta-input {
   background: #1e1e21;
   border-color: #2a2a2e;
   color: #e5e5e5;
 }
-.meta-input--mono { font-family: monospace; font-size: 12px; }
+
+.meta-input--mono {
+  font-family: monospace;
+  font-size: 12px;
+}
 
 .meta-row {
   display: flex;
   gap: 10px;
 }
-.meta-group--half { flex: 1; }
+
+.meta-group--half {
+  flex: 1;
+}
 
 .meta-toggle {
   display: flex;
@@ -491,7 +539,10 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   color: #555;
   cursor: pointer;
 }
-.dark .meta-toggle { color: #aaa; }
+
+.dark .meta-toggle {
+  color: #aaa;
+}
 
 /* ─── Editor Main ─── */
 .editor-main-container {
@@ -510,6 +561,7 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   background: #f8fafc;
   border-bottom: 1px solid #e5e7eb;
 }
+
 .dark .editor-toolbar {
   background: #1e1e21;
   border-bottom-color: #2a2a2e;
@@ -536,12 +588,17 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   font-weight: 700;
   transition: all 0.2s;
 }
+
 .toolbar-group button:hover {
   background: #eef2ff;
   color: #6366f1;
   border-color: #e0e7ff;
 }
-.dark .toolbar-group button { color: #aaa; }
+
+.dark .toolbar-group button {
+  color: #aaa;
+}
+
 .dark .toolbar-group button:hover {
   background: #252528;
   color: #818cf8;
@@ -553,7 +610,10 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   height: 20px;
   background: #e5e7eb;
 }
-.dark .toolbar-sep { background: #333; }
+
+.dark .toolbar-sep {
+  background: #333;
+}
 
 .editor-main {
   flex: 1;
@@ -575,6 +635,7 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   background: #fff;
   tab-size: 2;
 }
+
 .dark .html-editor {
   background: #111113;
   color: #e5e5e5;
@@ -587,12 +648,16 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   overflow-y: auto;
   background: #fff;
 }
+
 .dark .preview-pane {
   background: #111113;
 }
 
 @media (max-width: 768px) {
-  .editor-body { flex-direction: column; }
+  .editor-body {
+    flex-direction: column;
+  }
+
   .editor-sidebar {
     width: 100%;
     border-right: none;
