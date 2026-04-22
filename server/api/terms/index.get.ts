@@ -25,6 +25,9 @@ export default defineEventHandler(async (event) => {
     if (lang === 'ru') {
       conditions.push('(t.title_ru LIKE ? OR t.title LIKE ? OR t.aliases LIKE ? OR t.definition_ru LIKE ? OR t.definition LIKE ?)')
       params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`)
+    } else if (lang === 'zh') {
+      conditions.push('(t.title_zh LIKE ? OR t.title LIKE ? OR t.aliases LIKE ? OR t.definition_zh LIKE ? OR t.definition LIKE ?)')
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`)
     } else {
       conditions.push('(t.title LIKE ? OR t.aliases LIKE ? OR t.definition LIKE ?)')
       params.push(`%${search}%`, `%${search}%`, `%${search}%`)
@@ -33,6 +36,9 @@ export default defineEventHandler(async (event) => {
   if (letter) {
     if (lang === 'ru') {
       conditions.push('(t.title_ru LIKE ? OR t.title_ru LIKE ? OR t.title LIKE ? OR t.title LIKE ?)')
+      params.push(`${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`, `${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`)
+    } else if (lang === 'zh') {
+      conditions.push('(t.title_zh LIKE ? OR t.title_zh LIKE ? OR t.title LIKE ? OR t.title LIKE ?)')
       params.push(`${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`, `${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`)
     } else {
       conditions.push('(t.title LIKE ? OR t.title LIKE ?)')
@@ -58,40 +64,49 @@ export default defineEventHandler(async (event) => {
 
   const items = await db.prepare(`
     SELECT
-      t.id, t.slug, t.slug_ru, t.title, t.title_ru, t.aliases, t.definition, t.definition_ru,
+      t.id, t.slug, t.slug_ru, t.slug_zh, t.title, t.title_ru, t.title_zh, t.aliases, t.definition, t.definition_ru, t.definition_zh,
       t.term_article_id, t.created_at, t.updated_at,
       a.category_id,
       c.title as category_title,
       c.title_ru as category_title_ru,
+      c.title_zh as category_title_zh,
       c.slug as category_slug,
       c.slug_ru as category_slug_ru,
+      c.slug_zh as category_slug_zh,
       c.icon as category_icon,
       c.color as category_color
     FROM terms t
     LEFT JOIN articles a ON t.term_article_id = a.id
     LEFT JOIN categories c ON a.category_id = c.id
     ${whereClause}
-    ORDER BY CASE WHEN ? = 'ru' AND t.title_ru IS NOT NULL THEN t.title_ru ELSE t.title END ASC
+    ORDER BY CASE 
+      WHEN ? = 'ru' AND t.title_ru IS NOT NULL THEN t.title_ru 
+      WHEN ? = 'zh' AND t.title_zh IS NOT NULL THEN t.title_zh 
+      ELSE t.title END ASC
     LIMIT ? OFFSET ?
-  `).all(...params, lang, limit, offset) as any[]
+  `).all(...params, lang, lang, limit, offset) as any[]
 
   // Fetch available letters for the alphabet filter
   // We take the first character of each title (in uppercase)
   const lettersResult = await db.prepare(`
-    SELECT DISTINCT UPPER(SUBSTR(title, 1, 1)) as letter
+    SELECT DISTINCT UPPER(SUBSTR(CASE 
+      WHEN ? = 'ru' AND title_ru IS NOT NULL THEN title_ru 
+      WHEN ? = 'zh' AND title_zh IS NOT NULL THEN title_zh 
+      ELSE title END, 1, 1)) as letter
     FROM terms
     ORDER BY letter ASC
-  `).all() as { letter: string }[]
-  const availableLetters = lettersResult.map(r => r.letter).filter(l => /^[A-ZА-Я]$/i.test(l))
+  `).all(lang, lang) as { letter: string }[]
+  const availableLetters = lettersResult.map(r => r.letter).filter(l => l && l.trim() !== '')
 
   return {
     items: (items || []).map(t => {
       const isRu = lang === 'ru'
+      const isZh = lang === 'zh'
       return {
         ...t,
-        title: (isRu && t.title_ru) ? t.title_ru : t.title,
-        definition: (isRu && t.definition_ru) ? t.definition_ru : t.definition,
-        category_title: (isRu && t.category_title_ru) ? t.category_title_ru : t.category_title,
+        title: isRu ? (t.title_ru || t.title) : (isZh ? (t.title_zh || t.title) : t.title),
+        definition: isRu ? (t.definition_ru || t.definition) : (isZh ? (t.definition_zh || t.definition) : t.definition),
+        category_title: isRu ? (t.category_title_ru || t.category_title) : (isZh ? (t.category_title_zh || t.category_title) : t.category_title),
         // We keep the primary slug for stability but could support slug_ru if needed
         aliases: t.aliases ? JSON.parse(t.aliases) : [],
         has_article: Boolean(t.term_article_id),

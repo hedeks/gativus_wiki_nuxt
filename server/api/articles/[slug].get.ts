@@ -19,9 +19,11 @@ export default defineEventHandler(async (event) => {
       a.*,
       b.title as book_title_en,
       b.title_ru as book_title_ru,
+      b.title_zh as book_title_zh,
       b.slug as book_slug,
       c.title as category_title_en,
       c.title_ru as category_title_ru,
+      c.title_zh as category_title_zh,
       c.slug as category_slug,
       u.login as author_login
     FROM articles a
@@ -42,9 +44,11 @@ export default defineEventHandler(async (event) => {
         a.*,
         b.title as book_title_en,
         b.title_ru as book_title_ru,
+        b.title_zh as book_title_zh,
         b.slug as book_slug,
         c.title as category_title_en,
         c.title_ru as category_title_ru,
+        c.title_zh as category_title_zh,
         c.slug as category_slug,
         u.login as author_login
       FROM articles a
@@ -68,8 +72,9 @@ export default defineEventHandler(async (event) => {
 
   // 3. Localize Metadata
   const isRu = lang === 'ru'
-  article.book_title = isRu ? article.book_title_ru : article.book_title_en
-  article.category_title = isRu ? article.category_title_ru : article.category_title_en
+  const isZh = lang === 'zh'
+  article.book_title = isRu ? article.book_title_ru : (isZh ? article.book_title_zh : article.book_title_en)
+  article.category_title = isRu ? article.category_title_ru : (isZh ? article.category_title_zh : article.category_title_en)
 
   // Get prev/next articles in the same book and SAME LANGUAGE
   let prevArticle = null
