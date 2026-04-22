@@ -261,6 +261,7 @@ watch(() => props.graphData, () => {
 
 const selectedNode = ref<any>(null)
 const selectedLink = ref<any>(null)
+const hoveredNode = ref<any>(null)
 const currentTransform = ref(d3.zoomIdentity)
 const simulationTick = ref(0) // Added for simulation reactivity
 const searchQuery = ref('')
@@ -295,6 +296,47 @@ const getLinkHierarchy = (link: any) => {
   }
 }
 
+const getNeighbors = (node: any) => {
+  if (!node || !props.graphData?.links) return []
+  return props.graphData.links.reduce((acc: any[], link: any) => {
+    const sId = typeof link.source === 'object' ? link.source.id : link.source
+    const tId = typeof link.target === 'object' ? link.target.id : link.target
+    if (sId === node.id) acc.push(tId)
+    else if (tId === node.id) acc.push(sId)
+    return acc
+  }, [node.id])
+}
+
+const updateHighlights = () => {
+  if (!svgRef.value) return
+  
+  const focusNode = hoveredNode.value || selectedNode.value
+  const query = searchQuery.value.toLowerCase()
+  const neighbors = focusNode ? getNeighbors(focusNode) : null
+
+  // 1. Update Nodes
+  d3.selectAll('.node-group')
+    .style('opacity', (n: any) => {
+      // If we have a focus node (hover or selected), show neighbors
+      if (focusNode) {
+        const isNeighbor = neighbors?.includes(n.id)
+        return isNeighbor ? 1 : 0.05
+      }
+      // If no focus, the graph stays fully visible (even if searching, unless we found a unique node)
+      return 1
+    })
+
+  // 2. Update Links
+  d3.selectAll('.visual-link')
+    .style('opacity', (l: any) => {
+      if (focusNode) {
+        const isConnected = l.source.id === focusNode.id || l.target.id === focusNode.id
+        return isConnected ? 1 : 0.02
+      }
+      return 0.4
+    })
+}
+
 // Manifest CSS cubic-bezier(0.705, 0.010, 0.000, 0.915) approximation for D3
 // This is a "slow build-up, fast middle, very slow finish" type of curve
 const designSystemEase = (t: number) => {
@@ -315,6 +357,13 @@ onMounted(() => {
       isFilterMenuOpen.value = false
     }
   })
+})
+
+// Auto-reset highlights when selection is cleared, but DON'T clear search query
+watch(selectedNode, (newVal) => {
+  if (!newVal && !selectedLink.value) {
+    updateHighlights()
+  }
 })
 
 const nodePopupStyle = computed(() => {
@@ -363,23 +412,41 @@ const toggleFullscreen = () => {
 }
 
 const handleSearch = () => {
-  if (!searchQuery.value) {
-    d3.selectAll('.node-group').transition().duration(200).style('opacity', 1)
+  const query = searchQuery.value.trim().toLowerCase()
+  
+  if (!query) {
+    selectedNode.value = null
+    zoomFit()
+    updateHighlights()
     return
   }
-  const query = searchQuery.value.toLowerCase()
-  d3.selectAll('.node-group').style('opacity', (d: any) =>
-    d.title.toLowerCase().includes(query) ? 1 : 0.2
-  )
 
-  // Optional: Auto-focus first match if search is exact-ish or enterprise-like
-  const match = props.graphData?.nodes?.find((n: any) => n.title.toLowerCase() === query)
-  if (match) focusOnNode(match)
+  // Find matches
+  const matches = props.graphData?.nodes?.filter((n: any) => 
+    n.title.toLowerCase().includes(query) || (n.slug && n.slug.toLowerCase() === query)
+  ) || []
+
+  // Only update "Focus" if there's EXACTLY one match
+  if (matches.length === 1) {
+    const match = matches[0]
+    // Only restart camera animation if it's a NEW node
+    if (selectedNode.value?.id !== match.id) {
+      focusOnNode(match)
+    } else {
+      updateHighlights()
+    }
+  } else {
+    // If ambiguous (0 or >1 matches), we DON'T reset the screen anymore.
+    // We only update highlights (nodes stay fully visible because focusNode still points to previous match or null)
+    updateHighlights()
+  }
 }
 
 const clearSearch = () => {
   searchQuery.value = ''
-  handleSearch()
+  selectedNode.value = null
+  zoomFit()
+  updateHighlights()
 }
 
 const focusOnNode = (nodeData: any) => {
@@ -392,13 +459,16 @@ const focusOnNode = (nodeData: any) => {
   if (!target) return
 
   selectedNode.value = target
+  updateHighlights()
 
   const transform = d3.zoomIdentity
     .translate(width / 2, height / 2)
     .scale(1.5)
     .translate(-target.x, -target.y)
 
-  d3.select(svgRef.value).transition().duration(750).call(zoomHandler.transform, transform)
+  d3.select(svgRef.value).transition().duration(750)
+    .on('end', () => updateHighlights()) // Ensure final state is correct
+    .call(zoomHandler.transform, transform)
 }
 
 const relLabels = computed<Record<string, string>>(() => {
@@ -573,15 +643,6 @@ const initGraph = () => {
     return nodeIds.has(sourceId) && nodeIds.has(targetId)
   })
 
-  // Neighbor highlighting logic
-  const getNeighbors = (node: any) => {
-    return links.reduce((acc: any[], link: any) => {
-      if (link.source.id === node.id) acc.push(link.target.id)
-      else if (link.target.id === node.id) acc.push(link.source.id)
-      return acc
-    }, [node.id])
-  }
-
   // Hierarchy Y-axis mapping (Categories top, Terms bottom)
   const getYPosition = (type: string) => {
     if (type === 'category') return height * 0.2
@@ -705,18 +766,8 @@ const initGraph = () => {
       event.stopPropagation()
     })
     .on('mouseover', function (event: any, d: any) {
-      const neighbors = getNeighbors(d)
-      const query = searchQuery.value.toLowerCase()
-
-      d3.selectAll('.node-group')
-        .style('opacity', (n: any) => {
-          const isNeighbor = neighbors.includes(n.id)
-          const matchesSearch = !query || n.title.toLowerCase().includes(query)
-          return isNeighbor && matchesSearch ? 1 : 0.05
-        })
-
-      d3.selectAll('.visual-link')
-        .style('opacity', (l: any) => (l.source.id === d.id || l.target.id === d.id) ? 1 : 0.02)
+      hoveredNode.value = d
+      updateHighlights()
 
       d3.select(this).select('circle')
         .attr('r', (n: any) => {
@@ -730,12 +781,8 @@ const initGraph = () => {
         .attr('stroke', '#6366f1')
     })
     .on('mouseleave', function () {
-      const query = searchQuery.value.toLowerCase()
-
-      d3.selectAll('.node-group')
-        .style('opacity', (n: any) => !query || n.title.toLowerCase().includes(query) ? 1 : 0.2)
-
-      d3.selectAll('.visual-link').style('opacity', 0.4)
+      hoveredNode.value = null
+      updateHighlights()
 
       d3.select(this).select('circle')
         .attr('r', (n: any) => {
@@ -1344,15 +1391,13 @@ watch(activeFilters, () => {
   font-size: 14px;
 }
 
-/* Base SVG Transitions - GPU Accelerated (using :deep for D3 appended elements) */
+/* Base SVG Styles (GPU Accelerated) */
 :deep(.node-group) {
-  transition: opacity 0.25s cubic-bezier(0.705, 0.010, 0.000, 0.915);
+  /* transitions removed from the group level to avoid opacity lag */
 }
 
 :deep(.visual-link) {
-  transition: opacity 0.25s cubic-bezier(0.705, 0.010, 0.000, 0.915),
-    stroke-width 0.25s cubic-bezier(0.705, 0.010, 0.000, 0.915),
-    stroke-opacity 0.25s cubic-bezier(0.705, 0.010, 0.000, 0.915);
+  /* transitions removed for links focus to prevent stuttering */
 }
 
 :deep(.node-group circle) {

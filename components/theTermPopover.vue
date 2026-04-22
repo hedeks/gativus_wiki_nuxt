@@ -12,6 +12,12 @@
         <!-- Title -->
         <div class="popover-title">{{ term.title }}</div>
 
+        <!-- Media Preview -->
+        <div v-if="term.image_url || term.video_url" class="popover-media">
+          <img v-if="term.image_url" :src="term.image_url" class="media-preview" />
+          <video v-else-if="term.video_url" :src="term.video_url" class="media-preview" muted autoplay loop playsinline />
+        </div>
+
         <!-- Aliases -->
         <div v-if="term.aliases?.length" class="popover-aliases">
           <span v-for="alias in term.aliases.slice(0, 3)" :key="alias" class="alias-chip">
@@ -28,7 +34,7 @@
             <UIcon name="i-heroicons-arrow-path" class="spin-icon" />
             Загрузка...
           </span>
-          <NuxtLink v-if="term.slug" :to="`/glossary/${term.slug}`" class="popover-link">
+          <NuxtLink v-if="term.slug" :to="`/glossary/${term.slug}`" class="popover-link" @click="close">
             Открыть статью →
           </NuxtLink>
         </div>
@@ -49,12 +55,20 @@ interface TermData {
   category_slug?: string
   category_icon?: string
   category_color?: string
+  image_url?: string
+  video_url?: string
 }
 
 const visible = ref(false)
 const loading = ref(false)
 const term = ref<TermData | null>(null)
 const popoverEl = ref<HTMLElement>()
+const route = useRoute()
+
+// Close on navigation
+watch(() => route.fullPath, () => {
+  close()
+})
 
 const popoverStyle = ref({
   top: '0px',
@@ -113,6 +127,8 @@ async function showPopover(slug: string, anchor: HTMLElement) {
       category_slug: data.category_slug,
       category_icon: data.category_icon,
       category_color: data.category_color,
+      image_url: data.image_url,
+      video_url: data.video_url,
     }
     cache.set(slug, mapped)
     term.value = mapped
@@ -125,8 +141,11 @@ async function showPopover(slug: string, anchor: HTMLElement) {
 
 function positionPopover(anchor: HTMLElement) {
   const rect = anchor.getBoundingClientRect()
-  const popoverW = 320
   const margin = 8
+  
+  // Estimate or measure width
+  // Mobile: take up to 90% of screen, max 320px
+  const popoverW = Math.min(320, window.innerWidth - (margin * 2))
 
   let left = rect.left + window.scrollX
   let top = rect.bottom + window.scrollY + margin
@@ -137,12 +156,17 @@ function positionPopover(anchor: HTMLElement) {
   if (left < margin) left = margin
 
   // If no space below — show above
-  if (rect.bottom + 260 > window.innerHeight) {
-    top = rect.top + window.scrollY - 260 - margin
+  // On mobile, height is more variable, use 300px as safe margin
+  if (rect.bottom + 300 > window.innerHeight) {
+    top = rect.top + window.scrollY - 300 - margin
     if (top < margin) top = rect.bottom + window.scrollY + margin
   }
 
-  popoverStyle.value = { top: `${top}px`, left: `${left}px` }
+  popoverStyle.value = { 
+    top: `${top}px`, 
+    left: `${left}px`,
+    width: `${popoverW}px` 
+  }
 }
 
 function close() {
@@ -164,8 +188,9 @@ onUnmounted(() => {
 <style scoped>
 .term-popover {
   position: absolute;
-  z-index: 100;
-  width: 320px;
+  z-index: 1000;
+  width: calc(100vw - 32px);
+  max-width: 320px;
   background: rgba(255, 255, 255, 0.90);
   backdrop-filter: blur(16px);
   border: 1px solid #e9e9e9;
@@ -229,6 +254,26 @@ onUnmounted(() => {
 
 :global(.dark) .popover-title {
   color: #e5e5e5;
+}
+
+.popover-media {
+  width: 100%;
+  height: 140px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f1f5f9;
+  border: 1px solid #e9e9e9;
+}
+
+:global(.dark) .popover-media {
+  background: #252528;
+  border-color: #333;
+}
+
+.media-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .popover-aliases {

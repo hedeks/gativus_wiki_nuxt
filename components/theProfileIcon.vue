@@ -35,7 +35,7 @@ const items = computed(() => {
   ];
 
   // Anyone registered can enter admin
-  if (store.isLoggedIn) {
+  if (store.userInfo?.role === 'admin' || store.userInfo?.role === 'editor') {
     baseItems[1].push({
       label: 'Админ-панель',
       icon: 'i-heroicons-rectangle-group',
@@ -74,10 +74,11 @@ const items = computed(() => {
   }" :popper="{ placement: 'bottom-end', arrow: true }">
 
     <button class="profile-button group">
-      <UAvatar v-if="store.isLoggedIn" :alt="store.userInfo?.email" size="sm"
-        class="transition-all duration-300" />
-      <UAvatar v-else icon="i-heroicons-user" size="sm" class="bg-gray-200 dark:bg-zinc-700 text-gray-500 dark:text-zinc-400" />
-      <UIcon name="i-heroicons-chevron-down" class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-zinc-300 transition-all duration-300" />
+      <UAvatar v-if="store.isLoggedIn" :alt="store.userInfo?.email" size="sm" class="transition-all duration-300" />
+      <UAvatar v-else icon="i-heroicons-user" size="sm"
+        class="bg-gray-200 dark:bg-zinc-700 text-gray-500 dark:text-zinc-400" />
+      <UIcon name="i-heroicons-chevron-down"
+        class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-zinc-300 transition-all duration-300" />
     </button>
 
     <template #account="{ item }">
@@ -113,13 +114,15 @@ const items = computed(() => {
 }
 
 .profile-button:hover {
-  background-color: rgba(243, 244, 246, 1); /* bg-gray-100 */
+  background-color: rgba(243, 244, 246, 1);
+  /* bg-gray-100 */
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .dark .profile-button:hover {
-  background-color: rgba(39, 39, 42, 1); /* bg-zinc-800 */
+  background-color: rgba(39, 39, 42, 1);
+  /* bg-zinc-800 */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 

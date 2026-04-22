@@ -71,7 +71,10 @@ const links = computed(() => {
 
     <!-- Top Bar / Desktop Header -->
     <div class="px-4 py-2 flex items-center justify-between lg:grid lg:grid-cols-[1fr_max-content_1fr] gap-4 max-w-[1920px] mx-auto">
-      <theSiteLogo class="justify-self-start" />
+      <div class="flex items-center gap-4 justify-self-start">
+        <theSiteLogo />
+        <TheSearch class="hidden md:flex" />
+      </div>
 
       <!-- Desktop Navigation (Center) -->
       <div class="hidden lg:flex justify-self-center">
@@ -85,16 +88,47 @@ const links = computed(() => {
 
       <!-- Desktop Actions (Right) -->
       <div class="hidden lg:flex items-center w-fit gap-2 justify-self-end">
-        <USelect v-model="selectedLang" :options="[{label: '🇺🇸 EN', value: 'en'}, {label: '🇷🇺 RU', value: 'ru'}, {label: '🇨🇳 ZH', value: 'zh'}]" size="sm" variant="none" color="gray" class="w-24 font-semibold" />
+        <USelect 
+          v-model="selectedLang" 
+          :options="[{label: '🇺🇸 EN', value: 'en'}, {label: '🇷🇺 RU', value: 'ru'}, {label: '🇨🇳 ZH', value: 'zh'}]" 
+          size="sm" 
+          color="gray"
+          class="w-24 font-bold transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 active:scale-95"
+          :ui="{
+            rounded: 'rounded-xl',
+            color: {
+              gray: {
+                outline: 'ring-1 ring-gray-200 dark:ring-zinc-700 bg-white dark:bg-zinc-900 text-gray-700 dark:text-zinc-200 focus:ring-2 focus:ring-sky-500 shadow-sm'
+              }
+            }
+          }"
+        />
         <theThemeChanger />
         <theProfileIcon />
       </div>
 
       <!-- Mobile Controls (Right) -->
-      <div class="flex lg:hidden items-center gap-2">
-        <USelect v-model="selectedLang" :options="[{label: 'EN', value: 'en'}, {label: 'RU', value: 'ru'}, {label: 'ZH', value: 'zh'}]" size="sm" variant="none" color="gray" class="w-16" />
-        <theThemeChanger />
-        <theProfileIcon />
+      <div class="flex lg:hidden items-center gap-1 sm:gap-2">
+        <TheSearch class="flex md:hidden" />
+        <USelect 
+          v-model="selectedLang" 
+          :options="[{label: 'EN', value: 'en'}, {label: 'RU', value: 'ru'}, {label: 'ZH', value: 'zh'}]" 
+          size="sm" 
+          color="gray"
+          class="w-[70px] sm:w-20 font-bold"
+          :ui="{
+            rounded: 'rounded-xl',
+            color: {
+              gray: {
+                outline: 'ring-1 ring-gray-200 dark:ring-zinc-700 bg-white dark:bg-zinc-900 text-gray-700 dark:text-zinc-200 focus:ring-sky-500 shadow-sm'
+              }
+            }
+          }"
+        />
+        <div class="hidden sm:flex items-center gap-1">
+          <theThemeChanger />
+          <theProfileIcon />
+        </div>
         <UButton :icon="isMenuOpen ? 'i-heroicons-x-mark' : 'i-heroicons-bars-3-bottom-right'" color="gray"
           variant="ghost" @click="isMenuOpen = !isMenuOpen" class="transition-transform duration-300"
           :class="{ 'rotate-90': isMenuOpen }" />
@@ -118,6 +152,14 @@ const links = computed(() => {
           <UIcon name="i-heroicons-chevron-right"
             class="w-4 h-4 text-gray-300 dark:text-zinc-700 group-hover:translate-x-1 transition-transform" />
         </NuxtLink>
+        <!-- Extra Mobile Actions -->
+        <div class="flex sm:hidden items-center justify-between pt-4 border-t dark:border-zinc-800">
+           <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Настройки</span>
+           <div class="flex items-center gap-4">
+              <theThemeChanger />
+              <theProfileIcon />
+           </div>
+        </div>
       </div>
     </transition>
   </div>
