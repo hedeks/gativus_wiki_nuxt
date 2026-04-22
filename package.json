@@ -8,7 +8,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "deploy": "scp -r .output/* j30132428@efd1ef3c9c95.hosting.myjino.ru:~/domains/web-courses-vguit.hedeks.ru  && ssh j30132428@efd1ef3c9c95.hosting.myjino.ru \"mkdir -p ~/domains/web-courses-vguit.hedeks.ru/tmp && touch ~/domains/web-courses-vguit.hedeks.ru/tmp/restart.txt\""
+    "archive": "powershell -ExecutionPolicy Bypass -File ./make-deploy.ps1",
+    "package": "npm run build && npm run archive"
   },
   "dependencies": {
     "@nuxt/ui": "^2.16.0",

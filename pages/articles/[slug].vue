@@ -1,34 +1,32 @@
 <template>
   <div
-    class="flex flex-col p-3 lg:p-10 flex-wrap-reverse lg:grid lg:grid-cols-12 lg:flex-nowrap gap-10 prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert w-full prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold">
+    class="flex flex-col p-3 lg:p-10 flex-wrap-reverse lg:grid lg:grid-cols-10 lg:flex-nowrap gap-10 prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert w-full prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold">
     <theLeftQuizSelector @changeView="changeView" :is-theory="isTheory" :title="article?.title"
       :quizTitle="article?.title" :hasPresentation="hasPresentation"
-      class="lg:col-span-2 xl:col-span-3 lg:sticky top-[--header-height] xl:justify-self-end xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]" />
+      class="lg:col-span-2 xl:col-span-2 lg:sticky top-[--header-height] xl:justify-self-end xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]" />
     <div :class="[{ 'active': !hasPresentation || isTheory, 'inactive': hasPresentation && !isTheory }]" ref="lection"
-      class="flex flex-col-reverse lg:grid lg:grid-cols-10 xl:grid-cols-10 gap-10 w-full lg:col-span-10 xl:col-span-9 view-transition">
+      class="flex flex-col-reverse lg:grid lg:grid-cols-8 xl:grid-cols-8 gap-10 w-full lg:col-span-8 xl:col-span-8 view-transition">
       <div
-        class="w-full max-w-[900px] 2xl:max-w-[1100px] mx-auto lg:col-span-8 xl:col-span-7 flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm">
+        class="w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm">
         <!-- Article Header -->
         <div v-if="article" class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800">
           <!-- Dynamic Breadcrumbs -->
-          <div
-            class="flex items-center gap-2 text-[10px] font-bold text-sky-600 dark:text-sky-400 mb-4 uppercase tracking-[0.25em]">
-            <template v-if="article.book_id">
-              <NuxtLink to="/books" class="hover:underline transition-all whitespace-nowrap">{{ t.library }}</NuxtLink>
-              <span class="opacity-30">/</span>
-              <NuxtLink :to="`/books/${article.book_slug}`"
-                class="hover:underline transition-all max-w-[200px] truncate">
-                {{ article.book_title }}
-              </NuxtLink>
-              <span class="opacity-30">/</span>
-              <span class="whitespace-nowrap">{{ t.chapter }} {{ article.sort_order }}</span>
-            </template>
-            <template v-else>
-              <NuxtLink to="/articles" class="hover:underline transition-all">{{ t.articles }}</NuxtLink>
-              <span class="opacity-30">/</span>
-              <span class="truncate">{{ article.title }}</span>
-            </template>
-          </div>
+          <TheBreadcrumbs
+            v-if="article"
+            :items="[
+              article.book_id 
+                ? { label: t.library, to: '/books' } 
+                : { label: t.articles, to: '/articles' },
+              article.book_id 
+                ? { label: article.book_title, to: `/books/${article.book_slug}` } 
+                : null,
+              { 
+                label: article.book_id 
+                  ? `${t.chapter} ${article.sort_order}` 
+                  : article.title 
+              }
+            ].filter(Boolean) as any[]"
+          />
 
           <h1
             class="text-3xl lg:text-4xl mb-0 font-bold text-[#233a4d] dark:text-gray-100 uppercase tracking-widest leading-tight m-0 mb-0">
@@ -36,8 +34,8 @@
           </h1>
         </div>
         <!-- Article HTML Content -->
-        <div v-if="article?.html_content" class="parent w-full lg:col-span-8 xl:col-span-7 flex-col article-prose"
-          v-html="article.html_content" @click="handleArticleClick" />
+        <div v-if="article?.html_content" class="parent w-full flex-col article-prose" v-html="article.html_content"
+          @click="handleArticleClick" />
         <div v-else class="text-gray-400 py-10 text-center">
           <p>{{ t.noContent }}</p>
         </div>
@@ -78,70 +76,80 @@
         </div>
       </div>
       <theToc :activeID="activeID" @updateActiveID="handleTocClick" v-if="tocLinks.length"
-        class="lg:w-auto lg:col-span-2 xl:col-span-3 xl:justify-self-start xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]"
+        class="lg:w-auto lg:col-span-2 xl:col-span-2 xl:justify-self-start xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]"
         :title="t.toc" :links="tocLinks" />
     </div>
     <div v-if="hasPresentation" :class="[{ 'active': !isTheory }, { 'inactive': isTheory }]"
-      class="lg:grid lg:grid-cols-10 xl:grid-cols-10 gap-10 w-full lg:col-span-10 xl:col-span-9 view-transition">
-      
+      class="lg:grid lg:grid-cols-8 xl:grid-cols-8 gap-10 w-full lg:col-span-8 xl:col-span-8 view-transition">
+
       <!-- Main Presentation Column -->
-      <div class="w-full max-w-[900px] 2xl:max-w-[1100px] mx-auto lg:col-span-8 xl:col-span-7 h-[calc(100dvh_-_var(--header-height)_-_5rem)] flex flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+      <div
+        class="w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 h-[calc(100dvh_-_var(--header-height)_-_5rem)] flex flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
         <thePresentationView :presentationPath="article?.presentation_path" :articleTitle="article?.title" />
       </div>
 
       <!-- Right Side Info Panel (Symmetry with TOC) -->
       <aside :class="[
         'flex flex-col z-30 transition-all duration-500 overflow-x-hidden',
-        'lg:sticky lg:top-[--header-height] lg:bg-transparent lg:border-none lg:shadow-none lg:p-0 lg:h-fit lg:w-full lg:col-span-2 xl:col-span-3',
+        'lg:sticky lg:top-[--header-height] lg:bg-transparent lg:border-none lg:shadow-none lg:p-0 lg:h-fit lg:w-full lg:col-span-2 xl:col-span-2',
         'fixed top-[calc(var(--header-height)+0.75rem)] right-4 w-[240px] max-w-[85vw] sm:w-[320px] bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-gray-100 dark:border-zinc-800 rounded-xl shadow-lg py-3 pl-3 pr-5 lg:static lg:z-auto lg:max-w-none'
       ]" class="presentation-sidebar">
-        
+
         <!-- Mobile Toggle (Matching TOC Style) -->
-        <div class="flex items-center justify-between cursor-pointer select-none px-3 py-1 lg:sticky lg:top-0 lg:z-20 lg:bg-white/50 lg:dark:bg-zinc-900/50 lg:backdrop-blur-md"
-            @click="isPresSidebarOpen = !isPresSidebarOpen">
-            <p class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase transition-all duration-500 mr-4 flex-shrink-0">
-                {{ t.info }}
-            </p>
-            <div class="flex items-center gap-2 min-w-0">
-                <span v-if="!isDesktop && !isPresSidebarOpen" class="text-[9px] text-black dark:text-white/80 font-medium truncate min-w-0 max-w-[100px]">
-                    {{ t.mobileControls }}
-                </span>
-                <svg :class="{ 'rotate-180': isPresSidebarOpen }" class="w-3 h-3 text-gray-400 flex-shrink-0 transition-all duration-500 lg:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-            </div>
+        <div
+          class="flex items-center justify-between cursor-pointer select-none px-3 py-1 lg:sticky lg:top-0 lg:z-20 lg:bg-white/50 lg:dark:bg-zinc-900/50 lg:backdrop-blur-md"
+          @click="isPresSidebarOpen = !isPresSidebarOpen">
+          <p
+            class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase transition-all duration-500 mr-4 flex-shrink-0">
+            {{ t.info }}
+          </p>
+          <div class="flex items-center gap-2 min-w-0">
+            <span v-if="!isDesktop && !isPresSidebarOpen"
+              class="text-[9px] text-black dark:text-white/80 font-medium truncate min-w-0 max-w-[100px]">
+              {{ t.mobileControls }}
+            </span>
+            <svg :class="{ 'rotate-180': isPresSidebarOpen }"
+              class="w-3 h-3 text-gray-400 flex-shrink-0 transition-all duration-500 lg:hidden" fill="none"
+              stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
         </div>
 
         <Transition name="expand-pres">
           <div v-show="isDesktop || isPresSidebarOpen" class="flex flex-col gap-4 mt-4 lg:mt-2">
             <div class="flex flex-col gap-2 p-1">
               <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">{{ article?.title }}</h3>
-              
+
               <div class="mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800 flex flex-col gap-3">
-                <div class="flex items-center gap-2 text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest">
+                <div
+                  class="flex items-center gap-2 text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest">
                   <UIcon name="i-heroicons-computer-desktop" class="w-4 h-4" />
                   {{ t.controls }}
                 </div>
                 <div class="grid grid-cols-1 gap-3 text-[11px]">
                   <div class="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/50 p-2 rounded-lg">
                     <span class="text-gray-500 uppercase font-bold text-[9px]">{{ t.next }}</span>
-                    <span class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">SPACE / →</span>
+                    <span
+                      class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">SPACE
+                      / →</span>
                   </div>
                   <div class="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/50 p-2 rounded-lg">
                     <span class="text-gray-500 uppercase font-bold text-[9px]">{{ t.back }}</span>
-                    <span class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">←</span>
+                    <span
+                      class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">←</span>
                   </div>
                   <div class="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/50 p-2 rounded-lg">
                     <span class="text-gray-500 uppercase font-bold text-[9px]">{{ t.zoom }}</span>
-                    <span class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">Wheel / ±</span>
+                    <span
+                      class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">Wheel
+                      / ±</span>
                   </div>
                 </div>
               </div>
 
-              <a v-if="article?.presentation_path" 
-                 :href="`/api/uploads/${article.presentation_path}`" 
-                 download
-                 class="mt-4 flex items-center justify-center gap-2 py-3 px-4 bg-black dark:bg-white text-white dark:text-black hover:bg-sky-600 dark:hover:bg-sky-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-xl active:scale-95">
+              <a v-if="article?.presentation_path" :href="`/api/uploads/${article.presentation_path}`" download
+                class="mt-4 flex items-center justify-center gap-2 py-3 px-4 bg-black dark:bg-white text-white dark:text-black hover:bg-sky-600 dark:hover:bg-sky-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-xl active:scale-95">
                 <UIcon name="i-heroicons-arrow-down-tray" class="w-4 h-4" />
                 {{ t.download }}
               </a>
@@ -412,6 +420,7 @@ const resetToFirstHeading = () => {
 }
 
 const updateHeadingsAndObserve = () => {
+  if (!process.client) return
   nextTick(() => {
     const container = document.querySelector('.parent')
     if (container) {
@@ -480,7 +489,7 @@ const changeView = (name: string) => {
 // Watch for content changes to re-process headings
 watch(() => article.value?.html_content, () => {
   updateHeadingsAndObserve()
-}, { immediate: true })
+}, { immediate: false }) // Disable immediate to prevent SSR crash
 
 onMounted(() => {
   checkSize()
@@ -621,19 +630,19 @@ onUnmounted(() => {
 /* Animations for Presentation Info Accordion (Matching TOC) */
 .expand-pres-enter-active,
 .expand-pres-leave-active {
-    transition: max-height 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915), opacity 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915);
-    overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915), opacity 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915);
+  overflow: hidden;
 }
 
 .expand-pres-enter-from,
 .expand-pres-leave-to {
-    max-height: 0;
-    opacity: 0;
+  max-height: 0;
+  opacity: 0;
 }
 
 .expand-pres-enter-to,
 .expand-pres-leave-from {
-    max-height: 60vh;
-    opacity: 1;
+  max-height: 60vh;
+  opacity: 1;
 }
 </style>

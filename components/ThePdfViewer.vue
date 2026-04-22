@@ -78,11 +78,8 @@
 </template>
 
 <script setup lang="ts">
-import * as pdfjs from 'pdfjs-dist'
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url'
+let pdfjsLib: any = null
 import PdfPage from './PdfPage.vue'
-
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker
 
 const props = defineProps<{
   src: string
@@ -267,7 +264,31 @@ const visiblePages = computed(() => {
 })
 
 onMounted(async () => {
-  await loadPdf()
+  if (process.client) {
+    try {
+      // Import the main library and worker URL
+      const [pdfjsModule, pdfWorkerModule] = await Promise.all([
+        import('pdfjs-dist'),
+        import('pdfjs-dist/build/pdf.worker.mjs?url')
+      ])
+
+      // Handle both default and module namespace (important for production builds)
+      const pdfjs = pdfjsModule.default || pdfjsModule
+      const pdfWorker = pdfWorkerModule.default || pdfWorkerModule
+
+      if (!pdfjs || !pdfjs.GlobalWorkerOptions) {
+        throw new Error('GlobalWorkerOptions not found in pdfjs-dist')
+      }
+
+      pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker as any
+      pdfjsLib = pdfjs
+
+      await loadPdf()
+    } catch (err) {
+      console.error('Failed to initialize PDF viewer:', err)
+    }
+  }
+
   document.addEventListener('fullscreenchange', () => {
     isFullscreen.value = !!document.fullscreenElement
   })
@@ -279,10 +300,10 @@ watch(() => props.src, async () => {
 })
 
 const loadPdf = async () => {
-  if (!props.src) return
+  if (!props.src || !pdfjsLib) return
   loading.value = true
   try {
-    const loadingTask = pdfjs.getDocument(props.src)
+    const loadingTask = pdfjsLib.getDocument(props.src)
     pdfDoc.value = await loadingTask.promise
     numPages.value = pdfDoc.value.numPages
   } catch (error) {

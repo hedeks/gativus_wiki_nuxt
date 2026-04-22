@@ -16,13 +16,12 @@
 
         <!-- Header Section -->
         <div class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800">
-          <!-- Breadcrumbs -->
-          <div
-            class="flex items-center gap-2 text-[10px] font-bold text-sky-600 dark:text-sky-400 mb-4 uppercase tracking-[0.25em]">
-            <NuxtLink to="/glossary" class="hover:underline transition-all whitespace-nowrap">{{ t.glossary }}</NuxtLink>
-            <span class="opacity-30">/</span>
-            <span class="truncate">{{ term.title }}</span>
-          </div>
+          <TheBreadcrumbs
+            :items="[
+              { label: t.glossary, to: '/glossary' },
+              { label: term.title }
+            ]"
+          />
 
           <h1
             class="text-3xl lg:text-4xl mb-0 font-bold text-[#233a4d] dark:text-gray-100 uppercase tracking-widest leading-tight m-0">
@@ -41,6 +40,12 @@
                   alias }}</span>
             </div>
           </div>
+        </div>
+
+        <!-- Term Media Section -->
+        <div v-if="term.image_url || term.video_url" class="mb-10 rounded-2xl overflow-hidden shadow-soft border dark:border-zinc-800">
+           <img v-if="term.image_url" :src="term.image_url" class="w-full h-auto object-cover max-h-[500px] cursor-zoom-in" @click="handleMediaClick(term.image_url)" />
+           <video v-else-if="term.video_url" :src="term.video_url" class="w-full h-auto max-h-[500px]" controls playsinline />
         </div>
 
         <!-- Article Content -->
@@ -189,7 +194,11 @@ if (error.value && !termData.value) {
 
 useSeoMeta({
   title: computed(() => term.value?.title ? `${term.value.title} — Gativus Wiki` : 'Термин — Gativus Wiki'),
+  ogTitle: computed(() => term.value?.title),
   description: computed(() => term.value?.definition || ''),
+  ogDescription: computed(() => term.value?.definition || ''),
+  ogImage: computed(() => term.value?.image_url || '/logo.svg'),
+  twitterCard: 'summary_large_image',
 })
 
 watch(() => langStore.currentLang, () => {
@@ -288,6 +297,7 @@ const resetToFirstHeading = () => {
 }
 
 const updateHeadingsAndObserve = () => {
+  if (!process.client) return
   nextTick(() => {
     const container = document.querySelector('.parent')
     if (container) {
@@ -347,6 +357,14 @@ const handleArticleClick = (e: MouseEvent) => {
 }
 const toggleZoom = () => { isZoomed.value = !isZoomed.value }
 const closeLightbox = () => { isLightboxOpen.value = false; document.body.style.overflow = '' }
+
+// ─── Term Media ───
+const handleMediaClick = (url: string) => {
+  lightboxImage.value = url
+  isLightboxOpen.value = true
+  isZoomed.value = false
+  document.body.style.overflow = 'hidden'
+}
 
 // ─── Others ───
 const copied = ref(false)

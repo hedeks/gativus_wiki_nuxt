@@ -99,5 +99,7 @@ export default defineNuxtConfig({
     path: '~/components',
     pathPrefix: false,
   }],
-
+  build: {
+    transpile: ['pdfjs-dist']
+  }
 })

@@ -105,11 +105,7 @@ const observe = (filteredElements: Element[]) => {
 
 const obs = ref<IntersectionObserver>()
 const currentPosition = ref<number>();
-window?.addEventListener('scroll', () => {
-    if (isTheory.value) {
-        currentPosition.value = scrollY;
-    }
-})
+// Scroll listener moved to onMounted
 const changeView = (name: string) => {
     if (name === "quiz") {
         isTheory.value = false;
@@ -149,6 +145,15 @@ useSeoMeta({
     ogDescription: ast.value.data.description
 });
 onMounted(() => {
+    if (process.client) {
+        window.addEventListener('scroll', () => {
+            if (isTheory.value) {
+                currentPosition.value = window.scrollY;
+            }
+        })
+        window.addEventListener('resize', checkSize)
+    }
+
     const elements = document.querySelectorAll('h2, h3, h4, h5');
     let filteredElements: Element[] = [];
     elements.forEach((item) => {
