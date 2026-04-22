@@ -151,7 +151,7 @@ const langStore = useLanguageStore()
 const uiDict: Record<string, any> = {
   en: {
     heroTitle: 'ABOUT PROJECT',
-    heroSubtitle: 'Gativus Wiki — Knowledge Base',
+    heroSubtitle: 'Gativus — Knowledge Base',
     heroDescription: 'The GATIVUS project consists of three fundamental and inextricably linked subsystems, realizing the transition from abstract theory to network protocol and physical hardware.',
     gtomBrief: 'GTOM considers the phenomenon of consciousness not as a monolithic structure, but as a dynamic superposition of three independent levels (components).',
     gtomQuote: 'Consciousness is modeled as a hyper-map of 11 layers of elementary maps — from sensory inputs to quality processing structures. The theory strictly states that full consciousness has a technical, computable nature and can be fully realized in hardware.',
@@ -169,12 +169,12 @@ const uiDict: Record<string, any> = {
     ctaTitle: 'Start Exploring',
     ctaText: 'Explore Gativus articles to dive deep into the full theory and project specifications.',
     ctaArticles: 'Gativus Articles',
-    metaTitle: 'About — Gativus Wiki',
+    metaTitle: 'About — Gativus',
     metaDesc: 'GTOM · GNET · GATE — from theory of mind to physical device. Full Gativus project architecture.'
   },
   ru: {
     heroTitle: 'О ПРОЕКТЕ',
-    heroSubtitle: 'Gativus Wiki — база знаний',
+    heroSubtitle: 'Gativus — база знаний',
     heroDescription: 'Проект GATIVUS состоит из трёх фундаментальных и неразрывно связанных подсистем, реализующих переход от абстрактной теории к сетевому протоколу и физическому оборудованию.',
     gtomBrief: 'GTOM рассматривает феномен сознания не как монолитную структуру, а как динамическую суперпозицию трёх независимых уровней (компонентов).',
     gtomQuote: 'Сознание моделируется как гипер-карта из 11 слоёв элементарных карт — от сенсорных входов до структур обработки качеств. Теория строго утверждает, что полное сознание имеет техническую, вычислимую природу и может быть полностью реализовано аппаратно.',

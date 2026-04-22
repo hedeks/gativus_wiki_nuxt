@@ -162,7 +162,7 @@ function getCategoryTitle(id: number) {
 }
 
 useSeoMeta({
-  title: 'Библиотека — Gativus Wiki',
+  title: 'Библиотека — Gativus',
   description: 'Фундаментальные статьи и книги о технологиях Gativus, GTOM и GNET.'
 })
 </script>

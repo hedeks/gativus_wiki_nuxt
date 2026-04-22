@@ -20,7 +20,7 @@ const links = [{
             <div class="footer-brand">
                 <img src="/images/121px-Logo.jpg" alt="Gativus" class="footer-logo" />
                 <div class="footer-brand-text">
-                    <span class="footer-title">GATIVUS WIKI</span>
+                    <span class="footer-title">GATIVUS</span>
                     <span class="footer-tagline">GTOM · GNET · GATE</span>
                 </div>
             </div>

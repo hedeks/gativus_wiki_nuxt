@@ -1,4 +1,4 @@
-# Gativus Wiki - Automated Deployment Packaging Script
+# Gativus - Automated Deployment Packaging Script
 $ErrorActionPreference = "Stop"
 
 $distDir = "dist_deploy"

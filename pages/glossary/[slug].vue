@@ -193,7 +193,7 @@ if (error.value && !termData.value) {
 }
 
 useSeoMeta({
-  title: computed(() => term.value?.title ? `${term.value.title} — Gativus Wiki` : 'Термин — Gativus Wiki'),
+  title: computed(() => term.value?.title ? `${term.value.title} — Gativus` : 'Термин — Gativus'),
   ogTitle: computed(() => term.value?.title),
   description: computed(() => term.value?.definition || ''),
   ogDescription: computed(() => term.value?.definition || ''),

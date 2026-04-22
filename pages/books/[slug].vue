@@ -25,7 +25,7 @@
             <img v-if="book.cover_image" :src="book.cover_image" :alt="book.title" class="w-full h-full object-cover" />
             <div v-else class="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-800 text-gray-400">
                <UIcon name="i-heroicons-book-open" class="text-6xl mb-2" />
-               <span class="text-[10px] font-bold uppercase tracking-widest text-center px-4">Gativus Wiki</span>
+               <span class="text-[10px] font-bold uppercase tracking-widest text-center px-4">Gativus</span>
             </div>
           </div>
 
@@ -136,9 +136,9 @@ function getCategoryTitle(id: number) {
 }
 
 useSeoMeta({
-  title: () => book.value?.title ? `${book.value.title} — Gativus Wiki` : 'Книга — Gativus Wiki',
+  title: () => book.value?.title ? `${book.value.title} — Gativus` : 'Книга — Gativus',
   ogTitle: () => book.value?.title,
-  description: () => book.value?.description || 'Книга из библиотеки Gativus Wiki.',
+  description: () => book.value?.description || 'Книга из библиотеки Gativus.',
   ogDescription: () => book.value?.description,
   ogImage: () => book.value?.cover_image || '/logo.svg',
   twitterCard: 'summary_large_image',

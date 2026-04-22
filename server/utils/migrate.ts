@@ -1,6 +1,6 @@
 /**
- * Gativus Wiki — Database Migrations
- * Creates all required tables for the wiki system.
+ * Gativus — Database Migrations
+ * Creates all required tables for the system.
  * Safe to run multiple times (uses IF NOT EXISTS / column existence checks).
  */
 
@@ -210,8 +210,11 @@ export async function runMigrations(db: Database) {
 
       if (table === 'categories') {
         await ensureColumn('title_ru', 'TEXT')
+        await ensureColumn('title_zh', 'TEXT')
         await ensureColumn('description_ru', 'TEXT')
+        await ensureColumn('description_zh', 'TEXT')
         await ensureColumn('slug_ru', 'TEXT')
+        await ensureColumn('slug_zh', 'TEXT')
         await ensureColumn('lang', 'TEXT')
         await ensureColumn('lang_ru', 'TEXT')
         await ensureColumn('lang_zh', 'TEXT')
@@ -220,8 +223,11 @@ export async function runMigrations(db: Database) {
       if (table === 'terms') {
         await ensureColumn('term_article_id', 'INTEGER REFERENCES articles(id) ON DELETE SET NULL')
         await ensureColumn('title_ru', 'TEXT')
+        await ensureColumn('title_zh', 'TEXT')
         await ensureColumn('definition_ru', 'TEXT')
+        await ensureColumn('definition_zh', 'TEXT')
         await ensureColumn('slug_ru', 'TEXT')
+        await ensureColumn('slug_zh', 'TEXT')
         await ensureColumn('image_url', 'TEXT')
         await ensureColumn('video_url', 'TEXT')
         await ensureColumn('presentation_path', 'TEXT')
@@ -264,7 +270,7 @@ export async function runMigrations(db: Database) {
 
   // ─── 16. Phase 5: Full-Text Search (FTS5) ───
   console.log('[migrate] Setting up FTS5 search indexing...')
-  
+
   await db.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS wiki_fts USING fts5(
       id UNINDEXED,

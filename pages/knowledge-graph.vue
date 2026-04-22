@@ -25,7 +25,7 @@ const uiDict: Record<string, any> = {
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 
 useHead({
-  title: () => `${t.value.title} — Gativus Wiki`
+  title: () => `${t.value.title} — Gativus`
 })
 
 const graphData = ref<any>(null)

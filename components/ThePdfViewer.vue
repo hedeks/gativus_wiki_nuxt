@@ -59,6 +59,25 @@
         class="absolute inset-0 flex items-center justify-center bg-gray-50/50 dark:bg-zinc-950/50 backdrop-blur-sm z-30">
         <UIcon name="i-heroicons-arrow-path" class="w-12 h-12 text-sky-600 animate-spin" />
       </div>
+
+      <!-- Error / Fallback Overlay -->
+      <div v-if="error && !pdfDoc"
+        class="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-950 z-40 p-10 text-center">
+        <div class="w-20 h-20 rounded-full bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center mb-6">
+          <UIcon name="i-heroicons-exclamation-triangle" class="w-10 h-10 text-rose-500" />
+        </div>
+        <h3 class="text-xl font-bold mb-2">Не удалось загрузить PDF</h3>
+        <p class="text-gray-500 dark:text-gray-400 mb-8 max-w-sm">
+          Возможно, ваш браузер или сервер блокирует компоненты рендеринга. Попробуйте переключиться на встроенный просмотрщик.
+        </p>
+        <div class="flex gap-4">
+          <UButton label="Встроенный просмотрщик" color="black" variant="solid" icon="i-heroicons-window" @click="useNativeViewer = true" />
+          <UButton label="Повторить" color="gray" variant="ghost" icon="i-heroicons-arrow-path" @click="initViewer" />
+        </div>
+      </div>
+
+      <!-- Native Iframe Fallback -->
+      <iframe v-if="useNativeViewer" :src="src" class="absolute inset-0 w-full h-full border-none z-50 bg-white" />
     </div>
 
     <!-- Floating Navigation Bar (Overlay) - MINIMIZED -->
@@ -78,6 +97,8 @@
 </template>
 
 <script setup lang="ts">
+import { ref, shallowRef, computed, watch, onMounted, nextTick } from 'vue'
+
 let pdfjsLib: any = null
 import PdfPage from './PdfPage.vue'
 
@@ -93,6 +114,8 @@ const numPages = ref(0)
 const scale = ref(1.0)
 const loading = ref(true)
 const isFullscreen = ref(false)
+const error = ref(false)
+const useNativeViewer = ref(false)
 
 // Page Jump Logic
 const jumpPage = ref(1)
@@ -263,31 +286,38 @@ const visiblePages = computed(() => {
   return pages
 })
 
-onMounted(async () => {
-  if (process.client) {
-    try {
-      // Import the main library and worker URL
-      const [pdfjsModule, pdfWorkerModule] = await Promise.all([
-        import('pdfjs-dist'),
-        import('pdfjs-dist/build/pdf.worker.mjs?url')
-      ])
+const initViewer = async () => {
+  if (!import.meta.client) return
+  loading.value = true
+  error.value = false
+  try {
+    // Import the main library
+    const pdfjsModule = await import('pdfjs-dist')
+    const pdfjs = pdfjsModule.default || pdfjsModule
 
-      // Handle both default and module namespace (important for production builds)
-      const pdfjs = pdfjsModule.default || pdfjsModule
-      const pdfWorker = pdfWorkerModule.default || pdfWorkerModule
-
-      if (!pdfjs || !pdfjs.GlobalWorkerOptions) {
-        throw new Error('GlobalWorkerOptions not found in pdfjs-dist')
-      }
-
-      pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker as any
-      pdfjsLib = pdfjs
-
-      await loadPdf()
-    } catch (err) {
-      console.error('Failed to initialize PDF viewer:', err)
+    if (!pdfjs || !pdfjs.GlobalWorkerOptions) {
+      throw new Error('GlobalWorkerOptions not found in pdfjs-dist')
     }
+
+    // ─── MIME TYPE FIX ───
+    // We use a local .js file from the /public folder to force the server 
+    // to send the correct "application/javascript" MIME type.
+    // If that fails, we use a CDN as a backup.
+    const PDFJS_VERSION = '5.6.205'
+    pdfjs.GlobalWorkerOptions.workerSrc = '/workers/pdf.worker.js'
+    
+    pdfjsLib = pdfjs
+    await loadPdf()
+  } catch (err) {
+    console.error('Failed to initialize PDF viewer:', err)
+    error.value = true
+  } finally {
+    loading.value = false
   }
+}
+
+onMounted(async () => {
+  await initViewer()
 
   document.addEventListener('fullscreenchange', () => {
     isFullscreen.value = !!document.fullscreenElement

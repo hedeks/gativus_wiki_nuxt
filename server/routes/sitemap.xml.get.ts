@@ -1,12 +1,12 @@
 /**
  * server/routes/sitemap.xml.ts
- * Dynamically generates a sitemap for the Gativus Wiki.
+ * Dynamically generates a sitemap for Gativus.
  */
 
 export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const config = useRuntimeConfig()
-  const host = event.headers.get('host') || 'gativus-wiki.com'
+  const host = event.headers.get('host') || 'gativus.com'
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
   const baseUrl = `${protocol}://${host}`
 

@@ -35,7 +35,7 @@ const statCards = computed(() => [
   <div class="dashboard">
     <div class="dashboard-header">
       <h1 class="dashboard-title">Dashboard</h1>
-      <p class="dashboard-subtitle">Обзор системы Gativus Wiki</p>
+      <p class="dashboard-subtitle">Обзор системы Gativus</p>
     </div>
 
     <div class="stats-grid">

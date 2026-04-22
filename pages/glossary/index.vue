@@ -145,7 +145,7 @@ const route = useRoute()
 
 const uiDict: Record<string, any> = {
   en: {
-    metaTitle: 'Glossary — Gativus Wiki',
+    metaTitle: 'Glossary — Gativus',
     metaDesc: 'Gativus system terms and definitions (GTOM, GNET, GATE).',
     heroMeta: 'Glossary & Terms',
     heroTitle: 'GLOSSARY',
@@ -160,7 +160,7 @@ const uiDict: Record<string, any> = {
     hasArticle: 'HAS ARTICLE'
   },
   ru: {
-    metaTitle: 'Глоссарий — Gativus Wiki',
+    metaTitle: 'Глоссарий — Gativus',
     metaDesc: 'Термины и определения систем Gativus (GTOM, GNET, GATE). Только английские оригиналы названий.',
     heroMeta: 'Glossary & Terms',
     heroTitle: 'ГЛОССАРИЙ',

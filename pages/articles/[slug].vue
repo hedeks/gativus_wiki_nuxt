@@ -253,7 +253,7 @@ if (error.value && !articleData.value) {
 }
 
 useSeoMeta({
-  title: () => article.value?.title ? `${article.value.title} — Gativus Wiki` : 'Gativus Wiki',
+  title: () => article.value?.title ? `${article.value.title} — Gativus` : 'Gativus',
   ogTitle: () => article.value?.title,
   description: () => article.value?.excerpt || '',
   ogDescription: () => article.value?.excerpt || '',
