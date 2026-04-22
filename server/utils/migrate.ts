@@ -156,14 +156,26 @@ export async function runMigrations(db: Database) {
   // ─── 11. Multi-language columns for books (title/description variants) ───
   try {
     const bookCols = await db.prepare('PRAGMA table_info(books)').all() as any[]
+    
     if (!bookCols.some((c: any) => c.name === 'title_ru')) {
       await db.exec(`ALTER TABLE books ADD COLUMN title_ru TEXT`)
-      await db.exec(`ALTER TABLE books ADD COLUMN title_zh TEXT`)
-      await db.exec(`ALTER TABLE books ADD COLUMN description_ru TEXT`)
-      await db.exec(`ALTER TABLE books ADD COLUMN description_zh TEXT`)
-      console.log('[migrate] Added localized title/description columns to books')
+      console.log('[migrate] Added title_ru to books')
     }
-  } catch { /* table may not exist yet — created above */ }
+    if (!bookCols.some((c: any) => c.name === 'title_zh')) {
+      await db.exec(`ALTER TABLE books ADD COLUMN title_zh TEXT`)
+      console.log('[migrate] Added title_zh to books')
+    }
+    if (!bookCols.some((c: any) => c.name === 'description_ru')) {
+      await db.exec(`ALTER TABLE books ADD COLUMN description_ru TEXT`)
+      console.log('[migrate] Added description_ru to books')
+    }
+    if (!bookCols.some((c: any) => c.name === 'description_zh')) {
+      await db.exec(`ALTER TABLE books ADD COLUMN description_zh TEXT`)
+      console.log('[migrate] Added description_zh to books')
+    }
+  } catch (e) {
+    console.warn('[migrate] Book localized columns update failed:', e)
+  }
   
   // Try to drop obsolete locale columns from books
   try {
@@ -225,24 +237,131 @@ export async function runMigrations(db: Database) {
   // Localized Terms
   try {
     const termCols = await db.prepare('PRAGMA table_info(terms)').all() as any[]
+    
     if (!termCols.some((c: any) => c.name === 'title_ru')) {
       await db.exec(`ALTER TABLE terms ADD COLUMN title_ru TEXT`)
-      await db.exec(`ALTER TABLE terms ADD COLUMN definition_ru TEXT`)
-      await db.exec(`ALTER TABLE terms ADD COLUMN slug_ru TEXT`)
-      console.log('[migrate] Added Russian localization columns to terms')
+      console.log('[migrate] Added title_ru to terms')
     }
-  } catch { /* ignore */ }
+    if (!termCols.some((c: any) => c.name === 'definition_ru')) {
+      await db.exec(`ALTER TABLE terms ADD COLUMN definition_ru TEXT`)
+      console.log('[migrate] Added definition_ru to terms')
+    }
+    if (!termCols.some((c: any) => c.name === 'slug_ru')) {
+      await db.exec(`ALTER TABLE terms ADD COLUMN slug_ru TEXT`)
+      console.log('[migrate] Added slug_ru to terms')
+    }
+    
+    // Add media columns for terms (Phase 5)
+    if (!termCols.some((c: any) => c.name === 'image_url')) {
+      await db.exec(`ALTER TABLE terms ADD COLUMN image_url TEXT`)
+      console.log('[migrate] Added image_url to terms')
+    }
+    if (!termCols.some((c: any) => c.name === 'video_url')) {
+      await db.exec(`ALTER TABLE terms ADD COLUMN video_url TEXT`)
+      console.log('[migrate] Added video_url to terms')
+    }
+    if (!termCols.some((c: any) => c.name === 'presentation_path')) {
+      await db.exec(`ALTER TABLE terms ADD COLUMN presentation_path TEXT`)
+      console.log('[migrate] Added presentation_path to terms')
+    }
+  } catch (e) {
+    console.warn('[migrate] Term localized columns update failed:', e)
+  }
 
   // Localized Categories
   try {
     const catCols = await db.prepare('PRAGMA table_info(categories)').all() as any[]
     if (!catCols.some((c: any) => c.name === 'title_ru')) {
       await db.exec(`ALTER TABLE categories ADD COLUMN title_ru TEXT`)
-      await db.exec(`ALTER TABLE categories ADD COLUMN description_ru TEXT`)
-      await db.exec(`ALTER TABLE categories ADD COLUMN slug_ru TEXT`)
-      console.log('[migrate] Added Russian localization columns to categories')
+      console.log('[migrate] Added title_ru to categories')
     }
-  } catch { /* ignore */ }
+    if (!catCols.some((c: any) => c.name === 'description_ru')) {
+      await db.exec(`ALTER TABLE categories ADD COLUMN description_ru TEXT`)
+      console.log('[migrate] Added description_ru to categories')
+    }
+    if (!catCols.some((c: any) => c.name === 'slug_ru')) {
+      await db.exec(`ALTER TABLE categories ADD COLUMN slug_ru TEXT`)
+      console.log('[migrate] Added slug_ru to categories')
+    }
+  } catch (e) {
+    console.warn('[migrate] Category localized columns update failed:', e)
+  }
+
+  // ─── 16. Phase 5: Full-Text Search (FTS5) ───
+  console.log('[migrate] Setting up FTS5 search indexing...')
+  
+  // Create virtual FTS5 table
+  // Columns: rowid (mapped to original id), type ('article'|'term'), title, content, slug, locale
+  await db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS wiki_fts USING fts5(
+      id UNINDEXED,
+      type UNINDEXED,
+      title,
+      content,
+      slug UNINDEXED,
+      locale UNINDEXED,
+      tokenize='unicode61'
+    )
+  `)
+
+  // Create Triggers for Articles
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS tr_articles_insert AFTER INSERT ON articles BEGIN
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      VALUES (new.id, 'article', new.title, new.html_content, new.slug, new.locale);
+    END;
+  `)
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS tr_articles_update AFTER UPDATE ON articles BEGIN
+      UPDATE wiki_fts SET
+        title = new.title,
+        content = new.html_content,
+        slug = new.slug,
+        locale = new.locale
+      WHERE id = old.id AND type = 'article';
+    END;
+  `)
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS tr_articles_delete AFTER DELETE ON articles BEGIN
+      DELETE FROM wiki_fts WHERE id = old.id AND type = 'article';
+    END;
+  `)
+
+  // Create Triggers for Terms
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS tr_terms_insert AFTER INSERT ON terms BEGIN
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      VALUES (new.id, 'term', new.title, new.definition, new.slug, 'en');
+    END;
+  `)
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS tr_terms_update AFTER UPDATE ON terms BEGIN
+      UPDATE wiki_fts SET
+        title = new.title,
+        content = new.definition,
+        slug = new.slug
+      WHERE id = old.id AND type = 'term';
+    END;
+  `)
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS tr_terms_delete AFTER DELETE ON terms BEGIN
+      DELETE FROM wiki_fts WHERE id = old.id AND type = 'term';
+    END;
+  `)
+
+  // Populate data if empty (Initial seed)
+  const ftsCount = await db.prepare('SELECT COUNT(*) as count FROM wiki_fts').get() as any
+  if (ftsCount?.count === 0) {
+    console.log('[migrate] Initializing FTS5 indices from existing data...')
+    await db.exec(`
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      SELECT id, 'article', title, html_content, slug, locale FROM articles;
+    `)
+    await db.exec(`
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      SELECT id, 'term', title, definition, slug, 'en' FROM terms;
+    `)
+  }
 
   // Synchronize Article Category/Book across translations
   try {

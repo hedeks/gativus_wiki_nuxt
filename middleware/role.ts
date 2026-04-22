@@ -6,7 +6,8 @@
 export default defineNuxtRouteMiddleware(() => {
   const store = userStore()
 
-  if (store.userInfo?.role !== 'admin') {
+
+  if (store.userInfo?.role !== 'admin' && store.userInfo?.role !== "editor") {
     const toast = useToast()
     toast.add({
       title: 'Доступ запрещён',

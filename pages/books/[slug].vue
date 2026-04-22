@@ -6,15 +6,21 @@
 
     <div v-else-if="error" class="page-container text-center pt-40">
       <UIcon name="i-heroicons-exclamation-triangle" class="text-6xl text-red-500 mb-6 mx-auto" />
-      <h2 class="hero-title">КНИГА НЕ НАЙДЕНА</h2>
-      <p class="hero-description mx-auto mt-4 mb-8">Возможно, она была удалена или ссылка неверна.</p>
-      <UButton to="/books" size="lg" color="black" icon="i-heroicons-arrow-left" class="rounded-xl">Вернуться в библиотеку</UButton>
+      <h2 class="hero-title">{{ t.notFound }}</h2>
+      <p class="hero-description mx-auto mt-4 mb-8">{{ t.notFoundDesc }}</p>
+      <UButton to="/books" size="lg" color="black" icon="i-heroicons-arrow-left" class="rounded-xl">{{ t.backToLib }}</UButton>
     </div>
 
     <div v-else-if="book" class="book-content pb-20">
-      <div class="page-container">
-        <!-- Header -->
         <header class="book-hero flex flex-col md:flex-row gap-12 items-center md:items-start w-full pt-10 pb-16">
+          <TheBreadcrumbs 
+            v-if="book"
+            class="md:absolute top-10 left-0"
+            :items="[
+              { label: t.library, to: '/books' },
+              { label: book.title }
+            ]"
+          />
           <div class="book-cover-large shadow-soft hover:shadow-hover transition-all duration-500">
             <img v-if="book.cover_image" :src="book.cover_image" :alt="book.title" class="w-full h-full object-cover" />
             <div v-else class="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-800 text-gray-400">
@@ -39,7 +45,7 @@
 
             <div v-if="book.articles && book.articles.length > 0" class="flex justify-center md:justify-start mb-10">
               <NuxtLink :to="`/articles/${book.articles[0].slug}`" class="read-button group">
-                <span>Читать</span>
+                <span>{{ t.read }}</span>
                 <UIcon name="i-heroicons-arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </NuxtLink>
             </div>
@@ -47,7 +53,7 @@
             <div class="flex flex-wrap gap-8 items-center justify-center md:justify-start text-[12px] font-bold text-gray-400 uppercase tracking-widest">
               <div class="flex items-center gap-2">
                 <UIcon name="i-heroicons-document-text" />
-                <span>{{ book.articles?.length || 0 }} глав</span>
+                <span>{{ book.articles?.length || 0 }} {{ t.chapters }}</span>
               </div>
             </div>
           </div>
@@ -56,7 +62,7 @@
         <!-- Chapters List -->
         <section class="chapters-section w-full pt-10">
           <div class="section-divider mb-12">
-            <span class="divider-text">ОГЛАВЛЕНИЕ</span>
+            <span class="divider-text">{{ t.toc }}</span>
           </div>
 
           <div v-if="book.articles && book.articles.length > 0" class="chapters-grid flex flex-col gap-5">
@@ -74,11 +80,10 @@
 
           <div v-else class="inner-card w-full text-center py-20 border-dashed justify-center">
              <UIcon name="i-heroicons-clock" class="text-4xl text-gray-300 mb-4" />
-             <p class="text-gray-500 font-medium tracking-wide">Главы этой книги еще не опубликованы на этом языке.</p>
+             <p class="text-gray-500 font-medium tracking-wide">{{ t.noChapters }}</p>
           </div>
         </section>
       </div>
-    </div>
     <TheScrollToTop />
   </div>
 </template>
@@ -95,6 +100,31 @@ const { data: book, pending, error, refresh } = await useFetch<any>(`/api/books/
 })
 const { data: categories } = await useFetch<any[]>('/api/categories')
 
+const uiDict: Record<string, any> = {
+  en: {
+    library: 'LIBRARY',
+    read: 'Read',
+    chapters: 'Chapters',
+    notFound: 'BOOK NOT FOUND',
+    notFoundDesc: 'It might have been deleted or the link is incorrect.',
+    backToLib: 'Back to Library',
+    toc: 'CONTENTS',
+    noChapters: 'Chapters for this book have not been published in this language yet.'
+  },
+  ru: {
+    library: 'БИБЛИОТЕКА',
+    read: 'Читать',
+    chapters: 'глав',
+    notFound: 'КНИГА НЕ НАЙДЕНА',
+    notFoundDesc: 'Возможно, она была удалена или ссылка неверна.',
+    backToLib: 'Вернуться в библиотеку',
+    toc: 'ОГЛАВЛЕНИЕ',
+    noChapters: 'Главы этой книги еще не опубликованы на этом языке.'
+  }
+}
+
+const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+
 // Watch for language changes to refresh book data (localized title/description/chapters)
 watch(() => langStore.currentLang, () => {
   refresh()
@@ -107,7 +137,11 @@ function getCategoryTitle(id: number) {
 
 useSeoMeta({
   title: () => book.value?.title ? `${book.value.title} — Gativus Wiki` : 'Книга — Gativus Wiki',
-  description: () => book.value?.description || 'Книга из библиотеки Gativus Wiki.'
+  ogTitle: () => book.value?.title,
+  description: () => book.value?.description || 'Книга из библиотеки Gativus Wiki.',
+  ogDescription: () => book.value?.description,
+  ogImage: () => book.value?.cover_image || '/logo.svg',
+  twitterCard: 'summary_large_image',
 })
 </script>
 
@@ -129,6 +163,7 @@ useSeoMeta({
   max-width: 960px;
   margin: 0 auto;
   width: 100%;
+  position: relative; /* For absolute breadcrumbs */
 }
 
 /* Hero Typography */
