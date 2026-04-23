@@ -32,18 +32,29 @@ export async function buildTermsMap(db: any): Promise<Map<string, { id: number, 
 }
 
 /**
+ * Remove any existing wiki-term links from HTML, keeping only inner text.
+ */
+function stripWikiTermLinks(html: string): string {
+  return html.replace(/<a\s[^>]*class="wiki-term"[^>]*>(.*?)<\/a>/gi, '$1')
+}
+
+
+/**
  * Replace term occurrences in HTML with <a class="wiki-term"> links.
  * Returns both the updated HTML and the list of linked term IDs.
  */
 export function linkTermsInHtml(html: string, termsMap: Map<string, { id: number, slug: string }>): { html: string, linkedTermIds: number[] } {
   if (!html || termsMap.size === 0) return { html, linkedTermIds: [] }
 
+  // Очищаем HTML от ранее вставленных wiki-term ссылок, чтобы анализ был идемпотентным
+  const cleanHtml = stripWikiTermLinks(html)
+
   // Sort phrases by length descending
   const phrases = Array.from(termsMap.keys()).sort((a, b) => b.length - a.length)
 
-  const parts = splitHtmlIntoSegments(html)
-  const linkedSlugs = new Set<string>() 
-  const linkedTermIds = new Set<number>() 
+  const parts = splitHtmlIntoSegments(cleanHtml)
+  const linkedSlugs = new Set<string>()
+  const linkedTermIds = new Set<number>()
 
   const linkedHtml = parts.map(part => {
     if (part.isTag) return part.content
