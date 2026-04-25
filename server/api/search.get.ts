@@ -7,7 +7,7 @@
 export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const query = getQuery(event)
-  const q = (query.q as string || '').trim().replace(/[^\w\sа-яА-ЯёЁ]/g, ' ')
+  const q = (query.q as string || '').trim().replace(/["'*^()[\]:]/g, ' ').trim()
   const locale = (query.locale as string) || 'en'
 
   if (!q || q.length < 2) {

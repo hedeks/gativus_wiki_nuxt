@@ -8,8 +8,8 @@ const results = ref<any[]>([])
 const pending = ref(false)
 
 const tDict: Record<string, any> = {
-  en: { placeholder: 'Search wiki...', noResults: 'No results found', articles: 'Articles', terms: 'Terms' },
-  ru: { placeholder: 'Поиск по вики...', noResults: 'Ничего не найдено', articles: 'Статьи', terms: 'Термины' },
+  en: { placeholder: 'Search Gativus...', noResults: 'No results found', articles: 'Articles', terms: 'Terms' },
+  ru: { placeholder: 'Поиск по гативус...', noResults: 'Ничего не найдено', articles: 'Статьи', terms: 'Термины' },
   zh: { placeholder: '搜索维基...', noResults: '未找到结果', articles: '文章', terms: '词汇' }
 }
 
@@ -77,13 +77,13 @@ const groupedResults = computed(() => {
         {{ t.placeholder }}
       </span>
       <UKbd class="ml-4 hidden lg:inline-flex opacity-50">{{ (navigator?.platform?.indexOf('Mac') > -1) ? '⌘' : 'Ctrl'
-      }} K</UKbd>
+        }} K</UKbd>
     </button>
 
     <!-- Modal / Command Palette Style -->
-    <UModal v-model="isOpen" :ui="{ 
+    <UModal v-model="isOpen" :ui="{
       container: 'flex items-start sm:items-center justify-center pt-20 sm:pt-0',
-      width: 'w-[calc(100vw-32px)] sm:max-w-xl', 
+      width: 'w-[calc(100vw-32px)] sm:max-w-xl',
       rounded: 'rounded-2xl',
       shadow: 'shadow-2xl'
     }">

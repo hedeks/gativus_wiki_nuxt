@@ -267,7 +267,7 @@ function handleLogout() {
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
   color: #fff;
   display: flex;
   align-items: center;

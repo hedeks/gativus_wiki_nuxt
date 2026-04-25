@@ -119,7 +119,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: ['auth', 'role'] })
 
-useSeoMeta({ title: 'Глоссарий — Admin — Gativus Wiki' })
+useSeoMeta({ title: 'Глоссарий — Admin — Gativus' })
 
 const search = ref('')
 const dSearch = refDebounced(search, 300)

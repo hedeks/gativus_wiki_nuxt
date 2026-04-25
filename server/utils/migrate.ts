@@ -261,7 +261,6 @@ export async function runMigrations(db: Database) {
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_book_id ON articles(book_id)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_category_id ON articles(category_id)`)
-  await db.exec(`CREATE INDEX IF NOT EXISTS idx_terms_category_id ON terms(category_id)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_locale ON articles(locale)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_origin_id ON articles(origin_id)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_terms_term_article_id ON terms(term_article_id)`)
@@ -328,19 +327,18 @@ export async function runMigrations(db: Database) {
     END;
   `)
 
-  // Populate data if empty (Initial seed)
-  const ftsCount = await db.prepare('SELECT COUNT(*) as count FROM wiki_fts').get() as any
-  if (ftsCount?.count === 0) {
-    console.log('[migrate] Initializing FTS5 indices from existing data...')
-    await db.exec(`
-      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
-      SELECT id, 'article', title, html_content, slug, locale FROM articles;
-    `)
-    await db.exec(`
-      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
-      SELECT id, 'term', title, definition, slug, 'en' FROM terms;
-    `)
-  }
+  // Populate / Resync FTS on every startup to fix any gaps
+  console.log('[migrate] Resyncing FTS5 index from live data...')
+  await db.exec(`DELETE FROM wiki_fts`)
+  await db.exec(`
+    INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+    SELECT id, 'article', title, html_content, slug, locale FROM articles;
+  `)
+  await db.exec(`
+    INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+    SELECT id, 'term', title, definition, slug, 'en' FROM terms;
+  `)
+  console.log('[migrate] FTS5 resync complete ✓')
 
   // Synchronize Article Category/Book across translations
   try {

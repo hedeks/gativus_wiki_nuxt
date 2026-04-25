@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Invalid JSON file' })
   }
 
-  if (dump.version !== "1.1") {
+  if (!['1.1', '1.2'].includes(dump.version)) {
     throw createError({ statusCode: 400, statusMessage: `Unsupported dump version: ${dump.version}` })
   }
 
@@ -138,13 +138,14 @@ export default defineEventHandler(async (event) => {
     const termArtId = t.term_article_slug ? idMap.art.get(t.term_article_slug) || null : null
 
     await db.prepare(`
-      INSERT INTO terms (slug, slug_ru, title, title_ru, aliases, definition, definition_ru, term_article_id, created_by, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
+      INSERT INTO terms (slug, slug_ru, title, title_ru, aliases, definition, definition_ru, image_url, video_url, presentation_path, term_article_id, created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
       ON CONFLICT(slug) DO UPDATE SET
         slug_ru = excluded.slug_ru, title = excluded.title, title_ru = excluded.title_ru,
         aliases = excluded.aliases, definition = excluded.definition, definition_ru = excluded.definition_ru,
+        image_url = excluded.image_url, video_url = excluded.video_url, presentation_path = excluded.presentation_path,
         term_article_id = excluded.term_article_id, created_at = excluded.created_at, updated_at = excluded.updated_at
-    `).run(t.slug, t.slug_ru || null, t.title, t.title_ru || null, t.aliases || null, t.definition, t.definition_ru || null, termArtId, auth.id, t.created_at || null, t.updated_at || null)
+    `).run(t.slug, t.slug_ru || null, t.title, t.title_ru || null, t.aliases || null, t.definition, t.definition_ru || null, t.image_url || null, t.video_url || null, t.presentation_path || null, termArtId, auth.id, t.created_at || null, t.updated_at || null)
 
     const row = await db.prepare('SELECT id FROM terms WHERE slug = ?').get(t.slug) as any
     if (row) idMap.term.set(t.slug, row.id)

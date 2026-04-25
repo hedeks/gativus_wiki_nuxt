@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Термин не найден' })
   }
 
-  const { title, title_ru, definition, definition_ru, slug_ru, aliases, html_content, category_id, change_summary, presentation_path } = body
+  const { title, title_ru, definition, definition_ru, slug_ru, aliases, html_content, category_id, change_summary, presentation_path, image_url, video_url } = body
 
   const updates: string[] = []
   const params: any[] = []
@@ -32,7 +32,9 @@ export default defineEventHandler(async (event) => {
   if (title_ru !== undefined) { updates.push('title_ru = ?'); params.push(title_ru) }
   if (definition !== undefined) { updates.push('definition = ?'); params.push(definition) }
   if (definition_ru !== undefined) { updates.push('definition_ru = ?'); params.push(definition_ru) }
-  
+  if (image_url !== undefined) { updates.push('image_url = ?'); params.push(image_url || null) }
+  if (video_url !== undefined) { updates.push('video_url = ?'); params.push(video_url || null) }
+
   if (aliases !== undefined) {
     const json = Array.isArray(aliases) ? JSON.stringify(aliases) : JSON.stringify([aliases])
     updates.push('aliases = ?')

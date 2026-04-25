@@ -13,7 +13,7 @@
         {{ t.heroDescription }}
       </p>
       <div class="hero-cta">
-        <NuxtLink to="/articles" class="cta-button primary">
+        <NuxtLink to="/books" class="cta-button primary">
           <UIcon name="i-heroicons-book-open" />
           {{ t.articles }}
         </NuxtLink>
@@ -34,14 +34,14 @@ const langStore = useLanguageStore()
 const uiDict: Record<string, any> = {
   en: {
     heroDescription: 'Implementation of the transition from abstract theory of mind to network protocol and physical hardware.',
-    articles: 'Articles',
+    articles: 'Books',
     about: 'About Project',
     metaTitle: 'Gativus — Home',
     metaDesc: 'Gativus — from theory of mind (GTOM) through network (GNET) to physical device (GATE). Official knowledge base.'
   },
   ru: {
     heroDescription: 'Реализация перехода от абстрактной теории сознания к сетевому протоколу и физическому оборудованию.',
-    articles: 'Статьи',
+    articles: 'Книги',
     about: 'О проекте',
     metaTitle: 'Gativus — Главная',
     metaDesc: 'Gativus — от теории сознания (GTOM) через сеть (GNET) к физическому устройству (GATE). Официальная база знаний.'
@@ -59,7 +59,7 @@ useSeoMeta({
 
 useHead({
   htmlAttrs: { lang: () => langStore.currentLang },
-  link: [{ rel: 'icon', type: 'image/svg', href: '/logo.svg' }]
+  link: [{ rel: 'icon', type: 'image/svg', href: '/logo.jpg' }]
 })
 </script>
 

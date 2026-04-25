@@ -8,82 +8,83 @@
       <UIcon name="i-heroicons-exclamation-triangle" class="text-6xl text-red-500 mb-6 mx-auto" />
       <h2 class="hero-title">{{ t.notFound }}</h2>
       <p class="hero-description mx-auto mt-4 mb-8">{{ t.notFoundDesc }}</p>
-      <UButton to="/books" size="lg" color="black" icon="i-heroicons-arrow-left" class="rounded-xl">{{ t.backToLib }}</UButton>
+      <UButton to="/books" size="lg" color="black" icon="i-heroicons-arrow-left" class="rounded-xl">{{ t.backToLib }}
+      </UButton>
     </div>
 
     <div v-else-if="book" class="book-content pb-20">
-        <header class="book-hero flex flex-col md:flex-row gap-12 items-center md:items-start w-full pt-10 pb-16">
-          <TheBreadcrumbs 
-            v-if="book"
-            class="md:absolute top-10 left-0"
-            :items="[
-              { label: t.library, to: '/books' },
-              { label: book.title }
-            ]"
-          />
-          <div class="book-cover-large shadow-soft hover:shadow-hover transition-all duration-500">
-            <img v-if="book.cover_image" :src="book.cover_image" :alt="book.title" class="w-full h-full object-cover" />
-            <div v-else class="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-800 text-gray-400">
-               <UIcon name="i-heroicons-book-open" class="text-6xl mb-2" />
-               <span class="text-[10px] font-bold uppercase tracking-widest text-center px-4">Gativus</span>
-            </div>
+      <header class="book-hero flex flex-col md:flex-row gap-12 items-center md:items-start w-full pt-10 pb-16">
+        <TheBreadcrumbs v-if="book" class="md:absolute top-10 left-0" :items="[
+          { label: t.library, to: '/books' },
+          { label: book.title }
+        ]" />
+        <div class="book-cover-large shadow-soft hover:shadow-hover transition-all duration-500">
+          <img v-if="book.cover_image" :src="book.cover_image" :alt="book.title" class="w-full h-full object-cover" />
+          <div v-else
+            class="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-800 text-gray-400">
+            <UIcon name="i-heroicons-book-open" class="text-6xl mb-2" />
+            <span class="text-[10px] font-bold uppercase tracking-widest text-center px-4">Gativus</span>
+          </div>
+        </div>
+
+        <div class="book-header-info flex-1 text-center md:text-left">
+          <div class="flex flex-wrap gap-2 mb-6 justify-center md:justify-start">
+            <span v-for="catId in book.category_ids" :key="catId" class="badge">
+              {{ getCategoryTitle(catId) }}
+            </span>
           </div>
 
-          <div class="book-header-info flex-1 text-center md:text-left">
-            <div class="flex flex-wrap gap-2 mb-6 justify-center md:justify-start">
-              <span v-for="catId in book.category_ids" :key="catId" class="badge">
-                {{ getCategoryTitle(catId) }}
-              </span>
-            </div>
+          <h1 class="hero-title uppercase block">{{ book.title }}</h1>
+          <p class="hero-subtitle mb-8">Архитектура и фундаментальные принципы</p>
 
-            <h1 class="hero-title uppercase block">{{ book.title }}</h1>
-            <p class="hero-subtitle mb-8">Архитектура и фундаментальные принципы</p>
+          <p class="hero-description mb-10">
+            {{ book.description || `В этой книге пока нет подробного описания. Изучите оглавление ниже, чтобы
+            ознакомиться с ключевыми материалами.` }}
+          </p>
 
-            <p class="hero-description mb-10">
-              {{ book.description || 'В этой книге пока нет подробного описания. Изучите оглавление ниже, чтобы ознакомиться с ключевыми материалами.' }}
-            </p>
-
-            <div v-if="book.articles && book.articles.length > 0" class="flex justify-center md:justify-start mb-10">
-              <NuxtLink :to="`/articles/${book.articles[0].slug}`" class="read-button group">
-                <span>{{ t.read }}</span>
-                <UIcon name="i-heroicons-arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </NuxtLink>
-            </div>
-
-            <div class="flex flex-wrap gap-8 items-center justify-center md:justify-start text-[12px] font-bold text-gray-400 uppercase tracking-widest">
-              <div class="flex items-center gap-2">
-                <UIcon name="i-heroicons-document-text" />
-                <span>{{ book.articles?.length || 0 }} {{ t.chapters }}</span>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <!-- Chapters List -->
-        <section class="chapters-section w-full pt-10">
-          <div class="section-divider mb-12">
-            <span class="divider-text">{{ t.toc }}</span>
-          </div>
-
-          <div v-if="book.articles && book.articles.length > 0" class="chapters-grid flex flex-col gap-5">
-            <NuxtLink v-for="(article, index) in book.articles" :key="article.id" :to="`/articles/${article.slug}`" class="inner-card group">
-              <div class="letter-block">
-                {{ Number(index) + 1 }}
-              </div>
-              <div class="flex-1">
-                <h3 class="chapter-title">{{ article.title }}</h3>
-                <p class="chapter-excerpt line-clamp-1" v-if="article.excerpt">{{ article.excerpt }}</p>
-              </div>
-              <UIcon name="i-heroicons-arrow-right" class="text-gray-300 group-hover:text-sky-500 transition-colors" />
+          <div v-if="book.articles && book.articles.length > 0" class="flex justify-center md:justify-start mb-10">
+            <NuxtLink :to="`/articles/${book.articles[0].slug}`" class="read-button group">
+              <span>{{ t.read }}</span>
+              <UIcon name="i-heroicons-arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </NuxtLink>
           </div>
 
-          <div v-else class="inner-card w-full text-center py-20 border-dashed justify-center">
-             <UIcon name="i-heroicons-clock" class="text-4xl text-gray-300 mb-4" />
-             <p class="text-gray-500 font-medium tracking-wide">{{ t.noChapters }}</p>
+          <div
+            class="flex flex-wrap gap-8 items-center justify-center md:justify-start text-[12px] font-bold text-gray-400 uppercase tracking-widest">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-document-text" />
+              <span>{{ book.articles?.length || 0 }} {{ t.chapters }}</span>
+            </div>
           </div>
-        </section>
-      </div>
+        </div>
+      </header>
+
+      <!-- Chapters List -->
+      <section class="chapters-section w-full pt-10">
+        <div class="section-divider mb-12">
+          <span class="divider-text">{{ t.toc }}</span>
+        </div>
+
+        <div v-if="book.articles && book.articles.length > 0" class="chapters-grid flex flex-col gap-5">
+          <NuxtLink v-for="(article, index) in book.articles" :key="article.id" :to="`/articles/${article.slug}`"
+            class="inner-card group">
+            <div class="letter-block">
+              {{ Number(index) + 1 }}
+            </div>
+            <div class="flex-1">
+              <h3 class="chapter-title">{{ article.title }}</h3>
+              <p class="chapter-excerpt line-clamp-1" v-if="article.excerpt">{{ article.excerpt }}</p>
+            </div>
+            <UIcon name="i-heroicons-arrow-right" class="text-gray-300 group-hover:text-sky-500 transition-colors" />
+          </NuxtLink>
+        </div>
+
+        <div v-else class="inner-card w-full text-center py-20 border-dashed justify-center">
+          <UIcon name="i-heroicons-clock" class="text-4xl text-gray-300 mb-4" />
+          <p class="text-gray-500 font-medium tracking-wide">{{ t.noChapters }}</p>
+        </div>
+      </section>
+    </div>
     <TheScrollToTop />
   </div>
 </template>
@@ -140,7 +141,7 @@ useSeoMeta({
   ogTitle: () => book.value?.title,
   description: () => book.value?.description || 'Книга из библиотеки Gativus.',
   ogDescription: () => book.value?.description,
-  ogImage: () => book.value?.cover_image || '/logo.svg',
+  ogImage: () => book.value?.cover_image || '/logo.jpg',
   twitterCard: 'summary_large_image',
 })
 </script>
@@ -163,7 +164,8 @@ useSeoMeta({
   max-width: 960px;
   margin: 0 auto;
   width: 100%;
-  position: relative; /* For absolute breadcrumbs */
+  position: relative;
+  /* For absolute breadcrumbs */
 }
 
 /* Hero Typography */
@@ -370,8 +372,10 @@ useSeoMeta({
 
 /* Badge */
 .badge {
-  background: linear-gradient(90deg, #e0f2fe, #bae6fd); /* sky-100 to 200 */
-  color: #0c4a6e; /* sky-900 */
+  background: linear-gradient(90deg, #e0f2fe, #bae6fd);
+  /* sky-100 to 200 */
+  color: #0c4a6e;
+  /* sky-900 */
   padding: 4px 12px;
   border-radius: 6px;
   font-weight: 700;
@@ -381,7 +385,8 @@ useSeoMeta({
 }
 
 .dark .badge {
-  background: linear-gradient(90deg, #0c4a6e, #082f49); /* sky-900 to 950 */
+  background: linear-gradient(90deg, #0c4a6e, #082f49);
+  /* sky-900 to 950 */
   color: #e0f2fe;
 }
 

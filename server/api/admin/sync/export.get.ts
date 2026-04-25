@@ -82,6 +82,9 @@ export default defineEventHandler(async (event) => {
     aliases: t.aliases || null,
     definition: t.definition,
     definition_ru: t.definition_ru || null,
+    image_url: t.image_url || null,
+    video_url: t.video_url || null,
+    presentation_path: t.presentation_path || null,
     term_article_slug: t.term_article_slug || null,
     created_at: t.created_at || null,
     updated_at: t.updated_at || null
@@ -125,7 +128,7 @@ export default defineEventHandler(async (event) => {
 
   // Format the output
   const dump = {
-    version: "1.1",
+    version: "1.2",
     timestamp: new Date().toISOString(),
     categories,
     books,

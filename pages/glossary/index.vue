@@ -11,53 +11,24 @@
           </p>
 
           <!-- Search Capsule -->
-          <div class="search-section mt-12 w-full max-w-3xl mx-auto group relative">
-            <div
-              class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors duration-400 group-focus-within:text-sky-500 text-gray-400 dark:text-gray-500">
-              <UIcon v-if="pending || isTyping" name="i-heroicons-arrow-path"
-                class="w-5 h-5 animate-spin text-sky-500" />
-              <UIcon v-else name="i-heroicons-magnifying-glass" class="w-5 h-5" />
-            </div>
-            <input v-model="searchQuery" type="text" class="premium-search-input"
-              :placeholder="t.searchPlaceholder" />
-            <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
-              <button v-show="searchQuery !== ''" @click="searchQuery = ''"
-                class="text-gray-300 hover:text-sky-500 transition-colors duration-300 p-2">
-                <UIcon name="i-heroicons-x-mark-20-solid" class="w-5 h-5 flex" />
-              </button>
-            </div>
-          </div>
+          <BaseSearch v-model="searchQuery" :placeholder="t.searchPlaceholder" />
 
           <!-- Alphabet Filter -->
           <div v-if="availableLetters.length" class="alphabet-nav mt-8 flex flex-wrap justify-center gap-2">
-            <button
-              class="letter-pill"
-              :class="{ active: !activeLetter }"
-              @click="activeLetter = null"
-            >
+            <button class="letter-pill" :class="{ active: !activeLetter }" @click="activeLetter = null">
               {{ t.allLetters }}
             </button>
-            <button
-              v-for="letter in availableLetters"
-              :key="letter"
-              class="letter-pill"
-              :class="{ active: activeLetter === letter }"
-              @click="toggleLetter(letter)"
-            >
+            <button v-for="letter in availableLetters" :key="letter" class="letter-pill"
+              :class="{ active: activeLetter === letter }" @click="toggleLetter(letter)">
               {{ letter }}
             </button>
           </div>
 
           <!-- Category Filter -->
           <div v-if="categories && categories.length" class="categories-nav mt-6 flex flex-wrap justify-center gap-2">
-            <button
-              v-for="cat in categories"
-              :key="cat.id"
-              class="cat-pill"
-              :class="{ active: activeCategory === cat.id }"
-              @click="toggleCategory(cat.id)"
-              :style="activeCategory === cat.id ? { backgroundColor: cat.color, borderColor: cat.color } : {}"
-            >
+            <button v-for="cat in categories" :key="cat.id" class="cat-pill"
+              :class="{ active: activeCategory === cat.id }" @click="toggleCategory(cat.id)"
+              :style="activeCategory === cat.id ? { backgroundColor: cat.color, borderColor: cat.color } : {}">
               <UIcon :name="cat.icon || 'i-heroicons-tag'" class="mr-1" />
               {{ cat.title.split('—')[0].trim() }}
             </button>
@@ -86,17 +57,14 @@
             <UIcon name="i-heroicons-beaker" class="text-4xl text-gray-300" />
           </div>
           <p class="text-gray-500 uppercase tracking-widest text-sm font-bold">{{ t.notFound }}</p>
-          <button v-if="searchQuery || activeLetter" @click="resetFilters" class="mt-4 text-sky-500 hover:underline text-sm font-bold uppercase tracking-wider">{{ t.resetFilters }}</button>
+          <button v-if="searchQuery || activeLetter" @click="resetFilters"
+            class="mt-4 text-sky-500 hover:underline text-sm font-bold uppercase tracking-wider">{{ t.resetFilters
+            }}</button>
         </div>
 
         <!-- List of Terms -->
-        <TransitionGroup 
-          name="list" 
-          tag="div"
-          v-else 
-          class="terms-list flex flex-col gap-5 transition-all duration-300"
-          :class="{ 'opacity-50 blur-[2px] pointer-events-none': pending || isTyping }"
-        >
+        <TransitionGroup name="list" tag="div" v-else class="terms-list flex flex-col gap-5 transition-all duration-300"
+          :class="{ 'opacity-50 blur-[2px] pointer-events-none': pending || isTyping }">
           <NuxtLink v-for="(term, index) in data?.items" :key="term.slug" :to="`/glossary/${term.slug}`"
             class="inner-card group">
             <!-- Index/Visual -->
@@ -107,7 +75,8 @@
             <!-- Content -->
             <div class="flex-1">
               <div class="flex flex-wrap gap-2 mb-2">
-                <span v-if="term.category_title" class="badge" :style="term.category_color ? { color: term.category_color, borderColor: term.category_color } : {}">
+                <span v-if="term.category_title" class="badge"
+                  :style="term.category_color ? { color: term.category_color, borderColor: term.category_color } : {}">
                   <UIcon v-if="term.category_icon" :name="term.category_icon" class="mr-1" />
                   {{ term.category_title }}
                 </span>
@@ -353,7 +322,9 @@ function resetFilters() {
 }
 
 @keyframes shine {
-  to { background-position: 300% center; }
+  to {
+    background-position: 300% center;
+  }
 }
 
 .hero-description {
@@ -428,22 +399,26 @@ function resetFilters() {
   transition: all 0.3s ease;
   text-transform: uppercase;
 }
+
 .dark .cat-pill {
   background: #111113;
   border-color: #27272a;
   color: #94a3b8;
 }
+
 .cat-pill:hover {
   background: #e2e8f0;
   color: #0ea5e9;
 }
+
 .dark .cat-pill:hover {
   background: #1c1c1f;
 }
+
 .cat-pill.active {
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* Divider */
@@ -500,8 +475,8 @@ function resetFilters() {
 }
 
 .dark .inner-card {
-  background: #18181b;
-  border-color: #27272a;
+  background: #1a1a1a;
+  border-color: #3a3a3a;
   box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
 }
 

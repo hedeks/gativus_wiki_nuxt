@@ -4,50 +4,35 @@
       <section class="library-hero flex flex-col items-center text-center pt-20 pb-12 w-full">
         <h1 class="hero-title uppercase">БИБЛИОТЕКА</h1>
         <p class="hero-description mt-8">
-          Собрание теоретических материалов, структурированных в виде интерактивных книг. 
+          Собрание теоретических материалов, структурированных в виде интерактивных книг.
           Изучайте архитектуру GATE, систему GTOM и сетевые протоколы GNET в удобном формате.
         </p>
 
         <!-- Search Capsule -->
         <div class="search-section mt-12 w-full max-w-3xl mx-auto group relative">
-           <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors duration-400 group-focus-within:text-sky-500 text-gray-400 dark:text-gray-500">
-              <UIcon v-if="pending || isTyping" name="i-heroicons-arrow-path" class="w-5 h-5 animate-spin text-sky-500" />
-              <UIcon v-else name="i-heroicons-magnifying-glass" class="w-5 h-5" />
-           </div>
-           <input
-             v-model="searchQuery"
-             type="text"
-             class="premium-search-input"
-             placeholder="Поиск по книгам и аннотациям..."
-           />
-           <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
-              <button 
-                v-show="searchQuery !== ''"
-                @click="searchQuery = ''"
-                class="text-gray-300 hover:text-sky-500 transition-colors duration-300 p-2"
-              >
-                <UIcon name="i-heroicons-x-mark-20-solid" class="w-5 h-5 flex" />
-              </button>
-           </div>
+          <div
+            class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors duration-400 group-focus-within:text-sky-500 text-gray-400 dark:text-gray-500">
+            <UIcon v-if="pending || isTyping" name="i-heroicons-arrow-path" class="w-5 h-5 animate-spin text-sky-500" />
+            <UIcon v-else name="i-heroicons-magnifying-glass" class="w-5 h-5" />
+          </div>
+          <input v-model="searchQuery" type="text" class="premium-search-input"
+            placeholder="Поиск по книгам и аннотациям..." />
+          <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
+            <button v-show="searchQuery !== ''" @click="searchQuery = ''"
+              class="text-gray-300 hover:text-sky-500 transition-colors duration-300 p-2">
+              <UIcon name="i-heroicons-x-mark-20-solid" class="w-5 h-5 flex" />
+            </button>
+          </div>
         </div>
       </section>
 
       <!-- Category Filter -->
       <div class="flex flex-wrap items-center justify-center gap-3 mb-12">
-        <button 
-          class="tag" 
-          :class="{ active: activeCategory === null }"
-          @click="activeCategory = null"
-        >
+        <button class="tag" :class="{ active: activeCategory === null }" @click="activeCategory = null">
           Все книги
         </button>
-        <button 
-          v-for="cat in categories" 
-          :key="cat.id"
-          class="tag"
-          :class="{ active: activeCategory === cat.id }"
-          @click="activeCategory = cat.id"
-        >
+        <button v-for="cat in categories" :key="cat.id" class="tag" :class="{ active: activeCategory === cat.id }"
+          @click="activeCategory = cat.id">
           {{ cat.title }}
         </button>
       </div>
@@ -57,18 +42,15 @@
         <div v-for="i in 4" :key="i" class="section-card animate-pulse h-64 bg-gray-50 dark:bg-zinc-800" />
       </div>
 
-      <div v-else-if="!pending && !isTyping && filteredBooks.length === 0" class="section-card w-full text-center py-20 bg-white dark:bg-zinc-900 border border-dashed border-gray-300 dark:border-zinc-800">
+      <div v-else-if="!pending && !isTyping && filteredBooks.length === 0"
+        class="section-card w-full text-center py-20 bg-white dark:bg-zinc-900 border border-dashed border-gray-300 dark:border-zinc-800">
         <UIcon name="i-heroicons-book-open" class="text-5xl text-gray-400 dark:text-zinc-600 mb-4 mx-auto" />
         <h3 class="card-header-text text-gray-500">Ничего не найдено</h3>
       </div>
 
-      <div v-else class="grid-concepts transition-all duration-300" :class="{ 'opacity-50 blur-[2px] pointer-events-none': pending || isTyping }">
-        <NuxtLink 
-          v-for="book in filteredBooks" 
-          :key="book.id" 
-          :to="`/books/${book.slug}`"
-          class="section-card group"
-        >
+      <div v-else class="grid-concepts transition-all duration-300"
+        :class="{ 'opacity-50 blur-[2px] pointer-events-none': pending || isTyping }">
+        <NuxtLink v-for="book in filteredBooks" :key="book.id" :to="`/books/${book.slug}`" class="section-card group">
           <div class="card-header bg-[#f9f9f9] dark:bg-[#222]">
             <h2 class="card-header-text truncate">{{ book.title }}</h2>
           </div>
@@ -140,19 +122,19 @@ watch(searchQuery, (newVal) => {
 const filteredBooks = computed(() => {
   if (!books.value) return []
   let result = books.value
-  
+
   if (activeCategory.value !== null) {
     result = result.filter(b => b.category_ids?.includes(activeCategory.value))
   }
-  
+
   if (debouncedSearch.value) {
     const q = debouncedSearch.value.toLowerCase()
-    result = result.filter(b => 
-      b.title?.toLowerCase().includes(q) || 
+    result = result.filter(b =>
+      b.title?.toLowerCase().includes(q) ||
       b.description?.toLowerCase().includes(q)
     )
   }
-  
+
   return result
 })
 
@@ -207,7 +189,10 @@ useSeoMeta({
 }
 
 @media (max-width: 768px) {
-  .hero-title { font-size: 36px; letter-spacing: 6px; }
+  .hero-title {
+    font-size: 36px;
+    letter-spacing: 6px;
+  }
 }
 
 .dark .hero-title {
@@ -364,8 +349,10 @@ useSeoMeta({
 }
 
 .badge {
-  background: linear-gradient(90deg, #e0f2fe, #bae6fd); /* sky-100 to 200 */
-  color: #0c4a6e; /* sky-900 */
+  background: linear-gradient(90deg, #e0f2fe, #bae6fd);
+  /* sky-100 to 200 */
+  color: #0c4a6e;
+  /* sky-900 */
   padding: 4px 12px;
   border-radius: 6px;
   font-weight: 700;
@@ -375,7 +362,8 @@ useSeoMeta({
 }
 
 .dark .badge {
-  background: linear-gradient(90deg, #0c4a6e, #082f49); /* sky-900 to 950 */
+  background: linear-gradient(90deg, #0c4a6e, #082f49);
+  /* sky-900 to 950 */
   color: #e0f2fe;
 }
 
@@ -449,7 +437,14 @@ useSeoMeta({
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .5;
+  }
 }
 </style>

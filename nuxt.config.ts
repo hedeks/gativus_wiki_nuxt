@@ -35,7 +35,7 @@ export default defineNuxtConfig({
   app: {
     pageTransition: { name: 'fade', mode: 'out-in' },
     head: {
-      link: [{ rel: 'icon', href: '/logo.svg' }],
+      link: [{ rel: 'icon', type: 'image/jpeg', href: '/logo.jpg' }],
       "meta": [
         {
           "name": "viewport",

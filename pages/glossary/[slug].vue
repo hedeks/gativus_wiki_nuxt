@@ -16,12 +16,10 @@
 
         <!-- Header Section -->
         <div class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800">
-          <TheBreadcrumbs
-            :items="[
-              { label: t.glossary, to: '/glossary' },
-              { label: term.title }
-            ]"
-          />
+          <TheBreadcrumbs :items="[
+            { label: t.glossary, to: '/glossary' },
+            { label: term.title }
+          ]" />
 
           <h1
             class="text-3xl lg:text-4xl mb-0 font-bold text-[#233a4d] dark:text-gray-100 uppercase tracking-widest leading-tight m-0">
@@ -43,9 +41,12 @@
         </div>
 
         <!-- Term Media Section -->
-        <div v-if="term.image_url || term.video_url" class="mb-10 rounded-2xl overflow-hidden shadow-soft border dark:border-zinc-800">
-           <img v-if="term.image_url" :src="term.image_url" class="w-full h-auto object-cover max-h-[500px] cursor-zoom-in" @click="handleMediaClick(term.image_url)" />
-           <video v-else-if="term.video_url" :src="term.video_url" class="w-full h-auto max-h-[500px]" controls playsinline />
+        <div v-if="term.image_url || term.video_url"
+          class="mb-10 rounded-2xl overflow-hidden shadow-soft border dark:border-zinc-800">
+          <img v-if="term.image_url" :src="term.image_url"
+            class="w-full h-auto object-cover max-h-[500px] cursor-zoom-in" @click="handleMediaClick(term.image_url)" />
+          <video v-else-if="term.video_url" :src="term.video_url" class="w-full h-auto max-h-[500px]" controls
+            playsinline />
         </div>
 
         <!-- Article Content -->
@@ -56,8 +57,8 @@
         </div>
 
         <!-- Presentation Toggle -->
-        <UButton v-if="term.presentation_path" @click="changeView('quiz')" variant="solid" block color="black"
-          class="rounded-none lg:text-xl sm:text-lg mt-10 h-20 not-prose" :label="t.presentation" />
+        <UButton v-if="term.presentation_path" @click="changeView('quiz')" variant="solid" block color="sky"
+          class="rounded-xl lg:text-xl sm:text-lg mt-10 h-20 not-prose" :label="t.presentation" />
 
         <!-- Actions -->
         <div class="mt-12 pt-8 border-t border-gray-100 dark:border-zinc-800 flex justify-between gap-4 not-prose">
@@ -83,7 +84,8 @@
     <div v-if="term.presentation_path" :class="[{ 'active': !isTheory }, { 'inactive': isTheory }]"
       class="flex w-full lg:h-[calc(100dvh_-_var(--header-height)_-_5rem)] dark:bg-zinc-950 bg-gray-50 items-center justify-center h-[calc(100dvh_-_var(--header-height)_-_1.5rem)] lg:col-span-10 xl:col-span-9 view-transition">
       <div class="absolute top-4 left-4 z-50">
-        <UButton icon="i-heroicons-chevron-left" variant="ghost" color="gray" @click="changeView('theory')">{{ t.theory }}</UButton>
+        <UButton icon="i-heroicons-chevron-left" variant="ghost" color="gray" @click="changeView('theory')">{{ t.theory
+        }}</UButton>
       </div>
       <thePresentationView :presentationPath="term.presentation_path" :articleTitle="term.title" />
     </div>
@@ -197,7 +199,7 @@ useSeoMeta({
   ogTitle: computed(() => term.value?.title),
   description: computed(() => term.value?.definition || ''),
   ogDescription: computed(() => term.value?.definition || ''),
-  ogImage: computed(() => term.value?.image_url || '/logo.svg'),
+  ogImage: computed(() => term.value?.image_url || '/logo.jpg'),
   twitterCard: 'summary_large_image',
 })
 

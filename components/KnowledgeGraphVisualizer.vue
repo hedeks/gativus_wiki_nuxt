@@ -59,15 +59,18 @@
 
         <!-- Language Switcher -->
         <div class="lang-switcher" @mousedown.stop>
-          <button class="lang-btn" :class="{ 'active': langStore.currentLang === 'en' }" @click="langStore.setLanguage('en')">
+          <button class="lang-btn" :class="{ 'active': langStore.currentLang === 'en' }"
+            @click="langStore.setLanguage('en')">
             EN
           </button>
           <div class="lang-sep"></div>
-          <button class="lang-btn" :class="{ 'active': langStore.currentLang === 'ru' }" @click="langStore.setLanguage('ru')">
+          <button class="lang-btn" :class="{ 'active': langStore.currentLang === 'ru' }"
+            @click="langStore.setLanguage('ru')">
             RU
           </button>
           <div class="lang-sep"></div>
-          <button class="lang-btn" :class="{ 'active': langStore.currentLang === 'zh' }" @click="langStore.setLanguage('zh')">
+          <button class="lang-btn" :class="{ 'active': langStore.currentLang === 'zh' }"
+            @click="langStore.setLanguage('zh')">
             ZH
           </button>
         </div>
@@ -309,7 +312,7 @@ const getNeighbors = (node: any) => {
 
 const updateHighlights = () => {
   if (!svgRef.value) return
-  
+
   const focusNode = hoveredNode.value || selectedNode.value
   const query = searchQuery.value.toLowerCase()
   const neighbors = focusNode ? getNeighbors(focusNode) : null
@@ -413,7 +416,7 @@ const toggleFullscreen = () => {
 
 const handleSearch = () => {
   const query = searchQuery.value.trim().toLowerCase()
-  
+
   if (!query) {
     selectedNode.value = null
     zoomFit()
@@ -422,7 +425,7 @@ const handleSearch = () => {
   }
 
   // Find matches
-  const matches = props.graphData?.nodes?.filter((n: any) => 
+  const matches = props.graphData?.nodes?.filter((n: any) =>
     n.title.toLowerCase().includes(query) || (n.slug && n.slug.toLowerCase() === query)
   ) || []
 
@@ -514,19 +517,19 @@ let zoomHandler: any = null
 
 const zoomIn = () => {
   if (!svgRef.value || !zoomHandler) return
-  d3.select(svgRef.value).transition().duration(300).call(zoomHandler.scaleBy, 1.5)
+  d3.select(svgRef.value).transition().duration(350).call(zoomHandler.scaleBy, 1.5)
 }
 
 const zoomOut = () => {
   if (!svgRef.value || !zoomHandler) return
-  d3.select(svgRef.value).transition().duration(300).call(zoomHandler.scaleBy, 0.7)
+  d3.select(svgRef.value).transition().duration(350).call(zoomHandler.scaleBy, 0.7)
 }
 
 const zoomFit = () => {
   if (!svgRef.value || !zoomHandler || !graphContainer.value) return
   const width = graphContainer.value.clientWidth
   const height = graphContainer.value.clientHeight
-  d3.select(svgRef.value).transition().duration(750)
+  d3.select(svgRef.value).transition().duration(350)
     .call(zoomHandler.transform, d3.zoomIdentity.translate(0, 0).scale(1))
 }
 
@@ -577,7 +580,7 @@ const navigateToNode = () => {
   if (node.type === 'term') path = '/glossary/' + node.slug
   else if (node.type === 'article') path = '/articles/' + node.slug
   else if (node.type === 'book') path = '/books/' + node.slug
-  else if (node.type === 'category') path = '/categories/' + node.slug 
+  else if (node.type === 'category') path = '/categories/' + node.slug
 
   if (path) useRouter().push(path)
 }
@@ -759,7 +762,6 @@ const initGraph = () => {
     .join('g')
     .attr('class', 'node-group')
     .style('cursor', 'pointer')
-    .call(drag(simulation) as any)
     .on('click', (event: any, d: any) => {
       selectedNode.value = d
       selectedLink.value = null
@@ -876,29 +878,6 @@ const initGraph = () => {
   })
 }
 
-function drag(simulation: any) {
-  function dragstarted(event: any) {
-    if (!event.active) simulation.alphaTarget(0.3).restart()
-    event.subject.fx = event.subject.x
-    event.subject.fy = event.subject.y
-  }
-
-  function dragged(event: any) {
-    event.subject.fx = event.x
-    event.subject.fy = event.y
-  }
-
-  function dragended(event: any) {
-    if (!event.active) simulation.alphaTarget(0)
-    event.subject.fx = null
-    event.subject.fy = null
-  }
-
-  return d3.drag()
-    .on('start', dragstarted)
-    .on('drag', dragged)
-    .on('end', dragended)
-}
 
 let resizeObserver: ResizeObserver | null = null
 
@@ -922,10 +901,19 @@ onMounted(async () => {
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   await nextTick()
   initGraph()
+  zoomFit()
 
   if (process.client && graphContainer.value) {
     resizeObserver = new ResizeObserver(() => {
-      initGraph()
+      if (!svgRef.value || !graphContainer.value) return
+      const { offsetWidth: w, offsetHeight: h } = graphContainer.value
+      d3.select(svgRef.value)
+        .attr('viewBox', `0 0 ${w} ${h}`)
+        .attr('width', w)
+        .attr('height', h)
+      // zoom extent тоже обновим
+      zoomHandler?.extent([[0, 0], [w, h]])
+      // координаты сил не обновляем — они останутся прежними
     })
     resizeObserver.observe(graphContainer.value)
   }
@@ -946,6 +934,7 @@ const handleFullscreenChange = () => {
 // Ensure dynamic resizing is captured properly
 watch(activeFilters, () => {
   initGraph()
+  zoomFit();
 }, { deep: true })
 </script>
 

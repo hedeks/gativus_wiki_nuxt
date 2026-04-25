@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const body = await readBody(event)
 
-  const { title, title_ru, definition, definition_ru, slug_ru, aliases, html_content, category_id, presentation_path } = body
+  const { title, title_ru, definition, definition_ru, slug_ru, aliases, html_content, category_id, presentation_path, image_url, video_url } = body
 
   if (!title || !definition) {
     throw createError({ statusCode: 400, statusMessage: 'title и definition обязательны' })
@@ -58,9 +58,9 @@ export default defineEventHandler(async (event) => {
   }
 
   await db.prepare(`
-    INSERT INTO terms (slug, slug_ru, title, title_ru, aliases, definition, definition_ru, term_article_id, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(slug, finalSlugRu, title, title_ru || null, aliasesJson, definition, definition_ru || null, termArticleId, auth.id)
+    INSERT INTO terms (slug, slug_ru, title, title_ru, aliases, definition, definition_ru, term_article_id, image_url, video_url, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(slug, finalSlugRu, title, title_ru || null, aliasesJson, definition, definition_ru || null, termArticleId, image_url || null, video_url || null, auth.id)
 
   const inserted = await db.prepare('SELECT last_insert_rowid() as id').get() as any
 

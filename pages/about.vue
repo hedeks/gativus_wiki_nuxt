@@ -129,7 +129,7 @@
           {{ t.ctaText }}
         </p>
         <div class="cta-buttons">
-          <NuxtLink to="/articles" class="cta-button primary">
+          <NuxtLink to="/books" class="cta-button primary">
             <UIcon name="i-heroicons-book-open" />
             {{ t.ctaArticles }}
           </NuxtLink>
@@ -168,7 +168,7 @@ const uiDict: Record<string, any> = {
     nddiBrief: 'The entire network is built from unified NDDIs — addressable instances existing within the Gativus domain. Each NDDI has a globally unique name (UNON) in IPv6 space. Internal NDDI components are grouped into 6 functional types:',
     ctaTitle: 'Start Exploring',
     ctaText: 'Explore Gativus articles to dive deep into the full theory and project specifications.',
-    ctaArticles: 'Gativus Articles',
+    ctaArticles: 'Gativus Books',
     metaTitle: 'About — Gativus',
     metaDesc: 'GTOM · GNET · GATE — from theory of mind to physical device. Full Gativus project architecture.'
   },
@@ -191,8 +191,8 @@ const uiDict: Record<string, any> = {
     nddiBrief: 'Вся сеть построена из унифицированных NDDI — адресуемых экземпляров, существующих в рамках домена Gativus. Каждый NDDI обладает глобально уникальным именем (UNON) в пространстве IPv6. Внутренние компоненты NDDI группируются в 6 функциональных типов:',
     ctaTitle: 'Начните изучение',
     ctaText: 'Перейдите к статьям Gativus, чтобы погрузиться в полную теорию и спецификации проекта.',
-    ctaArticles: 'Статьи Gativus',
-    metaTitle: 'О проекте — Gativus Wiki',
+    ctaArticles: 'Книги Gativus',
+    metaTitle: 'О проекте — Gativus',
     metaDesc: 'GTOM · GNET · GATE — от теории сознания к физическому устройству. Полная архитектура проекта Gativus.'
   }
 }
