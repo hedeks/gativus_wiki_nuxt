@@ -6,7 +6,7 @@ const links = [{
 }, {
     label: 'Книги Gativus',
     icon: 'i-heroicons-book-open',
-    to: '/courses'
+    to: '/books'
 }, {
     label: 'О проекте',
     icon: "i-heroicons-information-circle",

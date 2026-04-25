@@ -39,7 +39,7 @@ const isShowDesc = ref(false);
                 </p>
             </div>
         </div>
-        <UButton icon="i-heroicons-book-open" trailing block :to="'/courses/' + props.name"
+        <UButton icon="i-heroicons-book-open" trailing block :to="'/books/' + props.name"
             class="mt-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:translate-y-0 shadow-lg shadow-sky-500/20"
             :ui="{
                 base: 'py-3 transition-all duration-300 ease-[cubic-bezier(0.705,0.01,0,0.915)] uppercase tracking-widest',

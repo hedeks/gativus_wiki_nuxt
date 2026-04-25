@@ -26,7 +26,7 @@ const items = computed(() => {
     [{
       label: 'Статьи',
       icon: 'i-heroicons-document-text',
-      to: "/courses"
+      to: "/articles"
     }, {
       label: 'Профиль',
       icon: 'i-heroicons-user',
