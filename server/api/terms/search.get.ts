@@ -1,3 +1,4 @@
+
 /**
  * GET /api/terms/search?q=
  * Fast search for the TermPopover — returns minimal term data.

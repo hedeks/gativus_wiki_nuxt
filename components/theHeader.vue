@@ -67,7 +67,7 @@ const links = computed(() => {
 
 <template>
   <div id="header" ref="header"
-    class="header-container sticky top-0 z-50 shadow-sm border-b dark:border-zinc-800 border-gray-100 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md transition-all duration-300">
+    class="header-container sticky top-0 z-50 shadow-sm border-b dark:border-zinc-800 border-gray-100 gv-glass transition-all duration-300">
 
     <!-- Top Bar / Desktop Header -->
     <div class="px-4 py-2 flex items-center justify-between lg:grid lg:grid-cols-[1fr_max-content_1fr] gap-4 max-w-[1920px] mx-auto">
@@ -81,8 +81,8 @@ const links = computed(() => {
         <UHorizontalNavigation :links="links" :ui="{
           container: 'flex items-center justify-center min-w-0 flex-nowrap gap-x-1 xl:gap-x-2',
           label: 'xl:text-base font-bold whitespace-nowrap',
-          active: 'after:bg-sky-600 dark:after:bg-sky-500 text-sky-600 dark:text-sky-500',
-          inactive: 'text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
+          active: 'after:bg-sky-600 dark:after:bg-sky-500 text-zinc-900 dark:text-zinc-100',
+          inactive: 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
         }" />
       </div>
 

@@ -181,9 +181,9 @@ const groupedResults = computed(() => {
 }
 
 .search-trigger:hover {
-  border-color: #0ea5e9;
+  border-color: #d4d4d8;
   background: #fff;
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.1);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
 .dark .search-trigger:hover {
@@ -243,7 +243,7 @@ const groupedResults = computed(() => {
 }
 
 .result-snippet :deep(b) {
-  color: #0ea5e9;
+  color: #0284c7;
   font-weight: 900;
 }
 

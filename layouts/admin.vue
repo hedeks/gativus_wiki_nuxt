@@ -43,7 +43,7 @@
 
     <!-- Main content -->
     <div class="admin-main">
-      <header class="admin-topbar">
+      <header class="admin-topbar gv-glass">
         <button class="topbar-menu-btn" @click="sidebarOpen = true">
           <UIcon name="i-heroicons-bars-3" />
         </button>
@@ -350,7 +350,7 @@ function handleLogout() {
   align-items: center;
   gap: 12px;
   padding: 12px 24px;
-  background: #fff;
+  background: transparent;
   border-bottom: 1px solid #e5e7eb;
   position: sticky;
   top: 0;
@@ -379,9 +379,11 @@ function handleLogout() {
 }
 
 .topbar-title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: #1a1a1a;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
   margin: 0;
 }
 

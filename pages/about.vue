@@ -1,11 +1,11 @@
 <template>
-  <div class="about-page">
+  <div class="about-page gv-page">
     <!-- Hero -->
     <section class="about-hero">
       <div class="hero-title-container">
         <img src="/images/121px-Logo.jpg" alt="Gativus Logo" class="hero-logo" />
         <div class="hero-text">
-          <h1 class="hero-title uppercase">{{ t.heroTitle }}</h1>
+          <h1 class="hero-title gv-hero-gradient uppercase">{{ t.heroTitle }}</h1>
           <p class="hero-subtitle">{{ t.heroSubtitle }}</p>
         </div>
       </div>
@@ -276,7 +276,7 @@ definePageMeta({ layout: 'default' })
   align-items: center;
   gap: 10px;
   padding: 20px 10px 60px;
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 auto;
   width: 100%;
 }
@@ -302,17 +302,12 @@ definePageMeta({ layout: 'default' })
 
 .hero-title {
   margin: 0;
-  font-size: 56px;
-  line-height: 1;
-  letter-spacing: 12px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #0c4a6e, #0ea5e9, #0284c7, #0c4a6e);
-  background-size: 300% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: 48px;
+  line-height: 1.1;
+  letter-spacing: 6px;
+  font-weight: 700;
+  color: #18181b;
   padding-bottom: 8px;
-  animation: shine 15s linear infinite;
   user-select: none;
 }
 
@@ -337,7 +332,7 @@ definePageMeta({ layout: 'default' })
   color: #333;
   border-bottom: 1px solid #bababa;
   padding-bottom: 8px;
-  filter: drop-shadow(0 0 2px #bababa);
+  filter: none;
 }
 
 .dark .hero-title {
@@ -376,13 +371,13 @@ definePageMeta({ layout: 'default' })
   border: 1px solid #c8c8c8;
   border-radius: 15px;
   background: #fff;
-  box-shadow: 0 0 1px 1px rgba(119, 119, 119, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   transition: box-shadow 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
 }
 
 .section-card:hover {
-  box-shadow: 0 2px 12px rgba(119, 119, 119, 0.15);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
 }
 
 .dark .section-card {

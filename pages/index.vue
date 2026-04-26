@@ -1,11 +1,11 @@
 <template>
-  <div class="landing-page">
+  <div class="landing-page gv-page">
     <!-- Hero Section -->
     <section class="hero-section">
       <div class="hero-title-container">
         <img src="/images/121px-Logo.jpg" alt="Gativus Logo" class="hero-logo" />
         <div class="hero-text">
-          <h1 class="hero-title">GATIVUS</h1>
+          <h1 class="hero-title gv-hero-gradient">GATIVUS</h1>
           <p class="hero-subtitle">Theory of Mind · Network · Edge</p>
         </div>
       </div>
@@ -70,7 +70,7 @@ useHead({
   align-items: center;
   gap: 40px;
   padding: 0 10px;
-  max-width: 960px;
+  max-width: 1100px;
   width: 100%;
 }
 
@@ -108,32 +108,17 @@ useHead({
 
 .hero-title {
   margin: 0;
-  font-size: 56px;
-  line-height: 1;
-  letter-spacing: 12px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #0c4a6e, #0ea5e9, #0284c7, #0c4a6e);
-  background-size: 300% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  padding-bottom: 8px;
-  animation: shine 15s linear infinite;
+  font-size: 48px;
+  line-height: 1.1;
+  letter-spacing: 6px;
+  font-weight: 700;
+  color: #18181b;
+  padding-bottom: 4px;
   user-select: none;
 }
 
 .dark .hero-title {
-  background: linear-gradient(135deg, #7dd3fc, #38bdf8, #0ea5e9, #7dd3fc);
-  background-size: 300% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-@keyframes shine {
-  to {
-    background-position: 300% center;
-  }
+  color: #e5e5e5;
 }
 
 .hero-subtitle {
@@ -183,16 +168,15 @@ useHead({
 }
 
 .cta-button.primary {
-  background: #0c4a6e;
-  /* sky-900 */
+  background: #0284c7;
   color: #fff;
-  border: 1px solid #075985;
+  border: 1px solid #0369a1;
 }
 
 .cta-button.primary:hover {
   background: #0369a1;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(12, 74, 110, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
 }
 
 .dark .cta-button.primary {

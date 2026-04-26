@@ -64,10 +64,10 @@ const items = computed(() => {
     shadow: 'shadow-lg',
     item: {
       disabled: 'cursor-text select-text',
-      active: 'bg-gray-100 dark:bg-zinc-800 text-sky-600 dark:text-sky-400',
+      active: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100',
       inactive: 'text-gray-700 dark:text-zinc-300',
       icon: {
-        active: 'text-sky-600 dark:text-sky-400',
+        active: 'text-zinc-900 dark:text-zinc-100',
         inactive: 'text-gray-400 dark:text-gray-500'
       }
     }

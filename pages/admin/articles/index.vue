@@ -223,9 +223,11 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
 }
 
 .articles-title {
-  font-size: 26px;
+  font-size: 18px;
   font-weight: 700;
   color: #1a1a1a;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
   margin: 0;
 }
 

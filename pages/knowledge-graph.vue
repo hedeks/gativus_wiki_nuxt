@@ -1,13 +1,13 @@
 <template>
-  <div class="knowledge-graph-page">
+  <div class="knowledge-graph-page gv-page">
     <div class="graph-header">
       <div class="header-left">
-        <h1 class="text-2xl font-bold">{{ t?.title }}</h1>
+        <h1 class="text-2xl font-bold gv-hero-gradient">{{ t?.title }}</h1>
         <p class="text-gray-500 text-sm">{{ t?.subtitle }}</p>
       </div>
     </div>
 
-    <div class="graph-wrapper">
+    <div class="graph-wrapper gv-surface-card p-4">
       <KnowledgeGraphVisualizer :graphData="graphData" :pending="pending" :enableNavigation="true" />
     </div>
   </div>
@@ -58,7 +58,7 @@ watch(() => langStore.currentLang, () => {
 <style scoped>
 .knowledge-graph-page {
   width: 100%;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 0 16px 20px;
   height: calc(100vh - var(--header-height, 65px) - 20px);
@@ -79,12 +79,12 @@ watch(() => langStore.currentLang, () => {
 }
 
 .header-left h1 {
-  font-size: 32px;
+  font-size: 40px;
   font-weight: 700;
-  letter-spacing: 4px;
+  letter-spacing: 6px;
   text-transform: uppercase;
   color: #333333;
-  border-bottom: 1px solid #bababa;
+  border-bottom: 1px solid #d4d4d8;
   display: inline-block;
   margin-bottom: 8px;
 }

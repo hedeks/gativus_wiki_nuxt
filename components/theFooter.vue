@@ -45,13 +45,13 @@ const links = [{
     flex-direction: column;
     align-items: center;
     gap: 20px;
-    padding: 24px 16px 32px;
+    padding: 32px 24px 40px;
     border-top: 1px solid #c8c8c8;
-    background: #f9f9f9;
+    background: #ffffff;
 }
 
 .dark .gativus-footer {
-    background: #1a1a1a;
+    background: #18181b;
     border-top-color: #333;
 }
 
@@ -125,7 +125,7 @@ const links = [{
     margin: 0;
     font-size: 14px;
     line-height: 1.6;
-    color: #666;
+    color: #555;
 }
 
 .dark .footer-description {

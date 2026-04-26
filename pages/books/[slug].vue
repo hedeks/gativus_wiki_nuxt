@@ -1,5 +1,5 @@
 <template>
-  <div class="book-details-page min-h-screen">
+  <div class="book-details-page min-h-screen gv-page">
     <div v-if="pending" class="flex items-center justify-center min-h-[60vh]">
       <UIcon name="i-heroicons-arrow-path" class="animate-spin text-4xl text-sky-500" />
     </div>
@@ -161,7 +161,7 @@ useSeoMeta({
   align-items: center;
   gap: 30px;
   padding: 40px 10px 80px;
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 auto;
   width: 100%;
   position: relative;
@@ -173,7 +173,7 @@ useSeoMeta({
   font-size: 48px;
   font-weight: 700;
   letter-spacing: 6px;
-  color: #333;
+  color: #18181b;
   border-bottom: 1px solid #bababa;
   padding-bottom: 8px;
   margin-bottom: 12px;
@@ -220,23 +220,23 @@ useSeoMeta({
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  background: #0284c7;
   color: #fff;
   padding: 14px 36px;
-  border-radius: 99px;
+  border-radius: 12px;
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 2px;
   text-transform: uppercase;
   text-decoration: none;
-  box-shadow: 0 10px 20px -5px rgba(14, 165, 233, 0.4);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.12);
   transition: all 0.4s cubic-bezier(0.705, 0.010, 0.000, 0.915);
 }
 
 .read-button:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 20px 30px -10px rgba(14, 165, 233, 0.6);
-  background: linear-gradient(135deg, #0284c7, #0369a1);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.16);
+  background: #0369a1;
 }
 
 .read-button:active {

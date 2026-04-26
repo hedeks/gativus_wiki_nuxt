@@ -12,7 +12,7 @@
     <div :class="[{ 'active': isTheory, 'inactive': !isTheory && term.presentation_path }]" ref="contentArea"
       class="flex flex-col lg:grid lg:grid-cols-10 xl:grid-cols-10 gap-10 w-full lg:col-span-10 xl:col-span-9 view-transition">
       <div
-        class="w-full max-w-[900px] 2xl:max-w-[1100px] mx-auto lg:col-span-8 xl:col-span-7 flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm">
+        class="w-full max-w-[980px] 2xl:max-w-[1100px] mx-auto lg:col-span-8 xl:col-span-7 flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 lg:p-10 p-6 rounded-2xl shadow-sm">
 
         <!-- Header Section -->
         <div class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800">

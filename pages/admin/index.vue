@@ -23,11 +23,11 @@ try {
 } catch { }
 
 const statCards = computed(() => [
-  { label: 'Статьи', value: db.value.articles, icon: 'i-heroicons-document-text', color: '#0ea5e9' },
-  { label: 'Термины', value: db.value.terms, icon: 'i-heroicons-document-magnifying-glass', color: '#8b5cf6' },
-  { label: 'Категории', value: db.value.categories, icon: 'i-heroicons-folder', color: '#a855f7' },
-  { label: 'Книги', value: db.value.books, icon: 'i-heroicons-book-open', color: '#ec4899' },
-  { label: 'Пользователи', value: db.value.users, icon: 'i-heroicons-users', color: '#14b8a6' },
+  { label: 'Статьи', value: db.value.articles, icon: 'i-heroicons-document-text' },
+  { label: 'Термины', value: db.value.terms, icon: 'i-heroicons-document-magnifying-glass' },
+  { label: 'Категории', value: db.value.categories, icon: 'i-heroicons-folder' },
+  { label: 'Книги', value: db.value.books, icon: 'i-heroicons-book-open' },
+  { label: 'Пользователи', value: db.value.users, icon: 'i-heroicons-users' },
 ])
 </script>
 
@@ -40,8 +40,8 @@ const statCards = computed(() => [
 
     <div class="stats-grid">
       <div v-for="stat in statCards" :key="stat.label" class="stat-card">
-        <div class="stat-icon-wrap" :style="{ background: stat.color + '15' }">
-          <UIcon :name="stat.icon" class="stat-icon" :style="{ color: stat.color }" />
+        <div class="stat-icon-wrap">
+          <UIcon :name="stat.icon" class="stat-icon" />
         </div>
         <div class="stat-info">
           <span class="stat-value">{{ stat.value }}</span>
@@ -88,9 +88,11 @@ const statCards = computed(() => [
 }
 
 .dashboard-title {
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 700;
   color: #1a1a1a;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
   margin: 0;
 }
 
@@ -140,7 +142,8 @@ const statCards = computed(() => [
 .stat-icon-wrap {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 10px;
+  background: #f4f4f5;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -150,6 +153,7 @@ const statCards = computed(() => [
 .stat-icon {
   width: 22px;
   height: 22px;
+  color: #52525b;
 }
 
 .stat-info {
@@ -211,7 +215,7 @@ const statCards = computed(() => [
 
 .action-card:hover {
   border-color: #0ea5e9;
-  box-shadow: 0 4px 16px rgba(34, 60, 80, 0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
   transform: translateY(-2px);
 }
 

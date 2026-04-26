@@ -51,7 +51,7 @@
           </div>
         </Transition>
         <!-- Button to switch to presentation (only if presentation exists) -->
-        <UButton v-if="hasPresentation" @click="changeView('quiz')" variant="solid" block color="black"
+        <UButton v-if="hasPresentation" @click="changeView('quiz')" variant="solid" block color="sky"
           class="rounded-none lg:text-xl sm:text-lg mt-5 h-20 not-prose" :label="t.presentation" />
 
         <!-- Book Navigation -->

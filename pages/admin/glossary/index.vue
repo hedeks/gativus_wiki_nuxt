@@ -212,8 +212,10 @@ function refDebounced<T>(source: Ref<T>, delay: number) {
 }
 
 .page-title {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
   margin: 0 0 4px;
 }
 
