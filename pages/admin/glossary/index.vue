@@ -1,16 +1,17 @@
 <template>
-  <div class="admin-glossary">
+  <div class="admin-glossary gv-admin-page">
     <div class="page-header">
-      <div>
-        <h1 class="page-title">Глоссарий</h1>
-        <p class="page-desc">Управление терминами и их статьями-раскрытиями</p>
+      <div class="gv-admin-head">
+        <p class="gv-admin-eyebrow">ADMIN</p>
+        <h1 class="gv-admin-title">Глоссарий</h1>
+        <p class="gv-admin-subtitle">Управление терминами и связанными статьями-раскрытиями</p>
       </div>
-      <div class="header-actions">
+      <div class="header-actions gv-admin-index-actions">
         <UButton icon="i-heroicons-arrow-path" color="gray" variant="soft" :loading="relinking" @click="relinkAll">
           Перелинковать статьи
         </UButton>
         <NuxtLink to="/admin/glossary/create">
-          <UButton icon="i-heroicons-plus" color="sky">Создать термин</UButton>
+          <UButton icon="i-heroicons-plus" color="emerald">Создать термин</UButton>
         </NuxtLink>
       </div>
     </div>
@@ -22,23 +23,41 @@
     </div>
 
     <!-- Search -->
-    <div class="search-bar">
-      <UIcon name="i-heroicons-magnifying-glass" class="search-icon" />
-      <input v-model="search" class="search-input" placeholder="Поиск термина..." />
+    <div class="gv-admin-filter-row">
+      <BaseSearch
+        v-model="searchQuery"
+        placeholder="Поиск термина..."
+        :is-pending="pending"
+        :is-debouncing="isTyping"
+        class="flex-1"
+      />
+      <ExpandableFilters
+        label="Фильтры"
+        :active-count="activeFilterCount"
+        :has-active-filters="activeFilterCount > 0"
+      >
+        <div class="filter-group">
+          <span class="filter-group-label">Категории</span>
+          <select v-model="categoryFilter" class="gv-admin-filter-select">
+            <option value="">Все категории</option>
+            <option v-for="cat in categories" :key="cat.id" :value="String(cat.id)">{{ cat.title }}</option>
+          </select>
+        </div>
+      </ExpandableFilters>
     </div>
 
     <!-- Table -->
-    <div class="terms-table-wrap">
+    <div class="terms-table-wrap gv-admin-surface overflow-x-auto">
       <div v-if="pending" class="loading-rows">
         <div v-for="i in 8" :key="i" class="skeleton-row" />
       </div>
 
-      <div v-else-if="!data?.items?.length" class="empty-state">
+      <div v-else-if="filteredTerms.length === 0" class="empty-state">
         <UIcon name="i-heroicons-inbox" />
         <span>Терминов нет — создайте первый</span>
       </div>
 
-      <table v-else class="terms-table">
+      <table v-else class="terms-table min-w-[760px]">
         <thead>
           <tr>
             <th>Термин</th>
@@ -50,7 +69,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="term in data.items" :key="term.slug" class="term-row">
+          <tr v-for="term in filteredTerms" :key="term.slug" class="term-row">
             <td>
               <div class="term-name-cell">
                 <NuxtLink :to="`/glossary/${term.slug}`" class="term-name" target="_blank">
@@ -69,10 +88,29 @@
               <span v-else class="no-category">—</span>
             </td>
             <td>
-              <UBadge v-if="term.has_article" color="green" variant="soft" size="xs" icon="i-heroicons-check">
-                Есть
-              </UBadge>
-              <UBadge v-else color="gray" variant="soft" size="xs">Нет</UBadge>
+              <div class="flex flex-col gap-1 items-start">
+                <UBadge v-if="term.has_article" color="green" variant="soft" size="xs" icon="i-heroicons-check">
+                  Есть
+                </UBadge>
+                <UBadge v-else color="gray" variant="soft" size="xs">Нет</UBadge>
+                
+                <NuxtLink
+                  v-if="term.term_article_id"
+                  :to="`/admin/articles/${term.term_article_id}/edit`"
+                  class="article-edit-link"
+                >
+                  <UIcon name="i-heroicons-pencil-square" class="mr-1" />
+                  Редактировать
+                </NuxtLink>
+                <NuxtLink
+                  v-else
+                  :to="`/admin/articles/create?term_id=${term.id}`"
+                  class="article-add-link"
+                >
+                  <UIcon name="i-heroicons-plus" class="mr-1" />
+                  Добавить
+                </NuxtLink>
+              </div>
             </td>
             <td>
               <div class="aliases-list" v-if="term.aliases?.length">
@@ -121,8 +159,8 @@ definePageMeta({ layout: 'admin', middleware: ['auth', 'role'] })
 
 useSeoMeta({ title: 'Глоссарий — Admin — Gativus' })
 
-const search = ref('')
-const dSearch = refDebounced(search, 300)
+const { searchQuery, debouncedQuery, isTyping } = useDebounce('', 300)
+const categoryFilter = ref('')
 const store = userStore()
 
 // Categories
@@ -131,15 +169,24 @@ const { data: categoriesData } = await useAsyncData('admin-cats', () =>
     headers: store.getAuthHeader()
   })
 )
-const categories = computed(() => categoriesData.value?.items || [])
+const categories = computed(() => {
+  if (Array.isArray(categoriesData.value)) return categoriesData.value
+  return categoriesData.value?.items || []
+})
+const activeFilterCount = computed(() => (categoryFilter.value ? 1 : 0))
+const filteredTerms = computed(() => {
+  const list = data.value?.items || []
+  if (!categoryFilter.value) return list
+  return list.filter((t: any) => String(t.category_id || '') === categoryFilter.value)
+})
 
 const { data, pending, refresh } = await useAsyncData(
   'admin-terms',
   () => $fetch<any>('/api/terms', {
-    params: { search: dSearch.value || undefined, limit: 100 },
+    params: { search: debouncedQuery.value || undefined, limit: 100 },
     headers: store.getAuthHeader()
   }),
-  { watch: [dSearch] }
+  { watch: [debouncedQuery] }
 )
 
 // Relink all
@@ -189,12 +236,6 @@ async function doDelete() {
   }
 }
 
-function refDebounced<T>(source: Ref<T>, delay: number) {
-  const d = ref(source.value) as Ref<T>
-  let t: ReturnType<typeof setTimeout>
-  watch(source, v => { clearTimeout(t); t = setTimeout(() => { d.value = v }, delay) })
-  return d
-}
 </script>
 
 <style scoped>
@@ -302,6 +343,29 @@ function refDebounced<T>(source: Ref<T>, delay: number) {
   padding: 11px 10px;
   font-size: 14px;
   color: #1e293b;
+}
+
+.article-edit-link,
+.article-add-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.article-edit-link {
+  color: var(--gv-primary);
+}
+
+.article-add-link {
+  color: #10b981;
+}
+
+.article-edit-link:hover,
+.article-add-link:hover {
+  text-decoration: underline;
 }
 
 .dark .search-input {
@@ -550,5 +614,33 @@ function refDebounced<T>(source: Ref<T>, delay: number) {
 .modal-actions {
   display: flex;
   gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .admin-glossary {
+    padding: 0;
+  }
+
+  .page-header {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-actions :deep(button),
+  .header-actions a {
+    width: 100%;
+  }
+
+  .search-bar {
+    margin-bottom: 12px;
+  }
+
+  .empty-state {
+    padding: 28px 14px;
+  }
 }
 </style>

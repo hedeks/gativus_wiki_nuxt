@@ -11,9 +11,7 @@ export default defineEventHandler(async (event) => {
   const books = await db.prepare(`
     SELECT 
       b.*,
-      (SELECT COUNT(*) FROM articles a WHERE a.book_id = b.id AND a.is_published = 1 AND a.locale = 'en') as count_en,
-      (SELECT COUNT(*) FROM articles a WHERE a.book_id = b.id AND a.is_published = 1 AND a.locale = 'ru') as count_ru,
-      (SELECT COUNT(*) FROM articles a WHERE a.book_id = b.id AND a.is_published = 1 AND a.locale = 'zh') as count_zh,
+      (SELECT COUNT(*) FROM articles a WHERE a.book_id = b.id AND a.is_published = 1) as article_count,
       (
         SELECT GROUP_CONCAT(category_id) 
         FROM book_categories 
@@ -32,6 +30,9 @@ export default defineEventHandler(async (event) => {
       ...b,
       title,
       description,
+      count_en: b.article_count,
+      count_ru: b.article_count,
+      count_zh: b.article_count,
       category_ids: b.category_ids ? b.category_ids.split(',').map(Number) : []
     }
   })

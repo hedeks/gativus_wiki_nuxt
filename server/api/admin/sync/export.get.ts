@@ -85,46 +85,33 @@ export default defineEventHandler(async (event) => {
     image_url: t.image_url || null,
     video_url: t.video_url || null,
     presentation_path: t.presentation_path || null,
+    presentation_path_ru: t.presentation_path_ru || null,
+    presentation_path_zh: t.presentation_path_zh || null,
     term_article_slug: t.term_article_slug || null,
     created_at: t.created_at || null,
     updated_at: t.updated_at || null
   }))
 
-  // Articles - Group translations
-  const originalArticles = articlesRaw.filter(a => !a.origin_id || a.origin_id === a.id)
-  
-  const articles = originalArticles.map(orig => {
-    // Find translations
-    const translatedRows = articlesRaw.filter(a => a.origin_id === orig.id && a.id !== orig.id)
-    
-    return {
-      slug: orig.slug,
-      locale: orig.locale || 'en',
-      title: orig.title,
-      excerpt: orig.excerpt || null,
-      html_content: orig.html_content,
-      raw_odt_path: orig.raw_odt_path || null,
-      presentation_path: orig.presentation_path || null,
-      category_slug: orig.category_slug || null,
-      book_slug: orig.book_slug || null,
-      is_published: orig.is_published,
-      is_term_article: orig.is_term_article,
-      sort_order: orig.sort_order,
-      created_at: orig.created_at || null,
-      updated_at: orig.updated_at || null,
-      translations: translatedRows.map(t => ({
-        slug: t.slug,
-        locale: t.locale || 'ru',
-        title: t.title,
-        excerpt: t.excerpt || null,
-        html_content: t.html_content,
-        raw_odt_path: t.raw_odt_path || null,
-        presentation_path: t.presentation_path || null,
-        created_at: t.created_at || null,
-        updated_at: t.updated_at || null,
-      }))
-    }
-  })
+  // Articles - unified model
+  const articles = articlesRaw.map(a => ({
+    slug: a.slug,
+    title: a.title,
+    title_ru: a.title_ru || null,
+    title_zh: a.title_zh || null,
+    excerpt: a.excerpt || null,
+    html_content: a.html_content,
+    raw_odt_path: a.raw_odt_path || null,
+    presentation_path: a.presentation_path || null,
+    presentation_path_ru: a.presentation_path_ru || null,
+    presentation_path_zh: a.presentation_path_zh || null,
+    category_slug: a.category_slug || null,
+    book_slug: a.book_slug || null,
+    is_published: a.is_published,
+    is_term_article: a.is_term_article,
+    sort_order: a.sort_order,
+    created_at: a.created_at || null,
+    updated_at: a.updated_at || null,
+  }))
 
   // Format the output
   const dump = {

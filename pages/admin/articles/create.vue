@@ -6,16 +6,53 @@ definePageMeta({
 
 const store = userStore()
 const toast = useToast()
+const route = useRoute()
 
 // Form state
 const title = ref('')
+const titleRu = ref('')
+const titleZh = ref('')
 const htmlContent = ref('')
+const htmlContentRu = ref('')
+const htmlContentZh = ref('')
 const articleSlug = ref('')
+const articleSlugRu = ref('')
+const articleSlugZh = ref('')
 const categoryId = ref<number | null>(null)
-const locale = ref('ru')
 const isPublished = ref(true)
 const sortOrder = ref(0)
 const syncSlug = ref(true)
+const syncSlugRu = ref(true)
+const syncSlugZh = ref(true)
+const termId = ref<number | null>(route.query.term_id ? Number(route.query.term_id) : null)
+
+// Active Tab
+const activeTab = ref('en')
+
+// If termId is present, fetch term data to prefill
+if (termId.value) {
+  const { data: term } = await useAsyncData(`term-${termId.value}`, () => 
+    $fetch<any>(`/api/admin/terms/${termId.value}`, {
+      headers: store.getAuthHeader()
+    })
+  )
+  
+  if (term.value) {
+    title.value = term.value.title
+    titleRu.value = term.value.title_ru || ''
+    titleZh.value = term.value.title_zh || ''
+    htmlContent.value = `<h2>${term.value.title}</h2>\n<p>${term.value.definition}</p>\n`
+    if (term.value.definition_ru) {
+      htmlContentRu.value = `<h2>${term.value.title_ru || term.value.title}</h2>\n<p>${term.value.definition_ru}</p>\n`
+    }
+    if (term.value.definition_zh) {
+      htmlContentZh.value = `<h2>${term.value.title_zh || term.value.title}</h2>\n<p>${term.value.definition_zh}</p>\n`
+    }
+    if (term.value.category_id) {
+      categoryId.value = term.value.category_id
+    }
+  }
+}
 
 // Transliteration map for slug generation
 const CYRILLIC_MAP: Record<string, string> = {
@@ -46,6 +83,16 @@ watch(title, (newTitle) => {
     articleSlug.value = frontendSlugify(newTitle)
   }
 })
+watch(titleRu, (newTitle) => {
+  if (syncSlugRu.value) {
+    articleSlugRu.value = frontendSlugify(newTitle)
+  }
+})
+watch(titleZh, (newTitle) => {
+  if (syncSlugZh.value) {
+    articleSlugZh.value = frontendSlugify(newTitle)
+  }
+})
 
 // Books & categories
 const { data: categoriesData } = await useFetch('/api/categories', {
@@ -72,7 +119,10 @@ function insertTerm(term: any) {
   const insertion = `<a class="wiki-term" data-term-slug="${term.slug}">${selectedText}</a>`
 
   el.value = text.substring(0, start) + insertion + text.substring(end)
-  htmlContent.value = el.value
+  
+  if (activeTab.value === 'en') htmlContent.value = el.value
+  else if (activeTab.value === 'ru') htmlContentRu.value = el.value
+  else if (activeTab.value === 'zh') htmlContentZh.value = el.value
 
   nextTick(() => {
     el.focus()
@@ -97,12 +147,18 @@ async function save() {
       },
       body: {
         title: title.value,
+        title_ru: titleRu.value || undefined,
+        title_zh: titleZh.value || undefined,
         html_content: htmlContent.value,
+        html_content_ru: htmlContentRu.value || undefined,
+        html_content_zh: htmlContentZh.value || undefined,
         slug: articleSlug.value,
+        slug_ru: articleSlugRu.value || undefined,
+        slug_zh: articleSlugZh.value || undefined,
         category_id: categoryId.value,
-        locale: locale.value,
         is_published: isPublished.value,
         sort_order: sortOrder.value,
+        term_id: termId.value || undefined,
       },
     })
 
@@ -143,7 +199,10 @@ function insertTag(tag: string, closingTag?: string) {
   }
 
   el.value = text.substring(0, start) + insertion + text.substring(end)
-  htmlContent.value = el.value
+  
+  if (activeTab.value === 'en') htmlContent.value = el.value
+  else if (activeTab.value === 'ru') htmlContentRu.value = el.value
+  else if (activeTab.value === 'zh') htmlContentZh.value = el.value
 
   // Focus back and set cursor
   nextTick(() => {
@@ -181,9 +240,14 @@ async function uploadImage(e: Event) {
       const end = el.selectionEnd
       const text = el.value
       el.value = text.substring(0, start) + imgTag + text.substring(end)
-      htmlContent.value = el.value
+      
+      if (activeTab.value === 'en') htmlContent.value = el.value
+      else if (activeTab.value === 'ru') htmlContentRu.value = el.value
+      else if (activeTab.value === 'zh') htmlContentZh.value = el.value
     } else {
-      htmlContent.value += imgTag
+      if (activeTab.value === 'en') htmlContent.value += imgTag
+      else if (activeTab.value === 'ru') htmlContentRu.value += imgTag
+      else if (activeTab.value === 'zh') htmlContentZh.value += imgTag
     }
 
     toast.add({ title: 'Изображение загружено', color: 'green' })
@@ -194,17 +258,11 @@ async function uploadImage(e: Event) {
   input.value = ''
 }
 
-const localeOptions = [
-  { label: '🇬🇧 EN', value: 'en' },
-  { label: '🇷🇺 RU', value: 'ru' },
-  { label: '🇨🇳 ZH', value: 'zh' },
-]
-
 useHead({ title: 'Создание статьи — Gativus Admin' })
 </script>
 
 <template>
-  <div class="editor-page">
+  <div class="editor-page gv-admin-page">
     <!-- Top Bar -->
     <div class="editor-topbar">
       <div class="editor-topbar-left">
@@ -212,6 +270,7 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
           <UIcon name="i-heroicons-arrow-left" />
         </NuxtLink>
         <h1 class="editor-title">{{ title || 'Новая статья' }}</h1>
+        <span class="entity-badge">UNIVERSAL ENTITY</span>
       </div>
       <div class="editor-topbar-right">
         <button class="toggle-preview" @click="showPreview = !showPreview">
@@ -229,21 +288,70 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
     <div class="editor-body">
       <!-- Sidebar meta -->
       <aside class="editor-sidebar">
-        <div class="meta-group">
-          <label class="meta-label">Название</label>
-          <input v-model="title" class="meta-input" placeholder="Заголовок статьи" />
-        </div>
+        <UTabs :items="[
+          { label: '🇬🇧 EN', slot: 'en' },
+          { label: '🇷🇺 RU', slot: 'ru' },
+          { label: '🇨🇳 ZH', slot: 'zh' }
+        ]" @change="activeTab = ['en', 'ru', 'zh'][$event]" class="w-full mb-4">
+          <template #en>
+            <div class="space-y-4 pt-2">
+              <div class="meta-group">
+                <label class="meta-label">Название</label>
+                <input v-model="title" class="meta-input" placeholder="Заголовок статьи" />
+              </div>
+              <div class="meta-group">
+                <div class="flex items-center justify-between">
+                  <label class="meta-label">Slug</label>
+                  <button @click="syncSlug = !syncSlug" class="text-[10px] font-bold"
+                    :class="syncSlug ? 'text-indigo-500' : 'text-gray-400'">
+                    {{ syncSlug ? 'AUTO' : 'MANUAL' }}
+                  </button>
+                </div>
+                <input v-model="articleSlug" class="meta-input meta-input--mono" placeholder="url-slug" />
+              </div>
+            </div>
+          </template>
+          
+          <template #ru>
+            <div class="space-y-4 pt-2">
+              <div class="meta-group">
+                <label class="meta-label">Название (RU)</label>
+                <input v-model="titleRu" class="meta-input" placeholder="Русский заголовок" />
+              </div>
+              <div class="meta-group">
+                <div class="flex items-center justify-between">
+                  <label class="meta-label">Slug (RU)</label>
+                  <button @click="syncSlugRu = !syncSlugRu" class="text-[10px] font-bold"
+                    :class="syncSlugRu ? 'text-indigo-500' : 'text-gray-400'">
+                    {{ syncSlugRu ? 'AUTO' : 'MANUAL' }}
+                  </button>
+                </div>
+                <input v-model="articleSlugRu" class="meta-input meta-input--mono" placeholder="url-slug-ru" />
+              </div>
+            </div>
+          </template>
+          
+          <template #zh>
+            <div class="space-y-4 pt-2">
+              <div class="meta-group">
+                <label class="meta-label">Название (ZH)</label>
+                <input v-model="titleZh" class="meta-input" placeholder="中文标题" />
+              </div>
+              <div class="meta-group">
+                <div class="flex items-center justify-between">
+                  <label class="meta-label">Slug (ZH)</label>
+                  <button @click="syncSlugZh = !syncSlugZh" class="text-[10px] font-bold"
+                    :class="syncSlugZh ? 'text-indigo-500' : 'text-gray-400'">
+                    {{ syncSlugZh ? 'AUTO' : 'MANUAL' }}
+                  </button>
+                </div>
+                <input v-model="articleSlugZh" class="meta-input meta-input--mono" placeholder="url-slug-zh" />
+              </div>
+            </div>
+          </template>
+        </UTabs>
 
-        <div class="meta-group">
-          <div class="flex items-center justify-between">
-            <label class="meta-label">Slug</label>
-            <button @click="syncSlug = !syncSlug" class="text-[10px] font-bold"
-              :class="syncSlug ? 'text-indigo-500' : 'text-gray-400'">
-              {{ syncSlug ? 'AUTO' : 'MANUAL' }}
-            </button>
-          </div>
-          <input v-model="articleSlug" class="meta-input meta-input--mono" placeholder="url-slug" />
-        </div>
+        <hr class="my-2 border-gray-200 dark:border-gray-800" />
 
         <div class="meta-group">
           <label class="meta-label">Категория</label>
@@ -253,17 +361,9 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
           </select>
         </div>
 
-        <div class="meta-row">
-          <div class="meta-group meta-group--half">
-            <label class="meta-label">Язык</label>
-            <select v-model="locale" class="meta-input">
-              <option v-for="opt in localeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-          </div>
-          <div class="meta-group meta-group--half">
-            <label class="meta-label">Порядок</label>
-            <input v-model.number="sortOrder" type="number" class="meta-input" min="0" />
-          </div>
+        <div class="meta-group">
+          <label class="meta-label">Порядок</label>
+          <input v-model.number="sortOrder" type="number" class="meta-input" min="0" />
         </div>
 
         <div class="meta-group">
@@ -324,9 +424,16 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
         </div>
 
         <div class="editor-main">
-          <textarea v-if="!showPreview" ref="textareaRef" v-model="htmlContent" class="html-editor"
-            placeholder="HTML-контент статьи..." spellcheck="false" />
-          <div v-else class="preview-pane article-prose" v-html="htmlContent" />
+          <textarea v-if="!showPreview && activeTab === 'en'" ref="textareaRef" v-model="htmlContent" class="html-editor"
+            placeholder="HTML-контент статьи (EN)..." spellcheck="false" />
+          <textarea v-else-if="!showPreview && activeTab === 'ru'" ref="textareaRef" v-model="htmlContentRu" class="html-editor"
+            placeholder="HTML-контент статьи (RU)..." spellcheck="false" />
+          <textarea v-else-if="!showPreview && activeTab === 'zh'" ref="textareaRef" v-model="htmlContentZh" class="html-editor"
+            placeholder="HTML-контент статьи (ZH)..." spellcheck="false" />
+            
+          <div v-else-if="showPreview && activeTab === 'en'" class="preview-pane article-prose" v-html="htmlContent" />
+          <div v-else-if="showPreview && activeTab === 'ru'" class="preview-pane article-prose" v-html="htmlContentRu" />
+          <div v-else-if="showPreview && activeTab === 'zh'" class="preview-pane article-prose" v-html="htmlContentZh" />
         </div>
       </div>
     </div>
@@ -394,6 +501,19 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   text-overflow: ellipsis;
 }
 
+.entity-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gv-primary) 32%, var(--gv-border-principal));
+  background: color-mix(in srgb, var(--gv-primary) 12%, transparent);
+  color: var(--gv-primary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
 .dark .editor-title {
   color: #e5e5e5;
 }
@@ -440,7 +560,7 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
   padding: 7px 16px;
   border-radius: 8px;
   border: none;
-  background: #6366f1;
+  background: var(--gv-primary);
   color: #fff;
   cursor: pointer;
   font-size: 13px;
@@ -449,7 +569,7 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
 }
 
 .save-btn:hover {
-  background: #4f46e5;
+  background: var(--gv-primary-hover);
 }
 
 .save-btn:disabled {
@@ -508,7 +628,7 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
 }
 
 .meta-input:focus {
-  border-color: #6366f1;
+  border-color: var(--gv-primary);
 }
 
 .dark .meta-input {
@@ -591,7 +711,7 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
 
 .toolbar-group button:hover {
   background: #eef2ff;
-  color: #6366f1;
+  color: var(--gv-primary);
   border-color: #e0e7ff;
 }
 
@@ -601,7 +721,7 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
 
 .dark .toolbar-group button:hover {
   background: #252528;
-  color: #818cf8;
+  color: var(--gv-primary);
   border-color: #333;
 }
 
@@ -654,6 +774,15 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
 }
 
 @media (max-width: 768px) {
+  .editor-page {
+    height: auto;
+    min-height: calc(100vh - 72px);
+    margin: 0;
+    border: 1px solid var(--gv-border-principal);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
   .editor-body {
     flex-direction: column;
   }
@@ -662,7 +791,7 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
     width: 100%;
     border-right: none;
     border-bottom: 1px solid #e5e7eb;
-    max-height: 200px;
+    max-height: 240px;
   }
 }
 </style>

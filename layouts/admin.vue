@@ -47,6 +47,9 @@
         <button class="topbar-menu-btn" @click="sidebarOpen = true">
           <UIcon name="i-heroicons-bars-3" />
         </button>
+        <button v-if="canGoBack" class="topbar-back-btn" @click="goBack" title="Назад">
+          <UIcon name="i-heroicons-arrow-left" />
+        </button>
         <h1 class="topbar-title">Панель управления</h1>
         <div class="topbar-actions">
           <NuxtLink to="/" class="topbar-link">
@@ -58,7 +61,9 @@
       </header>
 
       <main class="admin-content">
-        <slot />
+        <div class="admin-content-inner gv-admin-page">
+          <slot />
+        </div>
       </main>
     </div>
   </div>
@@ -68,6 +73,14 @@
 const route = useRoute()
 const store = userStore()
 const sidebarOpen = ref(false)
+
+const { pushRoute, goBack, canGoBack } = useAdminHistory()
+
+watch(() => route.path, (newPath) => {
+  if (newPath.startsWith('/admin')) {
+    pushRoute(newPath)
+  }
+}, { immediate: true })
 
 interface NavItem {
   label: string
@@ -97,11 +110,11 @@ function handleLogout() {
 .admin-layout {
   display: flex;
   min-height: 100vh;
-  background: #f4f5f7;
+  background: var(--gv-surface);
 }
 
 .dark .admin-layout {
-  background: #111113;
+  background: var(--gv-surface);
 }
 
 /* ─── Sidebar ─── */
@@ -110,8 +123,8 @@ function handleLogout() {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border-right: 1px solid #e5e7eb;
+  background: var(--gv-surface-card);
+  border-right: 1px solid var(--gv-border-principal);
   position: fixed;
   top: 0;
   left: 0;
@@ -121,8 +134,8 @@ function handleLogout() {
 }
 
 .dark .admin-sidebar {
-  background: #1a1a1d;
-  border-right-color: #2a2a2e;
+  background: var(--gv-surface-card);
+  border-right-color: var(--gv-border-principal);
 }
 
 .sidebar-header {
@@ -351,15 +364,15 @@ function handleLogout() {
   gap: 12px;
   padding: 12px 24px;
   background: transparent;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gv-border-principal);
   position: sticky;
   top: 0;
   z-index: 20;
 }
 
 .dark .admin-topbar {
-  background: #1a1a1d;
-  border-bottom-color: #2a2a2e;
+  background: color-mix(in srgb, var(--gv-surface) 85%, transparent);
+  border-bottom-color: var(--gv-border-principal);
 }
 
 .topbar-menu-btn {
@@ -376,6 +389,35 @@ function handleLogout() {
 .dark .topbar-menu-btn {
   border-color: #333;
   color: #aaa;
+}
+
+.topbar-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 8px;
+  background: none;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  color: #555;
+  font-size: 18px;
+  transition: all 0.2s;
+}
+
+.topbar-back-btn:hover {
+  background: #f3f4f6;
+  color: #1a1a1a;
+}
+
+.dark .topbar-back-btn {
+  border-color: #333;
+  color: #aaa;
+}
+
+.dark .topbar-back-btn:hover {
+  background: #252528;
+  color: #e5e5e5;
 }
 
 .topbar-title {
@@ -429,12 +471,17 @@ function handleLogout() {
 
 .admin-content {
   flex: 1;
-  padding: 24px;
+  padding: 20px 20px 28px;
+}
+
+.admin-content-inner {
+  width: 100%;
 }
 
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
   .admin-sidebar {
+    width: min(320px, 86vw);
     transform: translateX(-100%);
   }
 
@@ -460,6 +507,67 @@ function handleLogout() {
 
   .admin-content {
     padding: 16px;
+  }
+
+  .topbar-title {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+  }
+
+  .topbar-actions {
+    gap: 6px;
+  }
+
+  .topbar-link span {
+    display: none;
+  }
+
+  .topbar-link {
+    padding: 7px 9px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-topbar {
+    padding: 10px 12px;
+  }
+
+  .admin-content {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .admin-sidebar {
+    width: min(300px, 92vw);
+  }
+
+  .admin-topbar {
+    padding: 8px 10px;
+  }
+
+  .topbar-title {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+
+  .topbar-actions {
+    gap: 4px;
+  }
+
+  .topbar-back-btn,
+  .topbar-menu-btn {
+    padding: 6px;
+    font-size: 16px;
+  }
+
+  .topbar-link {
+    padding: 6px 7px;
+    min-height: 36px;
+  }
+
+  .admin-content {
+    padding: 10px;
   }
 }
 </style>

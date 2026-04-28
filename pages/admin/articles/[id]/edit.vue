@@ -19,27 +19,45 @@ const slug = computed(() => fullArticle.value?.slug || '')
 
 // Form state
 const title = ref('')
+const titleRu = ref('')
+const titleZh = ref('')
 const htmlContent = ref('')
+const htmlContentRu = ref('')
+const htmlContentZh = ref('')
 const articleSlug = ref('')
+const articleSlugRu = ref('')
+const articleSlugZh = ref('')
 const categoryId = ref<number | null>(null)
-const locale = ref('ru')
 const isPublished = ref(true)
 const sortOrder = ref(0)
 const changeSummary = ref('')
 const presentationPath = ref<string | null>(null)
+const presentationPathRu = ref<string | null>(null)
+const presentationPathZh = ref<string | null>(null)
 const isUploadingPresentation = ref(false)
+const presUploadLocale = ref<'en' | 'ru' | 'zh' | null>(null)
+
+// Active Tab
+const activeTab = ref('en')
 
 // Populate form when data loads
 watch(fullArticle, (article: any) => {
   if (article) {
     title.value = article.title || ''
+    titleRu.value = article.title_ru || ''
+    titleZh.value = article.title_zh || ''
     htmlContent.value = article.html_content || ''
+    htmlContentRu.value = article.html_content_ru || ''
+    htmlContentZh.value = article.html_content_zh || ''
     articleSlug.value = article.slug || ''
+    articleSlugRu.value = article.slug_ru || ''
+    articleSlugZh.value = article.slug_zh || ''
     categoryId.value = article.category_id || null
-    locale.value = article.locale || 'ru'
     isPublished.value = Boolean(article.is_published)
     sortOrder.value = article.sort_order || 0
     presentationPath.value = article.presentation_path || null
+    presentationPathRu.value = article.presentation_path_ru || null
+    presentationPathZh.value = article.presentation_path_zh || null
   }
 }, { immediate: true })
 
@@ -68,7 +86,10 @@ function insertTerm(term: any) {
   const insertion = `<a class="wiki-term" data-term-slug="${term.slug}">${selectedText}</a>`
 
   el.value = text.substring(0, start) + insertion + text.substring(end)
-  htmlContent.value = el.value
+  
+  if (activeTab.value === 'en') htmlContent.value = el.value
+  else if (activeTab.value === 'ru') htmlContentRu.value = el.value
+  else if (activeTab.value === 'zh') htmlContentZh.value = el.value
   
   nextTick(() => {
     el.focus()
@@ -90,13 +111,21 @@ async function save() {
       },
       body: {
         title: title.value,
+        title_ru: titleRu.value || undefined,
+        title_zh: titleZh.value || undefined,
         html_content: htmlContent.value,
+        html_content_ru: htmlContentRu.value || undefined,
+        html_content_zh: htmlContentZh.value || undefined,
         slug: articleSlug.value,
+        slug_ru: articleSlugRu.value || undefined,
+        slug_zh: articleSlugZh.value || undefined,
         category_id: categoryId.value,
-        locale: locale.value,
         is_published: isPublished.value,
         sort_order: sortOrder.value,
         change_summary: changeSummary.value || undefined,
+        presentation_path: presentationPath.value || undefined,
+        presentation_path_ru: presentationPathRu.value || undefined,
+        presentation_path_zh: presentationPathZh.value || undefined,
       },
     })
 
@@ -114,10 +143,11 @@ async function save() {
 }
 
 // Presentation upload
-async function uploadPresentation(e: Event) {
+async function uploadPresentation(e: Event, locale: 'en' | 'ru' | 'zh' = 'en') {
   const input = e.target as HTMLInputElement
   if (!input.files?.length || !slug.value) return
 
+  presUploadLocale.value = locale
   isUploadingPresentation.value = true
   try {
     const formData = new FormData()
@@ -127,18 +157,24 @@ async function uploadPresentation(e: Event) {
       method: 'POST',
       body: formData,
       headers: store.getAuthHeader(),
+      query: { locale },
     })
 
-    presentationPath.value = result.presentation_path
+    if (locale === 'ru') presentationPathRu.value = result.presentation_path
+    else if (locale === 'zh') presentationPathZh.value = result.presentation_path
+    else presentationPath.value = result.presentation_path
     toast.add({ title: 'Презентация загружена', color: 'green' })
   } catch (err: any) {
     toast.add({ title: 'Ошибка загрузки', description: err?.data?.statusMessage || err.message, color: 'red' })
   }
   isUploadingPresentation.value = false
+  presUploadLocale.value = null
   input.value = ''
 }
 
 const syncSlug = ref(false)
+const syncSlugRu = ref(false)
+const syncSlugZh = ref(false)
 
 // Transliteration map for slug generation
 const CYRILLIC_MAP: Record<string, string> = {
@@ -169,6 +205,16 @@ watch(title, (newTitle) => {
     articleSlug.value = frontendSlugify(newTitle)
   }
 })
+watch(titleRu, (newTitle) => {
+  if (syncSlugRu.value) {
+    articleSlugRu.value = frontendSlugify(newTitle)
+  }
+})
+watch(titleZh, (newTitle) => {
+  if (syncSlugZh.value) {
+    articleSlugZh.value = frontendSlugify(newTitle)
+  }
+})
 
 // Toolbar Logic
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -194,7 +240,10 @@ function insertTag(tag: string, closingTag?: string) {
   }
 
   el.value = text.substring(0, start) + insertion + text.substring(end)
-  htmlContent.value = el.value
+  
+  if (activeTab.value === 'en') htmlContent.value = el.value
+  else if (activeTab.value === 'ru') htmlContentRu.value = el.value
+  else if (activeTab.value === 'zh') htmlContentZh.value = el.value
   
   // Focus back and set cursor
   nextTick(() => {
@@ -232,9 +281,14 @@ async function uploadImage(e: Event) {
       const end = el.selectionEnd
       const text = el.value
       el.value = text.substring(0, start) + imgTag + text.substring(end)
-      htmlContent.value = el.value
+      
+      if (activeTab.value === 'en') htmlContent.value = el.value
+      else if (activeTab.value === 'ru') htmlContentRu.value = el.value
+      else if (activeTab.value === 'zh') htmlContentZh.value = el.value
     } else {
-      htmlContent.value += imgTag
+      if (activeTab.value === 'en') htmlContent.value += imgTag
+      else if (activeTab.value === 'ru') htmlContentRu.value += imgTag
+      else if (activeTab.value === 'zh') htmlContentZh.value += imgTag
     }
 
     toast.add({ title: 'Изображение загружено', color: 'green' })
@@ -245,15 +299,10 @@ async function uploadImage(e: Event) {
   input.value = ''
 }
 
-const localeOptions = [
-  { label: '🇬🇧 EN', value: 'en' },
-  { label: '🇷🇺 RU', value: 'ru' },
-  { label: '🇨🇳 ZH', value: 'zh' },
-]
 </script>
 
 <template>
-  <div class="editor-page">
+  <div class="editor-page gv-admin-page">
     <!-- Top Bar -->
     <div class="editor-topbar">
       <div class="editor-topbar-left">
@@ -261,6 +310,7 @@ const localeOptions = [
           <UIcon name="i-heroicons-arrow-left" />
         </NuxtLink>
         <h1 class="editor-title">{{ title || 'Без названия' }}</h1>
+        <span class="entity-badge">UNIVERSAL ENTITY</span>
         <div v-if="fullArticle?.is_term_article" class="term-ref-badge">
           <UIcon name="i-heroicons-book-open" />
           <span>Disclosure for: </span>
@@ -289,20 +339,67 @@ const localeOptions = [
     <div class="editor-body">
       <!-- Sidebar meta -->
       <aside class="editor-sidebar">
-        <div class="meta-group">
-          <label class="meta-label">Название</label>
-          <input v-model="title" class="meta-input" placeholder="Заголовок статьи" />
-        </div>
+        <UTabs :items="[
+          { label: '🇬🇧 EN', slot: 'en' },
+          { label: '🇷🇺 RU', slot: 'ru' },
+          { label: '🇨🇳 ZH', slot: 'zh' }
+        ]" @change="activeTab = ['en', 'ru', 'zh'][$event]" class="w-full mb-4">
+          <template #en>
+            <div class="space-y-4 pt-2">
+              <div class="meta-group">
+                <label class="meta-label">Название</label>
+                <input v-model="title" class="meta-input" placeholder="Заголовок статьи" />
+              </div>
+              <div class="meta-group">
+                <div class="flex items-center justify-between">
+                  <label class="meta-label">Slug</label>
+                  <button @click="syncSlug = !syncSlug" class="text-[10px] font-bold" :class="syncSlug ? 'text-indigo-500' : 'text-gray-400'">
+                    {{ syncSlug ? 'AUTO' : 'MANUAL' }}
+                  </button>
+                </div>
+                <input v-model="articleSlug" class="meta-input meta-input--mono" placeholder="url-slug" />
+              </div>
+            </div>
+          </template>
+          
+          <template #ru>
+            <div class="space-y-4 pt-2">
+              <div class="meta-group">
+                <label class="meta-label">Название (RU)</label>
+                <input v-model="titleRu" class="meta-input" placeholder="Русский заголовок" />
+              </div>
+              <div class="meta-group">
+                <div class="flex items-center justify-between">
+                  <label class="meta-label">Slug (RU)</label>
+                  <button @click="syncSlugRu = !syncSlugRu" class="text-[10px] font-bold" :class="syncSlugRu ? 'text-indigo-500' : 'text-gray-400'">
+                    {{ syncSlugRu ? 'AUTO' : 'MANUAL' }}
+                  </button>
+                </div>
+                <input v-model="articleSlugRu" class="meta-input meta-input--mono" placeholder="url-slug-ru" />
+              </div>
+            </div>
+          </template>
+          
+          <template #zh>
+            <div class="space-y-4 pt-2">
+              <div class="meta-group">
+                <label class="meta-label">Название (ZH)</label>
+                <input v-model="titleZh" class="meta-input" placeholder="中文标题" />
+              </div>
+              <div class="meta-group">
+                <div class="flex items-center justify-between">
+                  <label class="meta-label">Slug (ZH)</label>
+                  <button @click="syncSlugZh = !syncSlugZh" class="text-[10px] font-bold" :class="syncSlugZh ? 'text-indigo-500' : 'text-gray-400'">
+                    {{ syncSlugZh ? 'AUTO' : 'MANUAL' }}
+                  </button>
+                </div>
+                <input v-model="articleSlugZh" class="meta-input meta-input--mono" placeholder="url-slug-zh" />
+              </div>
+            </div>
+          </template>
+        </UTabs>
 
-        <div class="meta-group">
-          <div class="flex items-center justify-between">
-            <label class="meta-label">Slug</label>
-            <button @click="syncSlug = !syncSlug" class="text-[10px] font-bold" :class="syncSlug ? 'text-indigo-500' : 'text-gray-400'">
-              {{ syncSlug ? 'AUTO' : 'MANUAL' }}
-            </button>
-          </div>
-          <input v-model="articleSlug" class="meta-input meta-input--mono" placeholder="url-slug" />
-        </div>
+        <hr class="my-2 border-gray-200 dark:border-gray-800" />
 
         <div class="meta-group">
           <label class="meta-label">Категория</label>
@@ -310,19 +407,25 @@ const localeOptions = [
             <option :value="null">— Нет —</option>
             <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.title }}</option>
           </select>
+          <NuxtLink
+            v-if="categoryId"
+            :to="`/admin/categories`"
+            class="meta-link"
+          >
+            Открыть категории
+          </NuxtLink>
         </div>
 
-        <div class="meta-row">
-          <div class="meta-group meta-group--half">
-            <label class="meta-label">Язык</label>
-            <select v-model="locale" class="meta-input">
-              <option v-for="opt in localeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-          </div>
-          <div class="meta-group meta-group--half">
-            <label class="meta-label">Порядок</label>
-            <input v-model.number="sortOrder" type="number" class="meta-input" min="0" />
-          </div>
+        <div v-if="fullArticle?.book_id" class="meta-group">
+          <label class="meta-label">Книга</label>
+          <NuxtLink :to="`/admin/books/${fullArticle.book_id}/edit`" class="meta-link">
+            Редактировать книгу #{{ fullArticle.book_id }}
+          </NuxtLink>
+        </div>
+
+        <div class="meta-group">
+          <label class="meta-label">Порядок</label>
+          <input v-model.number="sortOrder" type="number" class="meta-input" min="0" />
         </div>
 
         <div class="meta-group">
@@ -337,19 +440,48 @@ const localeOptions = [
           <input v-model="changeSummary" class="meta-input" placeholder="Что изменилось?" />
         </div>
 
-        <!-- Presentation Upload -->
+        <!-- Presentation (per locale) -->
         <div class="meta-group">
-          <label class="meta-label">Презентация</label>
-          <div v-if="presentationPath" class="pres-attached">
-            <UIcon name="i-heroicons-presentation-chart-bar" class="pres-icon" />
-            <span class="pres-filename">{{ presentationPath.split('/').pop() }}</span>
+          <label class="meta-label">Презентации</label>
+          <div class="pres-locale-block">
+            <span class="pres-locale-label">EN</span>
+            <input v-model="presentationPath" class="meta-input meta-input--mono pres-url-input" placeholder="URL или загрузка ниже" />
+            <div v-if="presentationPath" class="pres-attached pres-attached--compact">
+              <span class="pres-filename">{{ presentationPath.split('/').pop() }}</span>
+            </div>
+            <label class="pres-upload-btn pres-upload-btn--compact" :class="{ 'pres-upload-btn--loading': isUploadingPresentation && presUploadLocale === 'en' }">
+              <input type="file" accept=".odp,.pptx,.pdf" class="sr-only" @change="uploadPresentation($event, 'en')" :disabled="isUploadingPresentation" />
+              <UIcon v-if="!(isUploadingPresentation && presUploadLocale === 'en')" name="i-heroicons-arrow-up-tray" />
+              <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
+              <span>Загрузить EN</span>
+            </label>
           </div>
-          <label class="pres-upload-btn" :class="{ 'pres-upload-btn--loading': isUploadingPresentation }">
-            <input type="file" accept=".odp,.pptx,.pdf" class="sr-only" @change="uploadPresentation" :disabled="isUploadingPresentation" />
-            <UIcon v-if="!isUploadingPresentation" name="i-heroicons-arrow-up-tray" />
-            <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
-            <span>{{ presentationPath ? 'Заменить' : 'Загрузить' }}</span>
-          </label>
+          <div class="pres-locale-block">
+            <span class="pres-locale-label">RU</span>
+            <input v-model="presentationPathRu" class="meta-input meta-input--mono pres-url-input" placeholder="URL (RU)" />
+            <div v-if="presentationPathRu" class="pres-attached pres-attached--compact">
+              <span class="pres-filename">{{ presentationPathRu.split('/').pop() }}</span>
+            </div>
+            <label class="pres-upload-btn pres-upload-btn--compact" :class="{ 'pres-upload-btn--loading': isUploadingPresentation && presUploadLocale === 'ru' }">
+              <input type="file" accept=".odp,.pptx,.pdf" class="sr-only" @change="uploadPresentation($event, 'ru')" :disabled="isUploadingPresentation" />
+              <UIcon v-if="!(isUploadingPresentation && presUploadLocale === 'ru')" name="i-heroicons-arrow-up-tray" />
+              <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
+              <span>Загрузить RU</span>
+            </label>
+          </div>
+          <div class="pres-locale-block">
+            <span class="pres-locale-label">ZH</span>
+            <input v-model="presentationPathZh" class="meta-input meta-input--mono pres-url-input" placeholder="URL (ZH)" />
+            <div v-if="presentationPathZh" class="pres-attached pres-attached--compact">
+              <span class="pres-filename">{{ presentationPathZh.split('/').pop() }}</span>
+            </div>
+            <label class="pres-upload-btn pres-upload-btn--compact" :class="{ 'pres-upload-btn--loading': isUploadingPresentation && presUploadLocale === 'zh' }">
+              <input type="file" accept=".odp,.pptx,.pdf" class="sr-only" @change="uploadPresentation($event, 'zh')" :disabled="isUploadingPresentation" />
+              <UIcon v-if="!(isUploadingPresentation && presUploadLocale === 'zh')" name="i-heroicons-arrow-up-tray" />
+              <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
+              <span>Загрузить ZH</span>
+            </label>
+          </div>
         </div>
       </aside>
 
@@ -388,17 +520,44 @@ const localeOptions = [
 
         <div class="editor-main">
           <textarea
-            v-if="!showPreview"
+            v-if="!showPreview && activeTab === 'en'"
             ref="textareaRef"
             v-model="htmlContent"
             class="html-editor"
-            placeholder="HTML-контент статьи..."
+            placeholder="HTML-контент статьи (EN)..."
             spellcheck="false"
           />
+          <textarea
+            v-else-if="!showPreview && activeTab === 'ru'"
+            ref="textareaRef"
+            v-model="htmlContentRu"
+            class="html-editor"
+            placeholder="HTML-контент статьи (RU)..."
+            spellcheck="false"
+          />
+          <textarea
+            v-else-if="!showPreview && activeTab === 'zh'"
+            ref="textareaRef"
+            v-model="htmlContentZh"
+            class="html-editor"
+            placeholder="HTML-контент статьи (ZH)..."
+            spellcheck="false"
+          />
+          
           <div
-            v-else
+            v-else-if="showPreview && activeTab === 'en'"
             class="preview-pane article-prose"
             v-html="htmlContent"
+          />
+          <div
+            v-else-if="showPreview && activeTab === 'ru'"
+            class="preview-pane article-prose"
+            v-html="htmlContentRu"
+          />
+          <div
+            v-else-if="showPreview && activeTab === 'zh'"
+            class="preview-pane article-prose"
+            v-html="htmlContentZh"
           />
         </div>
       </div>
@@ -471,6 +630,19 @@ const localeOptions = [
   color: #0369a1;
   font-weight: 500;
 }
+
+.entity-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gv-primary) 32%, var(--gv-border-principal));
+  background: color-mix(in srgb, var(--gv-primary) 12%, transparent);
+  color: var(--gv-primary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
 .dark .term-ref-badge {
   background: #082f49;
   border-color: #0c4a6e;
@@ -524,14 +696,14 @@ const localeOptions = [
   padding: 7px 16px;
   border-radius: 8px;
   border: none;
-  background: #6366f1;
+  background: var(--gv-primary);
   color: #fff;
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
   transition: all 0.2s;
 }
-.save-btn:hover { background: #4f46e5; }
+.save-btn:hover { background: var(--gv-primary-hover); }
 .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ─── Body ─── */
@@ -582,13 +754,25 @@ const localeOptions = [
   outline: none;
   transition: border-color 0.2s;
 }
-.meta-input:focus { border-color: #6366f1; }
+.meta-input:focus { border-color: var(--gv-primary); }
 .dark .meta-input {
   background: #1e1e21;
   border-color: #2a2a2e;
   color: #e5e5e5;
 }
 .meta-input--mono { font-family: monospace; font-size: 12px; }
+
+.meta-link {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gv-primary);
+  text-decoration: none;
+}
+
+.meta-link:hover {
+  text-decoration: underline;
+}
 
 .meta-row {
   display: flex;
@@ -652,13 +836,13 @@ const localeOptions = [
 }
 .toolbar-group button:hover {
   background: #eef2ff;
-  color: #6366f1;
+  color: var(--gv-primary);
   border-color: #e0e7ff;
 }
 .dark .toolbar-group button { color: #aaa; }
 .dark .toolbar-group button:hover {
   background: #252528;
-  color: #818cf8;
+  color: var(--gv-primary);
   border-color: #333;
 }
 
@@ -748,14 +932,48 @@ const localeOptions = [
 .dark .pres-upload-btn:hover { background: #333; }
 .pres-upload-btn--loading { opacity: 0.6; cursor: wait; }
 
+.pres-locale-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.dark .pres-locale-block { border-bottom-color: #2a2a2e; }
+.pres-locale-block:last-child { border-bottom: none; padding-bottom: 0; }
+.pres-locale-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+.pres-url-input { font-size: 11px; }
+.pres-upload-btn--compact {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+.pres-attached--compact {
+  padding: 4px 8px;
+  margin-bottom: 0;
+}
+
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
+  .editor-page {
+    height: auto;
+    min-height: calc(100vh - 72px);
+    margin: 0;
+    border: 1px solid var(--gv-border-principal);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
   .editor-body { flex-direction: column; }
   .editor-sidebar {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid #e5e7eb;
-    max-height: 200px;
+    max-height: 240px;
   }
   .dark .editor-sidebar { border-bottom-color: #2a2a2e; }
   .editor-topbar-right span { display: none; }

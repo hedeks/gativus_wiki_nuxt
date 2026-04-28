@@ -8,69 +8,33 @@ const store = userStore()
 const { data: tree, refresh } = await useFetch('/api/categories?tree=true', {
   headers: store.getAuthHeader()
 })
-
-const isModalOpen = ref(false)
-const isDeleting = ref(false)
-const selectedCategory = ref<any>(null)
-const form = reactive({
-  id: null as number | null,
-  title: '',
-  title_ru: '',
-  slug: '',
-  slug_ru: '',
-  parent_id: null as number | null,
-  description: '',
-  description_ru: '',
-  icon: 'i-heroicons-folder',
-  sort_order: 0
-})
-
-const openCreate = (parentId: number | null = null) => {
-  form.id = null
-  form.title = ''
-  form.title_ru = ''
-  form.slug = ''
-  form.slug_ru = ''
-  form.parent_id = parentId
-  form.description = ''
-  form.description_ru = ''
-  form.icon = 'i-heroicons-folder'
-  form.sort_order = 0
-  selectedCategory.value = null
-  isModalOpen.value = true
-}
-
-const openEdit = (cat: any) => {
-  form.id = cat.id
-  form.title = cat.title
-  form.title_ru = cat.title_ru || ''
-  form.slug = cat.slug
-  form.slug_ru = cat.slug_ru || ''
-  form.parent_id = cat.parent_id
-  form.description = cat.description || ''
-  form.description_ru = cat.description_ru || ''
-  form.icon = cat.icon || 'i-heroicons-folder'
-  form.sort_order = cat.sort_order || 0
-  selectedCategory.value = cat
-  isModalOpen.value = true
-}
-
-const saveCategory = async () => {
-  try {
-    const method = form.id ? 'PUT' : 'POST'
-    const url = form.id ? `/api/categories/${form.id}` : '/api/categories'
-
-    await $fetch(url, {
-      method,
-      body: { ...form },
-      headers: store.getAuthHeader()
+const { searchQuery, debouncedQuery, isTyping } = useDebounce('', 300)
+const hasChildrenOnly = ref(false)
+const activeFilterCount = computed(() => (hasChildrenOnly.value ? 1 : 0))
+const filteredTree = computed(() => {
+  const source = (Array.isArray(tree.value) ? tree.value : []) as any[]
+  const q = debouncedQuery.value.trim().toLowerCase()
+  const visit = (nodes: any[]): any[] => nodes
+    .map((node) => {
+      const children = visit(node.children || [])
+      const selfMatch = [node.title, node.title_ru, node.slug, node.slug_ru]
+        .some((v) => String(v || '').toLowerCase().includes(q))
+      if (!q && !selfMatch && !children.length) return { ...node, children }
+      if (!q || selfMatch || children.length) return { ...node, children }
+      return null
     })
-
-    isModalOpen.value = false
-    refresh()
-  } catch (err: any) {
-    alert('Ошибка при сохранении: ' + (err.data?.statusMessage || err.message))
+    .filter(Boolean) as any[]
+  const searched = visit(source)
+  if (!hasChildrenOnly.value) return searched
+  return searched.filter((node: any) => Array.isArray(node.children) && node.children.length > 0)
+})
+const router = useRouter()
+const openCreate = (parentId: number | null = null) => {
+  if (parentId) {
+    router.push(`/admin/categories/create?parent_id=${parentId}`)
+    return
   }
+  router.push('/admin/categories/create')
 }
 
 const deleteCategory = async (id: number) => {
@@ -105,125 +69,58 @@ const moveDown = async (cat: any) => {
   refresh()
 }
 
-const commonIcons = [
-  'i-heroicons-folder', 'i-heroicons-folder-open', 'i-heroicons-book-open',
-  'i-heroicons-academic-cap', 'i-heroicons-light-bulb', 'i-heroicons-briefcase',
-  'i-heroicons-chart-bar', 'i-heroicons-chat-bubble-left-right', 'i-heroicons-cloud',
-  'i-heroicons-code-bracket', 'i-heroicons-cog-6-tooth', 'i-heroicons-cpu-chip',
-  'i-heroicons-cube', 'i-heroicons-device-tablet', 'i-heroicons-document-text',
-  'i-heroicons-beaker', 'i-heroicons-globe-alt', 'i-heroicons-heart',
-  'i-heroicons-home', 'i-heroicons-identification', 'i-heroicons-key',
-  'i-heroicons-map', 'i-heroicons-microphone', 'i-heroicons-moon',
-  'i-heroicons-newspaper', 'i-heroicons-paint-brush', 'i-heroicons-puzzle-piece',
-  'i-heroicons-rocket', 'i-heroicons-shield-check', 'i-heroicons-sparkles',
-  'i-heroicons-star', 'i-heroicons-user-group', 'i-heroicons-variable',
-  'i-heroicons-video-camera', 'i-heroicons-wrench-screwdriver'
-]
-
-const showIconSelector = ref(false)
-const selectIcon = (icon: string) => {
-  form.icon = icon
-  showIconSelector.value = false
-}
 </script>
 
 <template>
-  <div class="categories-page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">Управление категориями</h1>
-        <p class="page-subtitle">Дерево категорий проекта Gativus</p>
+  <div class="categories-page gv-admin-page">
+    <div class="page-header gv-admin-index-head">
+      <div class="gv-admin-head">
+        <p class="gv-admin-eyebrow">ADMIN</p>
+        <h1 class="gv-admin-title">Категории</h1>
+        <p class="gv-admin-subtitle">Дерево категорий и быстрые операции</p>
       </div>
-      <UButton icon="i-heroicons-plus" color="primary" @click="openCreate()">
-        Добавить корень
-      </UButton>
+      <div class="gv-admin-index-actions">
+        <UButton icon="i-heroicons-plus" color="red" @click="openCreate()">
+          Добавить корень
+        </UButton>
+      </div>
     </div>
 
-    <div class="category-tree">
-      <div v-if="!tree || tree.length === 0" class="empty-state">
+    <div class="gv-admin-filter-row">
+      <BaseSearch
+        v-model="searchQuery"
+        placeholder="Поиск категории..."
+        :is-pending="false"
+        :is-debouncing="isTyping"
+        class="flex-1"
+      />
+      <ExpandableFilters
+        label="Фильтры"
+        :active-count="activeFilterCount"
+        :has-active-filters="activeFilterCount > 0"
+      >
+        <div class="filter-group">
+          <span class="filter-group-label">Структура</span>
+          <button
+            type="button"
+            class="gv-filter-pill gv-focusable"
+            :class="{ 'is-active': hasChildrenOnly }"
+            @click="hasChildrenOnly = !hasChildrenOnly"
+          >
+            Только с подкатегориями
+          </button>
+        </div>
+      </ExpandableFilters>
+    </div>
+
+    <div class="category-tree gv-admin-surface overflow-x-auto">
+      <div v-if="!filteredTree || filteredTree.length === 0" class="empty-state">
         Категории не найдены.
       </div>
 
-      <AdminCategoryItem v-for="cat in tree" :key="cat.id" :category="cat" @edit="openEdit" @delete="deleteCategory"
+      <AdminCategoryItem v-for="cat in filteredTree" :key="cat.id" :category="cat" @delete="deleteCategory"
         @create-child="openCreate" @move-up="moveUp" @move-down="moveDown" />
     </div>
-
-    <!-- Edit Modal -->
-    <UModal v-model="isModalOpen">
-      <UCard :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }">
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
-              {{ form.id ? 'Редактировать категорию' : 'Новая категория' }}
-            </h3>
-            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark" class="-my-1"
-              @click="isModalOpen = false" />
-          </div>
-        </template>
-
-        <UForm :state="form" @submit="saveCategory" class="space-y-4">
-
-          <UTabs :items="[
-            { key: 'ru', label: 'Русский (RU)', icon: 'i-heroicons-language' },
-            { key: 'en', label: 'English (EN)', icon: 'i-heroicons-globe-alt' }
-          ]" class="mb-4">
-            <template #item="{ item }">
-              <div v-if="item.key === 'ru'" class="space-y-4 py-2">
-                <UFormGroup label="Название (RU)" required>
-                  <UInput v-model="form.title_ru" placeholder="Архитектура сознания" />
-                </UFormGroup>
-                <UFormGroup label="Slug (RU)">
-                  <UInput v-model="form.slug_ru" placeholder="arkhitektura-soznaniya" />
-                </UFormGroup>
-                <UFormGroup label="Описание (RU)">
-                  <UTextarea v-model="form.description_ru" autoresize />
-                </UFormGroup>
-              </div>
-              <div v-else class="space-y-4 py-2">
-                <UFormGroup label="Название (EN/Default)" required>
-                  <UInput v-model="form.title" placeholder="Architecture of Mind" />
-                </UFormGroup>
-                <UFormGroup label="Slug (EN/Default)">
-                  <UInput v-model="form.slug" placeholder="architecture-of-mind" />
-                </UFormGroup>
-                <UFormGroup label="Описание (EN/Default)">
-                  <UTextarea v-model="form.description" autoresize />
-                </UFormGroup>
-              </div>
-            </template>
-          </UTabs>
-
-          <UFormGroup label="Иконка (Универсальная)" help="Выберите иконку для визуализации в графе">
-            <div class="flex gap-2">
-              <UInput v-model="form.icon" class="flex-1" />
-              <UPopover v-model:open="showIconSelector">
-                <UButton color="gray" variant="solid" :icon="form.icon" />
-
-                <template #panel>
-                  <div class="p-3 grid grid-cols-6 gap-1 max-h-[300px] overflow-y-auto w-[240px]">
-                    <button v-for="icon in commonIcons" :key="icon" type="button"
-                      class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center transition-colors"
-                      :class="{ 'bg-sky-50 dark:bg-sky-900/30 text-sky-600': form.icon === icon }"
-                      @click="selectIcon(icon)">
-                      <UIcon :name="icon" class="w-5 h-5" />
-                    </button>
-                  </div>
-                </template>
-              </UPopover>
-            </div>
-          </UFormGroup>
-
-          <UFormGroup label="Описание">
-            <UTextarea v-model="form.description" autoresize />
-          </UFormGroup>
-
-          <div class="flex justify-end gap-3 mt-6">
-            <UButton color="gray" variant="ghost" @click="isModalOpen = false">Отмена</UButton>
-            <UButton type="submit" color="primary">Сохранить</UButton>
-          </div>
-        </UForm>
-      </UCard>
-    </UModal>
   </div>
 </template>
 

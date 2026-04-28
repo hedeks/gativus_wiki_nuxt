@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' })
   }
 
-  const { title, html_content, book_id, category_id, locale, is_published, sort_order, excerpt, change_summary, presentation_path } = body
+  const { title, title_ru, title_zh, slug_ru, slug_zh, html_content, html_content_ru, html_content_zh, book_id, category_id, is_published, sort_order, excerpt, change_summary, presentation_path, presentation_path_ru, presentation_path_zh } = body
 
   // Handle slug change
   let newSlug = existing.slug
@@ -34,13 +34,24 @@ export default defineEventHandler(async (event) => {
 
   // ─── Phase 3: Auto-linking terms ───
   let processedHtml = html_content
+  let processedHtmlRu = html_content_ru
+  let processedHtmlZh = html_content_zh
   let linkedTermIds: number[] = []
   
+  const termsMap = await buildTermsMap(db)
+
   if (html_content !== undefined) {
-    const termsMap = await buildTermsMap(db)
     const result = linkTermsInHtml(html_content, termsMap)
     processedHtml = result.html
     linkedTermIds = result.linkedTermIds
+  }
+  
+  if (html_content_ru !== undefined && html_content_ru !== null) {
+    processedHtmlRu = linkTermsInHtml(html_content_ru, termsMap).html
+  }
+  
+  if (html_content_zh !== undefined && html_content_zh !== null) {
+    processedHtmlZh = linkTermsInHtml(html_content_zh, termsMap).html
   }
 
   const finalExcerpt = excerpt || (processedHtml ? generateExcerptFromHtml(processedHtml) : undefined)
@@ -50,15 +61,22 @@ export default defineEventHandler(async (event) => {
   const params: any[] = []
 
   if (title !== undefined) { updates.push('title = ?'); params.push(title) }
+  if (title_ru !== undefined) { updates.push('title_ru = ?'); params.push(title_ru || null) }
+  if (title_zh !== undefined) { updates.push('title_zh = ?'); params.push(title_zh || null) }
+  if (slug_ru !== undefined) { updates.push('slug_ru = ?'); params.push(slug_ru || null) }
+  if (slug_zh !== undefined) { updates.push('slug_zh = ?'); params.push(slug_zh || null) }
   if (html_content !== undefined) { updates.push('html_content = ?'); params.push(processedHtml) }
+  if (html_content_ru !== undefined) { updates.push('html_content_ru = ?'); params.push(processedHtmlRu || null) }
+  if (html_content_zh !== undefined) { updates.push('html_content_zh = ?'); params.push(processedHtmlZh || null) }
   if (newSlug !== existing.slug) { updates.push('slug = ?'); params.push(newSlug) }
   if (book_id !== undefined) { updates.push('book_id = ?'); params.push(book_id || null) }
   if (category_id !== undefined) { updates.push('category_id = ?'); params.push(category_id || null) }
-  if (locale !== undefined) { updates.push('locale = ?'); params.push(locale) }
   if (is_published !== undefined) { updates.push('is_published = ?'); params.push(is_published ? 1 : 0) }
   if (sort_order !== undefined) { updates.push('sort_order = ?'); params.push(sort_order) }
   if (finalExcerpt !== undefined) { updates.push('excerpt = ?'); params.push(finalExcerpt) }
   if (presentation_path !== undefined) { updates.push('presentation_path = ?'); params.push(presentation_path) }
+  if (presentation_path_ru !== undefined) { updates.push('presentation_path_ru = ?'); params.push(presentation_path_ru || null) }
+  if (presentation_path_zh !== undefined) { updates.push('presentation_path_zh = ?'); params.push(presentation_path_zh || null) }
 
   updates.push("updated_at = datetime('now')")
 

@@ -151,10 +151,11 @@ function formatFileSize(bytes: number): string {
 </script>
 
 <template>
-  <div class="import-page">
-    <div class="import-header">
-      <h1 class="import-title">Импорт ODT</h1>
-      <p class="import-subtitle">Загрузите OpenDocument файл для автоматического создания статей</p>
+  <div class="import-page gv-admin-page">
+    <div class="gv-admin-head">
+      <p class="gv-admin-eyebrow">ADMIN</p>
+      <h1 class="gv-admin-title">Импорт ODT</h1>
+      <p class="gv-admin-subtitle">Загрузите OpenDocument файл для автоматического создания статей</p>
     </div>
 
     <!-- Drop Zone -->
@@ -340,8 +341,8 @@ function formatFileSize(bytes: number): string {
 }
 
 .drop-zone--active {
-  border-color: #6366f1;
-  background: #eef2ff;
+  border-color: var(--gv-primary);
+  background: color-mix(in srgb, var(--gv-primary) 12%, transparent);
 }
 
 .dark .drop-zone {
@@ -398,7 +399,7 @@ function formatFileSize(bytes: number): string {
   gap: 8px;
   padding: 10px 20px;
   border-radius: 10px;
-  background: #6366f1;
+  background: var(--gv-primary);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
@@ -408,7 +409,7 @@ function formatFileSize(bytes: number): string {
 }
 
 .drop-zone-btn:hover {
-  background: #4f46e5;
+  background: var(--gv-primary-hover);
   transform: translateY(-1px);
 }
 
@@ -635,12 +636,12 @@ function formatFileSize(bytes: number): string {
 }
 
 .action-btn--import {
-  background: #6366f1;
+  background: var(--gv-primary);
   color: #fff;
 }
 
 .action-btn--import:hover:not(:disabled) {
-  background: #4f46e5;
+  background: var(--gv-primary-hover);
   transform: translateY(-1px);
 }
 
@@ -832,8 +833,8 @@ function formatFileSize(bytes: number): string {
 }
 
 .result-article-link:hover {
-  background: #eef2ff;
-  color: #6366f1;
+  background: color-mix(in srgb, var(--gv-primary) 10%, transparent);
+  color: var(--gv-primary);
 }
 
 .dark .result-article-link {

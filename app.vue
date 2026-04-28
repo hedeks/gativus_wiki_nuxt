@@ -226,6 +226,235 @@ body {
   outline-offset: 2px;
 }
 
+.gv-admin-page {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.gv-admin-surface {
+  border: 1px solid var(--gv-border-principal);
+  border-radius: var(--gv-radius-container);
+  background: var(--gv-surface-card);
+  box-shadow: var(--gv-shadow-sm);
+}
+
+.gv-admin-head {
+  padding: 14px 18px;
+  border: 1px solid var(--gv-border-principal);
+  border-radius: var(--gv-radius-container);
+  background: var(--gv-surface-card);
+}
+
+.gv-admin-eyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: var(--gv-text-secondary);
+}
+
+.gv-admin-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gv-text-primary);
+}
+
+.gv-admin-subtitle {
+  margin: 6px 0 0;
+  color: var(--gv-text-secondary);
+  font-size: 14px;
+}
+
+.gv-admin-index-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.gv-admin-index-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gv-admin-filter-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.gv-admin-search {
+  position: relative;
+  flex: 1;
+}
+
+.gv-admin-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--gv-text-secondary);
+}
+
+.gv-admin-search-input,
+.gv-admin-filter-select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--gv-border-principal);
+  border-radius: 10px;
+  background: var(--gv-surface-card);
+  color: var(--gv-text-primary);
+  font-size: 14px;
+}
+
+.gv-admin-search-input {
+  padding: 10px 12px 10px 38px;
+}
+
+.gv-admin-filter-select {
+  padding: 10px 12px;
+  min-width: 180px;
+}
+
+.gv-admin-search-input:focus,
+.gv-admin-filter-select:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--gv-primary) 45%, var(--gv-border-principal));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gv-primary) 14%, transparent);
+}
+
+@media (max-width: 768px) {
+  .gv-admin-page {
+    gap: 12px;
+  }
+
+  .page-header,
+  .articles-header,
+  .sync-header,
+  .import-header,
+  .form-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 10px;
+  }
+
+  .header-actions,
+  .page-actions,
+  .form-actions,
+  .modal-actions,
+  .import-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .table-wrap,
+  .terms-table-wrap,
+  .books-list {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .articles-table,
+  .terms-table,
+  .admin-table {
+    min-width: 760px;
+  }
+}
+
+@media (max-width: 480px) {
+  .gv-admin-title {
+    font-size: 19px;
+    letter-spacing: 0.04em;
+  }
+
+  .gv-admin-subtitle {
+    font-size: 13px;
+  }
+
+  .gv-admin-index-actions {
+    width: 100%;
+  }
+
+  .gv-admin-index-actions > * {
+    flex: 1 1 auto;
+  }
+
+  .gv-admin-filter-row {
+    flex-direction: column;
+  }
+
+  .gv-admin-filter-select {
+    min-width: 0;
+  }
+
+  .gv-admin-page input,
+  .gv-admin-page select,
+  .gv-admin-page textarea {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 360px) {
+  .gv-admin-page {
+    gap: 10px;
+  }
+
+  .gv-admin-head {
+    padding: 10px 12px;
+  }
+
+  .gv-admin-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+
+  .gv-admin-title {
+    font-size: 17px;
+    letter-spacing: 0.03em;
+  }
+
+  .gv-admin-subtitle {
+    margin-top: 4px;
+    font-size: 12px;
+  }
+
+  .gv-admin-search-input,
+  .gv-admin-filter-select {
+    min-height: 40px;
+    font-size: 16px;
+  }
+
+  .header-actions,
+  .page-actions,
+  .form-actions,
+  .modal-actions,
+  .import-actions {
+    gap: 8px;
+  }
+
+  .header-actions > *,
+  .page-actions > *,
+  .form-actions > *,
+  .modal-actions > *,
+  .import-actions > * {
+    width: 100%;
+  }
+}
+
 ::selection {
   background: #bae6fd !important; /* sky-200 */
   color: #0c4a6e; /* sky-900 */

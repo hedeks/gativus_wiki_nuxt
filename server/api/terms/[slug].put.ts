@@ -23,15 +23,17 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Термин не найден' })
   }
 
-  const { title, title_ru, definition, definition_ru, slug_ru, aliases, html_content, category_id, change_summary, presentation_path, image_url, video_url } = body
+  const { title, title_ru, title_zh, definition, definition_ru, definition_zh, slug_ru, slug_zh, aliases, html_content, html_content_ru, html_content_zh, category_id, change_summary, presentation_path, presentation_path_ru, presentation_path_zh, image_url, video_url } = body
 
   const updates: string[] = []
   const params: any[] = []
 
   if (title !== undefined) { updates.push('title = ?'); params.push(title) }
   if (title_ru !== undefined) { updates.push('title_ru = ?'); params.push(title_ru) }
+  if (title_zh !== undefined) { updates.push('title_zh = ?'); params.push(title_zh) }
   if (definition !== undefined) { updates.push('definition = ?'); params.push(definition) }
   if (definition_ru !== undefined) { updates.push('definition_ru = ?'); params.push(definition_ru) }
+  if (definition_zh !== undefined) { updates.push('definition_zh = ?'); params.push(definition_zh) }
   if (image_url !== undefined) { updates.push('image_url = ?'); params.push(image_url || null) }
   if (video_url !== undefined) { updates.push('video_url = ?'); params.push(video_url || null) }
 
@@ -50,29 +52,45 @@ export default defineEventHandler(async (event) => {
   }
 
   // Handle slug_ru change
+  let finalSlugRu = null
   if (slug_ru !== undefined) {
-    let finalSlugRu = slug_ru ? slugify(slug_ru) : null
+    finalSlugRu = slug_ru ? slugify(slug_ru) : null
     if (finalSlugRu) {
-       // Ensure uniqueness check for slug_ru if needed, but let's just use it for now 
-       // or assume it's same namespace as slug
        updates.push('slug_ru = ?')
        params.push(finalSlugRu)
     } else {
        updates.push('slug_ru = NULL')
     }
   }
+  
+  // Handle slug_zh change
+  let finalSlugZh = null
+  if (slug_zh !== undefined) {
+    finalSlugZh = slug_zh ? slugify(slug_zh) : null
+    if (finalSlugZh) {
+       updates.push('slug_zh = ?')
+       params.push(finalSlugZh)
+    } else {
+       updates.push('slug_zh = NULL')
+    }
+  }
 
   // Handle html_content and presentation_path — create or update linked article
-  if (html_content !== undefined || presentation_path !== undefined) {
+  if (html_content !== undefined || html_content_ru !== undefined || html_content_zh !== undefined
+    || presentation_path !== undefined || presentation_path_ru !== undefined || presentation_path_zh !== undefined) {
     const termsMap = await buildTermsMap(db)
-    
+
     // Fetch current article state if it exists
     let currentArticle: any = null
     if (existing.term_article_id) {
-      currentArticle = await db.prepare('SELECT html_content, presentation_path FROM articles WHERE id = ?').get(existing.term_article_id)
+      currentArticle = await db.prepare(
+        'SELECT html_content, html_content_ru, html_content_zh, presentation_path, presentation_path_ru, presentation_path_zh FROM articles WHERE id = ?'
+      ).get(existing.term_article_id)
     }
 
     let finalHtml = ''
+    let finalHtmlRu = null
+    let finalHtmlZh = null
     let linkedTermIds: number[] = []
 
     if (html_content !== undefined) {
@@ -83,19 +101,41 @@ export default defineEventHandler(async (event) => {
       finalHtml = currentArticle?.html_content || ''
     }
     
+    if (html_content_ru !== undefined) {
+      finalHtmlRu = html_content_ru ? linkTermsInHtml(html_content_ru, termsMap).html : null
+    } else {
+      finalHtmlRu = currentArticle?.html_content_ru || null
+    }
+    
+    if (html_content_zh !== undefined) {
+      finalHtmlZh = html_content_zh ? linkTermsInHtml(html_content_zh, termsMap).html : null
+    } else {
+      finalHtmlZh = currentArticle?.html_content_zh || null
+    }
+    
     const finalPresPath = presentation_path !== undefined
       ? presentation_path
       : (currentArticle?.presentation_path || null)
+    const finalPresPathRu = presentation_path_ru !== undefined
+      ? presentation_path_ru
+      : (currentArticle?.presentation_path_ru || null)
+    const finalPresPathZh = presentation_path_zh !== undefined
+      ? presentation_path_zh
+      : (currentArticle?.presentation_path_zh || null)
 
     if (existing.term_article_id) {
       // Update existing article
       await db.prepare(`
         UPDATE articles SET 
           html_content = ?, 
+          html_content_ru = ?,
+          html_content_zh = ?,
           presentation_path = ?,
+          presentation_path_ru = ?,
+          presentation_path_zh = ?,
           updated_at = datetime('now')
         WHERE id = ?
-      `).run(finalHtml, finalPresPath, existing.term_article_id)
+      `).run(finalHtml, finalHtmlRu, finalHtmlZh, finalPresPath, finalPresPathRu, finalPresPathZh, existing.term_article_id)
 
       // Create new revision if HTML changed
       if (html_content !== undefined) {
@@ -122,13 +162,15 @@ export default defineEventHandler(async (event) => {
     } else {
       // Create new linked article
       const termTitle = title || (await db.prepare('SELECT title FROM terms WHERE id = ?').get(existing.id) as any)?.title
+      const termTitleRu = title_ru || (await db.prepare('SELECT title_ru FROM terms WHERE id = ?').get(existing.id) as any)?.title_ru
+      const termTitleZh = title_zh || (await db.prepare('SELECT title_zh FROM terms WHERE id = ?').get(existing.id) as any)?.title_zh
       const articleSlug = await ensureUniqueSlug(db, 'articles', `term-${newSlug}`)
       const excerpt = generateExcerpt(finalHtml)
 
       await db.prepare(`
-        INSERT INTO articles (slug, title, html_content, presentation_path, category_id, excerpt, locale, created_by, is_published, is_term_article)
-        VALUES (?, ?, ?, ?, ?, ?, 'en', ?, 1, 1)
-      `).run(articleSlug, termTitle, finalHtml, finalPresPath, category_id || null, excerpt, auth.id)
+        INSERT INTO articles (slug, slug_ru, slug_zh, title, title_ru, title_zh, html_content, html_content_ru, html_content_zh, presentation_path, presentation_path_ru, presentation_path_zh, category_id, excerpt, created_by, is_published, is_term_article)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
+      `).run(articleSlug, finalSlugRu ? `term-${finalSlugRu}` : null, finalSlugZh ? `term-${finalSlugZh}` : null, termTitle, termTitleRu || null, termTitleZh || null, finalHtml, finalHtmlRu, finalHtmlZh, finalPresPath, finalPresPathRu, finalPresPathZh, category_id || null, excerpt, auth.id)
 
       const inserted = await db.prepare('SELECT last_insert_rowid() as id').get() as any
       const newArticleId = inserted?.id

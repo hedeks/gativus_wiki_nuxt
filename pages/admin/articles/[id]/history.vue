@@ -104,13 +104,14 @@ function formatDate(dateStr: string): string {
 </script>
 
 <template>
-  <div class="history-page">
-    <div class="history-header">
+  <div class="history-page gv-admin-page">
+    <div class="history-header gv-admin-head">
       <div class="history-header-left">
         <NuxtLink :to="`/admin/articles/${articleId}/edit`" class="back-btn">
           <UIcon name="i-heroicons-arrow-left" />
         </NuxtLink>
         <div>
+          <p class="gv-admin-eyebrow">ADMIN</p>
           <h1 class="history-title">История ревизий</h1>
           <p class="history-subtitle">{{ currentArticle?.title || '' }}</p>
         </div>
@@ -195,19 +196,17 @@ function formatDate(dateStr: string): string {
 .history-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 57px);
-  margin: -24px;
+  min-height: calc(100vh - 120px);
 }
 
 .history-header {
   display: flex;
   align-items: center;
-  padding: 14px 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #fff;
+  padding: 14px 18px;
   flex-shrink: 0;
+  border: none;
 }
-.dark .history-header { background: #1a1a1d; border-bottom-color: #2a2a2e; }
+.dark .history-header { border: none; }
 
 .history-header-left {
   display: flex;

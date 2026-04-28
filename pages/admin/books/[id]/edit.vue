@@ -1,5 +1,5 @@
 <template>
-  <div class="book-edit-page">
+  <div class="book-edit-page gv-admin-page">
     <div v-if="pending" class="loading-overlay">
       <UIcon name="i-heroicons-arrow-path" class="animate-spin text-3xl" />
     </div>
@@ -75,16 +75,12 @@
             </div>
 
             <div class="form-column">
-              <UFormGroup label="Обложка" help="Загрузите изображение или вставьте URL">
-                <div class="cover-upload-wrapper flex gap-2">
-                  <UInput v-model="form.cover_image" icon="i-heroicons-photo" class="flex-1" />
-                  <UButton icon="i-heroicons-cloud-arrow-up" color="gray" label="Загрузить" :loading="uploadingCover"
-                    @click="fileInput?.click()" />
-                  <input ref="fileInput" type="file" class="hidden" accept="image/*" @change="onFileSelected" />
-                </div>
-                <div class="cover-preview-mini mt-2" v-if="form.cover_image">
-                  <img :src="form.cover_image" alt="Preview" />
-                </div>
+              <UFormGroup label="Обложка" help="Загрузите изображение или выберите из галереи">
+                <AdminMediaPicker
+                  v-model="form.cover_image"
+                  upload-endpoint="/api/admin/uploads/cover"
+                  accept="image/*"
+                />
               </UFormGroup>
 
               <div class="dual-row">
@@ -107,10 +103,10 @@
       <!-- Section 2: Chapter Management -->
       <div class="card p-6">
         <div class="section-header mb-6">
-          <h3 class="section-title">Состав глав ({{ activeLocale.toUpperCase() }})</h3>
+          <h3 class="section-title">Состав глав</h3>
           <div class="add-chapter-box flex items-center gap-4">
             <USelectMenu v-model="selectedArticleToAdd" :options="availableArticles" option-attribute="title" searchable
-              class="w-64" :placeholder="`Добавить статью (${activeLocale.toUpperCase()})...`"
+              class="w-64" placeholder="Добавить статью..."
               @update:model-value="addArticleToBook">
               <template #option="{ option }">
                 <div class="article-option">
@@ -123,7 +119,7 @@
         </div>
 
         <div v-if="currentChapters.length === 0" class="empty-chapters">
-          В составе книги на языке <b>{{ activeLocale.toUpperCase() }}</b> пока нет глав.
+          В составе книги пока нет глав.
         </div>
 
         <div v-else class="chapters-list">
@@ -140,6 +136,14 @@
               <span v-if="!chapter.is_published" class="draft-badge">Черновик</span>
             </div>
             <div class="chapter-actions">
+              <UButton
+                :to="`/admin/articles/${chapter.id}/edit`"
+                icon="i-heroicons-pencil-square"
+                variant="ghost"
+                color="gray"
+                size="xs"
+                title="Редактировать статью"
+              />
               <UButton icon="i-heroicons-chevron-up" variant="ghost" color="gray" size="xs" :disabled="index === 0"
                 @click="moveChapter(index, -1)" />
               <UButton icon="i-heroicons-chevron-down" variant="ghost" color="gray" size="xs"
@@ -149,10 +153,10 @@
           </div>
         </div>
 
-        <div v-if="chaptersChangedMap[activeLocale]"
+        <div v-if="chaptersChanged"
           class="chapters-footer mt-6 flex justify-between items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
           <span class="text-sm text-blue-700 dark:text-blue-300">
-            Порядок глав ({{ activeLocale.toUpperCase() }}) изменен.
+            Порядок глав изменен.
           </span>
           <UButton color="black" :loading="savingChapters" icon="i-heroicons-check" class="rounded-xl"
             @click="saveChapters">
@@ -199,20 +203,11 @@ const form = ref({
 })
 
 const activeTabIndex = ref(1); // Default to RU tab
-const activeLocale = computed(() => ['en', 'ru', 'zh'][activeTabIndex.value]);
 
-const chaptersMap = ref<Record<string, any[]>>({
-  en: [],
-  ru: [],
-  zh: []
-})
-const currentChapters = computed(() => chaptersMap.value[activeLocale.value] || [])
+const chapters = ref<any[]>([])
+const currentChapters = computed(() => chapters.value || [])
 
-const chaptersChangedMap = ref<Record<string, boolean>>({
-  en: false,
-  ru: false,
-  zh: false
-})
+const chaptersChanged = ref(false)
 
 const selectedArticleToAdd = ref<any>(null)
 
@@ -236,12 +231,12 @@ function handleDragEnd() {
 function handleDrop(toIndex: number) {
   if (draggedIndex.value === null || draggedIndex.value === toIndex) return
 
-  const items = [...chaptersMap.value[activeLocale.value]]
+  const items = [...chapters.value]
   const draggedItem = items.splice(draggedIndex.value, 1)[0]
   items.splice(toIndex, 0, draggedItem)
 
-  chaptersMap.value[activeLocale.value] = items
-  chaptersChangedMap.value[activeLocale.value] = true
+  chapters.value = items
+  chaptersChanged.value = true
   handleDragEnd()
 }
 
@@ -261,23 +256,15 @@ watch(book, (newBook) => {
       category_ids: newBook.category_ids || []
     }
 
-    // Group articles by locale
-    const map: Record<string, any[]> = { en: [], ru: [], zh: [] }
-    if (newBook.articles) {
-      newBook.articles.forEach((a: any) => {
-        if (map[a.locale]) map[a.locale].push(a)
-      })
-    }
-    chaptersMap.value = map
+    chapters.value = newBook.articles || []
   }
 }, { immediate: true })
 
 // ─── Available Articles logic ───
 const availableArticles = computed(() => {
   if (!allArticles.value?.items) return []
-  // Filter by active locale AND exclude articles already in THIS locale for THIS book
+  // Exclude already linked articles and keep only unassigned articles
   return allArticles.value.items.filter((a: any) =>
-    a.locale === activeLocale.value &&
     !a.book_id &&
     !currentChapters.value.find((c: any) => c.id === a.id)
   )
@@ -285,32 +272,6 @@ const availableArticles = computed(() => {
 
 // ─── Metadata Management ───
 const savingMetadata = ref(false)
-const uploadingCover = ref(false)
-const fileInput = ref<HTMLInputElement | null>(null)
-
-async function onFileSelected(event: Event) {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
-
-  uploadingCover.value = true
-  const formData = new FormData()
-  formData.append('file', file)
-
-  try {
-    const response = await $fetch<{ url: string }>('/api/admin/uploads/cover', {
-      method: 'POST',
-      body: formData,
-      headers: store.getAuthHeader()
-    })
-    form.value.cover_image = response.url
-  } catch (err: any) {
-    alert('Ошибка загрузки: ' + (err.data?.statusMessage || err.message))
-  } finally {
-    uploadingCover.value = false
-    if (fileInput.value) fileInput.value.value = ''
-  }
-}
 async function updateMetadata() {
   savingMetadata.value = true
   try {
@@ -330,27 +291,27 @@ async function updateMetadata() {
 // ─── Chapter Management ───
 function addArticleToBook(article: any) {
   if (!article) return
-  chaptersMap.value[activeLocale.value].push(article)
-  chaptersChangedMap.value[activeLocale.value] = true
+  chapters.value.push(article)
+  chaptersChanged.value = true
   selectedArticleToAdd.value = null
 }
 
 function moveChapter(index: number, direction: number) {
   const newIndex = index + direction
-  const list = [...chaptersMap.value[activeLocale.value]]
+  const list = [...chapters.value]
   if (newIndex < 0 || newIndex >= list.length) return
 
   const temp = list[index]
   list[index] = list[newIndex]
   list[newIndex] = temp
 
-  chaptersMap.value[activeLocale.value] = list
-  chaptersChangedMap.value[activeLocale.value] = true
+  chapters.value = list
+  chaptersChanged.value = true
 }
 
 function removeChapter(index: number) {
-  chaptersMap.value[activeLocale.value].splice(index, 1)
-  chaptersChangedMap.value[activeLocale.value] = true
+  chapters.value.splice(index, 1)
+  chaptersChanged.value = true
 }
 
 const savingChapters = ref(false)
@@ -360,12 +321,11 @@ async function saveChapters() {
     await $fetch(`/api/admin/books/${book.value.id}/chapters`, {
       method: 'PATCH',
       body: {
-        article_ids: currentChapters.value.map((c: any) => c.id),
-        locale: activeLocale.value
+        article_ids: currentChapters.value.map((c: any) => c.id)
       },
       headers: store.getAuthHeader()
     })
-    chaptersChangedMap.value[activeLocale.value] = false
+    chaptersChanged.value = false
     await refresh()
   } catch (err: any) {
     alert('Ошибка при сохранении глав: ' + (err.data?.statusMessage || err.message))
@@ -437,26 +397,6 @@ async function saveChapters() {
 .dual-row {
   display: flex;
   gap: 16px;
-}
-
-.cover-preview-mini {
-  width: 80px;
-  height: 112px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-}
-
-.dark .cover-preview-mini {
-  border-color: #27272a;
-  background: #27272a;
-}
-
-.cover-preview-mini img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 /* Chapter Styles */
@@ -604,6 +544,30 @@ async function saveChapters() {
 }
 
 @media (max-width: 768px) {
+  .book-edit-page {
+    padding: 0;
+  }
+
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-bottom: 14px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .add-chapter-box {
+    width: 100%;
+  }
+
+  .add-chapter-box :deep(.w-64) {
+    width: 100%;
+  }
+
   .form-grid {
     grid-template-columns: 1fr;
     gap: 24px;

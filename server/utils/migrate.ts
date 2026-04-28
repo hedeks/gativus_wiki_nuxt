@@ -89,6 +89,8 @@ export async function runMigrations(db: Database) {
       image_url       TEXT,
       video_url       TEXT,
       presentation_path TEXT,
+      presentation_path_ru TEXT,
+      presentation_path_zh TEXT,
       created_at      DATETIME DEFAULT (datetime('now')),
       updated_at      DATETIME DEFAULT (datetime('now')),
       created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -123,12 +125,18 @@ export async function runMigrations(db: Database) {
     CREATE TABLE IF NOT EXISTS articles (
       id             INTEGER PRIMARY KEY AUTOINCREMENT,
       slug           TEXT UNIQUE NOT NULL,
+      slug_ru        TEXT,
+      slug_zh        TEXT,
       title          TEXT NOT NULL,
       title_ru       TEXT,
       title_zh       TEXT,
       html_content   TEXT NOT NULL,
+      html_content_ru TEXT,
+      html_content_zh TEXT,
       raw_odt_path   TEXT,
       presentation_path TEXT,
+      presentation_path_ru TEXT,
+      presentation_path_zh TEXT,
       category_id    INTEGER REFERENCES categories(id) ON DELETE SET NULL,
       book_id        INTEGER REFERENCES books(id) ON DELETE SET NULL,
       sort_order     INTEGER DEFAULT 0,
@@ -190,9 +198,15 @@ export async function runMigrations(db: Database) {
         await ensureColumn('locale', "TEXT NOT NULL DEFAULT 'en'")
         await ensureColumn('origin_id', 'INTEGER')
         await ensureColumn('presentation_path', 'TEXT')
+        await ensureColumn('presentation_path_ru', 'TEXT')
+        await ensureColumn('presentation_path_zh', 'TEXT')
         await ensureColumn('is_term_article', 'INTEGER NOT NULL DEFAULT 0')
         await ensureColumn('title_ru', 'TEXT')
         await ensureColumn('title_zh', 'TEXT')
+        await ensureColumn('slug_ru', 'TEXT')
+        await ensureColumn('slug_zh', 'TEXT')
+        await ensureColumn('html_content_ru', 'TEXT')
+        await ensureColumn('html_content_zh', 'TEXT')
         await ensureColumn('lang', 'TEXT')
         await ensureColumn('lang_ru', 'TEXT')
         await ensureColumn('lang_zh', 'TEXT')
@@ -231,6 +245,8 @@ export async function runMigrations(db: Database) {
         await ensureColumn('image_url', 'TEXT')
         await ensureColumn('video_url', 'TEXT')
         await ensureColumn('presentation_path', 'TEXT')
+        await ensureColumn('presentation_path_ru', 'TEXT')
+        await ensureColumn('presentation_path_zh', 'TEXT')
         await ensureColumn('lang', 'TEXT')
         await ensureColumn('lang_ru', 'TEXT')
         await ensureColumn('lang_zh', 'TEXT')
@@ -352,6 +368,104 @@ export async function runMigrations(db: Database) {
     `)
   } catch (e) {
     console.log('[migrate] Article synchronization failed (possibly origin_id NULL):', e)
+  }
+
+  // Normalize old translation model into unified article entities.
+  // We keep localized titles in title_ru/title_zh on the base row and collapse sibling rows.
+  try {
+    console.log('[migrate] Unifying article entities (drop locale/origin dependencies)...')
+
+    // 1) Backfill localized title fields on base/origin rows from translation siblings.
+    await db.exec(`
+      UPDATE articles AS base
+      SET
+        title_ru = COALESCE(
+          base.title_ru,
+          (
+            SELECT tr.title
+            FROM articles tr
+            WHERE tr.origin_id = base.id AND tr.locale = 'ru'
+            LIMIT 1
+          )
+        ),
+        title_zh = COALESCE(
+          base.title_zh,
+          (
+            SELECT tr.title
+            FROM articles tr
+            WHERE tr.origin_id = base.id AND tr.locale = 'zh'
+            LIMIT 1
+          )
+        )
+      WHERE base.origin_id IS NULL OR base.origin_id = base.id
+    `)
+
+    // 2) Rebind relation tables that may point to translation rows.
+    await db.exec(`
+      UPDATE article_terms
+      SET article_id = COALESCE(
+        (
+          SELECT tr.origin_id
+          FROM articles tr
+          WHERE tr.id = article_terms.article_id
+            AND tr.origin_id IS NOT NULL
+            AND tr.origin_id != tr.id
+          LIMIT 1
+        ),
+        article_id
+      )
+    `)
+    await db.exec(`
+      UPDATE article_revisions
+      SET article_id = COALESCE(
+        (
+          SELECT tr.origin_id
+          FROM articles tr
+          WHERE tr.id = article_revisions.article_id
+            AND tr.origin_id IS NOT NULL
+            AND tr.origin_id != tr.id
+          LIMIT 1
+        ),
+        article_id
+      )
+    `)
+    await db.exec(`
+      UPDATE terms
+      SET term_article_id = COALESCE(
+        (
+          SELECT tr.origin_id
+          FROM articles tr
+          WHERE tr.id = terms.term_article_id
+            AND tr.origin_id IS NOT NULL
+            AND tr.origin_id != tr.id
+          LIMIT 1
+        ),
+        term_article_id
+      )
+    `)
+
+    // 3) Remove duplicate links created by article_id remap.
+    await db.exec(`
+      DELETE FROM article_terms
+      WHERE rowid NOT IN (
+        SELECT MIN(rowid)
+        FROM article_terms
+        GROUP BY article_id, term_id
+      )
+    `)
+
+    // 4) Remove translation sibling rows and normalize remaining rows.
+    await db.exec(`
+      DELETE FROM articles
+      WHERE origin_id IS NOT NULL AND origin_id != id
+    `)
+    await db.exec(`
+      UPDATE articles
+      SET locale = 'en', origin_id = NULL
+      WHERE locale IS NULL OR locale != 'en' OR origin_id IS NOT NULL
+    `)
+  } catch (e) {
+    console.log('[migrate] Article unification skipped or failed:', e)
   }
 
   console.log('[migrate] All migrations completed ✓')

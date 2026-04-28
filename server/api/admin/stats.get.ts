@@ -4,6 +4,7 @@
  */
 
 export default defineEventHandler(async (event) => {
+  requireRole(event, 'editor')
   const db = useDatabase()
 
   const articles = await db.prepare('SELECT COUNT(*) as count FROM articles').get() as any

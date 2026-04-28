@@ -97,61 +97,47 @@ function buildGraphPreview(dump: any) {
     b.category_slugs?.forEach((cs: string) => addLink(`book-${b.slug}`, `cat-${cs}`, 'category'))
   })
   
-  // 3. Articles (Concepts Mapping)
-  const articleSlugToConcept = new Map<string, string>()
-  const normalConceptArticles = new Set<string>()
+  // 3. Articles (unified entities)
+  const termArticleToTermSlug = new Map<string, string>()
   
   dump.articles?.forEach((a: any) => {
-    // Map translations to origin
-    articleSlugToConcept.set(a.slug, a.slug)
-    a.translations?.forEach((tr: any) => articleSlugToConcept.set(tr.slug, a.slug))
-    
     // Only standard articles become actual nodes in the visual graph
     if (a.is_term_article !== 1) {
-      let title = a.title
-      let description = a.excerpt
-      if (isRu) {
-        const ruTrans = a.translations?.find((t: any) => t.locale === 'ru')
-        if (ruTrans) {
-          title = ruTrans.title
-          description = ruTrans.excerpt
-        }
-      }
+      const title = isRu ? (a.title_ru || a.title) : (a.title || '')
+      const description = a.excerpt
       nodes.push({ id: `art-${a.slug}`, title, description, type: 'article', slug: a.slug })
-      normalConceptArticles.add(a.slug)
       
       if (a.category_slug) addLink(`art-${a.slug}`, `cat-${a.category_slug}`, 'category')
       if (a.book_slug) addLink(`art-${a.slug}`, `book-${a.book_slug}`, 'book')
     }
+
+    if (a.is_term_article === 1 && a.slug) {
+      termArticleToTermSlug.set(a.slug, '')
+    }
   })
   
   // 4. Terms
-  const termArticleToTermSlug = new Map<string, string>()
   dump.terms?.forEach((t: any) => {
     const title = isRu ? (t.title_ru || t.title) : t.title
     const description = isRu ? (t.definition_ru || t.definition) : t.definition
     nodes.push({ id: `term-${t.slug}`, title, description, type: 'term', slug: t.slug })
     if (t.term_article_slug) {
-      const conceptSlug = articleSlugToConcept.get(t.term_article_slug) || t.term_article_slug
-      termArticleToTermSlug.set(conceptSlug, t.slug)
-      
-      // Usually, term articles are hidden. But if mapped to a normal article, link it.
-      if (normalConceptArticles.has(conceptSlug)) {
-        addLink(`term-${t.slug}`, `art-${conceptSlug}`, 'article')
+      termArticleToTermSlug.set(t.term_article_slug, t.slug)
+      const hasPublicArticleNode = nodes.some(n => n.id === `art-${t.term_article_slug}`)
+      if (hasPublicArticleNode) {
+        addLink(`term-${t.slug}`, `art-${t.term_article_slug}`, 'article')
       }
     }
   })
   
   // 5. Mentions
   dump.article_mentions?.forEach((m: any) => {
-    const conceptSlug = articleSlugToConcept.get(m.article_slug) || m.article_slug
-    
     // If the mention originates from a hidden "term article", we treat it as Term -> Term reference
-    const sourceTermSlug = termArticleToTermSlug.get(conceptSlug)
+    const sourceTermSlug = termArticleToTermSlug.get(m.article_slug)
     if (sourceTermSlug) {
       addLink(`term-${sourceTermSlug}`, `term-${m.term_slug}`, 'reference')
     } else {
-      addLink(`art-${conceptSlug}`, `term-${m.term_slug}`, 'mention')
+      addLink(`art-${m.article_slug}`, `term-${m.term_slug}`, 'mention')
     }
   })
   
@@ -243,10 +229,11 @@ async function runImport() {
 </script>
 
 <template>
-  <div class="sync-page">
-    <div class="sync-header">
-      <h1 class="sync-title">Синхронизация Графа Знаний</h1>
-      <p class="sync-subtitle">Экспортируйте или загружайте дампы всей базы в формате JSON (сохраняя HTML статей)</p>
+  <div class="sync-page gv-admin-page">
+    <div class="gv-admin-head">
+      <p class="gv-admin-eyebrow">ADMIN</p>
+      <h1 class="gv-admin-title">Синхронизация графа знаний</h1>
+      <p class="gv-admin-subtitle">Экспортируйте или загружайте дампы всей базы в формате JSON</p>
     </div>
 
     <!-- Export Section -->
@@ -449,7 +436,7 @@ async function runImport() {
 }
 
 .drop-zone--active {
-  border-color: #6366f1;
+  border-color: var(--gv-primary);
   background: #eef2ff;
 }
 
@@ -459,7 +446,7 @@ async function runImport() {
 }
 
 .dark .drop-zone--active {
-  border-color: #818cf8;
+  border-color: var(--gv-primary);
   background: #1e1b4b;
 }
 
@@ -481,7 +468,7 @@ async function runImport() {
 }
 
 .drop-zone--active .drop-zone-icon {
-  color: #6366f1;
+  color: var(--gv-primary);
 }
 
 .drop-zone-text {
@@ -621,7 +608,7 @@ async function runImport() {
 .file-icon {
   width: 22px;
   height: 22px;
-  color: #6366f1;
+  color: var(--gv-primary);
 }
 
 .file-details {
@@ -711,22 +698,22 @@ async function runImport() {
 }
 
 .action-btn--export {
-  background: #10b981;
+  background: var(--gv-primary);
   color: #fff;
 }
 
 .action-btn--export:hover {
-  background: #059669;
+  background: var(--gv-primary-hover);
   transform: translateY(-1px);
 }
 
 .action-btn--import {
-  background: #6366f1;
+  background: var(--gv-primary);
   color: #fff;
 }
 
 .action-btn--import:hover:not(:disabled) {
-  background: #4f46e5;
+  background: var(--gv-primary-hover);
   transform: translateY(-1px);
 }
 
@@ -799,5 +786,28 @@ async function runImport() {
 
 .dark .result-title {
   color: #e5e5e5;
+}
+
+@media (max-width: 768px) {
+  .sync-page {
+    max-width: 100%;
+  }
+
+  .export-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .preview-graph-container {
+    height: 320px;
+  }
+
+  .import-actions .action-btn,
+  .result-actions .action-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>

@@ -19,14 +19,14 @@ export default defineEventHandler(async (event) => {
       t.id, t.slug, t.slug_ru, t.slug_zh, t.title, t.title_ru, t.title_zh, 
       t.aliases, t.definition, t.definition_ru, t.definition_zh,
       t.term_article_id, t.created_at, t.updated_at,
-      t.created_by, t.image_url, t.video_url, t.presentation_path,
+      t.created_by, t.image_url, t.video_url, t.presentation_path, t.presentation_path_ru, t.presentation_path_zh,
       a.html_content as article_html,
       a.excerpt as article_excerpt,
       a.category_id,
       a.presentation_path as article_presentation_path,
+      a.presentation_path_ru as article_presentation_path_ru,
+      a.presentation_path_zh as article_presentation_path_zh,
       a.updated_at as article_updated_at,
-      a.locale as article_locale,
-      a.origin_id as article_origin_id,
       c.title as category_title,
       c.title_ru as category_title_ru,
       c.title_zh as category_title_zh,
@@ -47,36 +47,24 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Термин не найден' })
   }
 
-  // ─── 1. Article Translation Logic ───
-  // If the linked article's locale doesn't match the requested lang, find the translation
-  if (term.term_article_id && term.article_locale !== lang) {
-    const originId = term.article_origin_id || term.term_article_id
-    const sibling = await db.prepare(`
-      SELECT html_content, excerpt, presentation_path, updated_at
-      FROM articles
-      WHERE (origin_id = ? OR id = ?) AND locale = ?
-      LIMIT 1
-    `).get(originId, originId, lang) as any
-
-    if (sibling) {
-      term.article_html = sibling.html_content
-      term.article_excerpt = sibling.excerpt
-      term.article_presentation_path = sibling.presentation_path
-      term.article_updated_at = sibling.updated_at
-    }
-  }
-
   const isRu = lang === 'ru'
   const isZh = lang === 'zh'
 
+  const effEn = term.presentation_path || term.article_presentation_path
+  const effRu = term.presentation_path_ru || term.article_presentation_path_ru
+  const effZh = term.presentation_path_zh || term.article_presentation_path_zh
+  const resolvedPres = isRu ? (effRu || effEn) : isZh ? (effZh || effEn) : (effEn || effRu || effZh)
+
+  const { article_presentation_path, article_presentation_path_ru, article_presentation_path_zh, ...rest } = term
+
   return {
-    ...term,
+    ...rest,
     title: isRu ? (term.title_ru || term.title) : (isZh ? (term.title_zh || term.title) : term.title),
     definition: isRu ? (term.definition_ru || term.definition) : (isZh ? (term.definition_zh || term.definition) : term.definition),
     category_title: isRu ? (term.category_title_ru || term.category_title) : (isZh ? (term.category_title_zh || term.category_title) : term.category_title),
     aliases: term.aliases ? JSON.parse(term.aliases) : [],
     has_article: Boolean(term.term_article_id),
-    presentation_path: term.presentation_path || term.article_presentation_path
+    presentation_path: resolvedPres
   }
 }
 )

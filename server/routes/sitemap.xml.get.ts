@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   const baseUrl = `${protocol}://${host}`
 
   // Fetch all articles
-  const articles = await db.prepare(`SELECT slug, updated_at, locale FROM articles WHERE is_published = 1`).all() as any[]
+  const articles = await db.prepare(`SELECT slug, updated_at FROM articles WHERE is_published = 1`).all() as any[]
   // Fetch all terms
   const terms = await db.prepare(`SELECT slug, updated_at FROM terms`).all() as any[]
   // Fetch all books
@@ -58,16 +58,18 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // 3. Add Articles
+  // 3. Add Articles (shared entity, available under all locale prefixes)
   for (const article of articles) {
-    const localePrefix = article.locale === 'en' ? '' : `/${article.locale}`
-    xml += `
+    for (const locale of locales) {
+      const prefix = locale === 'en' ? '' : `/${locale}`
+      xml += `
   <url>
-    <loc>${baseUrl}${localePrefix}/articles/${article.slug}</loc>
+    <loc>${baseUrl}${prefix}/articles/${article.slug}</loc>
     <lastmod>${new Date(article.updated_at).toISOString().split('T')[0]}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>`
+    }
   }
 
   // 4. Add Glossary Terms

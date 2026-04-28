@@ -41,8 +41,7 @@ export interface Article {
   book_id?: number
   sort_order: number
   excerpt?: string
-  locale: string
-  origin_id?: number
+  locale?: string
   created_at: string
   updated_at: string
   created_by?: number
@@ -72,8 +71,7 @@ export interface Book {
   description?: string
   cover_image?: string
   sort_order: number
-  locale: string
-  origin_id?: number
+  locale?: string
   created_at: string
   article_count?: number
 }

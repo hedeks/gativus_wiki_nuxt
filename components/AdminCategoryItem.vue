@@ -4,7 +4,7 @@ const props = defineProps<{
   depth?: number
 }>()
 
-const emits = defineEmits(['edit', 'delete', 'create-child', 'move-up', 'move-down'])
+const emits = defineEmits(['delete', 'create-child', 'move-up', 'move-down'])
 
 const d = computed(() => props.depth || 0)
 const hasChildren = computed(() => props.category.children && props.category.children.length > 0)
@@ -56,7 +56,7 @@ const toggle = () => {
         />
         <UButton
           size="xs"
-          color="primary"
+          color="red"
           variant="ghost"
           icon="i-heroicons-plus"
           @click="$emit('create-child', category.id)"
@@ -67,7 +67,7 @@ const toggle = () => {
           color="gray"
           variant="ghost"
           icon="i-heroicons-pencil-square"
-          @click="$emit('edit', category)"
+          :to="`/admin/categories/${category.id}/edit`"
           title="Редактировать"
         />
         <UButton
@@ -87,7 +87,6 @@ const toggle = () => {
         :key="child.id"
         :category="child"
         :depth="d + 1"
-        @edit="$emit('edit', $event)"
         @delete="$emit('delete', $event)"
         @create-child="$emit('create-child', $event)"
         @move-up="$emit('move-up', $event)"
@@ -149,11 +148,17 @@ const toggle = () => {
   display: flex;
   align-items: center;
   gap: 2px;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.2s;
 }
-.category-item:hover .item-actions {
-  opacity: 1;
+
+@media (min-width: 768px) {
+  .item-actions {
+    opacity: 0;
+  }
+  .category-item:hover .item-actions {
+    opacity: 1;
+  }
 }
 
 .children-list {

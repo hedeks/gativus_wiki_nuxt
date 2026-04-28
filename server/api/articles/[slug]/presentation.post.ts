@@ -44,20 +44,28 @@ export default defineEventHandler(async (event) => {
     mkdirSync(uploadDir, { recursive: true })
   }
 
-  const fileName = `${Date.now()}-${slug}.${ext}`
+  const query = getQuery(event)
+  const localeRaw = String(query.locale || 'en').toLowerCase()
+  if (!['en', 'ru', 'zh'].includes(localeRaw)) {
+    throw createError({ statusCode: 400, statusMessage: 'locale must be en, ru, or zh' })
+  }
+  const locale = localeRaw as 'en' | 'ru' | 'zh'
+  const col = locale === 'ru' ? 'presentation_path_ru' : locale === 'zh' ? 'presentation_path_zh' : 'presentation_path'
+
+  const fileName = `${Date.now()}-${slug}-${locale}.${ext}`
   const filePath = join(uploadDir, fileName)
   const data = fileField.data
   writeFileSync(filePath, new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
 
   const publicPath = `/api/uploads/presentations/${fileName}`
 
-  // Update article
   await db.prepare(
-    `UPDATE articles SET presentation_path = ?, updated_at = datetime('now') WHERE id = ?`
+    `UPDATE articles SET ${col} = ?, updated_at = datetime('now') WHERE id = ?`
   ).run(publicPath, article.id)
 
   return {
     message: 'Презентация загружена',
     presentation_path: publicPath,
+    locale,
   }
 })

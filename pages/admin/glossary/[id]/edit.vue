@@ -1,5 +1,5 @@
 <template>
-  <div class="glossary-form-page" v-if="term">
+  <div class="glossary-form-page gv-admin-page" v-if="term">
     <div class="form-header">
       <NuxtLink to="/admin/glossary" class="back-link">
         <UIcon name="i-heroicons-arrow-left" /> Назад к глоссарию
@@ -30,24 +30,9 @@
         </div>
       </div>
 
-      <UTabs :items="tabItems" class="mb-8">
+      <UTabs :items="tabItems" class="mb-8" @change="activeTab = tabItems[$event].key">
         <template #item="{ item }">
-          <div v-if="item.key === 'ru'" class="tab-content">
-            <div class="field">
-              <label class="field-label">Название (RU) <span class="required">*</span></label>
-              <input v-model="form.title_ru" class="field-input" placeholder="Название на русском" />
-            </div>
-            <div class="field">
-              <label class="field-label">Slug (RU)</label>
-              <input v-model="form.slug_ru" class="field-input" placeholder="slug-na-russkom" />
-            </div>
-            <div class="field">
-              <label class="field-label">Определение (RU) <span class="required">*</span></label>
-              <UTextarea v-model="form.definition_ru" :rows="4" class="field-textarea" placeholder="Краткое определение на русском..." />
-            </div>
-          </div>
-          
-          <div v-else-if="item.key === 'en'" class="tab-content">
+          <div v-if="item.key === 'en'" class="tab-content space-y-5 pt-4">
             <div class="field">
               <label class="field-label">Название (EN/Default) <span class="required">*</span></label>
               <input v-model="form.title" class="field-input" required placeholder="Term title" />
@@ -55,6 +40,36 @@
             <div class="field">
               <label class="field-label">Определение (EN/Default) <span class="required">*</span></label>
               <UTextarea v-model="form.definition" :rows="4" class="field-textarea" required placeholder="Brief definition in English..." />
+            </div>
+          </div>
+          
+          <div v-else-if="item.key === 'ru'" class="tab-content space-y-5 pt-4">
+            <div class="field">
+              <label class="field-label">Название (RU)</label>
+              <input v-model="form.title_ru" class="field-input" placeholder="Название на русском" />
+            </div>
+            <div class="field">
+              <label class="field-label">Slug (RU)</label>
+              <input v-model="form.slug_ru" class="field-input" placeholder="slug-na-russkom" />
+            </div>
+            <div class="field">
+              <label class="field-label">Определение (RU)</label>
+              <UTextarea v-model="form.definition_ru" :rows="4" class="field-textarea" placeholder="Краткое определение на русском..." />
+            </div>
+          </div>
+          
+          <div v-else-if="item.key === 'zh'" class="tab-content space-y-5 pt-4">
+            <div class="field">
+              <label class="field-label">Название (ZH)</label>
+              <input v-model="form.title_zh" class="field-input" placeholder="中文标题" />
+            </div>
+            <div class="field">
+              <label class="field-label">Slug (ZH)</label>
+              <input v-model="form.slug_zh" class="field-input" placeholder="zhong-wen-slug" />
+            </div>
+            <div class="field">
+              <label class="field-label">Определение (ZH)</label>
+              <UTextarea v-model="form.definition_zh" :rows="4" class="field-textarea" placeholder="简短定义..." />
             </div>
           </div>
         </template>
@@ -96,28 +111,42 @@
         <div class="media-inputs grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="media-field">
              <label class="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Изображение (URL или загрузка)</label>
-             <div class="flex gap-2">
-                <UInput v-model="form.image_url" class="flex-1" placeholder="https://..." />
-                <UButton icon="i-heroicons-paper-clip" color="gray" variant="soft" @click="triggerMediaUpload('image')" />
-             </div>
+             <AdminMediaPicker
+                v-model="form.image_url"
+                upload-endpoint="/api/admin/uploads/term-media"
+                accept="image/*"
+             />
           </div>
           <div class="media-field">
              <label class="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Видео (URL или загрузка)</label>
-             <div class="flex gap-2">
-                <UInput v-model="form.video_url" class="flex-1" placeholder="https://..." />
-                <UButton icon="i-heroicons-paper-clip" color="gray" variant="soft" @click="triggerMediaUpload('video')" />
-             </div>
+             <AdminMediaPicker
+                v-model="form.video_url"
+                upload-endpoint="/api/admin/uploads/term-media"
+                accept="video/*"
+             />
           </div>
         </div>
-        <input type="file" ref="mediaFileInput" class="hidden" @change="handleMediaUpload" />
       </div>
 
       <div class="field">
         <label class="field-label">
-          Путь к презентации
-          <UBadge v-if="form.presentation_path" color="sky" variant="soft" size="xs" class="rounded-md">PDF Подключен</UBadge>
+          Презентации
+          <UBadge v-if="form.presentation_path || form.presentation_path_ru || form.presentation_path_zh" color="sky" variant="soft" size="xs" class="rounded-md">Файлы</UBadge>
         </label>
-        <input v-model="form.presentation_path" class="field-input" placeholder="/presentations/your-file.pdf" />
+        <div class="space-y-3">
+          <div>
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">EN</label>
+            <input v-model="form.presentation_path" class="field-input mt-1" placeholder="/presentations/..." />
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">RU</label>
+            <input v-model="form.presentation_path_ru" class="field-input mt-1" placeholder="/presentations/..." />
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ZH</label>
+            <input v-model="form.presentation_path_zh" class="field-input mt-1" placeholder="/presentations/..." />
+          </div>
+        </div>
       </div>
 
       <!-- Article Management -->
@@ -228,8 +257,9 @@ interface Category {
 }
 
 const tabItems = [
+  { key: 'en', label: 'English (EN)', icon: 'i-heroicons-globe-alt' },
   { key: 'ru', label: 'Русский (RU)', icon: 'i-heroicons-language' },
-  { key: 'en', label: 'English (EN)', icon: 'i-heroicons-globe-alt' }
+  { key: 'zh', label: '中文 (ZH)', icon: 'i-heroicons-language' }
 ]
 
 definePageMeta({ layout: 'admin', middleware: 'auth' })
@@ -239,15 +269,22 @@ const store = userStore()
 const toast = useToast()
 const termId = route.params.id as string
 
+const activeTab = ref('en')
+
 // 1. Reactive state definitions
 const form = reactive({
   title: '',
   title_ru: '',
+  title_zh: '',
   slug_ru: '',
+  slug_zh: '',
   aliases: [] as string[],
   definition: '',
   definition_ru: '',
+  definition_zh: '',
   presentation_path: '',
+  presentation_path_ru: '',
+  presentation_path_zh: '',
   image_url: '',
   video_url: '',
   category_id: null as number | null,
@@ -261,40 +298,6 @@ const error = ref('')
 const success = ref(false)
 const creatingArticle = ref(false)
 const confirmDeleteArticle = ref(false)
-
-const mediaFileInput = ref<HTMLInputElement>()
-const currentUploadTarget = ref<'image' | 'video'>('image')
-
-function triggerMediaUpload(type: 'image' | 'video') {
-  currentUploadTarget.value = type
-  mediaFileInput.value?.click()
-}
-
-async function handleMediaUpload(event: Event) {
-  const input = event.target as HTMLInputElement
-  if (!input.files?.length) return
-  
-  const file = input.files[0]
-  const formData = new FormData()
-  formData.append('file', file)
-
-  try {
-    const res = await $fetch<any>('/api/admin/uploads/term-media', {
-      method: 'POST',
-      headers: store.getAuthHeader(),
-      body: formData
-    })
-    
-    if (currentUploadTarget.value === 'image') form.image_url = res.url
-    else form.video_url = res.url
-    
-    toast.add({ title: 'Файл загружен', color: 'green' })
-  } catch (e: any) {
-    toast.add({ title: 'Ошибка загрузки', description: e.data?.statusMessage || e.message, color: 'red' })
-  } finally {
-    input.value = ''
-  }
-}
 
 // 2. Pure functions
 function addAlias() {
@@ -322,11 +325,16 @@ watch(term, (t) => {
   if (!t) return
   form.title = t.title
   form.title_ru = t.title_ru || ''
+  form.title_zh = (t as any).title_zh || ''
   form.slug_ru = t.slug_ru || ''
+  form.slug_zh = (t as any).slug_zh || ''
   form.aliases = Array.isArray(t.aliases) ? [...t.aliases] : []
   form.definition = t.definition
   form.definition_ru = t.definition_ru || ''
+  form.definition_zh = (t as any).definition_zh || ''
   form.presentation_path = t.presentation_path || ''
+  form.presentation_path_ru = (t as any).presentation_path_ru || ''
+  form.presentation_path_zh = (t as any).presentation_path_zh || ''
   form.image_url = (t as any).image_url || ''
   form.video_url = (t as any).video_url || ''
   form.category_id = t.category_id || null
@@ -351,14 +359,13 @@ async function handleOdtUpload(event: Event) {
       body: formData
     })
 
-    // For now, simplicity: set the RU definition to the converted text (stripped of HTML tags for the definition field)
+    // For now, simplicity: set the definition to the converted text (stripped of HTML tags for the definition field)
     const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
     
-    // We could show a choice here, but let's just populate the current tab's definition
-    // or provide a simple toast with an option.
-    // For now: populate RU definition if it's empty, otherwise EN.
-    if (!form.definition_ru) form.definition_ru = text
-    else if (!form.definition) form.definition = text
+    // Populate the current tab's definition
+    if (activeTab.value === 'en' && !form.definition) form.definition = text
+    else if (activeTab.value === 'ru' && !form.definition_ru) form.definition_ru = text
+    else if (activeTab.value === 'zh' && !form.definition_zh) form.definition_zh = text
     
     toast.add({ title: 'ODT импортирован', description: 'Текст добавлен в поле определения', color: 'green' })
   } catch (e: any) {
@@ -409,11 +416,16 @@ async function handleSubmit() {
       body: {
         title: form.title,
         title_ru: form.title_ru || undefined,
+        title_zh: form.title_zh || undefined,
         definition: form.definition,
         definition_ru: form.definition_ru || undefined,
+        definition_zh: form.definition_zh || undefined,
         slug_ru: form.slug_ru || undefined,
+        slug_zh: form.slug_zh || undefined,
         aliases: form.aliases,
         presentation_path: form.presentation_path || undefined,
+        presentation_path_ru: form.presentation_path_ru || undefined,
+        presentation_path_zh: form.presentation_path_zh || undefined,
         image_url: form.image_url || undefined,
         video_url: form.video_url || undefined,
         category_id: form.category_id,
@@ -459,8 +471,8 @@ async function handleSubmit() {
 }
 .dark .term-slug-display { background: #27272a; }
 
-.term-form { display: flex; flex-direction: column; gap: 24px; }
-.field { display: flex; flex-direction: column; gap: 8px; }
+.term-form { display: flex; flex-direction: column; gap: 32px; }
+.field { display: flex; flex-direction: column; gap: 10px; }
 .field-label {
   font-size: 13px; font-weight: 700; color: #374151;
   text-transform: uppercase; letter-spacing: 0.06em;
@@ -555,4 +567,33 @@ async function handleSubmit() {
 .dark .error-banner { background: #450a0a; color: #f87171; }
 
 .not-found { padding: 60px; text-align: center; color: #94a3b8; }
+
+@media (max-width: 768px) {
+  .glossary-form-page {
+    padding: 18px 14px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+
+  .form-title {
+    font-size: 20px;
+    letter-spacing: 1px;
+  }
+
+  .article-manager-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .article-actions {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .btn-manage {
+    width: 100%;
+    justify-content: center;
+  }
+}
 </style>

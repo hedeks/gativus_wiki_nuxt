@@ -23,26 +23,26 @@ export default defineEventHandler(async (event) => {
 
   if (search) {
     if (lang === 'ru') {
-      conditions.push('(t.title_ru LIKE ? OR t.title LIKE ? OR t.aliases LIKE ? OR t.definition_ru LIKE ? OR t.definition LIKE ?)')
+      conditions.push('(t.title_ru LIKE ? COLLATE NOCASE OR t.title LIKE ? COLLATE NOCASE OR t.aliases LIKE ? COLLATE NOCASE OR t.definition_ru LIKE ? COLLATE NOCASE OR t.definition LIKE ? COLLATE NOCASE)')
       params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`)
     } else if (lang === 'zh') {
-      conditions.push('(t.title_zh LIKE ? OR t.title LIKE ? OR t.aliases LIKE ? OR t.definition_zh LIKE ? OR t.definition LIKE ?)')
+      conditions.push('(t.title_zh LIKE ? COLLATE NOCASE OR t.title LIKE ? COLLATE NOCASE OR t.aliases LIKE ? COLLATE NOCASE OR t.definition_zh LIKE ? COLLATE NOCASE OR t.definition LIKE ? COLLATE NOCASE)')
       params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`)
     } else {
-      conditions.push('(t.title LIKE ? OR t.aliases LIKE ? OR t.definition LIKE ?)')
+      conditions.push('(t.title LIKE ? COLLATE NOCASE OR t.aliases LIKE ? COLLATE NOCASE OR t.definition LIKE ? COLLATE NOCASE)')
       params.push(`%${search}%`, `%${search}%`, `%${search}%`)
     }
   }
   if (letter) {
     if (lang === 'ru') {
-      conditions.push('(t.title_ru LIKE ? OR t.title_ru LIKE ? OR t.title LIKE ? OR t.title LIKE ?)')
-      params.push(`${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`, `${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`)
+      conditions.push('(LOWER(t.title_ru) LIKE LOWER(?) OR LOWER(t.title) LIKE LOWER(?))')
+      params.push(`${letter}%`, `${letter}%`)
     } else if (lang === 'zh') {
-      conditions.push('(t.title_zh LIKE ? OR t.title_zh LIKE ? OR t.title LIKE ? OR t.title LIKE ?)')
-      params.push(`${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`, `${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`)
+      conditions.push('(LOWER(t.title_zh) LIKE LOWER(?) OR LOWER(t.title) LIKE LOWER(?))')
+      params.push(`${letter}%`, `${letter}%`)
     } else {
-      conditions.push('(t.title LIKE ? OR t.title LIKE ?)')
-      params.push(`${letter.toLowerCase()}%`, `${letter.toUpperCase()}%`)
+      conditions.push('(LOWER(t.title) LIKE LOWER(?))')
+      params.push(`${letter}%`)
     }
   }
   if (categoryId) {

@@ -265,6 +265,7 @@ watch(() => props.graphData, () => {
 const selectedNode = ref<any>(null)
 const selectedLink = ref<any>(null)
 const hoveredNode = ref<any>(null)
+const hoveredLink = ref<any>(null)
 const currentTransform = ref(d3.zoomIdentity)
 const simulationTick = ref(0) // Added for simulation reactivity
 const searchQuery = ref('')
@@ -310,16 +311,46 @@ const getNeighbors = (node: any) => {
   }, [node.id])
 }
 
+const normalizeLinkEndpointId = (endpoint: any) => typeof endpoint === 'object' ? endpoint.id : endpoint
+const isSameLink = (a: any, b: any) => {
+  if (!a || !b) return false
+  const aSource = normalizeLinkEndpointId(a.source)
+  const aTarget = normalizeLinkEndpointId(a.target)
+  const bSource = normalizeLinkEndpointId(b.source)
+  const bTarget = normalizeLinkEndpointId(b.target)
+  return (
+    a.type === b.type &&
+    ((aSource === bSource && aTarget === bTarget) || (aSource === bTarget && aTarget === bSource))
+  )
+}
+
+const getLinkBaseWidth = (link: any) => {
+  const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
+  const sLevel = typeLevels[link.source.type] ?? 99
+  const tLevel = typeLevels[link.target.type] ?? 99
+  const parent = sLevel <= tLevel ? link.source : link.target
+  const child = sLevel > tLevel ? link.source : link.target
+  if (parent.type === 'book') return 2.5
+  if (parent.type === 'category' && child.type === 'category') return 1.5
+  return 1
+}
+
 const updateHighlights = () => {
   if (!svgRef.value) return
 
   const focusNode = hoveredNode.value || selectedNode.value
-  const query = searchQuery.value.toLowerCase()
+  const focusLink = hoveredLink.value || selectedLink.value
   const neighbors = focusNode ? getNeighbors(focusNode) : null
+  const linkEndpointIds = focusLink
+    ? [normalizeLinkEndpointId(focusLink.source), normalizeLinkEndpointId(focusLink.target)]
+    : null
 
   // 1. Update Nodes
   d3.selectAll('.node-group')
     .style('opacity', (n: any) => {
+      if (focusLink && linkEndpointIds) {
+        return linkEndpointIds.includes(n.id) ? 1 : 0.08
+      }
       // If we have a focus node (hover or selected), show neighbors
       if (focusNode) {
         const isNeighbor = neighbors?.includes(n.id)
@@ -332,11 +363,19 @@ const updateHighlights = () => {
   // 2. Update Links
   d3.selectAll('.visual-link')
     .style('opacity', (l: any) => {
+      if (focusLink) {
+        return isSameLink(l, focusLink) ? 1 : 0.05
+      }
       if (focusNode) {
         const isConnected = l.source.id === focusNode.id || l.target.id === focusNode.id
         return isConnected ? 1 : 0.02
       }
       return 0.4
+    })
+    .attr('stroke-width', (l: any) => {
+      const baseWidth = getLinkBaseWidth(l)
+      if (focusLink && isSameLink(l, focusLink)) return baseWidth * 2
+      return baseWidth
     })
 }
 
@@ -367,6 +406,17 @@ watch(selectedNode, (newVal) => {
   if (!newVal && !selectedLink.value) {
     updateHighlights()
   }
+})
+
+watch(() => langStore.currentLang, async () => {
+  selectedNode.value = null
+  selectedLink.value = null
+  hoveredNode.value = null
+  hoveredLink.value = null
+  isFilterMenuOpen.value = false
+  await nextTick()
+  initGraph()
+  updateHighlights()
 })
 
 const nodePopupStyle = computed(() => {
@@ -484,6 +534,15 @@ const relLabels = computed<Record<string, string>>(() => {
       mention: 'Упоминание',
     }
   }
+  if (langStore.currentLang === 'zh') {
+    return {
+      belongs_to_category: '所属分类',
+      part_of_book: '书籍内容',
+      part_of_article: '术语释义',
+      reference: '交叉引用',
+      mention: '提及',
+    }
+  }
   return {
     belongs_to_category: 'Category',
     part_of_book: 'Book Content',
@@ -501,6 +560,15 @@ const relDescriptions = computed<Record<string, string>>(() => {
       part_of_article: 'Этот термин подробно раскрывается и поясняется в данной статье.',
       reference: 'Прямая связь или ссылка между двумя терминами в глоссарии.',
       mention: 'Термин упоминается в тексте статьи как ключевое понятие.',
+    }
+  }
+  if (langStore.currentLang === 'zh') {
+    return {
+      belongs_to_category: '该元素被归类到此类别。',
+      part_of_book: '该文章是此书中的章节或部分。',
+      part_of_article: '该术语在此文章中有详细解释。',
+      reference: '术语之间的直接交叉关联。',
+      mention: '该术语在文章中作为关键概念被提及。',
     }
   }
   return {
@@ -566,7 +634,8 @@ const getNodeColor = (node: any) => {
 const getTypeLabel = (type: string) => {
   const dict: any = {
     en: { book: 'Book', article: 'Article', category: 'Category', term: 'Term' },
-    ru: { book: 'Книга', article: 'Статья', category: 'Категория', term: 'Термин' }
+    ru: { book: 'Книга', article: 'Статья', category: 'Категория', term: 'Термин' },
+    zh: { book: '书籍', article: '文章', category: '类别', term: '术语' }
   }
   const currentDict = dict[langStore.currentLang] || dict.en
   return currentDict[type] || ''
@@ -598,6 +667,9 @@ const initGraph = () => {
       if (event.target === svgRef.value) {
         selectedNode.value = null
         selectedLink.value = null
+        hoveredNode.value = null
+        hoveredLink.value = null
+        updateHighlights()
       }
     })
 
@@ -672,17 +744,7 @@ const initGraph = () => {
     .join('line')
     .attr('class', 'visual-link')
     .attr('stroke-opacity', 0.4)
-    .attr('stroke-width', (d: any) => {
-      const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
-      const sLevel = typeLevels[d.source.type] ?? 99
-      const tLevel = typeLevels[d.target.type] ?? 99
-      const parent = sLevel <= tLevel ? d.source : d.target
-      const child = sLevel > tLevel ? d.source : d.target
-
-      if (parent.type === 'book') return 2.5
-      if (parent.type === 'category' && child.type === 'category') return 1.5
-      return 1
-    })
+    .attr('stroke-width', (d: any) => getLinkBaseWidth(d))
     .attr('stroke-dasharray', (d: any) => {
       const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
       const sLevel = typeLevels[d.source.type] ?? 99
@@ -720,39 +782,18 @@ const initGraph = () => {
     .attr('stroke-width', 15)
     .attr('cursor', 'pointer')
     .on('mouseover', (event: any, d: any) => {
-      d3.selectAll('.visual-link')
-        .filter((l: any) => l === d)
-        .style('stroke-opacity', 1)
-        .attr('stroke-width', (l: any) => {
-          const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
-          const sLevel = typeLevels[l.source.type] ?? 99
-          const tLevel = typeLevels[l.target.type] ?? 99
-          const parent = sLevel <= tLevel ? l.source : l.target
-          const child = sLevel > tLevel ? l.source : l.target
-          let base = 1
-          if (parent.type === 'book') base = 2.5
-          else if (parent.type === 'category' && child.type === 'category') base = 1.5
-          return base * 2 // Emphasize using strictly thickness, completely removed SVG blur
-        })
+      hoveredLink.value = d
+      updateHighlights()
     })
-    .on('mouseout', (event: any, d: any) => {
-      d3.selectAll('.visual-link')
-        .filter((l: any) => l === d)
-        .style('stroke-opacity', 0.4)
-        .attr('stroke-width', (l: any) => {
-          const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
-          const sLevel = typeLevels[l.source.type] ?? 99
-          const tLevel = typeLevels[l.target.type] ?? 99
-          const parent = sLevel <= tLevel ? l.source : l.target
-          const child = sLevel > tLevel ? l.source : l.target
-          if (parent.type === 'book') return 2.5
-          if (parent.type === 'category' && child.type === 'category') return 1.5
-          return 1
-        })
+    .on('mouseout', () => {
+      hoveredLink.value = null
+      updateHighlights()
     })
     .on('click', (event: any, d: any) => {
       selectedNode.value = null
       selectedLink.value = d
+      hoveredLink.value = null
+      updateHighlights()
       event.stopPropagation()
     })
 
@@ -765,6 +806,8 @@ const initGraph = () => {
     .on('click', (event: any, d: any) => {
       selectedNode.value = d
       selectedLink.value = null
+      hoveredLink.value = null
+      updateHighlights()
       event.stopPropagation()
     })
     .on('mouseover', function (event: any, d: any) {
@@ -876,6 +919,8 @@ const initGraph = () => {
       }
     }
   })
+
+  updateHighlights()
 }
 
 
@@ -894,6 +939,9 @@ const handleOutsideClick = (event: MouseEvent) => {
   // Otherwise, clear selection
   selectedNode.value = null
   selectedLink.value = null
+  hoveredNode.value = null
+  hoveredLink.value = null
+  updateHighlights()
 }
 
 onMounted(async () => {
@@ -1457,6 +1505,7 @@ watch(activeFilters, () => {
   position: absolute;
   z-index: 100;
   width: 260px;
+  max-width: min(260px, calc(100vw - 24px));
   background: rgba(255, 255, 255, 0.90);
   backdrop-filter: blur(16px);
   border: 1px solid #e9e9e9;
@@ -1651,6 +1700,7 @@ watch(activeFilters, () => {
     top: 10px;
     left: 10px;
     right: 10px;
+    padding: 4px;
   }
 
   .custom-search-input {
@@ -1660,13 +1710,53 @@ watch(activeFilters, () => {
 }
 
 @media (max-width: 640px) {
+  .graph-actions-container {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    gap: 2px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .custom-search-wrapper {
+    order: 1;
+    width: 100%;
+  }
+
+  .custom-search-input {
+    width: 100%;
+    padding: 8px 30px;
+  }
+
+  .control-divider {
+    display: none;
+  }
+
+  .lang-switcher {
+    margin: 0;
+  }
+
   .custom-zoom-controls {
     top: auto;
-    bottom: 20px;
+    bottom: 10px;
     left: 50%;
     right: auto;
     transform: translateX(-50%);
     flex-direction: row;
+    z-index: 70;
+  }
+
+  .custom-legend {
+    bottom: 58px;
+    left: 10px;
+    padding: 10px 12px;
+    max-width: calc(100% - 20px);
+  }
+
+  .graph-popup {
+    width: min(240px, calc(100vw - 20px));
+    padding: 12px;
   }
 
   .divider-hor {

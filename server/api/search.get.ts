@@ -8,7 +8,6 @@ export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const query = getQuery(event)
   const q = (query.q as string || '').trim().replace(/["'*^()[\]:]/g, ' ').trim()
-  const locale = (query.locale as string) || 'en'
 
   if (!q || q.length < 2) {
     return { items: [] }
@@ -26,10 +25,10 @@ export default defineEventHandler(async (event) => {
       snippet(wiki_fts, 3, '<b>', '</b>', '...', 32) as snippet,
       rank
     FROM wiki_fts
-    WHERE wiki_fts MATCH ? AND (locale = ? OR locale IS NULL OR locale = 'en')
+    WHERE wiki_fts MATCH ?
     ORDER BY rank
     LIMIT 15
-  `).all(`${q}*`, locale) as any[]
+  `).all(`${q}*`) as any[]
 
   return {
     items: (results || []).map(item => ({

@@ -1,12 +1,39 @@
 <template>
-  <div class="books-admin-page">
-    <div class="page-header">
-      <h2 class="page-title">Управление книгами</h2>
-      <div class="page-actions">
-        <UButton to="/admin/books/create" icon="i-heroicons-plus" color="primary">
+  <div class="books-admin-page gv-admin-page">
+    <div class="page-header gv-admin-index-head">
+      <div class="gv-admin-head">
+        <p class="gv-admin-eyebrow">ADMIN</p>
+        <h2 class="gv-admin-title">Книги</h2>
+        <p class="gv-admin-subtitle">Единый список книг с быстрыми действиями</p>
+      </div>
+      <div class="page-actions gv-admin-index-actions">
+        <UButton to="/admin/books/create" icon="i-heroicons-plus" color="sky">
           Создать книгу
         </UButton>
       </div>
+    </div>
+
+    <div class="gv-admin-filter-row">
+      <BaseSearch
+        v-model="searchQuery"
+        placeholder="Поиск по названию или slug..."
+        :is-pending="pending"
+        :is-debouncing="isTyping"
+        class="flex-1"
+      />
+      <ExpandableFilters
+        label="Фильтры"
+        :active-count="activeFilterCount"
+        :has-active-filters="activeFilterCount > 0"
+      >
+        <div class="filter-group">
+          <span class="filter-group-label">Категории</span>
+          <select v-model="categoryFilter" class="gv-admin-filter-select">
+            <option value="">Все категории</option>
+            <option v-for="cat in categoriesList" :key="cat.id" :value="String(cat.id)">{{ cat.title }}</option>
+          </select>
+        </div>
+      </ExpandableFilters>
     </div>
 
     <div v-if="pending" class="loading-state">
@@ -19,7 +46,7 @@
       <span>Ошибка при загрузке книг: {{ error.message }}</span>
     </div>
 
-    <div v-else class="books-list card">
+    <div v-else class="books-list card gv-admin-surface overflow-x-auto">
       <table class="admin-table">
         <thead>
           <tr>
@@ -27,12 +54,12 @@
             <th>Обложка</th>
             <th>Заголовок</th>
             <th>Категории</th>
-            <th class="text-center">Глав (RU | EN | ZH)</th>
+            <th class="text-center">Глав</th>
             <th>Действия</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="book in (books || [])" :key="book.id">
+          <tr v-for="book in filteredBooks" :key="book.id">
             <td class="text-xs text-gray-500">#{{ book.id }}</td>
             <td>
               <div class="book-cover-preview">
@@ -56,20 +83,7 @@
               </div>
             </td>
             <td>
-              <div class="flex items-center justify-center gap-3">
-                <div class="flex items-center gap-1" title="Русский">
-                  <span class="text-xs opacity-70">🇷🇺</span>
-                  <span class="article-count" :class="{ 'opacity-20': !book.count_ru }">{{ book.count_ru || 0 }}</span>
-                </div>
-                <div class="flex items-center gap-1" title="English">
-                  <span class="text-xs opacity-70">🇬🇧</span>
-                  <span class="article-count" :class="{ 'opacity-20': !book.count_en }">{{ book.count_en || 0 }}</span>
-                </div>
-                <div class="flex items-center gap-1" title="Chinese">
-                  <span class="text-xs opacity-70">🇨🇳</span>
-                  <span class="article-count" :class="{ 'opacity-20': !book.count_zh }">{{ book.count_zh || 0 }}</span>
-                </div>
-              </div>
+              <span class="article-count">{{ book.count_en || 0 }}</span>
             </td>
             <td>
               <div class="actions-cell">
@@ -79,7 +93,7 @@
               </div>
             </td>
           </tr>
-          <tr v-if="(books || []).length === 0">
+          <tr v-if="filteredBooks.length === 0">
             <td colspan="7" class="empty-row">Книги не найдены.</td>
           </tr>
         </tbody>
@@ -109,6 +123,8 @@ definePageMeta({
 })
 
 const store = userStore()
+const { searchQuery, debouncedQuery, isTyping } = useDebounce('', 300)
+const categoryFilter = ref('')
 
 const { data: books, pending, error, refresh } = await useFetch('/api/books', {
   headers: store.getAuthHeader()
@@ -116,14 +132,31 @@ const { data: books, pending, error, refresh } = await useFetch('/api/books', {
 const { data: categories } = await useFetch('/api/categories', {
   headers: store.getAuthHeader()
 })
+const categoriesList = computed(() => {
+  if (Array.isArray(categories.value)) return categories.value as any[]
+  return ((categories.value as any)?.items || []) as any[]
+})
+const activeFilterCount = computed(() => (categoryFilter.value ? 1 : 0))
+const filteredBooks = computed(() => {
+  const list = (Array.isArray(books.value) ? books.value : []) as any[]
+  const query = debouncedQuery.value.trim().toLowerCase()
+  return list.filter((book: any) => {
+    const matchesSearch = !query || [book.title, book.slug, book.title_ru, book.title_zh].some((v) =>
+      String(v || '').toLowerCase().includes(query)
+    )
+    const matchesCategory = !categoryFilter.value || (Array.isArray(book.category_ids) && book.category_ids.includes(Number(categoryFilter.value)))
+    return matchesSearch && matchesCategory
+  })
+})
 
 const deleteModalOpen = ref(false)
 const bookToDelete = ref<any>(null)
 const deleting = ref(false)
 
 function getCategoryTitle(id: number) {
-  if (!categories.value || !Array.isArray(categories.value)) return `ID: ${id}`
-  const cat = (categories.value as any[]).find((c: any) => c.id === id)
+  const source = categoriesList.value
+  if (!source.length) return `ID: ${id}`
+  const cat = source.find((c: any) => c.id === id)
   return cat ? cat.title : `ID: ${id}`
 }
 
@@ -149,7 +182,6 @@ async function handleDelete() {
   }
 }
 
-const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', zh: '🇨🇳' }
 </script>
 
 <style scoped>
@@ -343,5 +375,23 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
 /* Transitions */
 .view-transition {
   transition: all 0.4s cubic-bezier(0.705, 0.010, 0.000, 0.915);
+}
+
+@media (max-width: 768px) {
+  .books-admin-page {
+    padding: 0;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 10px 12px;
+  }
 }
 </style>

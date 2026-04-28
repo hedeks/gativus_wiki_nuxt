@@ -10,16 +10,16 @@ const store = userStore()
 const toast = useToast()
 
 // Filters
-const search = ref('')
+const { searchQuery, debouncedQuery, isTyping } = useDebounce('', 300)
 const filterBookId = ref<string>('')
 const currentPage = ref(1)
 
 // Fetch articles
-const { data: articlesData, refresh } = await useFetch('/api/articles', {
+const { data: articlesData, refresh, pending } = await useFetch('/api/articles', {
   query: computed(() => ({
     page: currentPage.value,
     limit: 20,
-    search: search.value || undefined,
+    search: debouncedQuery.value || undefined,
     book_id: filterBookId.value || undefined,
     published_only: 'false',
     include_term_articles: 'true',
@@ -37,15 +37,10 @@ const { data: booksData } = await useFetch('/api/books', {
 })
 const books = computed(() => (booksData.value || []) as any[])
 
-// Search with debounce
-let searchTimer: NodeJS.Timeout
-function onSearchInput() {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    currentPage.value = 1
-    refresh()
-  }, 300)
-}
+const activeFilterCount = computed(() => (filterBookId.value ? 1 : 0))
+watch(debouncedQuery, () => {
+  currentPage.value = 1
+})
 
 // Delete
 const deleteSlug = ref<string | null>(null)
@@ -77,22 +72,22 @@ function formatDate(dateStr: string): string {
   })
 }
 
-const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', zh: '🇨🇳' }
 </script>
 
 <template>
-  <div class="articles-page">
-    <div class="articles-header">
-      <div>
-        <h1 class="articles-title">Статьи</h1>
-        <p class="articles-subtitle">{{ totalItems }} статей в базе</p>
+  <div class="articles-page gv-admin-page">
+    <div class="articles-header gv-admin-index-head">
+      <div class="gv-admin-head">
+        <p class="gv-admin-eyebrow">ADMIN</p>
+        <h1 class="gv-admin-title">Статьи</h1>
+        <p class="gv-admin-subtitle">{{ totalItems }} статей в базе</p>
       </div>
-      <div class="flex gap-3">
+      <div class="gv-admin-index-actions">
         <NuxtLink to="/admin/import" class="header-btn header-btn--secondary">
           <UIcon name="i-heroicons-arrow-up-tray" />
           <span>Импорт ODT</span>
         </NuxtLink>
-        <NuxtLink to="/admin/articles/create" class="header-btn">
+        <NuxtLink to="/admin/articles/create" class="header-btn bg-indigo-500 hover:bg-indigo-600">
           <UIcon name="i-heroicons-plus" />
           <span>Создать статью</span>
         </NuxtLink>
@@ -100,27 +95,39 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
     </div>
 
     <!-- Filters -->
-    <div class="filters-bar">
-      <div class="search-wrap">
-        <UIcon name="i-heroicons-magnifying-glass" class="search-icon" />
-        <input v-model="search" @input="onSearchInput" placeholder="Поиск по названию..." class="search-input" />
-      </div>
-      <select v-model="filterBookId" class="filter-select" @change="currentPage = 1; refresh()">
-        <option value="">Все книги</option>
-        <option v-for="book in books" :key="book.id" :value="book.id">
-          {{ book.title }}
-        </option>
-      </select>
+    <div class="filters-bar gv-admin-filter-row">
+      <BaseSearch
+        v-model="searchQuery"
+        placeholder="Поиск по названию..."
+        :is-pending="pending"
+        :is-debouncing="isTyping"
+        class="flex-1"
+      />
+      <ExpandableFilters
+        label="Фильтры"
+        :active-count="activeFilterCount"
+        :has-active-filters="activeFilterCount > 0"
+      >
+        <div class="filter-group">
+          <span class="filter-group-label">Книги</span>
+          <select v-model="filterBookId" class="filter-select gv-admin-filter-select" @change="currentPage = 1">
+            <option value="">Все книги</option>
+            <option v-for="book in books" :key="book.id" :value="book.id">
+              {{ book.title }}
+            </option>
+          </select>
+        </div>
+      </ExpandableFilters>
     </div>
 
     <!-- Table -->
-    <div class="table-wrap">
-      <table class="articles-table">
+    <div class="table-wrap gv-admin-surface overflow-x-auto">
+      <table class="articles-table min-w-[760px]">
         <thead>
           <tr>
             <th>Название</th>
             <th>Книга</th>
-            <th>Язык</th>
+            <th>Модель</th>
             <th>Статус</th>
             <th>Обновлено</th>
             <th class="th-actions"></th>
@@ -137,18 +144,18 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
               </div>
             </td>
             <td>
-              <span v-if="article.book_title" class="book-badge">{{ article.book_title }}</span>
+              <NuxtLink v-if="article.book_title && article.book_id" :to="`/admin/books/${article.book_id}/edit`" class="book-badge">{{ article.book_title }}</NuxtLink>
               <span v-else class="text-muted">—</span>
             </td>
             <td>
-              <span class="locale-badge">{{ localeFlagMap[article.locale] || article.locale }}</span>
+              <span class="locale-badge">GLOBAL</span>
             </td>
             <td>
               <span class="status-badge" :class="article.is_published ? 'status--published' : 'status--draft'">
                 {{ article.is_published ? 'Опубликовано' : 'Черновик' }}
               </span>
               <span v-if="article.is_term_article" class="term-badge" title="Раскрытие термина">Термин</span>
-              <UIcon v-if="article.presentation_path" name="i-heroicons-presentation-chart-bar" class="pres-indicator"
+              <UIcon v-if="article.presentation_path || article.presentation_path_ru || article.presentation_path_zh" name="i-heroicons-presentation-chart-bar" class="pres-indicator"
                 title="Есть презентация" />
             </td>
             <td class="text-muted">{{ formatDate(article.updated_at) }}</td>
@@ -247,7 +254,7 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
   gap: 8px;
   padding: 10px 18px;
   border-radius: 10px;
-  background: #0ea5e9;
+  background: #6366f1;
   color: #fff;
   font-size: 14px;
   font-weight: 600;
@@ -256,7 +263,7 @@ const localeFlagMap: Record<string, string> = { en: '🇬🇧', ru: '🇷🇺', 
 }
 
 .header-btn:hover {
-  background: #0284c7;
+  background: #4f46e5;
   transform: translateY(-1px);
 }
 

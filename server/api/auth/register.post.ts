@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
 
     // Determine role: first user becomes admin
     const userCount = await db.prepare('SELECT COUNT(*) as count FROM users').get() as any;
-    const role = (userCount?.count === 0) ? 'admin' : 'user';
+    const role = (userCount?.count === 0) ? 'admin' : 'editor';
 
     const encrypted_password = await bcrypt.hash(body.password, 10);
     const uuid = uuidv4();
@@ -62,7 +62,7 @@ export default defineEventHandler(async (event) => {
     const safeUser: User = {
         login: body.login,
         email: body.email,
-        role: role as 'user' | 'editor' | 'admin',
+        role: role as 'editor' | 'admin',
         created_at: created_at,
         uuid: uuid
     }

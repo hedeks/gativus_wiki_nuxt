@@ -1,15 +1,24 @@
 <template>
   <div class="knowledge-graph-page gv-page">
-    <div class="graph-header">
-      <div class="header-left">
-        <h1 class="text-2xl font-bold gv-hero-gradient">{{ t?.title }}</h1>
-        <p class="text-gray-500 text-sm">{{ t?.subtitle }}</p>
+    <section class="section-card page-head-card">
+      <div class="card-header">
+        <span class="card-badge">GATIVUS</span>
+        <h2 class="card-header-title">{{ t?.title }}</h2>
       </div>
-    </div>
+      <div class="graph-hero">
+        <p class="hero-subtitle">{{ t?.subtitle }}</p>
+      </div>
+    </section>
 
-    <div class="graph-wrapper gv-surface-card p-4">
-      <KnowledgeGraphVisualizer :graphData="graphData" :pending="pending" :enableNavigation="true" />
-    </div>
+    <section class="section-card graph-section">
+      <div class="card-header">
+        <span class="card-badge">GNET</span>
+        <h2 class="card-header-title">{{ t?.panelTitle }}</h2>
+      </div>
+      <div class="graph-wrapper">
+        <KnowledgeGraphVisualizer :graphData="graphData" :pending="pending" :enableNavigation="true" />
+      </div>
+    </section>
   </div>
 </template>
 
@@ -18,8 +27,21 @@ import { useLanguageStore } from '~/stores/language'
 const langStore = useLanguageStore()
 
 const uiDict: Record<string, any> = {
-  en: { title: 'Gativus Knowledge Graph', subtitle: 'Ontology visualization: categories, articles, and terms' },
-  ru: { title: 'Граф знаний Gativus', subtitle: 'Визуализация онтологии: категории, статьи и термины' }
+  en: {
+    title: 'Gativus Knowledge Graph',
+    subtitle: 'Ontology visualization: categories, articles, and terms',
+    panelTitle: 'Interactive Ontology Map'
+  },
+  ru: {
+    title: 'Граф знаний Gativus',
+    subtitle: 'Визуализация онтологии: категории, статьи и термины',
+    panelTitle: 'Интерактивная карта онтологии'
+  },
+  zh: {
+    title: 'Gativus 知识图谱',
+    subtitle: '本体可视化：分类、文章与术语',
+    panelTitle: '交互式本体地图'
+  }
 }
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
@@ -57,46 +79,140 @@ watch(() => langStore.currentLang, () => {
 
 <style scoped>
 .knowledge-graph-page {
-  width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 0 16px 20px;
-  height: calc(100vh - var(--header-height, 65px) - 20px);
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 10px 36px;
 }
 
-@media (min-width: 1280px) {
-  .knowledge-graph-page {
-    max-width: 1800px;
-    padding: 0 40px 30px;
-  }
+.page-head-card {
+  overflow: hidden;
 }
 
-.graph-header {
-  margin-bottom: 24px;
-  padding-top: 24px;
+.graph-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  text-align: center;
+  padding: 14px 16px 16px;
 }
 
-.header-left h1 {
-  font-size: 40px;
-  font-weight: 700;
-  letter-spacing: 6px;
+.hero-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #777;
+  letter-spacing: 1.4px;
   text-transform: uppercase;
-  color: #333333;
-  border-bottom: 1px solid #d4d4d8;
-  display: inline-block;
-  margin-bottom: 8px;
 }
 
-.dark .header-left h1 {
-  color: #e5e5e5;
-  border-color: #3a3a3a;
+.dark .hero-subtitle {
+  color: #999;
+}
+
+.section-card {
+  width: 100%;
+  border: 1px solid #c8c8c8;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: box-shadow 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
+}
+
+.section-card:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+}
+
+.dark .section-card {
+  background: #1a1a1a;
+  border-color: #333;
+}
+
+.dark .section-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+.card-header {
+  padding: 14px 20px;
+  background-color: #f9f9f9;
+  border-bottom: 1px solid #c8c8c8;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dark .card-header {
+  background-color: #222;
+  border-bottom-color: #333;
+}
+
+.card-badge {
+  background: linear-gradient(90deg, #e0f2fe, #bae6fd);
+  color: #0c4a6e;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.dark .card-badge {
+  background: linear-gradient(90deg, #0c4a6e, #082f49);
+  color: #e0f2fe;
+}
+
+.card-header-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 500;
+  color: #333;
+  letter-spacing: 0.3px;
+}
+
+.dark .card-header-title {
+  color: #ddd;
 }
 
 .graph-wrapper {
-  flex: 1;
+  width: 100%;
   position: relative;
-  min-height: 400px;
+  min-height: min(760px, calc(100dvh - var(--header-height, 65px) - 200px));
+  height: clamp(420px, 70dvh, 760px);
+  isolation: isolate;
+}
+
+@media (max-width: 900px) {
+}
+
+@media (max-width: 640px) {
+  .knowledge-graph-page {
+    gap: 10px;
+    padding: 16px 8px 24px;
+  }
+
+  .hero-subtitle {
+    letter-spacing: 0.8px;
+    font-size: 12px;
+  }
+
+  .card-header {
+    padding: 12px 14px;
+  }
+
+  .card-header-title {
+    font-size: 15px;
+  }
+
+  .graph-wrapper {
+    min-height: 360px;
+    height: clamp(360px, 64dvh, 600px);
+  }
 }
 </style>

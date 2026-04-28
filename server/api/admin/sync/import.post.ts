@@ -91,61 +91,42 @@ export default defineEventHandler(async (event) => {
   }
   console.log(`[sync] Imported ${dump.books?.length || 0} books.`)
 
-  // --- 3. Articles & Translations ---
+  // --- 3. Articles (unified model) ---
   for (const a of dump.articles || []) {
     const catId = a.category_slug ? idMap.cat.get(a.category_slug) || null : null
     const bookId = a.book_slug ? idMap.book.get(a.book_slug) || null : null
 
     await db.prepare(`
-      INSERT INTO articles (slug, locale, title, excerpt, html_content, raw_odt_path, presentation_path, category_id, book_id, is_published, is_term_article, sort_order, created_by, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
+      INSERT INTO articles (slug, title, title_ru, title_zh, excerpt, html_content, raw_odt_path, presentation_path, presentation_path_ru, presentation_path_zh, category_id, book_id, is_published, is_term_article, sort_order, created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
       ON CONFLICT(slug) DO UPDATE SET
-        locale = excluded.locale, title = excluded.title, excerpt = excluded.excerpt, html_content = excluded.html_content,
-        raw_odt_path = excluded.raw_odt_path, presentation_path = excluded.presentation_path, category_id = excluded.category_id,
+        title = excluded.title, title_ru = excluded.title_ru, title_zh = excluded.title_zh, excerpt = excluded.excerpt, html_content = excluded.html_content,
+        raw_odt_path = excluded.raw_odt_path, presentation_path = excluded.presentation_path, presentation_path_ru = excluded.presentation_path_ru, presentation_path_zh = excluded.presentation_path_zh, category_id = excluded.category_id,
         book_id = excluded.book_id, is_published = excluded.is_published, is_term_article = excluded.is_term_article, sort_order = excluded.sort_order,
         created_at = excluded.created_at, updated_at = excluded.updated_at
-    `).run(a.slug, a.locale || 'en', a.title, a.excerpt || null, a.html_content || '', a.raw_odt_path || null, a.presentation_path || null, catId, bookId, a.is_published || 1, a.is_term_article || 0, a.sort_order || 0, auth.id, a.created_at || null, a.updated_at || null)
+    `).run(a.slug, a.title, a.title_ru || null, a.title_zh || null, a.excerpt || null, a.html_content || '', a.raw_odt_path || null, a.presentation_path || null, a.presentation_path_ru || null, a.presentation_path_zh || null, catId, bookId, a.is_published || 1, a.is_term_article || 0, a.sort_order || 0, auth.id, a.created_at || null, a.updated_at || null)
 
     const origRow = await db.prepare('SELECT id FROM articles WHERE slug = ?').get(a.slug) as any
     if (!origRow) continue
     const origId = origRow.id
     idMap.art.set(a.slug, origId)
-
-    // Make sure origin_id is mapped correctly to itself (or null, codebase uses either). 
-    // Usually original has origin_id = id or IS NULL. We'll set it to NULL.
-    await db.prepare('UPDATE articles SET origin_id = NULL WHERE id = ?').run(origId)
-
-    // Upsert translations
-    for (const t of a.translations || []) {
-      await db.prepare(`
-        INSERT INTO articles (slug, locale, title, excerpt, html_content, raw_odt_path, presentation_path, category_id, book_id, is_published, is_term_article, sort_order, origin_id, created_by, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
-        ON CONFLICT(slug) DO UPDATE SET
-          locale = excluded.locale, title = excluded.title, excerpt = excluded.excerpt, html_content = excluded.html_content,
-          raw_odt_path = excluded.raw_odt_path, presentation_path = excluded.presentation_path, category_id = excluded.category_id,
-          book_id = excluded.book_id, is_published = excluded.is_published, is_term_article = excluded.is_term_article, origin_id = excluded.origin_id,
-          created_at = excluded.created_at, updated_at = excluded.updated_at
-      `).run(t.slug, t.locale, t.title, t.excerpt || null, t.html_content || '', t.raw_odt_path || null, t.presentation_path || null, catId, bookId, a.is_published || 1, a.is_term_article || 0, a.sort_order || 0, origId, auth.id, t.created_at || null, t.updated_at || null)
-      
-      const tRow = await db.prepare('SELECT id FROM articles WHERE slug = ?').get(t.slug) as any
-      if (tRow) idMap.art.set(t.slug, tRow.id)
-    }
+    await db.prepare('UPDATE articles SET origin_id = NULL, locale = "en" WHERE id = ?').run(origId)
   }
-  console.log(`[sync] Imported ${dump.articles?.length || 0} articles (and translations).`)
+  console.log(`[sync] Imported ${dump.articles?.length || 0} unified articles.`)
 
   // --- 4. Terms ---
   for (const t of dump.terms || []) {
     const termArtId = t.term_article_slug ? idMap.art.get(t.term_article_slug) || null : null
 
     await db.prepare(`
-      INSERT INTO terms (slug, slug_ru, title, title_ru, aliases, definition, definition_ru, image_url, video_url, presentation_path, term_article_id, created_by, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
+      INSERT INTO terms (slug, slug_ru, title, title_ru, aliases, definition, definition_ru, image_url, video_url, presentation_path, presentation_path_ru, presentation_path_zh, term_article_id, created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
       ON CONFLICT(slug) DO UPDATE SET
         slug_ru = excluded.slug_ru, title = excluded.title, title_ru = excluded.title_ru,
         aliases = excluded.aliases, definition = excluded.definition, definition_ru = excluded.definition_ru,
-        image_url = excluded.image_url, video_url = excluded.video_url, presentation_path = excluded.presentation_path,
+        image_url = excluded.image_url, video_url = excluded.video_url, presentation_path = excluded.presentation_path, presentation_path_ru = excluded.presentation_path_ru, presentation_path_zh = excluded.presentation_path_zh,
         term_article_id = excluded.term_article_id, created_at = excluded.created_at, updated_at = excluded.updated_at
-    `).run(t.slug, t.slug_ru || null, t.title, t.title_ru || null, t.aliases || null, t.definition, t.definition_ru || null, t.image_url || null, t.video_url || null, t.presentation_path || null, termArtId, auth.id, t.created_at || null, t.updated_at || null)
+    `).run(t.slug, t.slug_ru || null, t.title, t.title_ru || null, t.aliases || null, t.definition, t.definition_ru || null, t.image_url || null, t.video_url || null, t.presentation_path || null, t.presentation_path_ru || null, t.presentation_path_zh || null, termArtId, auth.id, t.created_at || null, t.updated_at || null)
 
     const row = await db.prepare('SELECT id FROM terms WHERE slug = ?').get(t.slug) as any
     if (row) idMap.term.set(t.slug, row.id)
@@ -159,12 +140,6 @@ export default defineEventHandler(async (event) => {
     const artId = idMap.art.get(a.slug)
     if (artId) {
       await db.prepare('DELETE FROM article_terms WHERE article_id = ?').run(artId)
-    }
-    for (const t of a.translations || []) {
-      const tArtId = idMap.art.get(t.slug)
-      if (tArtId) {
-        await db.prepare('DELETE FROM article_terms WHERE article_id = ?').run(tArtId)
-      }
     }
   }
 

@@ -32,14 +32,15 @@ const statCards = computed(() => [
 </script>
 
 <template>
-  <div class="dashboard">
-    <div class="dashboard-header">
-      <h1 class="dashboard-title">Dashboard</h1>
-      <p class="dashboard-subtitle">Обзор системы Gativus</p>
+  <div class="dashboard gv-admin-page">
+    <div class="gv-admin-head">
+      <p class="gv-admin-eyebrow">ADMIN</p>
+      <h1 class="gv-admin-title">Dashboard</h1>
+      <p class="gv-admin-subtitle">Обзор системы Gativus</p>
     </div>
 
     <div class="stats-grid">
-      <div v-for="stat in statCards" :key="stat.label" class="stat-card">
+      <div v-for="stat in statCards" :key="stat.label" class="stat-card gv-admin-surface">
         <div class="stat-icon-wrap">
           <UIcon :name="stat.icon" class="stat-icon" />
         </div>
@@ -50,25 +51,25 @@ const statCards = computed(() => [
       </div>
     </div>
 
-    <div class="dashboard-section">
+    <div class="dashboard-section gv-admin-surface">
       <h2 class="section-title">Быстрые действия</h2>
       <div class="actions-grid">
-        <NuxtLink to="/admin/import" class="action-card">
+        <NuxtLink to="/admin/import" class="action-card gv-admin-surface">
           <UIcon name="i-heroicons-arrow-up-tray" class="action-icon" />
           <span class="action-label">Импорт ODT</span>
           <span class="action-desc">Загрузить документ</span>
         </NuxtLink>
-        <NuxtLink to="/admin/articles" class="action-card">
+        <NuxtLink to="/admin/articles" class="action-card gv-admin-surface">
           <UIcon name="i-heroicons-plus-circle" class="action-icon" />
           <span class="action-label">Новая статья</span>
           <span class="action-desc">Создать вручную</span>
         </NuxtLink>
-        <NuxtLink to="/admin/glossary" class="action-card">
+        <NuxtLink to="/admin/glossary" class="action-card gv-admin-surface">
           <UIcon name="i-heroicons-document-magnifying-glass" class="action-icon" />
           <span class="action-label">Глоссарий</span>
           <span class="action-desc">Управление терминами</span>
         </NuxtLink>
-        <NuxtLink to="/admin/glossary/create" class="action-card">
+        <NuxtLink to="/admin/glossary/create" class="action-card gv-admin-surface">
           <UIcon name="i-heroicons-document-plus" class="action-icon" />
           <span class="action-label">Новый термин</span>
           <span class="action-desc">Добавить в глоссарий</span>

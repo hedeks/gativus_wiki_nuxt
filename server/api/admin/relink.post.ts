@@ -1,7 +1,7 @@
 /**
- * POST /api/admin/relink-articles
+ * POST /api/admin/relink
  * Version: 1.0.1 (Rebuild trigger)
- * Re-run term auto-linking on ALL published, non-term articles.
+ * Re-run term auto-linking on ALL articles with content.
  * Role: admin.
  */
 
@@ -18,10 +18,10 @@ export default defineEventHandler(async (event) => {
     return { updated: 0, message: 'Нет терминов для линковки' }
   }
 
-  // Get all published content articles (exclude term articles)
+  // Get all articles with content (published + drafts, term + non-term)
   const articles = await db.prepare(`
     SELECT id, html_content FROM articles
-    WHERE is_published = 1 AND (is_term_article = 0 OR is_term_article IS NULL)
+    WHERE html_content IS NOT NULL AND TRIM(html_content) != ''
   `).all() as any[]
 
   let updated = 0

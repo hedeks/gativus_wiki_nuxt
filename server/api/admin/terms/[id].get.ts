@@ -14,14 +14,16 @@ export default defineEventHandler(async (event) => {
 
   const term = await db.prepare(`
     SELECT
-      t.id, t.slug, t.slug_ru, t.title, t.title_ru, t.aliases, t.definition, t.definition_ru,
+      t.id, t.slug, t.slug_ru, t.slug_zh, t.title, t.title_ru, t.title_zh, t.aliases, t.definition, t.definition_ru, t.definition_zh,
       t.term_article_id, t.created_at, t.updated_at,
       t.created_by,
       a.html_content as article_html,
       a.id as article_id,
       a.slug as article_slug,
       a.category_id,
-      a.presentation_path,
+      CASE WHEN t.term_article_id IS NOT NULL THEN a.presentation_path ELSE t.presentation_path END as presentation_path,
+      CASE WHEN t.term_article_id IS NOT NULL THEN a.presentation_path_ru ELSE t.presentation_path_ru END as presentation_path_ru,
+      CASE WHEN t.term_article_id IS NOT NULL THEN a.presentation_path_zh ELSE t.presentation_path_zh END as presentation_path_zh,
       c.title as category_title
     FROM terms t
     LEFT JOIN articles a ON t.term_article_id = a.id

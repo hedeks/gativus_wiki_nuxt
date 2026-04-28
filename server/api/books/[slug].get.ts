@@ -29,16 +29,15 @@ export default defineEventHandler(async (event) => {
   const categoryRows = await db.prepare('SELECT category_id FROM book_categories WHERE book_id = ?').all(book.id) as any[]
   book.category_ids = categoryRows.map(r => r.category_id)
 
-  const articlesQuery = locale 
-    ? `SELECT id, slug, title, excerpt, sort_order, locale, is_published, created_at, updated_at FROM articles WHERE book_id = ? AND locale = ? ORDER BY sort_order ASC`
-    : `SELECT id, slug, title, excerpt, sort_order, locale, is_published, created_at, updated_at FROM articles WHERE book_id = ? ORDER BY sort_order ASC`
-  
-  const articles = locale 
-    ? await db.prepare(articlesQuery).all(book.id, locale) as any[]
-    : await db.prepare(articlesQuery).all(book.id) as any[]
+  const articles = await db.prepare(`
+    SELECT id, slug, title, excerpt, sort_order, is_published, created_at, updated_at
+    FROM articles
+    WHERE book_id = ?
+    ORDER BY sort_order ASC
+  `).all(book.id) as any[]
 
   return {
     ...book,
-    articles: articles || [],
+    articles: (articles || []).map((a: any) => ({ ...a, locale: 'global' })),
   }
 })

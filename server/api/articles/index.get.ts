@@ -43,14 +43,8 @@ export default defineEventHandler(async (event) => {
     params.push(categoryId)
   }
   
-  // If we want to filter by the selected language (now optional)
-  if (lang) {
-    conditions.push('a.locale = ?')
-    params.push(lang)
-  }
-
   if (search) {
-    conditions.push('(a.title LIKE ? OR a.excerpt LIKE ?)')
+    conditions.push('(a.title LIKE ? COLLATE NOCASE OR a.excerpt LIKE ? COLLATE NOCASE)')
     params.push(`%${search}%`, `%${search}%`)
   }
 
@@ -70,7 +64,7 @@ export default defineEventHandler(async (event) => {
   const items = await db.prepare(`
     SELECT 
       a.id, a.slug, a.title, a.excerpt, a.book_id, a.category_id,
-      a.locale, a.sort_order, a.is_published, a.is_term_article, a.created_at, a.updated_at, a.presentation_path,
+      a.sort_order, a.is_published, a.is_term_article, a.created_at, a.updated_at, a.presentation_path,
       b.title as book_title_en,
       b.title_ru as book_title_ru,
       b.title_zh as book_title_zh,
@@ -90,6 +84,7 @@ export default defineEventHandler(async (event) => {
       const isZh = lang === 'zh'
       return {
         ...a,
+        locale: 'global',
         book_title: (isRu ? a.book_title_ru : (isZh ? a.book_title_zh : a.book_title_en)) || a.book_title_en,
         category_title: (isRu && a.category_title_ru) ? a.category_title_ru : a.category_title
       }

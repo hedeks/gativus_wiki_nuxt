@@ -1,5 +1,5 @@
 <template>
-  <div class="glossary-form-page">
+  <div class="glossary-form-page gv-admin-page">
     <div class="form-header">
       <NuxtLink to="/admin/glossary" class="back-link">
         <UIcon name="i-heroicons-arrow-left" /> Назад к глоссарию
@@ -22,28 +22,12 @@
         </div>
       </div>
 
-      <UTabs :items="tabItems" class="mb-8">
+      <UTabs :items="tabItems" class="mb-8" @change="activeTab = tabItems[$event].key">
         <template #item="{ item }">
-          <div v-if="item.key === 'ru'" class="tab-content">
-            <div class="field">
-              <label class="field-label">Название (RU) <span class="required">*</span></label>
-              <input v-model="form.title_ru" class="field-input" placeholder="Название на русском" />
-            </div>
-            <div class="field">
-              <label class="field-label">Slug (RU)</label>
-              <input v-model="form.slug_ru" class="field-input" placeholder="slug-na-russkom" />
-            </div>
-            <div class="field">
-              <label class="field-label">Определение (RU) <span class="required">*</span></label>
-              <UTextarea v-model="form.definition_ru" :rows="4" class="field-textarea"
-                placeholder="Краткое определение на русском..." />
-            </div>
-          </div>
-
-          <div v-else-if="item.key === 'en'" class="tab-content">
+          <div v-if="item.key === 'en'" class="tab-content space-y-5 pt-4">
             <div class="field">
               <label class="field-label">Название (EN/Default) <span class="required">*</span></label>
-              <input v-model="form.title" class="field-input" required placeholder="Term title" />
+              <input v-model="form.title" class="field-input" placeholder="Term title" />
             </div>
             <div class="field">
               <label class="field-label">Slug (EN/Default)</label>
@@ -51,8 +35,40 @@
             </div>
             <div class="field">
               <label class="field-label">Определение (EN/Default) <span class="required">*</span></label>
-              <UTextarea v-model="form.definition" :rows="4" class="field-textarea" required
+              <UTextarea v-model="form.definition" :rows="4" class="field-textarea"
                 placeholder="Brief definition in English..." />
+            </div>
+          </div>
+
+          <div v-else-if="item.key === 'ru'" class="tab-content space-y-5 pt-4">
+            <div class="field">
+              <label class="field-label">Название (RU)</label>
+              <input v-model="form.title_ru" class="field-input" placeholder="Название на русском" />
+            </div>
+            <div class="field">
+              <label class="field-label">Slug (RU)</label>
+              <input v-model="form.slug_ru" class="field-input" placeholder="slug-na-russkom" />
+            </div>
+            <div class="field">
+              <label class="field-label">Определение (RU)</label>
+              <UTextarea v-model="form.definition_ru" :rows="4" class="field-textarea"
+                placeholder="Краткое определение на русском..." />
+            </div>
+          </div>
+
+          <div v-else-if="item.key === 'zh'" class="tab-content space-y-5 pt-4">
+            <div class="field">
+              <label class="field-label">Название (ZH)</label>
+              <input v-model="form.title_zh" class="field-input" placeholder="中文标题" />
+            </div>
+            <div class="field">
+              <label class="field-label">Slug (ZH)</label>
+              <input v-model="form.slug_zh" class="field-input" placeholder="zhong-wen-slug" />
+            </div>
+            <div class="field">
+              <label class="field-label">Определение (ZH)</label>
+              <UTextarea v-model="form.definition_zh" :rows="4" class="field-textarea"
+                placeholder="简短定义..." />
             </div>
           </div>
         </template>
@@ -84,10 +100,18 @@
         </select>
       </div>
 
-      <!-- Presentation -->
+      <!-- Presentation (per locale) -->
       <div class="field">
-        <label class="field-label">Путь к презентации</label>
-        <input v-model="form.presentation_path" class="field-input" placeholder="/presentations/your-file.pdf" />
+        <label class="field-label">Презентация (EN)</label>
+        <input v-model="form.presentation_path" class="field-input" placeholder="/presentations/..." />
+      </div>
+      <div class="field">
+        <label class="field-label">Презентация (RU)</label>
+        <input v-model="form.presentation_path_ru" class="field-input" placeholder="/presentations/..." />
+      </div>
+      <div class="field">
+        <label class="field-label">Презентация (ZH)</label>
+        <input v-model="form.presentation_path_zh" class="field-input" placeholder="/presentations/..." />
       </div>
 
       <!-- Full article -->
@@ -111,8 +135,30 @@
             </button>
             <button type="button" class="toolbar-btn" @click="insertTag('p')">¶</button>
           </div>
-          <textarea ref="editorRef" v-model="form.html_content" class="field-textarea editor-textarea" rows="12"
-            placeholder="Опционально. Расширенное раскрытие термина в HTML-формате. Будет отображаться на странице /glossary/:slug." />
+          <textarea
+            v-if="activeTab === 'en'"
+            ref="editorRef"
+            v-model="form.html_content"
+            class="field-textarea editor-textarea"
+            rows="12"
+            placeholder="Опционально. Расширенное раскрытие термина в HTML-формате (EN). Будет отображаться на странице /glossary/:slug."
+          />
+          <textarea
+            v-else-if="activeTab === 'ru'"
+            ref="editorRef"
+            v-model="form.html_content_ru"
+            class="field-textarea editor-textarea"
+            rows="12"
+            placeholder="Опционально. Расширенное раскрытие термина в HTML-формате (RU). Будет отображаться на странице /glossary/:slug."
+          />
+          <textarea
+            v-else-if="activeTab === 'zh'"
+            ref="editorRef"
+            v-model="form.html_content_zh"
+            class="field-textarea editor-textarea"
+            rows="12"
+            placeholder="Опционально. Расширенное раскрытие термина в HTML-формате (ZH). Будет отображаться на странице /glossary/:slug."
+          />
         </div>
       </div>
 
@@ -123,20 +169,21 @@
           <div class="media-field">
             <label class="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Изображение (URL или
               загрузка)</label>
-            <div class="flex gap-2">
-              <UInput v-model="form.image_url" class="flex-1" placeholder="https://..." />
-              <UButton icon="i-heroicons-paper-clip" color="gray" variant="soft" @click="triggerMediaUpload('image')" />
-            </div>
+            <AdminMediaPicker
+              v-model="form.image_url"
+              upload-endpoint="/api/admin/uploads/term-media"
+              accept="image/*"
+            />
           </div>
           <div class="media-field">
             <label class="text-[10px] font-bold text-gray-400 mb-1 block uppercase">Видео (URL или загрузка)</label>
-            <div class="flex gap-2">
-              <UInput v-model="form.video_url" class="flex-1" placeholder="https://..." />
-              <UButton icon="i-heroicons-paper-clip" color="gray" variant="soft" @click="triggerMediaUpload('video')" />
-            </div>
+            <AdminMediaPicker
+              v-model="form.video_url"
+              upload-endpoint="/api/admin/uploads/term-media"
+              accept="video/*"
+            />
           </div>
         </div>
-        <input type="file" ref="mediaFileInput" class="hidden" @change="handleMediaUpload" />
       </div>
 
       <!-- Actions -->
@@ -173,21 +220,31 @@ const toast = useToast()
 
 const odtFileInput = ref<HTMLInputElement>()
 
+const activeTab = ref('en')
+
 const tabItems = [
+  { key: 'en', label: 'English (EN)', icon: 'i-heroicons-globe-alt' },
   { key: 'ru', label: 'Русский (RU)', icon: 'i-heroicons-language' },
-  { key: 'en', label: 'English (EN)', icon: 'i-heroicons-globe-alt' }
+  { key: 'zh', label: '中文 (ZH)', icon: 'i-heroicons-language' }
 ]
 
 const form = reactive({
   title: '',
   title_ru: '',
+  title_zh: '',
   slug: '',
   slug_ru: '',
+  slug_zh: '',
   aliases: [] as string[],
   definition: '',
   definition_ru: '',
+  definition_zh: '',
   html_content: '',
+  html_content_ru: '',
+  html_content_zh: '',
   presentation_path: '',
+  presentation_path_ru: '',
+  presentation_path_zh: '',
   image_url: '',
   video_url: '',
   category_id: null as number | null,
@@ -217,50 +274,24 @@ async function handleOdtUpload(event: Event) {
     })
 
     // Populate both full article and definitions as defaults
-    form.html_content = html
+    if (activeTab.value === 'en') form.html_content = html
+    else if (activeTab.value === 'ru') form.html_content_ru = html
+    else if (activeTab.value === 'zh') form.html_content_zh = html
+    
     const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-    if (!form.definition_ru) form.definition_ru = text
-    else if (!form.definition) form.definition = text
+    if (activeTab.value === 'en') {
+      if (!form.definition) form.definition = text
+    } else if (activeTab.value === 'ru') {
+      if (!form.definition_ru) form.definition_ru = text
+    } else if (activeTab.value === 'zh') {
+      if (!form.definition_zh) form.definition_zh = text
+    }
 
     toast.add({ title: 'ODT импортирован', description: 'Контент добавлен в форму', color: 'green' })
   } catch (e: any) {
     toast.add({ title: 'Ошибка импорта', description: e.data?.statusMessage || e.message, color: 'red' })
   } finally {
     odtUploading.value = false
-    input.value = ''
-  }
-}
-
-const mediaFileInput = ref<HTMLInputElement>()
-const currentUploadTarget = ref<'image' | 'video'>('image')
-
-function triggerMediaUpload(type: 'image' | 'video') {
-  currentUploadTarget.value = type
-  mediaFileInput.value?.click()
-}
-
-async function handleMediaUpload(event: Event) {
-  const input = event.target as HTMLInputElement
-  if (!input.files?.length) return
-
-  const file = input.files[0]
-  const formData = new FormData()
-  formData.append('file', file)
-
-  try {
-    const res = await $fetch<any>('/api/admin/uploads/term-media', {
-      method: 'POST',
-      headers: store.getAuthHeader(),
-      body: formData
-    })
-
-    if (currentUploadTarget.value === 'image') form.image_url = res.url
-    else form.video_url = res.url
-
-    toast.add({ title: 'Файл загружен', color: 'green' })
-  } catch (e: any) {
-    toast.add({ title: 'Ошибка загрузки', description: e.data?.statusMessage || e.message, color: 'red' })
-  } finally {
     input.value = ''
   }
 }
@@ -274,7 +305,9 @@ function insertTerm(term: any) {
 
   const insertion = `<a class="wiki-term" data-term-slug="${term.slug}">${selectedText}</a>`
 
-  form.html_content = text.substring(0, s) + insertion + text.substring(e)
+  if (activeTab.value === 'en') form.html_content = text.substring(0, s) + insertion + text.substring(e)
+  else if (activeTab.value === 'ru') form.html_content_ru = text.substring(0, s) + insertion + text.substring(e)
+  else if (activeTab.value === 'zh') form.html_content_zh = text.substring(0, s) + insertion + text.substring(e)
 
   nextTick(() => {
     ta.focus()
@@ -308,7 +341,11 @@ function wrapSelection(tag: string) {
   const { selectionStart: s, selectionEnd: e } = ta
   const sel = ta.value.slice(s, e)
   const wrapped = `<${tag}>${sel}</${tag}>`
-  form.html_content = ta.value.slice(0, s) + wrapped + ta.value.slice(e)
+  
+  if (activeTab.value === 'en') form.html_content = ta.value.slice(0, s) + wrapped + ta.value.slice(e)
+  else if (activeTab.value === 'ru') form.html_content_ru = ta.value.slice(0, s) + wrapped + ta.value.slice(e)
+  else if (activeTab.value === 'zh') form.html_content_zh = ta.value.slice(0, s) + wrapped + ta.value.slice(e)
+  
   nextTick(() => { ta.setSelectionRange(s, s + wrapped.length) })
 }
 function insertTag(tag: string) {
@@ -316,11 +353,17 @@ function insertTag(tag: string) {
   if (!ta) return
   const insert = `<${tag}></${tag}>`
   const pos = ta.selectionStart
-  form.html_content = ta.value.slice(0, pos) + insert + ta.value.slice(pos)
+  
+  if (activeTab.value === 'en') form.html_content = ta.value.slice(0, pos) + insert + ta.value.slice(pos)
+  else if (activeTab.value === 'ru') form.html_content_ru = ta.value.slice(0, pos) + insert + ta.value.slice(pos)
+  else if (activeTab.value === 'zh') form.html_content_zh = ta.value.slice(0, pos) + insert + ta.value.slice(pos)
 }
 
 async function handleSubmit() {
-  if (!form.title || !form.definition) return
+  if (!form.title || !form.definition) {
+    error.value = 'Заполните обязательные поля EN: название и определение'
+    return
+  }
   submitting.value = true
   error.value = ''
   try {
@@ -332,13 +375,20 @@ async function handleSubmit() {
       body: {
         title: form.title,
         title_ru: form.title_ru || undefined,
+        title_zh: form.title_zh || undefined,
         slug: form.slug || undefined,
         slug_ru: form.slug_ru || undefined,
+        slug_zh: form.slug_zh || undefined,
         aliases: form.aliases,
         definition: form.definition,
         definition_ru: form.definition_ru || undefined,
+        definition_zh: form.definition_zh || undefined,
         html_content: form.html_content || undefined,
+        html_content_ru: form.html_content_ru || undefined,
+        html_content_zh: form.html_content_zh || undefined,
         presentation_path: form.presentation_path || undefined,
+        presentation_path_ru: form.presentation_path_ru || undefined,
+        presentation_path_zh: form.presentation_path_zh || undefined,
         image_url: form.image_url || undefined,
         video_url: form.video_url || undefined,
         category_id: form.category_id,
@@ -404,13 +454,13 @@ async function handleSubmit() {
 .term-form {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 32px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .field-label {
@@ -622,5 +672,33 @@ async function handleSubmit() {
 .dark .error-banner {
   background: #450a0a;
   color: #f87171;
+}
+
+@media (max-width: 768px) {
+  .glossary-form-page {
+    padding: 18px 14px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+
+  .form-title {
+    font-size: 20px;
+    letter-spacing: 1px;
+  }
+
+  .editor-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .toolbar-btn {
+    min-width: 34px;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-actions :deep(button),
+  .form-actions a {
+    width: 100%;
+  }
 }
 </style>

@@ -33,7 +33,6 @@ export default defineEventHandler(async (event) => {
   const bookId = options.book_id || null
   const categoryId = options.category_id || null
   const splitLevel = options.split_level || 'h2'
-  const locale = options.locale || 'en'
 
   try {
     // 1. Parse ODT
@@ -82,8 +81,8 @@ export default defineEventHandler(async (event) => {
       const slug = await ensureUniqueSlug(db, 'articles', article.slug)
 
       await db.prepare(`
-        INSERT INTO articles (slug, title, html_content, raw_odt_path, book_id, category_id, sort_order, excerpt, locale, created_by, is_published)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        INSERT INTO articles (slug, title, html_content, raw_odt_path, book_id, category_id, sort_order, excerpt, created_by, is_published)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
       `).run(
         slug,
         article.title,
@@ -93,7 +92,6 @@ export default defineEventHandler(async (event) => {
         categoryId,
         maxSortOrder + i + 1,
         article.excerpt,
-        locale,
         auth.id
       )
 

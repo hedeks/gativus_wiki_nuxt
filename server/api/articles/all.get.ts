@@ -25,11 +25,7 @@ export default defineEventHandler(async (event) => {
     // Hide term-articles from main listing
     conditions.push('(a.is_term_article = 0 OR a.is_term_article IS NULL)')
   
-    // Filter by locale
-    conditions.push('a.locale = ?')
-    params.push(lang)
-  
-    const whereClause = 'WHERE ' + conditions.join(' AND ')
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
   
     const items = await db.prepare(`
       SELECT 
@@ -41,14 +37,14 @@ export default defineEventHandler(async (event) => {
         a.excerpt,
         a.book_id,
         a.category_id,
-        a.locale,
         a.sort_order,
         a.is_published,
         a.is_term_article,
         a.created_at,
         a.updated_at,
         a.presentation_path,
-        a.origin_id,
+        a.presentation_path_ru,
+        a.presentation_path_zh,
         b.title AS book_title_en,
         b.title_ru AS book_title_ru,
         b.title_zh AS book_title_zh,
@@ -76,14 +72,15 @@ export default defineEventHandler(async (event) => {
       excerpt: a.excerpt || '',
       book_id: a.book_id,
       category_id: a.category_id,
-      locale: a.locale,
+      locale: 'global',
       sort_order: a.sort_order,
       is_published: a.is_published,
       is_term_article: a.is_term_article,
       created_at: a.created_at,
       updated_at: a.updated_at,
       presentation_path: a.presentation_path,
-      origin_id: a.origin_id,
+      presentation_path_ru: a.presentation_path_ru,
+      presentation_path_zh: a.presentation_path_zh,
       // Resolved by language
       book_title: resolveLocalized(
         a.book_title_en,
