@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
 
   // 5. Article Mentions (Article to terms)
   const mentionsRaw = await db.prepare(`
-    SELECT a.slug as article_slug, t.slug as term_slug
+    SELECT a.slug as article_slug, t.slug as term_slug, at.mention_count
     FROM article_terms at
     JOIN articles a ON at.article_id = a.id
     JOIN terms t ON at.term_id = t.id

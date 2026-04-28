@@ -72,97 +72,97 @@ const moveDown = async (cat: any) => {
 </script>
 
 <template>
-  <div class="categories-page gv-admin-page">
-    <div class="page-header gv-admin-index-head">
-      <div class="gv-admin-head">
-        <p class="gv-admin-eyebrow">ADMIN</p>
-        <h1 class="gv-admin-title">Категории</h1>
-        <p class="gv-admin-subtitle">Дерево категорий и быстрые операции</p>
-      </div>
-      <div class="gv-admin-index-actions">
-        <UButton icon="i-heroicons-plus" color="red" @click="openCreate()">
-          Добавить корень
-        </UButton>
-      </div>
-    </div>
-
-    <div class="gv-admin-filter-row">
-      <BaseSearch
-        v-model="searchQuery"
-        placeholder="Поиск категории..."
-        :is-pending="false"
-        :is-debouncing="isTyping"
-        class="flex-1"
-      />
-      <ExpandableFilters
-        label="Фильтры"
-        :active-count="activeFilterCount"
-        :has-active-filters="activeFilterCount > 0"
-      >
-        <div class="filter-group">
-          <span class="filter-group-label">Структура</span>
-          <button
-            type="button"
-            class="gv-filter-pill gv-focusable"
-            :class="{ 'is-active': hasChildrenOnly }"
-            @click="hasChildrenOnly = !hasChildrenOnly"
-          >
-            Только с подкатегориями
-          </button>
+  <div class="admin-page-stack">
+    <section class="admin-dash-hero">
+      <div class="hero-title-container">
+        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+        <div class="hero-text">
+          <p class="gv-admin-eyebrow">ADMIN</p>
+          <h1 class="hero-title gv-hero-gradient uppercase">Категории</h1>
+          <p class="hero-lead">Дерево категорий и быстрые операции</p>
         </div>
-      </ExpandableFilters>
-    </div>
-
-    <div class="category-tree gv-admin-surface overflow-x-auto">
-      <div v-if="!filteredTree || filteredTree.length === 0" class="empty-state">
-        Категории не найдены.
       </div>
+    </section>
 
-      <AdminCategoryItem v-for="cat in filteredTree" :key="cat.id" :category="cat" @delete="deleteCategory"
-        @create-child="openCreate" @move-up="moveUp" @move-down="moveDown" />
+    <div class="cta-buttons admin-index-toolbar cta-buttons--left">
+      <button type="button" class="cta-button primary" @click="openCreate()">
+        <UIcon name="i-heroicons-plus" />
+        <span>Добавить корень</span>
+      </button>
     </div>
+
+    <section class="section-card">
+      <header class="card-header">
+        <span class="card-badge">FILT</span>
+        <h2 class="card-header-title">Поиск и фильтры</h2>
+      </header>
+      <div class="card-body">
+        <div class="gv-admin-filter-row">
+          <BaseSearch
+            v-model="searchQuery"
+            placeholder="Поиск категории..."
+            :is-pending="false"
+            :is-debouncing="isTyping"
+            class="flex-1"
+          />
+          <ExpandableFilters
+            label="Фильтры"
+            :active-count="activeFilterCount"
+            :has-active-filters="activeFilterCount > 0"
+          >
+            <div class="filter-group">
+              <span class="filter-group-label">Структура</span>
+              <button
+                type="button"
+                class="gv-filter-pill gv-focusable"
+                :class="{ 'is-active': hasChildrenOnly }"
+                @click="hasChildrenOnly = !hasChildrenOnly"
+              >
+                Только с подкатегориями
+              </button>
+            </div>
+          </ExpandableFilters>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <header class="card-header">
+        <span class="card-badge">TREE</span>
+        <h2 class="card-header-title">Иерархия</h2>
+      </header>
+      <div class="card-body card-body--flush overflow-x-auto category-tree">
+        <div v-if="!filteredTree || filteredTree.length === 0" class="empty-state">
+          Категории не найдены.
+        </div>
+
+        <AdminCategoryItem
+          v-for="cat in filteredTree"
+          :key="cat.id"
+          :category="cat"
+          @delete="deleteCategory"
+          @create-child="openCreate"
+          @move-up="moveUp"
+          @move-down="moveDown"
+        />
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.page-subtitle {
-  color: #666;
-  font-size: 14px;
-  margin-top: 4px;
-}
-
-.dark .page-subtitle {
-  color: #999;
-}
-
 .category-tree {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.dark .category-tree {
-  background: #1a1a1d;
-  border-color: #2a2a2e;
+  min-height: 80px;
+  padding: 12px 16px 20px;
 }
 
 .empty-state {
   padding: 40px;
   text-align: center;
   color: #888;
+}
+
+.dark .empty-state {
+  color: #a1a1aa;
 }
 </style>

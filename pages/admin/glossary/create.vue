@@ -1,13 +1,30 @@
 <template>
-  <div class="glossary-form-page gv-admin-page">
-    <div class="form-header">
-      <NuxtLink to="/admin/glossary" class="back-link">
-        <UIcon name="i-heroicons-arrow-left" /> Назад к глоссарию
+  <div class="admin-page-stack glossary-form-page">
+    <div class="cta-buttons admin-index-toolbar cta-buttons--left">
+      <NuxtLink to="/admin/glossary" class="cta-button secondary">
+        <UIcon name="i-heroicons-arrow-left" />
+        <span>Назад к глоссарию</span>
       </NuxtLink>
-      <h1 class="form-title">Создать термин</h1>
     </div>
 
-    <form class="term-form" @submit.prevent="handleSubmit">
+    <section class="admin-dash-hero">
+      <div class="hero-title-container">
+        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+        <div class="hero-text">
+          <p class="gv-admin-eyebrow">ADMIN</p>
+          <h1 class="hero-title gv-hero-gradient uppercase">Создать термин</h1>
+          <p class="hero-lead">Новая запись глоссария</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <header class="card-header">
+        <span class="card-badge">TERM</span>
+        <h2 class="card-header-title">Форма термина</h2>
+      </header>
+      <div class="card-body">
+        <form class="term-form" @submit.prevent="handleSubmit">
 
       <!-- ODT Upload Section -->
       <div class="odt-upload-section mb-6">
@@ -203,6 +220,8 @@
         {{ error }}
       </div>
     </form>
+      </div>
+    </section>
 
     <!-- Modal for glossary terms -->
     <AdminTermSelectorModal v-model="showTermModal" @select="insertTerm" />

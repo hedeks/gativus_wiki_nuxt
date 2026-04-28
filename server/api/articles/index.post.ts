@@ -5,7 +5,7 @@
  */
 
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
-import { buildTermsMap, linkTermsInHtml } from '~/server/utils/termLinker'
+import { buildTermsMap, linkTermsInHtml, mergeMentionCountMaps, replaceArticleTermMentions } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
@@ -23,10 +23,13 @@ export default defineEventHandler(async (event) => {
 
   // ─── Phase 3: Auto-linking terms ───
   const termsMap = await buildTermsMap(db)
-  const { html: processedHtml, linkedTermIds } = linkTermsInHtml(html_content, termsMap)
-  
-  const processedHtmlRu = html_content_ru ? linkTermsInHtml(html_content_ru, termsMap).html : null
-  const processedHtmlZh = html_content_zh ? linkTermsInHtml(html_content_zh, termsMap).html : null
+  const rEn = linkTermsInHtml(html_content, termsMap)
+  const processedHtml = rEn.html
+  const rRu = html_content_ru ? linkTermsInHtml(html_content_ru, termsMap) : null
+  const rZh = html_content_zh ? linkTermsInHtml(html_content_zh, termsMap) : null
+  const processedHtmlRu = rRu?.html ?? null
+  const processedHtmlZh = rZh?.html ?? null
+  const mergedMentions = mergeMentionCountMaps([rEn.mentionCountByTermId, rRu?.mentionCountByTermId, rZh?.mentionCountByTermId])
 
   const finalExcerpt = excerpt || generateExcerptFromHtml(processedHtml)
 
@@ -70,11 +73,8 @@ export default defineEventHandler(async (event) => {
   `).run(articleId, processedHtml, 'Initial version', auth.id)
 
   // ─── Phase 4: Sync Knowledge Graph ───
-  if (linkedTermIds.length > 0) {
-    const insertStmt = db.prepare('INSERT INTO article_terms (article_id, term_id) VALUES (?, ?)')
-    for (const termId of linkedTermIds) {
-      insertStmt.run(articleId, termId)
-    }
+  if (mergedMentions.size > 0) {
+    replaceArticleTermMentions(db, articleId, mergedMentions)
   }
 
   return {

@@ -6,7 +6,7 @@
  */
 
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
-import { buildTermsMap, linkTermsInHtml } from '~/server/utils/termLinker'
+import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
@@ -91,12 +91,10 @@ export default defineEventHandler(async (event) => {
     let finalHtml = ''
     let finalHtmlRu = null
     let finalHtmlZh = null
-    let linkedTermIds: number[] = []
 
     if (html_content !== undefined) {
       const result = linkTermsInHtml(html_content, termsMap)
       finalHtml = result.html
-      linkedTermIds = result.linkedTermIds
     } else {
       finalHtml = currentArticle?.html_content || ''
     }
@@ -149,15 +147,8 @@ export default defineEventHandler(async (event) => {
         `).run(existing.term_article_id, finalHtml, nextNum, change_summary || null, auth.id)
       }
 
-      // Sync article_terms for the disclosure article
-      if (html_content !== undefined) {
-        await db.prepare('DELETE FROM article_terms WHERE article_id = ?').run(existing.term_article_id)
-        if (linkedTermIds.length > 0) {
-          const insertStmt = db.prepare('INSERT INTO article_terms (article_id, term_id) VALUES (?, ?)')
-          for (const tId of linkedTermIds) {
-            insertStmt.run(existing.term_article_id, tId)
-          }
-        }
+      if (html_content !== undefined || html_content_ru !== undefined || html_content_zh !== undefined) {
+        syncArticleTermsFromArticleRow(db, existing.term_article_id, termsMap)
       }
     } else {
       // Create new linked article
@@ -180,12 +171,8 @@ export default defineEventHandler(async (event) => {
         VALUES (?, ?, 1, 'Initial version (term article)', ?)
       `).run(newArticleId, finalHtml, auth.id)
 
-      // Sync article_terms for the NEW disclosure article
-      if (linkedTermIds.length > 0) {
-        const insertStmt = db.prepare('INSERT INTO article_terms (article_id, term_id) VALUES (?, ?)')
-        for (const tId of linkedTermIds) {
-          insertStmt.run(newArticleId, tId)
-        }
+      if (html_content !== undefined || html_content_ru !== undefined || html_content_zh !== undefined) {
+        syncArticleTermsFromArticleRow(db, newArticleId, termsMap)
       }
 
       updates.push('term_article_id = ?')

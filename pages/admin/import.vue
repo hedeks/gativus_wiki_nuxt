@@ -151,30 +151,47 @@ function formatFileSize(bytes: number): string {
 </script>
 
 <template>
-  <div class="import-page gv-admin-page">
-    <div class="gv-admin-head">
-      <p class="gv-admin-eyebrow">ADMIN</p>
-      <h1 class="gv-admin-title">Импорт ODT</h1>
-      <p class="gv-admin-subtitle">Загрузите OpenDocument файл для автоматического создания статей</p>
-    </div>
-
-    <!-- Drop Zone -->
-    <div v-if="!selectedFile" class="drop-zone" :class="{ 'drop-zone--active': isDragging }" @dragover="onDragOver"
-      @dragleave="onDragLeave" @drop="onDrop">
-      <div class="drop-zone-inner">
-        <UIcon name="i-heroicons-arrow-up-tray" class="drop-zone-icon" />
-        <p class="drop-zone-text">Перетащите файл .odt сюда</p>
-        <p class="drop-zone-hint">или</p>
-        <label class="drop-zone-btn">
-          <input type="file" accept=".odt,.odm" class="sr-only" @change="onFileSelect" />
-          <UIcon name="i-heroicons-folder-open" />
-          <span>Выбрать файл</span>
-        </label>
+  <div class="admin-page-stack import-page">
+    <section class="admin-dash-hero">
+      <div class="hero-title-container">
+        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+        <div class="hero-text">
+          <p class="gv-admin-eyebrow">ADMIN</p>
+          <h1 class="hero-title gv-hero-gradient uppercase">Импорт ODT</h1>
+          <p class="hero-lead">OpenDocument → статьи в базе</p>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Selected File -->
-    <div v-if="selectedFile && !importResult" class="file-card">
+    <section class="section-card">
+      <header class="card-header">
+        <span class="card-badge">ODT</span>
+        <h2 class="card-header-title">Файл и параметры</h2>
+      </header>
+      <div class="card-body">
+        <!-- Drop Zone -->
+        <div
+          v-if="!selectedFile"
+          class="drop-zone"
+          :class="{ 'drop-zone--active': isDragging }"
+          @dragover="onDragOver"
+          @dragleave="onDragLeave"
+          @drop="onDrop"
+        >
+          <div class="drop-zone-inner">
+            <UIcon name="i-heroicons-arrow-up-tray" class="drop-zone-icon" />
+            <p class="drop-zone-text">Перетащите файл .odt сюда</p>
+            <p class="drop-zone-hint">или</p>
+            <label class="drop-zone-btn">
+              <input type="file" accept=".odt,.odm" class="sr-only" @change="onFileSelect" />
+              <UIcon name="i-heroicons-folder-open" />
+              <span>Выбрать файл</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Selected File -->
+        <div v-if="selectedFile && !importResult" class="file-card">
       <div class="file-card-info">
         <div class="file-icon-wrap">
           <UIcon name="i-heroicons-document-text" class="file-icon" />
@@ -247,12 +264,16 @@ function formatFileSize(bytes: number): string {
         </button>
       </div>
     </div>
+      </div>
+    </section>
 
     <!-- Preview Results -->
-    <div v-if="previewArticles.length > 0 && !importResult" class="preview-section">
-      <h2 class="preview-title">
-        Preview: {{ previewArticles.length }} статей
-      </h2>
+    <section v-if="previewArticles.length > 0 && !importResult" class="section-card">
+      <header class="card-header">
+        <span class="card-badge">PRE</span>
+        <h2 class="card-header-title">Preview: {{ previewArticles.length }} статей</h2>
+      </header>
+      <div class="card-body">
       <div class="preview-list">
         <div v-for="(article, idx) in previewArticles" :key="idx" class="preview-card"
           @click="previewHtmlIndex = previewHtmlIndex === idx ? null : idx">
@@ -270,10 +291,12 @@ function formatFileSize(bytes: number): string {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </section>
 
     <!-- Import Result -->
-    <div v-if="importResult" class="result-section">
+    <section v-if="importResult" class="section-card">
+      <div class="card-body">
       <div class="result-card">
         <div class="result-icon-wrap">
           <UIcon name="i-heroicons-check-circle" class="result-icon" />
@@ -297,13 +320,14 @@ function formatFileSize(bytes: number): string {
           </NuxtLink>
         </div>
       </div>
-    </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
 .import-page {
-  max-width: 800px;
+  max-width: 900px;
 }
 
 .import-header {

@@ -147,7 +147,10 @@ export default defineEventHandler(async (event) => {
     const artId = idMap.art.get(m.article_slug)
     const termId = idMap.term.get(m.term_slug)
     if (artId && termId) {
-      await db.prepare('INSERT OR IGNORE INTO article_terms (article_id, term_id) VALUES (?, ?)').run(artId, termId)
+      const mc = Number(m.mention_count) > 0 ? Math.floor(Number(m.mention_count)) : 1
+      await db.prepare(
+        'INSERT INTO article_terms (article_id, term_id, mention_count) VALUES (?, ?, ?)',
+      ).run(artId, termId, mc)
     }
   }
   console.log(`[sync] Imported ${dump.article_mentions?.length || 0} mentions.`)

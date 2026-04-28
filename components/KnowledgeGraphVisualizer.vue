@@ -154,6 +154,12 @@
           </div>
 
           <p class="link-description">{{ relDescriptions[selectedLink.type] || 'Description' }}</p>
+          <p
+            v-if="mentionCountForSelectedLink != null"
+            class="link-mentions"
+          >
+            {{ t.mentions }}: <strong class="tabular-nums">{{ mentionCountForSelectedLink }}</strong>
+          </p>
         </div>
       </transition>
 
@@ -195,6 +201,7 @@ const uiDict: Record<string, any> = {
     none: 'None',
     reset: 'Reset scale',
     hint: 'Click to open →',
+    mentions: 'Occurrences in article text',
     context: 'Context',
     object: 'Object',
     legend: 'Legend',
@@ -214,6 +221,7 @@ const uiDict: Record<string, any> = {
     none: 'Ничего',
     reset: 'Сбросить масштаб',
     hint: 'Нажмите, чтобы открыть →',
+    mentions: 'Вхождений в тексте статьи',
     context: 'Контекст',
     object: 'Объект',
     legend: 'Легенда',
@@ -233,6 +241,7 @@ const uiDict: Record<string, any> = {
     none: '无',
     reset: '重置缩放',
     hint: '点击打开 →',
+    mentions: '文章正文中的出现次数',
     context: '上下文',
     object: '对象',
     legend: '图例',
@@ -244,6 +253,14 @@ const uiDict: Record<string, any> = {
 }
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+
+const mentionCountForSelectedLink = computed(() => {
+  const l = selectedLink.value
+  if (!l || (l.type !== 'mention' && l.type !== 'reference')) return null
+  const n = l.mentionCount
+  if (n == null || Number.isNaN(Number(n))) return null
+  return Math.max(1, Math.floor(Number(n)))
+})
 
 const filterLabels = computed(() => ({
   book: t.value.book,
@@ -1624,6 +1641,17 @@ watch(activeFilters, () => {
 .dark .link-description {
   color: #94a3b8;
   border-color: rgba(255, 255, 255, 0.05);
+}
+
+.link-mentions {
+  font-size: 12px;
+  color: #0ea5e9;
+  margin: 0;
+  padding-top: 8px;
+}
+
+.dark .link-mentions {
+  color: #38bdf8;
 }
 
 .tooltip-header {

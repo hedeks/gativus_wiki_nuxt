@@ -33,7 +33,6 @@ export default defineNuxtConfig({
     vueRuntimeCompiler: false // default true
   },
   app: {
-    pageTransition: { name: 'fade', mode: 'out-in' },
     head: {
       link: [{ rel: 'icon', type: 'image/jpeg', href: '/logo.jpg' }],
       "meta": [
@@ -47,7 +46,7 @@ export default defineNuxtConfig({
       ],
     }
   },
-  css: ['~/assets/css/article-prose.css'],
+  css: ['~/assets/css/article-prose.css', '~/assets/css/admin-about-cards.css'],
   modules: ['@nuxt/ui', '@pinia/nuxt', "@nuxt/content", "@nuxtjs/tailwindcss", 'nuxt-markdown-render', '@nuxtjs/color-mode'],
 
   colorMode: {

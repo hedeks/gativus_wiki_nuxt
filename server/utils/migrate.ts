@@ -157,8 +157,9 @@ export async function runMigrations(db: Database) {
   // ─── 8. Article ↔ Term (many-to-many) ───
   await db.exec(`
     CREATE TABLE IF NOT EXISTS article_terms (
-      article_id  INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
-      term_id     INTEGER NOT NULL REFERENCES terms(id) ON DELETE CASCADE,
+      article_id     INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+      term_id        INTEGER NOT NULL REFERENCES terms(id) ON DELETE CASCADE,
+      mention_count  INTEGER NOT NULL DEFAULT 1,
       PRIMARY KEY (article_id, term_id)
     )
   `)
@@ -261,6 +262,17 @@ export async function runMigrations(db: Database) {
     await db.exec(`ALTER TABLE books DROP COLUMN locale`)
     await db.exec(`ALTER TABLE books DROP COLUMN origin_id`)
   } catch { /* graceful fail */ }
+
+  try {
+    const atCols = await db.prepare('PRAGMA table_info(article_terms)').all() as any[]
+    const atNames = atCols.map((c: any) => c.name)
+    if (!atNames.includes('mention_count')) {
+      await db.exec(`ALTER TABLE article_terms ADD COLUMN mention_count INTEGER NOT NULL DEFAULT 1`)
+      console.log('[migrate] Added mention_count to article_terms')
+    }
+  } catch (e) {
+    console.warn('[migrate] article_terms mention_count check failed:', e)
+  }
 
   // ─── 12. Book ↔ Category (many-to-many) ───
   await db.exec(`

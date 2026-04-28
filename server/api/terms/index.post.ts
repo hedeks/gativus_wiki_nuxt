@@ -5,7 +5,7 @@
  */
 
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
-import { buildTermsMap, linkTermsInHtml } from '~/server/utils/termLinker'
+import { buildTermsMap, linkTermsInHtml, mergeMentionCountMaps, replaceArticleTermMentions } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
@@ -42,10 +42,17 @@ export default defineEventHandler(async (event) => {
   // If extended content provided — create a linked term-article first
   if (html_content || html_content_ru || html_content_zh || presentation_path || presentation_path_ru || presentation_path_zh) {
     const termsMap = await buildTermsMap(db)
-    const result = html_content ? linkTermsInHtml(html_content, termsMap) : { html: '' }
-    const finalHtml = result.html
-    const finalHtmlRu = html_content_ru ? linkTermsInHtml(html_content_ru, termsMap).html : null
-    const finalHtmlZh = html_content_zh ? linkTermsInHtml(html_content_zh, termsMap).html : null
+    const rMain = html_content ? linkTermsInHtml(html_content, termsMap) : null
+    const rRu = html_content_ru ? linkTermsInHtml(html_content_ru, termsMap) : null
+    const rZh = html_content_zh ? linkTermsInHtml(html_content_zh, termsMap) : null
+    const finalHtml = rMain?.html ?? ''
+    const finalHtmlRu = rRu?.html ?? null
+    const finalHtmlZh = rZh?.html ?? null
+    const mergedMentions = mergeMentionCountMaps([
+      rMain?.mentionCountByTermId,
+      rRu?.mentionCountByTermId,
+      rZh?.mentionCountByTermId,
+    ])
 
     const articleSlug = await ensureUniqueSlug(db, 'articles', `term-${slug}`)
     const excerpt = generateExcerpt(finalHtml)
@@ -63,6 +70,10 @@ export default defineEventHandler(async (event) => {
       INSERT INTO article_revisions (article_id, html_content, revision_num, change_summary, created_by)
       VALUES (?, ?, 1, 'Initial version (term article)', ?)
     `).run(termArticleId, finalHtml, auth.id)
+
+    if (mergedMentions.size > 0) {
+      replaceArticleTermMentions(db, termArticleId, mergedMentions)
+    }
   }
 
   await db.prepare(`

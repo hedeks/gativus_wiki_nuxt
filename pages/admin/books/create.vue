@@ -1,18 +1,30 @@
 <template>
-  <div class="book-create-page gv-admin-page">
-    <div class="page-header gv-admin-index-head">
-      <div class="gv-admin-head">
-        <p class="gv-admin-eyebrow">ADMIN</p>
-        <h2 class="gv-admin-title">Создание новой книги</h2>
-        <p class="gv-admin-subtitle">Единая сущность книги с локализованными полями</p>
-      </div>
-      <UButton to="/admin/books" icon="i-heroicons-arrow-left" variant="ghost" color="gray">
-        Назад к списку
-      </UButton>
+  <div class="admin-page-stack book-create-page">
+    <div class="cta-buttons admin-index-toolbar cta-buttons--left">
+      <NuxtLink to="/admin/books" class="cta-button secondary">
+        <UIcon name="i-heroicons-arrow-left" />
+        <span>Назад к списку</span>
+      </NuxtLink>
     </div>
 
-    <div class="card p-6 gv-admin-surface">
-      <form @submit.prevent="handleSubmit" class="create-form">
+    <section class="admin-dash-hero">
+      <div class="hero-title-container">
+        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+        <div class="hero-text">
+          <p class="gv-admin-eyebrow">ADMIN</p>
+          <h1 class="hero-title gv-hero-gradient uppercase">Новая книга</h1>
+          <p class="hero-lead">Локализованные поля и метаданные</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <header class="card-header">
+        <span class="card-badge">NEW</span>
+        <h2 class="card-header-title">Данные книги</h2>
+      </header>
+      <div class="card-body">
+        <form @submit.prevent="handleSubmit" class="create-form">
         <div class="form-grid">
           <!-- Left Column: Basic Info -->
           <div class="form-column">
@@ -90,7 +102,8 @@
           </UButton>
         </div>
       </form>
-    </div>
+      </div>
+    </section>
   </div>
 </template>
 

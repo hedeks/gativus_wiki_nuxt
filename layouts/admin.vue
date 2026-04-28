@@ -61,7 +61,7 @@
       </header>
 
       <main class="admin-content">
-        <div class="admin-content-inner gv-admin-page">
+        <div class="admin-content-inner gv-admin-page admin-gv-skin">
           <slot />
         </div>
       </main>

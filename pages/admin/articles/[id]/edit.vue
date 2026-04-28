@@ -302,7 +302,18 @@ async function uploadImage(e: Event) {
 </script>
 
 <template>
-  <div class="editor-page gv-admin-page">
+  <div class="admin-page-stack admin-page-stack--fluid editor-page gv-admin-page">
+    <section class="admin-dash-hero">
+      <div class="hero-title-container">
+        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+        <div class="hero-text">
+          <p class="gv-admin-eyebrow">ADMIN</p>
+          <h1 class="hero-title gv-hero-gradient uppercase">Статья</h1>
+          <p class="hero-lead">{{ title || 'Редактирование' }}</p>
+        </div>
+      </div>
+    </section>
+
     <!-- Top Bar -->
     <div class="editor-topbar">
       <div class="editor-topbar-left">

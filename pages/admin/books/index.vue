@@ -1,53 +1,76 @@
 <template>
-  <div class="books-admin-page gv-admin-page">
-    <div class="page-header gv-admin-index-head">
-      <div class="gv-admin-head">
-        <p class="gv-admin-eyebrow">ADMIN</p>
-        <h2 class="gv-admin-title">Книги</h2>
-        <p class="gv-admin-subtitle">Единый список книг с быстрыми действиями</p>
-      </div>
-      <div class="page-actions gv-admin-index-actions">
-        <UButton to="/admin/books/create" icon="i-heroicons-plus" color="sky">
-          Создать книгу
-        </UButton>
-      </div>
-    </div>
-
-    <div class="gv-admin-filter-row">
-      <BaseSearch
-        v-model="searchQuery"
-        placeholder="Поиск по названию или slug..."
-        :is-pending="pending"
-        :is-debouncing="isTyping"
-        class="flex-1"
-      />
-      <ExpandableFilters
-        label="Фильтры"
-        :active-count="activeFilterCount"
-        :has-active-filters="activeFilterCount > 0"
-      >
-        <div class="filter-group">
-          <span class="filter-group-label">Категории</span>
-          <select v-model="categoryFilter" class="gv-admin-filter-select">
-            <option value="">Все категории</option>
-            <option v-for="cat in categoriesList" :key="cat.id" :value="String(cat.id)">{{ cat.title }}</option>
-          </select>
+  <div class="admin-page-stack">
+    <section class="admin-dash-hero">
+      <div class="hero-title-container">
+        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+        <div class="hero-text">
+          <p class="gv-admin-eyebrow">ADMIN</p>
+          <h1 class="hero-title gv-hero-gradient uppercase">Книги</h1>
+          <p class="hero-lead">Единый список · <span class="tabular-nums">{{ bookTotal }}</span> в базе</p>
         </div>
-      </ExpandableFilters>
+      </div>
+    </section>
+
+    <div class="cta-buttons admin-index-toolbar cta-buttons--left">
+      <NuxtLink to="/admin/books/create" class="cta-button primary">
+        <UIcon name="i-heroicons-plus" />
+        <span>Создать книгу</span>
+      </NuxtLink>
     </div>
 
-    <div v-if="pending" class="loading-state">
-      <UIcon name="i-heroicons-arrow-path" class="animate-spin text-2xl" />
-      <span>Загрузка...</span>
-    </div>
+    <section v-if="pending" class="section-card">
+      <div class="card-body card-body--row">
+        <UIcon name="i-heroicons-arrow-path" class="icon-spin" />
+        <span>Загрузка…</span>
+      </div>
+    </section>
 
-    <div v-else-if="error" class="error-state">
-      <UIcon name="i-heroicons-exclamation-triangle" class="text-2xl text-red-500" />
-      <span>Ошибка при загрузке книг: {{ error.message }}</span>
-    </div>
+    <section v-else-if="error" class="section-card section-card--error">
+      <div class="card-body card-body--row">
+        <UIcon name="i-heroicons-exclamation-triangle" class="icon-err" />
+        <span>Ошибка при загрузке книг: {{ error.message }}</span>
+      </div>
+    </section>
 
-    <div v-else class="books-list card gv-admin-surface overflow-x-auto">
-      <table class="admin-table">
+    <template v-else>
+      <section class="section-card">
+        <header class="card-header">
+          <span class="card-badge">FILT</span>
+          <h2 class="card-header-title">Поиск и фильтры</h2>
+        </header>
+        <div class="card-body">
+          <div class="gv-admin-filter-row">
+            <BaseSearch
+              v-model="searchQuery"
+              placeholder="Поиск по названию или slug..."
+              :is-pending="pending"
+              :is-debouncing="isTyping"
+              class="flex-1"
+            />
+            <ExpandableFilters
+              label="Фильтры"
+              :active-count="activeFilterCount"
+              :has-active-filters="activeFilterCount > 0"
+            >
+              <div class="filter-group">
+                <span class="filter-group-label">Категории</span>
+                <select v-model="categoryFilter" class="gv-admin-filter-select">
+                  <option value="">Все категории</option>
+                  <option v-for="cat in categoriesList" :key="cat.id" :value="String(cat.id)">{{ cat.title }}</option>
+                </select>
+              </div>
+            </ExpandableFilters>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <header class="card-header">
+          <span class="card-badge">LIST</span>
+          <h2 class="card-header-title">Список книг</h2>
+        </header>
+        <div class="card-body card-body--flush overflow-x-auto">
+          <table class="admin-table">
         <thead>
           <tr>
             <th>ID</th>
@@ -98,7 +121,9 @@
           </tr>
         </tbody>
       </table>
-    </div>
+        </div>
+      </section>
+    </template>
 
     <!-- Delete Confirmation Modal -->
     <UModal v-model="deleteModalOpen">
@@ -137,6 +162,7 @@ const categoriesList = computed(() => {
   return ((categories.value as any)?.items || []) as any[]
 })
 const activeFilterCount = computed(() => (categoryFilter.value ? 1 : 0))
+const bookTotal = computed(() => (Array.isArray(books.value) ? books.value.length : 0))
 const filteredBooks = computed(() => {
   const list = (Array.isArray(books.value) ? books.value : []) as any[]
   const query = debouncedQuery.value.trim().toLowerCase()
@@ -185,42 +211,6 @@ async function handleDelete() {
 </script>
 
 <style scoped>
-.books-admin-page {
-  padding: 24px;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-}
-
-.page-title {
-  font-size: 14px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  color: #1a1a1a;
-}
-
-.dark .page-title {
-  color: #e5e5e5;
-}
-
-.card {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.dark .card {
-  background: #18181b; /* zinc-900 */
-  border-color: #27272a; /* zinc-800 */
-}
-
 .admin-table {
   width: 100%;
   border-collapse: collapse;

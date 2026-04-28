@@ -2,7 +2,7 @@
   <div>
     <NuxtLoadingIndicator color="#0ea5e9" :height="3" />
     <NuxtLayout>
-      <NuxtPage />
+      <NuxtPage :transition="pageTransition" />
     </NuxtLayout>
     <UNotifications color="sky" :ui="{
       progress: {
@@ -13,6 +13,15 @@
 </template>
 
 <script setup lang="ts">
+import { runPendingScrollAfterPageLeave } from '~/utils/pendingRouteScroll'
+
+const pageTransition = {
+  name: 'fade',
+  mode: 'out-in' as const,
+  onAfterLeave() {
+    runPendingScrollAfterPageLeave()
+  },
+}
 // userStore recovers session automatically via useCookie
 </script>
 

@@ -75,54 +75,69 @@ function formatDate(dateStr: string): string {
 </script>
 
 <template>
-  <div class="articles-page gv-admin-page">
-    <div class="articles-header gv-admin-index-head">
-      <div class="gv-admin-head">
-        <p class="gv-admin-eyebrow">ADMIN</p>
-        <h1 class="gv-admin-title">Статьи</h1>
-        <p class="gv-admin-subtitle">{{ totalItems }} статей в базе</p>
-      </div>
-      <div class="gv-admin-index-actions">
-        <NuxtLink to="/admin/import" class="header-btn header-btn--secondary">
-          <UIcon name="i-heroicons-arrow-up-tray" />
-          <span>Импорт ODT</span>
-        </NuxtLink>
-        <NuxtLink to="/admin/articles/create" class="header-btn bg-indigo-500 hover:bg-indigo-600">
-          <UIcon name="i-heroicons-plus" />
-          <span>Создать статью</span>
-        </NuxtLink>
-      </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="filters-bar gv-admin-filter-row">
-      <BaseSearch
-        v-model="searchQuery"
-        placeholder="Поиск по названию..."
-        :is-pending="pending"
-        :is-debouncing="isTyping"
-        class="flex-1"
-      />
-      <ExpandableFilters
-        label="Фильтры"
-        :active-count="activeFilterCount"
-        :has-active-filters="activeFilterCount > 0"
-      >
-        <div class="filter-group">
-          <span class="filter-group-label">Книги</span>
-          <select v-model="filterBookId" class="filter-select gv-admin-filter-select" @change="currentPage = 1">
-            <option value="">Все книги</option>
-            <option v-for="book in books" :key="book.id" :value="book.id">
-              {{ book.title }}
-            </option>
-          </select>
+  <div class="admin-page-stack">
+    <section class="admin-dash-hero">
+      <div class="hero-title-container">
+        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+        <div class="hero-text">
+          <p class="gv-admin-eyebrow">ADMIN</p>
+          <h1 class="hero-title gv-hero-gradient uppercase">Статьи</h1>
+          <p class="hero-lead tabular-nums">{{ totalItems }} статей в базе</p>
         </div>
-      </ExpandableFilters>
+      </div>
+    </section>
+
+    <div class="cta-buttons admin-index-toolbar cta-buttons--left">
+      <NuxtLink to="/admin/import" class="cta-button secondary">
+        <UIcon name="i-heroicons-arrow-up-tray" />
+        <span>Импорт ODT</span>
+      </NuxtLink>
+      <NuxtLink to="/admin/articles/create" class="cta-button primary">
+        <UIcon name="i-heroicons-plus" />
+        <span>Создать статью</span>
+      </NuxtLink>
     </div>
 
-    <!-- Table -->
-    <div class="table-wrap gv-admin-surface overflow-x-auto">
-      <table class="articles-table min-w-[760px]">
+    <section class="section-card">
+      <header class="card-header">
+        <span class="card-badge">FILT</span>
+        <h2 class="card-header-title">Поиск и фильтры</h2>
+      </header>
+      <div class="card-body">
+        <div class="gv-admin-filter-row">
+          <BaseSearch
+            v-model="searchQuery"
+            placeholder="Поиск по названию..."
+            :is-pending="pending"
+            :is-debouncing="isTyping"
+            class="flex-1"
+          />
+          <ExpandableFilters
+            label="Фильтры"
+            :active-count="activeFilterCount"
+            :has-active-filters="activeFilterCount > 0"
+          >
+            <div class="filter-group">
+              <span class="filter-group-label">Книги</span>
+              <select v-model="filterBookId" class="filter-select gv-admin-filter-select" @change="currentPage = 1">
+                <option value="">Все книги</option>
+                <option v-for="book in books" :key="book.id" :value="book.id">
+                  {{ book.title }}
+                </option>
+              </select>
+            </div>
+          </ExpandableFilters>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <header class="card-header">
+        <span class="card-badge">LIST</span>
+        <h2 class="card-header-title">Список статей</h2>
+      </header>
+      <div class="card-body card-body--flush overflow-x-auto">
+        <table class="articles-table min-w-[760px]">
         <thead>
           <tr>
             <th>Название</th>
@@ -185,18 +200,19 @@ function formatDate(dateStr: string): string {
           </tr>
         </tbody>
       </table>
-    </div>
-
-    <!-- Pagination -->
-    <div v-if="totalPages > 1" class="pagination">
-      <button class="page-btn" :disabled="currentPage <= 1" @click="currentPage--; refresh()">
-        <UIcon name="i-heroicons-chevron-left" />
-      </button>
-      <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
-      <button class="page-btn" :disabled="currentPage >= totalPages" @click="currentPage++; refresh()">
-        <UIcon name="i-heroicons-chevron-right" />
-      </button>
-    </div>
+      </div>
+      <div v-if="totalPages > 1" class="card-after-table">
+        <div class="pagination">
+          <button class="page-btn" :disabled="currentPage <= 1" @click="currentPage--; refresh()">
+            <UIcon name="i-heroicons-chevron-left" />
+          </button>
+          <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
+          <button class="page-btn" :disabled="currentPage >= totalPages" @click="currentPage++; refresh()">
+            <UIcon name="i-heroicons-chevron-right" />
+          </button>
+        </div>
+      </div>
+    </section>
 
     <!-- Delete Confirmation Modal -->
     <Teleport to="body">
@@ -218,121 +234,7 @@ function formatDate(dateStr: string): string {
 </template>
 
 <style scoped>
-.articles-page {
-  max-width: 1100px;
-}
-
-.articles-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.articles-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1a1a1a;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  margin: 0;
-}
-
-.dark .articles-title {
-  color: #e5e5e5;
-}
-
-.articles-subtitle {
-  color: #888;
-  font-size: 14px;
-  margin: 4px 0 0;
-}
-
-.header-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-radius: 10px;
-  background: #6366f1;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: all 0.2s;
-}
-
-.header-btn:hover {
-  background: #4f46e5;
-  transform: translateY(-1px);
-}
-
-.header-btn--secondary {
-  background: #f1f5f9;
-  color: #555;
-}
-
-.dark .header-btn--secondary {
-  background: #27272a;
-  color: #aaa;
-}
-
-.header-btn--secondary:hover {
-  background: #e2e8f0;
-}
-
-.dark .header-btn--secondary:hover {
-  background: #3f3f46;
-}
-
-/* ─── Filters ─── */
-.filters-bar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.search-wrap {
-  flex: 1;
-  position: relative;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
-  color: #999;
-}
-
-.search-input {
-  width: 100%;
-  padding: 10px 12px 10px 38px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  font-size: 14px;
-  color: #1a1a1a;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.search-input:focus {
-  border-color: #6366f1;
-}
-
-.dark .search-input {
-  background: #1e1e21;
-  border-color: #2a2a2e;
-  color: #e5e5e5;
-}
-
-.dark .search-input:focus {
-  border-color: #6366f1;
-}
-
+/* Table & modals — shell uses shared admin-about-cards.css */
 .filter-select {
   padding: 10px 14px;
   border-radius: 10px;
@@ -351,19 +253,6 @@ function formatDate(dateStr: string): string {
 }
 
 /* ─── Table ─── */
-.table-wrap {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 15px;
-  overflow: hidden;
-  box-shadow: 0 0 1px 1px rgba(119, 119, 119, 0.05);
-}
-
-.dark .table-wrap {
-  background: #18181b;
-  border-color: #27272a;
-}
-
 .articles-table {
   width: 100%;
   border-collapse: collapse;
@@ -601,7 +490,7 @@ function formatDate(dateStr: string): string {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 0;
 }
 
 .page-btn {
@@ -721,10 +610,6 @@ function formatDate(dateStr: string): string {
 }
 
 @media (max-width: 768px) {
-  .filters-bar {
-    flex-direction: column;
-  }
-
   .td-actions {
     flex-wrap: wrap;
   }

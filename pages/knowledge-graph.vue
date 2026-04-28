@@ -1,24 +1,24 @@
 <template>
-  <div class="knowledge-graph-page gv-page">
-    <section class="section-card page-head-card">
-      <div class="card-header">
-        <span class="card-badge">GATIVUS</span>
-        <h2 class="card-header-title">{{ t?.title }}</h2>
-      </div>
-      <div class="graph-hero">
-        <p class="hero-subtitle">{{ t?.subtitle }}</p>
-      </div>
-    </section>
-
-    <section class="section-card graph-section">
-      <div class="card-header">
-        <span class="card-badge">GNET</span>
-        <h2 class="card-header-title">{{ t?.panelTitle }}</h2>
-      </div>
-      <div class="graph-wrapper">
-        <KnowledgeGraphVisualizer :graphData="graphData" :pending="pending" :enableNavigation="true" />
-      </div>
-    </section>
+  <div class="admin-gv-skin kg-root">
+    <div class="admin-page-stack admin-page-stack--fluid kg-stack">
+      <section class="section-card kg-card">
+        <div class="card-body kg-card-body">
+          <div class="kg-intro">
+            <div class="hero-title-container kg-hero-row">
+              <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo kg-hero-logo" />
+              <div class="hero-text">
+                <h1 class="hero-title gv-hero-gradient uppercase">{{ t.heroTitle }}</h1>
+                <p class="hero-lead">{{ t.subtitle }}</p>
+                <p class="kg-map-caption">{{ t.panelTitle }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="graph-wrapper">
+            <KnowledgeGraphVisualizer :graph-data="graphData" :pending="pending" :enable-navigation="true" />
+          </div>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -26,28 +26,28 @@
 import { useLanguageStore } from '~/stores/language'
 const langStore = useLanguageStore()
 
-const uiDict: Record<string, any> = {
+const uiDict: Record<string, { heroTitle: string; subtitle: string; panelTitle: string }> = {
   en: {
-    title: 'Gativus Knowledge Graph',
+    heroTitle: 'Knowledge graph',
     subtitle: 'Ontology visualization: categories, articles, and terms',
-    panelTitle: 'Interactive Ontology Map'
+    panelTitle: 'Interactive ontology map',
   },
   ru: {
-    title: 'Граф знаний Gativus',
+    heroTitle: 'Граф знаний',
     subtitle: 'Визуализация онтологии: категории, статьи и термины',
-    panelTitle: 'Интерактивная карта онтологии'
+    panelTitle: 'Интерактивная карта онтологии',
   },
   zh: {
-    title: 'Gativus 知识图谱',
+    heroTitle: '知识图谱',
     subtitle: '本体可视化：分类、文章与术语',
-    panelTitle: '交互式本体地图'
-  }
+    panelTitle: '交互式本体地图',
+  },
 }
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 
 useHead({
-  title: () => `${t.value.title} — Gativus`
+  title: () => `${t.value.heroTitle} — Gativus`,
 })
 
 const graphData = ref<any>(null)
@@ -65,7 +65,7 @@ const refresh = async () => {
   }
 }
 
-const initialData = await $fetch('/api/knowledge-graph', { query: { lang: langStore.currentLang } }).catch(e => {
+const initialData = await $fetch('/api/knowledge-graph', { query: { lang: langStore.currentLang } }).catch((e) => {
   console.error(e)
   return null
 })
@@ -78,141 +78,102 @@ watch(() => langStore.currentLang, () => {
 </script>
 
 <style scoped>
-.knowledge-graph-page {
+/* Высота ровно под окно ниже шапки (--header-height). Футер ниже блока, без подрезания. */
+.kg-root {
+  width: 100%;
+  height: calc(100dvh - var(--header-height, 65px));
+  max-height: calc(100dvh - var(--header-height, 65px));
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 20px 10px 36px;
-}
-
-.page-head-card {
+  padding: clamp(12px, 2.5vw, 28px);
+  box-sizing: border-box;
   overflow: hidden;
 }
 
-.graph-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  text-align: center;
-  padding: 14px 16px 16px;
+.kg-stack {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  align-items: stretch;
+  overflow: hidden;
 }
 
-.hero-subtitle {
-  margin: 0;
-  font-size: 14px;
-  color: #777;
-  letter-spacing: 1.4px;
+.kg-card {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.kg-card-body {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2vw, 22px);
+  padding: clamp(16px, 2.2vw, 24px);
+  overflow: hidden;
+}
+
+.kg-intro {
+  flex-shrink: 0;
+}
+
+.kg-hero-row {
+  align-items: flex-start;
+}
+
+.kg-hero-logo {
+  height: 52px;
+}
+
+.kg-map-caption {
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: #64748b;
 }
 
-.dark .hero-subtitle {
-  color: #999;
-}
-
-.section-card {
-  width: 100%;
-  border: 1px solid #c8c8c8;
-  border-radius: 15px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  transition: box-shadow 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
-}
-
-.section-card:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
-}
-
-.dark .section-card {
-  background: #1a1a1a;
-  border-color: #333;
-}
-
-.dark .section-card:hover {
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
-}
-
-.card-header {
-  padding: 14px 20px;
-  background-color: #f9f9f9;
-  border-bottom: 1px solid #c8c8c8;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.dark .card-header {
-  background-color: #222;
-  border-bottom-color: #333;
-}
-
-.card-badge {
-  background: linear-gradient(90deg, #e0f2fe, #bae6fd);
-  color: #0c4a6e;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 1px;
-}
-
-.dark .card-badge {
-  background: linear-gradient(90deg, #0c4a6e, #082f49);
-  color: #e0f2fe;
-}
-
-.card-header-title {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 500;
-  color: #333;
-  letter-spacing: 0.3px;
-}
-
-.dark .card-header-title {
-  color: #ddd;
+.dark .kg-map-caption {
+  color: #94a3b8;
 }
 
 .graph-wrapper {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
   width: 100%;
   position: relative;
-  min-height: min(760px, calc(100dvh - var(--header-height, 65px) - 200px));
-  height: clamp(420px, 70dvh, 760px);
   isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-@media (max-width: 900px) {
+.graph-wrapper :deep(.knowledge-graph-visualizer) {
+  flex: 1 1 0;
+  min-height: 0 !important;
+  max-height: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.graph-wrapper :deep(.graph-container) {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 @media (max-width: 640px) {
-  .knowledge-graph-page {
-    gap: 10px;
-    padding: 16px 8px 24px;
-  }
-
-  .hero-subtitle {
-    letter-spacing: 0.8px;
-    font-size: 12px;
-  }
-
-  .card-header {
-    padding: 12px 14px;
-  }
-
-  .card-header-title {
-    font-size: 15px;
-  }
-
-  .graph-wrapper {
-    min-height: 360px;
-    height: clamp(360px, 64dvh, 600px);
+  .kg-hero-logo {
+    height: 44px;
   }
 }
 </style>

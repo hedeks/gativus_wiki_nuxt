@@ -1,259 +1,261 @@
 <script setup lang="ts">
+import type { AdminDashboardStats } from '~/types'
+
 definePageMeta({
   layout: 'admin',
-  middleware: ['auth', 'role']
+  middleware: ['auth', 'role'],
 })
 
 useHead({ title: 'Dashboard — Gativus Admin' })
 
-const db = ref({
-  articles: 0,
-  terms: 0,
-  categories: 0,
-  books: 0,
-  users: 0
+const store = userStore()
+
+/** Онтология визуального языка графа (docs/design/FOUNDATION.md) */
+const ONTO = {
+  category: '#ef4444',
+  book: '#0ea5e9',
+  article: '#6366f1',
+  term: '#10b981',
+} as const
+
+const { data: stats, error, pending, refresh } = await useFetch<AdminDashboardStats>(
+  '/api/admin/stats',
+  { headers: store.getAuthHeader() },
+)
+
+const summaryRows = computed(() => {
+  const s = stats.value
+  if (!s) return []
+  return [
+    { value: s.categories, label: 'Категории' },
+    { value: s.books, label: 'Книги' },
+    { value: s.articles, label: 'Статьи' },
+    { value: s.terms, label: 'Термины' },
+    { value: s.users, label: 'Пользователи' },
+  ]
 })
 
-// Fetch dashboard stats
-try {
-  const { data } = await useFetch('/api/admin/stats')
-  if (data.value) {
-    db.value = data.value as any
-  }
-} catch { }
+const graphKpis = computed(() => {
+  const g = stats.value?.graph
+  if (!g) return []
+  return [
+    { value: g.nodeCount, label: 'Узлы' },
+    { value: g.edgesStructuralSum, label: 'Структура' },
+    { value: g.edgesArticleTermRows, label: 'Статья↔термин' },
+    { value: g.edgesStructuralSum + g.edgesArticleTermRows, label: 'Общие связи' },
+  ]
+})
 
-const statCards = computed(() => [
-  { label: 'Статьи', value: db.value.articles, icon: 'i-heroicons-document-text' },
-  { label: 'Термины', value: db.value.terms, icon: 'i-heroicons-document-magnifying-glass' },
-  { label: 'Категории', value: db.value.categories, icon: 'i-heroicons-folder' },
-  { label: 'Книги', value: db.value.books, icon: 'i-heroicons-book-open' },
-  { label: 'Пользователи', value: db.value.users, icon: 'i-heroicons-users' },
-])
+type GraphEdgeRow = {
+  label: string
+  value: number
+  accent: string
+  dashed: boolean
+  kind: 'virtual' | 'structural'
+}
+
+function edgeMarkStyle(row: Pick<GraphEdgeRow, 'accent' | 'dashed'>) {
+  if (row.dashed) {
+    return {
+      backgroundImage: `repeating-linear-gradient(90deg, ${row.accent} 0 4px, transparent 4px 7px)`,
+      backgroundColor: 'transparent',
+    }
+  }
+  return { backgroundColor: row.accent }
+}
+
+const graphRows = computed<GraphEdgeRow[]>(() => {
+  const g = stats.value?.graph
+  if (!g) return []
+  return [
+    {
+      label: 'Категория → родитель',
+      value: g.edgesCategoryHierarchy,
+      accent: ONTO.category,
+      dashed: true,
+      kind: 'virtual',
+    },
+    {
+      label: 'Статья → категория',
+      value: g.edgesArticleToCategory,
+      accent: ONTO.article,
+      dashed: true,
+      kind: 'virtual',
+    },
+    {
+      label: 'Статья → книга',
+      value: g.edgesArticleToBook,
+      accent: ONTO.article,
+      dashed: false,
+      kind: 'structural',
+    },
+    {
+      label: 'Книга ↔ категория',
+      value: g.edgesBookToCategory,
+      accent: ONTO.book,
+      dashed: true,
+      kind: 'virtual',
+    },
+    {
+      label: 'Термин → статья',
+      value: g.edgesTermToArticle,
+      accent: ONTO.term,
+      dashed: false,
+      kind: 'structural',
+    },
+    {
+      label: 'Статья ↔ термин',
+      value: g.edgesArticleTermRows,
+      accent: ONTO.term,
+      dashed: false,
+      kind: 'structural',
+    },
+  ]
+})
+
+const quickLinks = [
+  { to: '/admin/import', label: 'Импорт ODT', icon: 'i-heroicons-arrow-up-tray', primary: false },
+  { to: '/admin/articles/create', label: 'Новая статья', icon: 'i-heroicons-document-plus', primary: true },
+  { to: '/admin/books/create', label: 'Новая книга', icon: 'i-heroicons-book-open', primary: false },
+  { to: '/admin/glossary', label: 'Глоссарий', icon: 'i-heroicons-rectangle-stack', primary: false },
+  { to: '/admin/categories', label: 'Категории', icon: 'i-heroicons-folder', primary: false },
+  { to: '/knowledge-graph', label: 'Граф знаний', icon: 'i-heroicons-share', primary: true },
+] as const
 </script>
 
 <template>
-  <div class="dashboard gv-admin-page">
-    <div class="gv-admin-head">
-      <p class="gv-admin-eyebrow">ADMIN</p>
-      <h1 class="gv-admin-title">Dashboard</h1>
-      <p class="gv-admin-subtitle">Обзор системы Gativus</p>
-    </div>
-
-    <div class="stats-grid">
-      <div v-for="stat in statCards" :key="stat.label" class="stat-card gv-admin-surface">
-        <div class="stat-icon-wrap">
-          <UIcon :name="stat.icon" class="stat-icon" />
-        </div>
-        <div class="stat-info">
-          <span class="stat-value">{{ stat.value }}</span>
-          <span class="stat-label">{{ stat.label }}</span>
+  <div class="admin-page-stack">
+    <section class="admin-dash-hero">
+      <div class="hero-title-container">
+        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+        <div class="hero-text">
+          <h1 class="hero-title gv-hero-gradient uppercase">Dashboard</h1>
+          <p class="hero-subtitle">Gativus · администрирование</p>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="dashboard-section gv-admin-surface">
-      <h2 class="section-title">Быстрые действия</h2>
-      <div class="actions-grid">
-        <NuxtLink to="/admin/import" class="action-card gv-admin-surface">
-          <UIcon name="i-heroicons-arrow-up-tray" class="action-icon" />
-          <span class="action-label">Импорт ODT</span>
-          <span class="action-desc">Загрузить документ</span>
-        </NuxtLink>
-        <NuxtLink to="/admin/articles" class="action-card gv-admin-surface">
-          <UIcon name="i-heroicons-plus-circle" class="action-icon" />
-          <span class="action-label">Новая статья</span>
-          <span class="action-desc">Создать вручную</span>
-        </NuxtLink>
-        <NuxtLink to="/admin/glossary" class="action-card gv-admin-surface">
-          <UIcon name="i-heroicons-document-magnifying-glass" class="action-icon" />
-          <span class="action-label">Глоссарий</span>
-          <span class="action-desc">Управление терминами</span>
-        </NuxtLink>
-        <NuxtLink to="/admin/glossary/create" class="action-card gv-admin-surface">
-          <UIcon name="i-heroicons-document-plus" class="action-icon" />
-          <span class="action-label">Новый термин</span>
-          <span class="action-desc">Добавить в глоссарий</span>
-        </NuxtLink>
+    <section v-if="pending" class="section-card">
+      <div class="card-body card-body--row">
+        <UIcon name="i-heroicons-arrow-path" class="icon-spin" />
+        <span>Загрузка…</span>
       </div>
-    </div>
+    </section>
+
+    <section v-else-if="error" class="section-card section-card--error">
+      <div class="card-body card-body--row">
+        <UIcon name="i-heroicons-exclamation-triangle" class="icon-err" />
+        <span>{{ error.message }}</span>
+        <button type="button" class="cta-button secondary" @click="refresh()">Повторить</button>
+      </div>
+    </section>
+
+    <template v-else-if="stats">
+      <section class="section-card">
+        <div class="card-header">
+          <span class="card-badge">DATA</span>
+          <h2 class="card-header-title">Сводка</h2>
+        </div>
+        <div class="card-body">
+          <div class="gate-stats gate-stats--5">
+            <div v-for="row in summaryRows" :key="row.label" class="stat-item">
+              <span class="stat-value tabular-nums">{{ row.value }}</span>
+              <span class="stat-label">{{ row.label }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="two-col">
+        <section class="section-card">
+          <div class="card-header">
+            <span class="card-badge">KG</span>
+            <h2 class="card-header-title">Граф знаний</h2>
+          </div>
+          <div class="card-body">
+            <div class="gate-stats gate-stats--4">
+              <div v-for="k in graphKpis" :key="k.label" class="stat-item">
+                <span class="stat-value tabular-nums">{{ k.value }}</span>
+                <span class="stat-label">{{ k.label }}</span>
+              </div>
+            </div>
+            <p class="edge-legend">
+              Цвет отрезка — «дочерний» узел (принцип графа). Пунктир — виртуальная связь, сплошная — структурная.
+            </p>
+            <div class="onto-swatches" aria-hidden="true">
+              <span class="onto-swatches__item"><i class="onto-swatch" style="background: #ef4444" />Категория</span>
+              <span class="onto-swatches__item"><i class="onto-swatch" style="background: #0ea5e9" />Книга</span>
+              <span class="onto-swatches__item"><i class="onto-swatch" style="background: #6366f1" />Статья</span>
+              <span class="onto-swatches__item"><i class="onto-swatch" style="background: #10b981" />Термин</span>
+            </div>
+            <ul class="edge-lines">
+              <li v-for="r in graphRows" :key="r.label" class="edge-lines__row">
+                <div class="edge-lines__left">
+                  <span
+                    class="edge-lines__mark"
+                    :class="{ 'edge-lines__mark--dashed': r.dashed }"
+                    :style="edgeMarkStyle(r)"
+                  />
+                  <div class="edge-lines__text min-w-0">
+                    <div class="edge-lines__title-row">
+                      <span class="edge-lines__name">{{ r.label }}</span>
+                      <span
+                        class="edge-lines__kind"
+                        :class="
+                          r.kind === 'virtual' ? 'edge-lines__kind--virt' : 'edge-lines__kind--struct'
+                        "
+                      >
+                        {{ r.kind === 'virtual' ? 'вирт.' : 'структ.' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <span class="edge-lines__val tabular-nums">{{ r.value }}</span>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section-card">
+          <div class="card-header">
+            <span class="card-badge">SYS</span>
+            <h2 class="card-header-title">Система</h2>
+          </div>
+          <div class="card-body">
+            <dl class="sys-dl">
+              <div class="sys-dl__row">
+                <dt>Ревизии</dt>
+                <dd class="tabular-nums">{{ stats.articleRevisions }}</dd>
+              </div>
+              <div class="sys-dl__row sys-dl__row--stack">
+                <dt>Обновлено</dt>
+                <dd>{{ stats.meta.lastArticleUpdatedAt || '—' }}</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+      </div>
+
+      <section class="section-card cta-card">
+        <div class="card-header">
+          <span class="card-badge">ACT</span>
+          <h2 class="card-header-title">Действия</h2>
+        </div>
+        <div class="card-body">
+          <div class="cta-buttons cta-buttons--left">
+            <NuxtLink
+              v-for="link in quickLinks"
+              :key="link.to"
+              :to="link.to"
+              class="cta-button"
+              :class="link.primary ? 'primary' : 'secondary'"
+            >
+              <UIcon :name="link.icon" />
+              {{ link.label }}
+            </NuxtLink>
+          </div>
+        </div>
+      </section>
+    </template>
   </div>
 </template>
-
-<style scoped>
-.dashboard {
-  max-width: 1000px;
-}
-
-.dashboard-header {
-  margin-bottom: 28px;
-}
-
-.dashboard-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1a1a1a;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  margin: 0;
-}
-
-.dark .dashboard-title {
-  color: #e5e5e5;
-}
-
-.dashboard-subtitle {
-  color: #888;
-  font-size: 14px;
-  margin: 4px 0 0;
-}
-
-/* ─── Stats ─── */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 14px;
-  margin-bottom: 32px;
-}
-
-.stat-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px;
-  border-radius: 12px;
-  background: #fff;
-  border: 1px solid #e9e9e9;
-  transition: all 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
-}
-
-.stat-card:hover {
-  box-shadow: 0 4px 16px rgba(34, 60, 80, 0.1);
-  transform: translateY(-2px);
-}
-
-.dark .stat-card {
-  background: #1a1a1a;
-  border-color: #3a3a3a;
-}
-
-.dark .stat-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-
-.stat-icon-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: #f4f4f5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.stat-icon {
-  width: 22px;
-  height: 22px;
-  color: #52525b;
-}
-
-.stat-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: #1a1a1a;
-  line-height: 1.1;
-}
-
-.dark .stat-value {
-  color: #e5e5e5;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: #888;
-  margin-top: 2px;
-}
-
-/* ─── Actions ─── */
-.dashboard-section {
-  margin-bottom: 28px;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin: 0 0 14px;
-}
-
-.dark .section-title {
-  color: #e5e5e5;
-}
-
-.actions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.action-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 20px;
-  border-radius: 12px;
-  background: #fff;
-  border: 1px solid #e9e9e9;
-  text-decoration: none;
-  transition: all 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
-  cursor: pointer;
-}
-
-.action-card:hover {
-  border-color: #0ea5e9;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
-}
-
-.dark .action-card {
-  background: #1a1a1a;
-  border-color: #3a3a3a;
-}
-
-.dark .action-card:hover {
-  border-color: #444;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-
-.action-icon {
-  width: 24px;
-  height: 24px;
-  color: #0ea5e9;
-}
-
-.action-label {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-.dark .action-label {
-  color: #e5e5e5;
-}
-
-.action-desc {
-  font-size: 12px;
-  color: #888;
-}
-
-@media (max-width: 640px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-</style>

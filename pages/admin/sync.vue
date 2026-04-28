@@ -229,49 +229,71 @@ async function runImport() {
 </script>
 
 <template>
-  <div class="sync-page gv-admin-page">
-    <div class="gv-admin-head">
-      <p class="gv-admin-eyebrow">ADMIN</p>
-      <h1 class="gv-admin-title">Синхронизация графа знаний</h1>
-      <p class="gv-admin-subtitle">Экспортируйте или загружайте дампы всей базы в формате JSON</p>
-    </div>
-
-    <!-- Export Section -->
-    <div class="export-section">
-      <div class="export-card">
-        <UIcon name="i-heroicons-cloud-arrow-down" class="export-icon" />
-        <div class="export-info">
-          <h3>Экспорт Базы</h3>
-          <p>Скачать полную копию графа знаний и контента статей в виде файла.</p>
+  <div class="admin-page-stack sync-page">
+    <section class="admin-dash-hero">
+      <div class="hero-title-container">
+        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+        <div class="hero-text">
+          <p class="gv-admin-eyebrow">ADMIN</p>
+          <h1 class="hero-title gv-hero-gradient uppercase">Синхронизация</h1>
+          <p class="hero-lead">Экспорт и импорт дампа графа (JSON)</p>
         </div>
-        <button class="action-btn action-btn--export" @click="exportGraph">
-          <UIcon name="i-heroicons-arrow-down-tray" />
-          Сгенерировать Дамп
-        </button>
       </div>
-    </div>
+    </section>
+
+    <section class="section-card">
+      <header class="card-header">
+        <span class="card-badge">OUT</span>
+        <h2 class="card-header-title">Экспорт базы</h2>
+      </header>
+      <div class="card-body">
+        <div class="export-card">
+          <UIcon name="i-heroicons-cloud-arrow-down" class="export-icon" />
+          <div class="export-info">
+            <h3>Экспорт Базы</h3>
+            <p>Скачать полную копию графа знаний и контента статей в виде файла.</p>
+          </div>
+          <button type="button" class="action-btn action-btn--export" @click="exportGraph">
+            <UIcon name="i-heroicons-arrow-down-tray" />
+            Сгенерировать Дамп
+          </button>
+        </div>
+      </div>
+    </section>
 
     <div class="divider">
       <span>ИЛИ</span>
     </div>
 
-    <!-- Import Section Drop Zone -->
-    <div v-if="!selectedFile" class="drop-zone" :class="{ 'drop-zone--active': isDragging }" @dragover="onDragOver"
-      @dragleave="onDragLeave" @drop="onDrop">
-      <div class="drop-zone-inner">
-        <UIcon name="i-heroicons-cloud-arrow-up" class="drop-zone-icon" />
-        <p class="drop-zone-text">Перетащите резервную копию базы (.json) сюда</p>
-        <p class="drop-zone-hint">для импорта</p>
-        <label class="drop-zone-btn">
-          <input type="file" accept=".json" class="sr-only" @change="onFileSelect" />
-          <UIcon name="i-heroicons-folder-open" />
-          <span>Выбрать файл JSON</span>
-        </label>
-      </div>
-    </div>
+    <section class="section-card">
+      <header class="card-header">
+        <span class="card-badge">IN</span>
+        <h2 class="card-header-title">Импорт JSON</h2>
+      </header>
+      <div class="card-body">
+        <!-- Import Section Drop Zone -->
+        <div
+          v-if="!selectedFile"
+          class="drop-zone"
+          :class="{ 'drop-zone--active': isDragging }"
+          @dragover="onDragOver"
+          @dragleave="onDragLeave"
+          @drop="onDrop"
+        >
+          <div class="drop-zone-inner">
+            <UIcon name="i-heroicons-cloud-arrow-up" class="drop-zone-icon" />
+            <p class="drop-zone-text">Перетащите резервную копию базы (.json) сюда</p>
+            <p class="drop-zone-hint">для импорта</p>
+            <label class="drop-zone-btn">
+              <input type="file" accept=".json" class="sr-only" @change="onFileSelect" />
+              <UIcon name="i-heroicons-folder-open" />
+              <span>Выбрать файл JSON</span>
+            </label>
+          </div>
+        </div>
 
-    <!-- Selected File -->
-    <div v-if="selectedFile && !importResult" class="file-card">
+        <!-- Selected File -->
+        <div v-if="selectedFile && !importResult" class="file-card">
       <div class="file-card-info">
         <div class="file-icon-wrap">
           <UIcon name="i-heroicons-document-text" class="file-icon" />
@@ -309,9 +331,12 @@ async function runImport() {
         </button>
       </div>
     </div>
+      </div>
+    </section>
 
     <!-- Import Result -->
-    <div v-if="importResult" class="result-section">
+    <section v-if="importResult" class="section-card">
+      <div class="card-body">
       <div class="result-card">
         <div class="result-icon-wrap">
           <UIcon name="i-heroicons-check-circle" class="result-icon" />
@@ -324,13 +349,14 @@ async function runImport() {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
 .sync-page {
-  max-width: 800px;
+  max-width: 900px;
 }
 
 .sync-header {

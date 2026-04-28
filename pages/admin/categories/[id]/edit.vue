@@ -83,20 +83,33 @@ async function saveCategory() {
 </script>
 
 <template>
-  <div class="gv-admin-page">
-    <div class="gv-admin-index-head">
-      <div class="gv-admin-head">
-        <p class="gv-admin-eyebrow">ADMIN</p>
-        <h1 class="gv-admin-title">Редактирование категории</h1>
-        <p class="gv-admin-subtitle">{{ currentCategory?.title || 'Категория' }}</p>
-      </div>
-      <div class="gv-admin-index-actions">
-        <UButton to="/admin/categories" icon="i-heroicons-arrow-left" color="gray" variant="soft">К списку</UButton>
-      </div>
+  <div class="admin-page-stack">
+    <div class="cta-buttons admin-index-toolbar cta-buttons--left">
+      <NuxtLink to="/admin/categories" class="cta-button secondary">
+        <UIcon name="i-heroicons-arrow-left" />
+        <span>К списку</span>
+      </NuxtLink>
     </div>
 
-    <section class="gv-admin-surface category-form" v-if="currentCategory">
-      <UForm :state="form" @submit="saveCategory" class="space-y-5">
+    <section class="admin-dash-hero">
+      <div class="hero-title-container">
+        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+        <div class="hero-text">
+          <p class="gv-admin-eyebrow">ADMIN</p>
+          <h1 class="hero-title gv-hero-gradient uppercase">Категория</h1>
+          <p class="hero-lead">{{ currentCategory?.title || 'Редактирование' }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="currentCategory" class="section-card">
+      <header class="card-header">
+        <span class="card-badge">EDIT</span>
+        <h2 class="card-header-title">Поля категории</h2>
+      </header>
+      <div class="card-body">
+        <div class="category-form">
+          <UForm :state="form" @submit="saveCategory" class="space-y-5">
         <UTabs :items="[
           { key: 'ru', label: 'Русский (RU)', icon: 'i-heroicons-language' },
           { key: 'en', label: 'English (EN)', icon: 'i-heroicons-globe-alt' }
@@ -171,7 +184,9 @@ async function saveCategory() {
           <UButton to="/admin/categories" color="gray" variant="ghost">Отмена</UButton>
           <UButton type="submit" color="primary" :loading="saving">Сохранить</UButton>
         </div>
-      </UForm>
+          </UForm>
+        </div>
+      </div>
     </section>
   </div>
 </template>

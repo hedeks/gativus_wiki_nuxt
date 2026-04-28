@@ -140,11 +140,14 @@ export default defineEventHandler(async (event) => {
   const linksSet = new Set<string>() // To deduplicate universal edges
   const links: any[] = []
 
-  function addLink(source: string, target: string, type: string) {
+  function addLink(source: string, target: string, type: string, mentionCount?: number) {
     const key = `${source}|${target}|${type}`
     if (!linksSet.has(key)) {
       linksSet.add(key)
-      links.push({ source, target, type })
+      const link: Record<string, unknown> = { source, target, type }
+      const mc = mentionCount != null && Number(mentionCount) > 0 ? Math.floor(Number(mentionCount)) : undefined
+      if (mc != null) link.mentionCount = mc
+      links.push(link)
     }
   }
 
@@ -175,19 +178,20 @@ export default defineEventHandler(async (event) => {
 
   // Case 5: Mentions and References
   const crossLinksRaw = await db.prepare(`
-    SELECT a.id as article_id, at.term_id 
+    SELECT a.id as article_id, at.term_id, COALESCE(at.mention_count, 1) as mention_count
     FROM article_terms at
     JOIN articles a ON at.article_id = a.id
   `).all() as any[]
 
   crossLinksRaw.forEach(cl => {
+    const mc = Number(cl.mention_count) > 0 ? Math.floor(Number(cl.mention_count)) : 1
     // Check if this article itself is a disclosure article for some term
     const termForArticleInfo = terms.find(t => t.article_id === cl.article_id)
 
     if (termForArticleInfo) {
-      addLink(`term-${termForArticleInfo.id}`, `term-${cl.term_id}`, 'reference')
+      addLink(`term-${termForArticleInfo.id}`, `term-${cl.term_id}`, 'reference', mc)
     } else {
-      addLink(`art-${cl.article_id}`, `term-${cl.term_id}`, 'mention')
+      addLink(`art-${cl.article_id}`, `term-${cl.term_id}`, 'mention', mc)
     }
   })
 

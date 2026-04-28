@@ -1,16 +1,31 @@
 <template>
-  <div class="glossary-form-page gv-admin-page" v-if="term">
-    <div class="form-header">
-      <NuxtLink to="/admin/glossary" class="back-link">
-        <UIcon name="i-heroicons-arrow-left" /> Назад к глоссарию
-      </NuxtLink>
-      <div class="flex items-center gap-4">
-        <h1 class="form-title">Редактировать термин</h1>
-        <code class="term-slug-display">{{ term.slug }}</code>
+  <div class="admin-page-stack glossary-form-page">
+    <template v-if="term">
+      <div class="cta-buttons admin-index-toolbar cta-buttons--left">
+        <NuxtLink to="/admin/glossary" class="cta-button secondary">
+          <UIcon name="i-heroicons-arrow-left" />
+          <span>Назад к глоссарию</span>
+        </NuxtLink>
       </div>
-    </div>
 
-    <form class="term-form" @submit.prevent="handleSubmit">
+      <section class="admin-dash-hero">
+        <div class="hero-title-container">
+          <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+          <div class="hero-text">
+            <p class="gv-admin-eyebrow">ADMIN</p>
+            <h1 class="hero-title gv-hero-gradient uppercase">Термин</h1>
+            <p class="hero-lead mono text-sm">{{ term.slug }}</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <header class="card-header">
+          <span class="card-badge">EDIT</span>
+          <h2 class="card-header-title">Редактирование</h2>
+        </header>
+        <div class="card-body">
+          <form class="term-form" @submit.prevent="handleSubmit">
       
       <!-- ODT Upload Section -->
       <div class="odt-upload-section mb-6">
@@ -218,11 +233,23 @@
         <UIcon name="i-heroicons-exclamation-circle" /> {{ error }}
       </div>
     </form>
-  </div>
+        </div>
+      </section>
+    </template>
 
-  <div v-else-if="!pending" class="not-found">
-    <p>Термин не найден</p>
-    <NuxtLink to="/admin/glossary">← Назад</NuxtLink>
+    <section v-else-if="!pending" class="section-card">
+      <div class="card-body not-found-inner">
+        <p>Термин не найден</p>
+        <NuxtLink to="/admin/glossary" class="cta-button secondary">← Назад</NuxtLink>
+      </div>
+    </section>
+
+    <section v-else class="section-card">
+      <div class="card-body card-body--row">
+        <UIcon name="i-heroicons-arrow-path" class="icon-spin" />
+        <span>Загрузка…</span>
+      </div>
+    </section>
   </div>
 </template>
 

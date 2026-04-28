@@ -20,6 +20,21 @@ export interface User {
   uuid: string
 }
 
+/** Пользователь для админ-списка (без секретов) */
+export interface AdminUserPublic {
+  id: number
+  login: string
+  email: string
+  role: 'user' | 'editor' | 'admin'
+  created_at: string | null
+  last_visited: string | null
+}
+
+export interface AdminUsersListResponse {
+  users: AdminUserPublic[]
+  scope: 'all' | 'users_only'
+}
+
 export interface AuthResponse {
   access_token: string,
   token_type: 'bearer',
@@ -119,4 +134,38 @@ export interface PaginatedResponse<T> {
   total: number
   page: number
   pages: number
+}
+
+/** GET /api/admin/stats — сводка для дашборда и метрики графа знаний */
+export interface AdminDashboardStats {
+  articles: number
+  articlesPublishedContent: number
+  articlesUnpublished: number
+  articlesTerm: number
+  terms: number
+  categories: number
+  books: number
+  users: number
+  articleRevisions: number
+  graph: {
+    /** Узлы как на публичной /api/knowledge-graph: категории + книги + опубликованные статьи (не term) + термины */
+    nodeCount: number
+    /** Связей категория → родительская категория */
+    edgesCategoryHierarchy: number
+    /** Статья (pub, не term) → категория */
+    edgesArticleToCategory: number
+    /** Статья → книга */
+    edgesArticleToBook: number
+    /** Книга ↔ категория (M:N) */
+    edgesBookToCategory: number
+    /** Термин → статья-раскрытие (term_article_id) */
+    edgesTermToArticle: number
+    /** Строк в article_terms («упоминания» в графе мапятся в mention/reference) */
+    edgesArticleTermRows: number
+    /** Сумма структурных рёбер (без article_terms; в графе возможна дедупликация) */
+    edgesStructuralSum: number
+  }
+  meta: {
+    lastArticleUpdatedAt: string | null
+  }
 }

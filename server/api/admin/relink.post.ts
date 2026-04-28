@@ -1,60 +1,88 @@
 /**
  * POST /api/admin/relink
- * Version: 1.0.1 (Rebuild trigger)
- * Re-run term auto-linking on ALL articles with content.
+ * Re-run term auto-linking on ALL articles with content (en/ru/zh).
  * Role: admin.
  */
 
-import { buildTermsMap, linkTermsInHtml } from '~/server/utils/termLinker'
+import { buildTermsMap, linkTermsInHtml, mergeMentionCountMaps, replaceArticleTermMentions } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   requireRole(event, 'admin')
   const db = useDatabase()
 
-  // Load all terms into a map
   const termsMap = await buildTermsMap(db)
 
   if (termsMap.size === 0) {
     return { updated: 0, message: 'Нет терминов для линковки' }
   }
 
-  // Get all articles with content (published + drafts, term + non-term)
   const articles = await db.prepare(`
-    SELECT id, html_content FROM articles
-    WHERE html_content IS NOT NULL AND TRIM(html_content) != ''
+    SELECT id, html_content, html_content_ru, html_content_zh FROM articles
+    WHERE (
+      (html_content IS NOT NULL AND TRIM(html_content) != '')
+      OR (html_content_ru IS NOT NULL AND TRIM(html_content_ru) != '')
+      OR (html_content_zh IS NOT NULL AND TRIM(html_content_zh) != '')
+    )
   `).all() as any[]
 
   let updated = 0
-  let relationshipsCreated = 0
+  let relationshipRows = 0
 
   for (const article of articles || []) {
-    const { html: linkedHtml, linkedTermIds } = linkTermsInHtml(article.html_content, termsMap)
-    
-    // 1. Update HTML content if changed
-    if (linkedHtml !== article.html_content) {
+    const maps: Array<Map<number, number>> = []
+    let newEn = article.html_content
+    let newRu = article.html_content_ru
+    let newZh = article.html_content_zh
+    let bodyChanged = false
+
+    if (article.html_content?.trim()) {
+      const r = linkTermsInHtml(article.html_content, termsMap)
+      maps.push(r.mentionCountByTermId)
+      if (r.html !== article.html_content) {
+        newEn = r.html
+        bodyChanged = true
+      }
+    }
+    if (article.html_content_ru?.trim()) {
+      const r = linkTermsInHtml(article.html_content_ru, termsMap)
+      maps.push(r.mentionCountByTermId)
+      if (r.html !== article.html_content_ru) {
+        newRu = r.html
+        bodyChanged = true
+      }
+    }
+    if (article.html_content_zh?.trim()) {
+      const r = linkTermsInHtml(article.html_content_zh, termsMap)
+      maps.push(r.mentionCountByTermId)
+      if (r.html !== article.html_content_zh) {
+        newZh = r.html
+        bodyChanged = true
+      }
+    }
+
+    if (bodyChanged) {
       await db.prepare(`
-        UPDATE articles SET html_content = ?, updated_at = datetime('now') WHERE id = ?
-      `).run(linkedHtml, article.id)
+        UPDATE articles
+        SET html_content = ?, html_content_ru = ?, html_content_zh = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).run(
+        newEn ?? null,
+        newRu ?? null,
+        newZh ?? null,
+        article.id,
+      )
       updated++
     }
 
-    // 2. Synchronize article_terms table for Knowledge Graph
-    // We clear and rebuild to ensure perfect sync with the current HTML
-    await db.prepare('DELETE FROM article_terms WHERE article_id = ?').run(article.id)
-    
-    if (linkedTermIds.length > 0) {
-      const insertStmt = db.prepare('INSERT INTO article_terms (article_id, term_id) VALUES (?, ?)')
-      for (const termId of linkedTermIds) {
-        insertStmt.run(article.id, termId)
-        relationshipsCreated++
-      }
-    }
+    const merged = mergeMentionCountMaps(maps)
+    replaceArticleTermMentions(db, article.id, merged)
+    relationshipRows += merged.size
   }
 
   return {
     updated,
-    relationshipsCreated,
+    relationshipsCreated: relationshipRows,
     total: (articles || []).length,
-    message: `Обновлено статей: ${updated}. Создано связей для графа: ${relationshipsCreated}.`,
+    message: `Обновлено статей (тело HTML): ${updated}. Связей статья–термин с mention_count: ${relationshipRows}.`,
   }
 })

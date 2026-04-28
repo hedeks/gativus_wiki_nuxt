@@ -385,6 +385,13 @@ const closeLightbox = () => {
   document.body.style.overflow = ''
 }
 
+/** Mobile: swipe left/right between book chapters; opens page with scroll-to-top (see app/router.options + session flag). */
+useMobileChapterSwipe({
+  getNextSlug: () => article.value?.next?.slug ?? null,
+  getPrevSlug: () => article.value?.prev?.slug ?? null,
+  isEnabled: () => isTheory.value && !isLightboxOpen.value,
+})
+
 
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape' && isLightboxOpen.value) {

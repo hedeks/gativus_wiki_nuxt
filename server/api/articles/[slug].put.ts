@@ -5,7 +5,7 @@
  */
 
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
-import { buildTermsMap, linkTermsInHtml } from '~/server/utils/termLinker'
+import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
@@ -36,14 +36,11 @@ export default defineEventHandler(async (event) => {
   let processedHtml = html_content
   let processedHtmlRu = html_content_ru
   let processedHtmlZh = html_content_zh
-  let linkedTermIds: number[] = []
-  
   const termsMap = await buildTermsMap(db)
 
   if (html_content !== undefined) {
     const result = linkTermsInHtml(html_content, termsMap)
     processedHtml = result.html
-    linkedTermIds = result.linkedTermIds
   }
   
   if (html_content_ru !== undefined && html_content_ru !== null) {
@@ -88,15 +85,9 @@ export default defineEventHandler(async (event) => {
     `UPDATE articles SET ${updates.join(', ')} WHERE id = ?`
   ).run(...params, existing.id)
 
-  // ─── Phase 4: Sync Knowledge Graph ───
-  if (html_content !== undefined) {
-    await db.prepare('DELETE FROM article_terms WHERE article_id = ?').run(existing.id)
-    if (linkedTermIds.length > 0) {
-      const insertStmt = db.prepare('INSERT INTO article_terms (article_id, term_id) VALUES (?, ?)')
-      for (const termId of linkedTermIds) {
-        insertStmt.run(existing.id, termId)
-      }
-    }
+  // ─── Phase 4: Sync Knowledge Graph (все локали, mention_count) ───
+  if (html_content !== undefined || html_content_ru !== undefined || html_content_zh !== undefined) {
+    syncArticleTermsFromArticleRow(db, existing.id, termsMap)
   }
 
   // Create new revision if html_content changed

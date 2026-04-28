@@ -104,23 +104,33 @@ function formatDate(dateStr: string): string {
 </script>
 
 <template>
-  <div class="history-page gv-admin-page">
-    <div class="history-header gv-admin-head">
-      <div class="history-header-left">
-        <NuxtLink :to="`/admin/articles/${articleId}/edit`" class="back-btn">
-          <UIcon name="i-heroicons-arrow-left" />
-        </NuxtLink>
-        <div>
-          <p class="gv-admin-eyebrow">ADMIN</p>
-          <h1 class="history-title">История ревизий</h1>
-          <p class="history-subtitle">{{ currentArticle?.title || '' }}</p>
-        </div>
-      </div>
+  <div class="admin-page-stack admin-page-stack--fluid history-page">
+    <div class="cta-buttons admin-index-toolbar cta-buttons--left">
+      <NuxtLink :to="`/admin/articles/${articleId}/edit`" class="cta-button secondary">
+        <UIcon name="i-heroicons-arrow-left" />
+        <span>К редактированию</span>
+      </NuxtLink>
     </div>
 
-    <div class="history-body">
-      <!-- Revisions list -->
-      <div class="revisions-list">
+    <section class="admin-dash-hero">
+      <div class="hero-title-container">
+        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+        <div class="hero-text">
+          <p class="gv-admin-eyebrow">ADMIN</p>
+          <h1 class="hero-title gv-hero-gradient uppercase">История ревизий</h1>
+          <p class="hero-lead">{{ currentArticle?.title || 'Статья' }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card history-main">
+      <header class="card-header">
+        <span class="card-badge">REV</span>
+        <h2 class="card-header-title">Версии и предпросмотр</h2>
+      </header>
+      <div class="card-body card-body--flush history-body">
+        <!-- Revisions list -->
+        <div class="revisions-list">
         <div
           v-for="rev in revisionsList"
           :key="rev.id"
@@ -169,7 +179,8 @@ function formatDate(dateStr: string): string {
           <span>Выберите ревизию для просмотра</span>
         </div>
       </div>
-    </div>
+      </div>
+    </section>
 
     <!-- Revert Modal -->
     <Teleport to="body">
@@ -196,22 +207,21 @@ function formatDate(dateStr: string): string {
 .history-page {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   min-height: calc(100vh - 120px);
+  width: 100%;
 }
 
-.history-header {
+.history-main {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  align-items: center;
-  padding: 14px 18px;
-  flex-shrink: 0;
-  border: none;
+  flex-direction: column;
 }
-.dark .history-header { border: none; }
 
-.history-header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.history-main :deep(.card-body) {
+  flex: 1;
+  min-height: 320px;
 }
 
 .back-btn {
@@ -222,20 +232,6 @@ function formatDate(dateStr: string): string {
 }
 .back-btn:hover { background: #f3f4f6; color: #1a1a1a; }
 .dark .back-btn:hover { background: #252528; color: #e5e5e5; }
-
-.history-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin: 0;
-}
-.dark .history-title { color: #e5e5e5; }
-
-.history-subtitle {
-  font-size: 13px;
-  color: #888;
-  margin: 2px 0 0;
-}
 
 /* ─── Body ─── */
 .history-body {

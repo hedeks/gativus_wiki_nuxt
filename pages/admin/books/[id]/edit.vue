@@ -1,17 +1,32 @@
 <template>
-  <div class="book-edit-page gv-admin-page">
-    <div v-if="pending" class="loading-overlay">
-      <UIcon name="i-heroicons-arrow-path" class="animate-spin text-3xl" />
-    </div>
+  <div class="admin-page-stack admin-page-stack--fluid book-edit-page">
+    <section v-if="pending" class="section-card">
+      <div class="card-body card-body--row">
+        <UIcon name="i-heroicons-arrow-path" class="icon-spin" />
+        <span>Загрузка…</span>
+      </div>
+    </section>
 
-    <div class="page-header">
-      <UButton to="/admin/books" icon="i-heroicons-arrow-left" variant="ghost" color="gray">
-        Назад к списку
-      </UButton>
-      <h2 class="page-title">Книга: {{ book?.title }}</h2>
-    </div>
+    <template v-else>
+      <div class="cta-buttons admin-index-toolbar cta-buttons--left">
+        <NuxtLink to="/admin/books" class="cta-button secondary">
+          <UIcon name="i-heroicons-arrow-left" />
+          <span>Назад к списку</span>
+        </NuxtLink>
+      </div>
 
-    <div v-if="book" class="edit-container">
+      <section class="admin-dash-hero">
+        <div class="hero-title-container">
+          <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+          <div class="hero-text">
+            <p class="gv-admin-eyebrow">ADMIN</p>
+            <h1 class="hero-title gv-hero-gradient uppercase">Книга</h1>
+            <p class="hero-lead">{{ book?.title || 'Редактирование' }}</p>
+          </div>
+        </div>
+      </section>
+
+      <div v-if="book" class="edit-container">
       <!-- Section 1: Metadata -->
       <div class="card p-6 mb-8 mt-6">
         <h3 class="section-title mb-6">Основная информация</h3>
@@ -164,7 +179,8 @@
           </UButton>
         </div>
       </div>
-    </div>
+      </div>
+    </template>
   </div>
 </template>
 

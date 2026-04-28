@@ -1,63 +1,91 @@
 <template>
-  <div class="admin-glossary gv-admin-page">
-    <div class="page-header">
-      <div class="gv-admin-head">
-        <p class="gv-admin-eyebrow">ADMIN</p>
-        <h1 class="gv-admin-title">Глоссарий</h1>
-        <p class="gv-admin-subtitle">Управление терминами и связанными статьями-раскрытиями</p>
-      </div>
-      <div class="header-actions gv-admin-index-actions">
-        <UButton icon="i-heroicons-arrow-path" color="gray" variant="soft" :loading="relinking" @click="relinkAll">
-          Перелинковать статьи
-        </UButton>
-        <NuxtLink to="/admin/glossary/create">
-          <UButton icon="i-heroicons-plus" color="emerald">Создать термин</UButton>
-        </NuxtLink>
-      </div>
-    </div>
-
-    <!-- Relink status -->
-    <div v-if="relinkResult" class="relink-banner" :class="relinkResult.error ? 'error' : 'success'">
-      <UIcon :name="relinkResult.error ? 'i-heroicons-exclamation-circle' : 'i-heroicons-check-circle'" />
-      {{ relinkResult.message }}
-    </div>
-
-    <!-- Search -->
-    <div class="gv-admin-filter-row">
-      <BaseSearch
-        v-model="searchQuery"
-        placeholder="Поиск термина..."
-        :is-pending="pending"
-        :is-debouncing="isTyping"
-        class="flex-1"
-      />
-      <ExpandableFilters
-        label="Фильтры"
-        :active-count="activeFilterCount"
-        :has-active-filters="activeFilterCount > 0"
-      >
-        <div class="filter-group">
-          <span class="filter-group-label">Категории</span>
-          <select v-model="categoryFilter" class="gv-admin-filter-select">
-            <option value="">Все категории</option>
-            <option v-for="cat in categories" :key="cat.id" :value="String(cat.id)">{{ cat.title }}</option>
-          </select>
+  <div class="admin-page-stack">
+    <section class="admin-dash-hero">
+      <div class="hero-title-container">
+        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
+        <div class="hero-text">
+          <p class="gv-admin-eyebrow">ADMIN</p>
+          <h1 class="hero-title gv-hero-gradient uppercase">Глоссарий</h1>
+          <p class="hero-lead">Термины и статьи-раскрытия</p>
         </div>
-      </ExpandableFilters>
+      </div>
+    </section>
+
+    <div class="cta-buttons admin-index-toolbar cta-buttons--left">
+      <button
+        type="button"
+        class="cta-button secondary"
+        :disabled="relinking || repairingHtml"
+        title="Снимает повреждённые wiki-term ссылки и мусор в HTML. Сразу после этого обязательно нажмите «Перелинковать статьи»."
+        @click="repairLinkerHtml"
+      >
+        <UIcon name="i-heroicons-wrench-screwdriver" :class="{ 'icon-spin': repairingHtml }" />
+        <span>Починить разметку ссылок</span>
+      </button>
+      <button type="button" class="cta-button secondary" :disabled="relinking || repairingHtml" @click="relinkAll">
+        <UIcon name="i-heroicons-arrow-path" :class="{ 'icon-spin': relinking }" />
+        <span>Перелинковать статьи</span>
+      </button>
+      <NuxtLink to="/admin/glossary/create" class="cta-button primary">
+        <UIcon name="i-heroicons-plus" />
+        <span>Создать термин</span>
+      </NuxtLink>
     </div>
 
-    <!-- Table -->
-    <div class="terms-table-wrap gv-admin-surface overflow-x-auto">
-      <div v-if="pending" class="loading-rows">
-        <div v-for="i in 8" :key="i" class="skeleton-row" />
+    <section v-if="relinkResult" class="section-card" :class="{ 'section-card--error': relinkResult.error }">
+      <div class="card-body card-body--row">
+        <UIcon :name="relinkResult.error ? 'i-heroicons-exclamation-circle' : 'i-heroicons-check-circle'" />
+        <span>{{ relinkResult.message }}</span>
       </div>
+    </section>
 
-      <div v-else-if="filteredTerms.length === 0" class="empty-state">
-        <UIcon name="i-heroicons-inbox" />
-        <span>Терминов нет — создайте первый</span>
+    <section class="section-card">
+      <header class="card-header">
+        <span class="card-badge">FILT</span>
+        <h2 class="card-header-title">Поиск и фильтры</h2>
+      </header>
+      <div class="card-body">
+        <div class="gv-admin-filter-row">
+          <BaseSearch
+            v-model="searchQuery"
+            placeholder="Поиск термина..."
+            :is-pending="pending"
+            :is-debouncing="isTyping"
+            class="flex-1"
+          />
+          <ExpandableFilters
+            label="Фильтры"
+            :active-count="activeFilterCount"
+            :has-active-filters="activeFilterCount > 0"
+          >
+            <div class="filter-group">
+              <span class="filter-group-label">Категории</span>
+              <select v-model="categoryFilter" class="gv-admin-filter-select">
+                <option value="">Все категории</option>
+                <option v-for="cat in categories" :key="cat.id" :value="String(cat.id)">{{ cat.title }}</option>
+              </select>
+            </div>
+          </ExpandableFilters>
+        </div>
       </div>
+    </section>
 
-      <table v-else class="terms-table min-w-[760px]">
+    <section class="section-card">
+      <header class="card-header">
+        <span class="card-badge">LIST</span>
+        <h2 class="card-header-title">Термины</h2>
+      </header>
+      <div class="card-body card-body--flush overflow-x-auto terms-table-wrap-inner">
+        <div v-if="pending" class="loading-rows">
+          <div v-for="i in 8" :key="i" class="skeleton-row" />
+        </div>
+
+        <div v-else-if="filteredTerms.length === 0" class="empty-state empty-state--padded">
+          <UIcon name="i-heroicons-inbox" />
+          <span>Терминов нет — создайте первый</span>
+        </div>
+
+        <table v-else class="terms-table min-w-[760px]">
         <thead>
           <tr>
             <th>Термин</th>
@@ -129,12 +157,12 @@
           </tr>
         </tbody>
       </table>
-    </div>
 
-    <!-- Stats -->
-    <div v-if="data" class="table-footer">
-      Всего: <strong>{{ data.total }}</strong> терминов
-    </div>
+      <div v-if="data && !pending" class="card-after-table table-footer-inner">
+        Всего: <strong class="tabular-nums">{{ data.total }}</strong> терминов
+      </div>
+      </div>
+    </section>
 
     <!-- Delete confirm modal -->
     <UModal v-model="showDeleteModal">
@@ -189,10 +217,12 @@ const { data, pending, refresh } = await useAsyncData(
   { watch: [debouncedQuery] }
 )
 
-// Relink all
+// Relink / repair linker HTML
 const relinking = ref(false)
+const repairingHtml = ref(false)
 const relinkResult = ref<{ message: string; error?: boolean } | null>(null)
-async function relinkAll() {
+
+async function relinkAll () {
   relinking.value = true
   relinkResult.value = null
   try {
@@ -205,7 +235,24 @@ async function relinkAll() {
     relinkResult.value = { message: e.data?.statusMessage || 'Ошибка перелинковки', error: true }
   } finally {
     relinking.value = false
-    setTimeout(() => { relinkResult.value = null }, 5000)
+    setTimeout(() => { relinkResult.value = null }, 8000)
+  }
+}
+
+async function repairLinkerHtml () {
+  repairingHtml.value = true
+  relinkResult.value = null
+  try {
+    const res = await $fetch<any>('/api/admin/repair-linker-html', {
+      method: 'POST',
+      headers: store.getAuthHeader(),
+    })
+    relinkResult.value = { message: res.message }
+  } catch (e: any) {
+    relinkResult.value = { message: e.data?.statusMessage || 'Ошибка починки HTML', error: true }
+  } finally {
+    repairingHtml.value = false
+    setTimeout(() => { relinkResult.value = null }, 8000)
   }
 }
 
@@ -239,112 +286,6 @@ async function doDelete() {
 </script>
 
 <style scoped>
-.admin-glossary {
-  padding: 0;
-}
-
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 28px;
-  flex-wrap: wrap;
-}
-
-.page-title {
-  font-size: 18px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  margin: 0 0 4px;
-}
-
-.page-desc {
-  font-size: 14px;
-  color: #64748b;
-  margin: 0;
-}
-
-.dark .page-desc {
-  color: #71717a;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.relink-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  margin-bottom: 16px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.relink-banner.success {
-  background: #dcfce7;
-  color: #16a34a;
-}
-
-.relink-banner.error {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.dark .relink-banner.success {
-  background: #14532d;
-  color: #4ade80;
-}
-
-.dark .relink-banner.error {
-  background: #450a0a;
-  color: #f87171;
-}
-
-.search-bar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  background: white;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 0 14px;
-  margin-bottom: 16px;
-  transition: border-color 0.2s;
-}
-
-.dark .search-bar {
-  background: #18181b;
-  border-color: #3f3f46;
-}
-
-.search-bar:focus-within {
-  border-color: #0ea5e9;
-}
-
-.search-icon {
-  width: 16px;
-  height: 16px;
-  color: #94a3b8;
-  flex-shrink: 0;
-}
-
-.search-input {
-  flex: 1;
-  border: none;
-  outline: none;
-  background: transparent;
-  padding: 11px 10px;
-  font-size: 14px;
-  color: #1e293b;
-}
-
 .article-edit-link,
 .article-add-link {
   display: inline-flex;
@@ -368,22 +309,22 @@ async function doDelete() {
   text-decoration: underline;
 }
 
-.dark .search-input {
-  color: #e2e8f0;
+.empty-state--padded {
+  padding: 48px 24px;
 }
 
-/* Table */
-.terms-table-wrap {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 15px;
-  overflow: hidden;
-  box-shadow: 0 0 1px 1px rgba(119, 119, 119, 0.05);
+.table-footer-inner {
+  font-size: 13px;
+  color: #94a3b8;
+  border-top: 1px solid #f1f5f9;
 }
 
-.dark .terms-table-wrap {
-  background: #18181b;
+.dark .table-footer-inner {
   border-color: #27272a;
+}
+
+.table-footer-inner strong {
+  color: #0ea5e9;
 }
 
 .loading-rows {
@@ -562,21 +503,6 @@ async function doDelete() {
   gap: 4px;
 }
 
-.table-footer {
-  padding: 12px 16px;
-  font-size: 13px;
-  color: #94a3b8;
-  border-top: 1px solid #f1f5f9;
-}
-
-.dark .table-footer {
-  border-color: #27272a;
-}
-
-.table-footer strong {
-  color: #0ea5e9;
-}
-
 /* Delete modal */
 .delete-modal {
   padding: 24px;
@@ -617,30 +543,12 @@ async function doDelete() {
 }
 
 @media (max-width: 768px) {
-  .admin-glossary {
-    padding: 0;
-  }
-
-  .page-header {
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-
-  .header-actions {
-    width: 100%;
-  }
-
-  .header-actions :deep(button),
-  .header-actions a {
-    width: 100%;
-  }
-
-  .search-bar {
-    margin-bottom: 12px;
-  }
-
   .empty-state {
     padding: 28px 14px;
+  }
+
+  .definition-preview {
+    max-width: none;
   }
 }
 </style>
