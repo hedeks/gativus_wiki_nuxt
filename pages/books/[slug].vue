@@ -15,102 +15,108 @@
 
     <div v-else-if="book" class="book-content">
       <header class="book-hero">
-        <TheBreadcrumbs
-          v-if="book"
-          class="book-breadcrumbs"
-          :items="[
-            { label: t.library, to: '/books' },
-            { label: book.title },
-          ]"
-        />
-
-        <div class="book-hero-grid">
-          <div class="book-cover gv-surface-card">
-            <img
-              v-if="book.cover_image"
-              :src="book.cover_image"
-              :alt="book.title"
-              class="h-full w-full object-cover"
-            />
-            <div
-              v-else
-              class="book-cover-placeholder"
-            >
-              <UIcon name="i-heroicons-book-open" class="h-14 w-14 opacity-50" />
-              <span class="book-cover-placeholder-label">Gativus</span>
-            </div>
-          </div>
-
-          <div class="book-header-info">
-            <div v-if="book.category_ids?.length" class="book-badges">
-              <span v-for="catId in book.category_ids" :key="catId" class="book-badge">
-                {{ getCategoryTitle(catId) }}
-              </span>
-            </div>
-
-            <h1 class="book-hero-title-text gv-hero-gradient uppercase">
-              {{ book.title }}
-            </h1>
-            <p class="gv-hero-subtitle book-hero-tagline">{{ t.heroTagline }}</p>
-
-            <p class="book-description">
-              {{
-                book.description
-                  || t.fallbackDescription
-              }}
-            </p>
-
-            <div v-if="book.articles?.length" class="book-cta-row">
-              <GvButton
-                :to="`/articles/${book.articles[0].slug}`"
-                color="sky"
-                size="lg"
-                icon="i-heroicons-arrow-right"
-                trailing
+        <div class="book-hero-panel gv-surface-card">
+          <div class="book-hero-grid">
+            <div class="book-cover">
+              <img
+                v-if="book.cover_image"
+                :src="book.cover_image"
+                :alt="book.title"
+                class="h-full w-full object-cover"
+              />
+              <div
+                v-else
+                class="book-cover-placeholder"
               >
-                {{ t.read }}
-              </GvButton>
+                <UIcon name="i-heroicons-book-open" class="h-14 w-14 opacity-50" />
+                <span class="book-cover-placeholder-label">Gativus</span>
+              </div>
             </div>
 
-            <div class="book-meta-row">
-              <UIcon name="i-heroicons-document-text" class="book-meta-icon" />
-              <span>{{ book.articles?.length || 0 }} {{ t.chapters }}</span>
+            <div class="book-hero-main">
+              <TheBreadcrumbs
+                class="book-breadcrumbs-inner"
+                :items="[
+                  { label: t.library, to: '/books' },
+                  { label: book.title },
+                ]"
+              />
+
+              <h1 class="book-hero-title-text gv-hero-gradient uppercase">
+                {{ book.title }}
+              </h1>
+
+              <div v-if="book.category_ids?.length" class="book-badges">
+                <span v-for="catId in book.category_ids" :key="catId" class="book-badge">
+                  {{ getCategoryTitle(catId) }}
+                </span>
+              </div>
+
+              <p class="gv-hero-subtitle book-hero-tagline">{{ t.heroTagline }}</p>
+
+              <p class="book-description">
+                {{
+                  book.description
+                    || t.fallbackDescription
+                }}
+              </p>
+
+              <div class="book-actions-row">
+                <div class="book-meta-row">
+                  <UIcon name="i-heroicons-document-text" class="book-meta-icon" />
+                  <span>{{ book.articles?.length || 0 }} {{ t.chapters }}</span>
+                </div>
+                <GvButton
+                  v-if="book.articles?.length"
+                  :to="`/articles/${book.articles[0].slug}`"
+                  color="sky"
+                  size="lg"
+                  icon="i-heroicons-arrow-right"
+                  trailing
+                  class="book-read-btn"
+                >
+                  {{ t.read }}
+                </GvButton>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <section class="book-chapters gv-surface-card" aria-labelledby="book-toc-heading">
-        <div class="book-section-heading" role="presentation">
-          <h2 id="book-toc-heading" class="book-section-heading-text">{{ t.toc }}</h2>
+      <section class="book-toc-card gv-surface-card" aria-labelledby="book-toc-heading">
+        <div class="book-ds-card-header">
+          <span class="book-ds-card-badge">{{ t.tocBadge }}</span>
+          <h2 id="book-toc-heading" class="book-ds-card-header-title">
+            {{ t.toc }}
+          </h2>
         </div>
-
-        <div v-if="book.articles?.length" class="book-chapter-list">
-          <NuxtLink
-            v-for="(article, index) in book.articles"
-            :key="article.id"
-            :to="`/articles/${article.slug}`"
-            class="chapter-card gv-focusable"
-          >
-            <div class="chapter-index" aria-hidden="true">
-              {{ Number(index) + 1 }}
-            </div>
-            <div class="chapter-body">
-              <h3 class="chapter-title">{{ article.title }}</h3>
-              <p v-if="article.excerpt" class="chapter-excerpt line-clamp-1">
-                {{ article.excerpt }}
-              </p>
-            </div>
-            <UIcon
-              name="i-heroicons-arrow-right"
-              class="chapter-chevron"
-            />
-          </NuxtLink>
-        </div>
-
-        <div v-else class="chapter-empty">
-          <UIcon name="i-heroicons-clock" class="chapter-empty-icon" />
-          <p>{{ t.noChapters }}</p>
+        <div class="book-ds-card-body">
+          <template v-if="book.articles?.length">
+            <NuxtLink
+              v-for="(article, index) in book.articles"
+              :key="article.id"
+              :to="`/articles/${article.slug}`"
+              class="chapter-card gv-focusable"
+            >
+              <div class="chapter-index" aria-hidden="true">
+                {{ Number(index) + 1 }}
+              </div>
+              <div class="chapter-body">
+                <h3 class="chapter-title">{{ article.title }}</h3>
+                <p v-if="article.excerpt" class="chapter-excerpt line-clamp-1">
+                  {{ article.excerpt }}
+                </p>
+              </div>
+              <UIcon
+                name="i-heroicons-arrow-right"
+                class="chapter-chevron"
+              />
+            </NuxtLink>
+          </template>
+          <div v-else class="chapter-empty">
+            <UIcon name="i-heroicons-clock" class="chapter-empty-icon" />
+            <p>{{ t.noChapters }}</p>
+          </div>
         </div>
       </section>
     </div>
@@ -139,6 +145,7 @@ const uiDict: Record<string, any> = {
     notFoundDesc: 'It might have been deleted or the link is incorrect.',
     backToLib: 'Back to library',
     toc: 'Contents',
+    tocBadge: 'TOC',
     noChapters: 'Chapters for this book have not been published in this language yet.',
     heroTagline: 'Architecture and fundamentals',
     fallbackDescription:
@@ -152,6 +159,7 @@ const uiDict: Record<string, any> = {
     notFoundDesc: 'Возможно, она была удалена или ссылка неверна.',
     backToLib: 'Вернуться в библиотеку',
     toc: 'Оглавление',
+    tocBadge: 'ОГЛ',
     noChapters: 'Главы этой книги ещё не опубликованы на этом языке.',
     heroTagline: 'Архитектура и фундаментальные принципы',
     fallbackDescription:
@@ -243,18 +251,8 @@ useSeoMeta({
   width: 100%;
 }
 
-.book-breadcrumbs {
-  margin-bottom: 1rem;
-}
-
-@media (min-width: 768px) {
-  .book-breadcrumbs {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 2;
-    margin-bottom: 0;
-  }
+.book-hero-panel {
+  padding: clamp(1.1rem, 2.8vw, 1.5rem) clamp(1.1rem, 3vw, 1.6rem);
 }
 
 .book-hero-grid {
@@ -262,7 +260,6 @@ useSeoMeta({
   flex-direction: column;
   align-items: center;
   gap: clamp(1.5rem, 4vw, 2.5rem);
-  padding-top: clamp(0.25rem, 2vw, 2.5rem);
 }
 
 @media (min-width: 768px) {
@@ -273,12 +270,49 @@ useSeoMeta({
   }
 }
 
+.book-breadcrumbs-inner {
+  margin-bottom: 0.85rem;
+}
+
+.book-breadcrumbs-inner :deep(nav) {
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .book-breadcrumbs-inner :deep(nav) {
+    justify-content: flex-start;
+  }
+}
+
+.book-hero-title-text {
+  margin: 0;
+  font-size: clamp(1.75rem, 4.5vw, 2.75rem);
+  line-height: 1.1;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+.book-hero-main {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .book-hero-main {
+    text-align: left;
+  }
+}
+
 .book-cover {
   width: 200px;
   height: 280px;
   flex-shrink: 0;
-  border-radius: var(--gv-radius-container);
+  border-radius: var(--gv-radius-control);
   overflow: hidden;
+  border: 1px solid var(--gv-border-principal);
 }
 
 @media (min-width: 768px) {
@@ -308,16 +342,88 @@ useSeoMeta({
   padding: 0 1rem;
 }
 
-.book-header-info {
-  flex: 1;
-  min-width: 0;
-  text-align: center;
+.book-meta-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--gv-primary);
 }
 
-@media (min-width: 768px) {
-  .book-header-info {
-    text-align: left;
+.book-actions-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.book-meta-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gv-text-secondary);
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  .book-actions-row {
+    width: 100%;
+    max-width: 26rem;
+    margin-inline: auto;
   }
+
+  .book-read-btn {
+    flex-shrink: 0;
+  }
+}
+
+.book-toc-card {
+  overflow: hidden;
+}
+
+.book-ds-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: var(--gv-surface-header);
+  border-bottom: 1px solid var(--gv-border-principal);
+}
+
+.book-ds-card-badge {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, #e0f2fe, #bae6fd);
+  color: #0c4a6e;
+}
+
+.dark .book-ds-card-badge {
+  background: linear-gradient(90deg, #0c4a6e, #082f49);
+  color: #e0f2fe;
+}
+
+.book-ds-card-header-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--gv-text-primary);
+  letter-spacing: 0.5px;
+}
+
+.book-ds-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem clamp(0.75rem, 2vw, 1.25rem) 1.25rem;
 }
 
 .book-badges {
@@ -351,20 +457,12 @@ useSeoMeta({
   color: color-mix(in srgb, var(--gv-primary) 72%, #e2e8f0);
 }
 
-.book-hero-title-text {
-  margin: 0 0 0.5rem;
-  font-size: clamp(1.75rem, 4.5vw, 2.75rem);
-  line-height: 1.1;
-  letter-spacing: 0.12em;
-  font-weight: 700;
-}
-
 .book-hero-tagline {
   margin: 0 0 1rem;
 }
 
 .book-description {
-  margin: 0 0 1.5rem;
+  margin: 0 0 1rem;
   font-size: 1.05rem;
   line-height: 1.7;
   color: var(--gv-text-secondary);
@@ -378,79 +476,6 @@ useSeoMeta({
   }
 }
 
-.book-cta-row {
-  margin-bottom: 1.25rem;
-  display: flex;
-  justify-content: center;
-}
-
-@media (min-width: 768px) {
-  .book-cta-row {
-    justify-content: flex-start;
-  }
-}
-
-.book-meta-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--gv-text-secondary);
-}
-
-.book-meta-icon {
-  width: 1.1rem;
-  height: 1.1rem;
-  color: var(--gv-primary);
-}
-
-/* Оглавление */
-.book-chapters {
-  overflow: hidden;
-  padding-bottom: 0.5rem;
-}
-
-.book-section-heading {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  padding: 1.25rem 1rem 0.75rem;
-}
-
-.book-section-heading::before {
-  content: '';
-  position: absolute;
-  left: 1rem;
-  right: 1rem;
-  top: 50%;
-  height: 1px;
-  background: var(--gv-border-principal);
-  z-index: 0;
-}
-
-.book-section-heading-text {
-  position: relative;
-  z-index: 1;
-  margin: 0;
-  padding: 0 1.25rem;
-  background: var(--gv-surface-card);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--gv-text-primary);
-}
-
-.book-chapter-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem clamp(0.75rem, 2vw, 1.25rem) 1.25rem;
-}
-
 .chapter-card {
   display: flex;
   align-items: center;
@@ -458,20 +483,30 @@ useSeoMeta({
   padding: 1rem 1.25rem;
   border-radius: var(--gv-radius-control);
   border: 1px solid var(--gv-border-principal);
-  background: var(--gv-surface-card);
+  background: color-mix(in srgb, var(--gv-surface-card) 90%, var(--gv-surface-header));
   box-shadow: var(--gv-shadow-sm);
   text-decoration: none !important;
   color: inherit;
   transition:
     border-color 0.25s ease,
     box-shadow 0.25s ease,
-    transform 0.25s ease;
+    transform 0.25s ease,
+    background 0.25s ease;
+}
+
+.dark .chapter-card {
+  background: color-mix(in srgb, var(--gv-surface-card) 94%, var(--gv-surface-header));
 }
 
 .chapter-card:hover {
   border-color: color-mix(in srgb, var(--gv-primary) 45%, var(--gv-border-principal));
   box-shadow: var(--gv-shadow-md);
   transform: translateY(-2px);
+  background: color-mix(in srgb, var(--gv-surface-card) 88%, var(--gv-surface-header));
+}
+
+.dark .chapter-card:hover {
+  background: color-mix(in srgb, var(--gv-surface-card) 100%, transparent);
 }
 
 .chapter-index {
@@ -481,12 +516,31 @@ useSeoMeta({
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 0.95rem;
-  font-weight: 700;
-  background: var(--gv-surface-header);
-  color: var(--gv-text-primary);
-  border: 1px solid var(--gv-border-principal);
+  font-weight: 800;
+  line-height: 1;
+  color: color-mix(in srgb, var(--gv-primary) 88%, var(--gv-text-primary));
+  border: 1px solid color-mix(in srgb, var(--gv-primary) 42%, var(--gv-border-principal));
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--gv-primary) 28%, var(--gv-surface-header)) 0%,
+    color-mix(in srgb, var(--gv-primary) 8%, var(--gv-surface-header)) 45%,
+    var(--gv-surface-header) 100%
+  );
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
+}
+
+.dark .chapter-index {
+  color: color-mix(in srgb, var(--gv-primary) 75%, #e2e8f0);
+  border-color: color-mix(in srgb, var(--gv-primary) 38%, var(--gv-border-principal));
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--gv-primary) 35%, var(--gv-surface-header)) 0%,
+    color-mix(in srgb, var(--gv-primary) 12%, var(--gv-surface-card)) 50%,
+    var(--gv-surface-header) 100%
+  );
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent);
 }
 
 .chapter-body {
@@ -521,7 +575,7 @@ useSeoMeta({
 }
 
 .chapter-empty {
-  margin: 1rem clamp(0.75rem, 2vw, 1.25rem) 1.25rem;
+  margin: 0;
   display: flex;
   flex-direction: column;
   align-items: center;

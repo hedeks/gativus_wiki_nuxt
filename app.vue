@@ -130,6 +130,19 @@ body {
   line-height: 1.35;
 }
 
+/* Ссылки без подчёркивания по умолчанию (prose / контент) */
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+.prose :where(a):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  text-decoration: none;
+}
+
 /* Публичный layout: тот же градиент и скролл вместе с контентом, что у admin-main (без fixed на html) */
 .gv-public-layout {
   display: flex;
@@ -198,6 +211,33 @@ body {
   background: var(--gv-surface-header);
   border-bottom: 1px solid var(--gv-border-principal);
   padding: 14px 20px;
+}
+
+/* CTA перехода к презентации (статьи / глоссарий) */
+.gv-pres-cta {
+  margin-top: 1.25rem;
+  border-radius: var(--gv-radius-container);
+  border: 1px solid color-mix(in srgb, var(--gv-primary) 32%, var(--gv-border-principal));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gv-primary) 12%, var(--gv-surface-card)) 0%,
+    var(--gv-surface-card) 70%
+  );
+  box-shadow: var(--gv-shadow-sm);
+  overflow: hidden;
+}
+
+.gv-pres-cta .gv-btn {
+  border-radius: 0;
+  width: 100%;
+  min-height: 3.5rem;
+  font-size: clamp(1rem, 2.2vw, 1.25rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.dark .gv-pres-cta {
+  border-color: color-mix(in srgb, var(--gv-primary) 40%, var(--gv-border-principal));
 }
 
 .gv-btn-primary {

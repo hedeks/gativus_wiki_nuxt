@@ -1,35 +1,85 @@
 <template>
-    <div class="flex flex-col dark:border-zinc-800 lg:sticky h-fit">
-        <p class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase mb-2">Текст</p>
-        <span @click="$emit('changeView', 'lection')" :class="{ 'selectedToc': props.isTheory }"
-            class="dark:border-zinc-800 border-l-2 lg:border-l-0 lg:border-r-2 px-3 py-2 text-sm cursor-pointer hover:text-sky-600 dark:hover:text-sky-400 transition-all duration-300 text-gray-900 dark:text-gray-100">
-            {{ "Статья: ".concat(props.quizTitle as string) }}
-        </span>
-        <template v-if="props.hasPresentation">
-            <p class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase my-2">Презентация</p>
-            <span @click="$emit('changeView', 'quiz')" :class="{ 'selectedToc': !props.isTheory }"
-                class="dark:border-zinc-800 lg:border-r-2 lg:border-l-0 border-l-2 px-3 py-2 text-sm cursor-pointer hover:text-sky-600 dark:hover:text-sky-400 transition-all duration-300 text-gray-900 dark:text-gray-100">
-                {{ "Презентация: ".concat(props.quizTitle as string) }}
-            </span>
-        </template>
-    </div>
+  <div class="left-view-selector flex flex-col lg:sticky h-fit">
+    <p class="lv-label lg:text-sm text-[10px] tracking-widest font-bold uppercase mb-2">
+      {{ pack.text }}
+    </p>
+    <span
+      class="selector-row border-l-2 lg:border-l-0 lg:border-r-2 border-transparent px-3 py-2 text-sm cursor-pointer transition-all duration-300 rounded-none lv-row"
+      :class="{ selectedToc: props.isTheory }"
+      @click="$emit('changeView', 'lection')"
+    >
+      {{ pack.article }}: {{ quizTitle }}
+    </span>
+    <template v-if="props.hasPresentation">
+      <p class="lv-label lg:text-sm text-[10px] tracking-widest font-bold uppercase my-2">
+        {{ pack.presentation }}
+      </p>
+      <span
+        class="selector-row border-l-2 lg:border-r-2 lg:border-l-0 border-transparent px-3 py-2 text-sm cursor-pointer transition-all duration-300 rounded-none lv-row"
+        :class="{ selectedToc: !props.isTheory }"
+        @click="$emit('changeView', 'quiz')"
+      >
+        {{ pack.presentation }}: {{ quizTitle }}
+      </span>
+    </template>
+  </div>
 </template>
 
 <script setup lang="ts">
+import { useLanguageStore } from '~/stores/language'
+
+const langStore = useLanguageStore()
+
+const pack = computed(() => {
+  const dict: Record<string, { text: string; presentation: string; article: string }> = {
+    en: { text: 'Text', presentation: 'Presentation', article: 'Article' },
+    ru: { text: 'Текст', presentation: 'Презентация', article: 'Статья' },
+    zh: { text: '正文', presentation: '演示', article: '文章' },
+  }
+  return dict[langStore.currentLang] || dict.ru
+})
+
+defineEmits(['changeView'])
+
 const props = defineProps({
-    title: String,
-    quizTitle: String,
-    meta: String,
-    isTheory: Boolean,
-    hasPresentation: {
-        type: Boolean,
-        default: true
-    }
+  title: String,
+  quizTitle: String,
+  meta: String,
+  isTheory: Boolean,
+  hasPresentation: {
+    type: Boolean,
+    default: true,
+  },
 })
 </script>
 
 <style scoped>
+.lv-label {
+  color: var(--gv-text-primary);
+}
+
+.lv-row {
+  color: var(--gv-text-primary);
+}
+
+.lv-row:hover {
+  color: var(--gv-primary);
+}
+
 .selectedToc {
-    @apply lg:border-r-2 lg:border-l-0 border-l-2 border-sky-600 dark:border-sky-400 bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300;
+  border-color: var(--gv-primary);
+  border-radius: 0;
+  background: transparent;
+  color: var(--gv-primary);
+  font-weight: 600;
+}
+
+.left-view-selector .selector-row:not(.selectedToc) {
+  border-color: transparent;
+}
+
+.selector-row {
+  background: transparent;
+  border-radius: 0;
 }
 </style>

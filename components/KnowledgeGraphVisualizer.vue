@@ -818,8 +818,43 @@ const linkPopupStyle = computed(() => {
 /** Удерживаем попап в пересечении .graph-viewport с видимой областью окна (прокрутка страницы, dynamic toolbar). */
 let graphPopupClampRaf = 0
 
+/** Под узлом / связью → при нехватке места сверху → иначе снова снизу у якоря (как theTermPopover). */
+function pickPreferredPopupTopHost(
+  popup: HTMLElement,
+  host: HTMLElement,
+  anchorYHost: number,
+  offsetBelow: number,
+): number {
+  const pad = 8
+  const hr = host.getBoundingClientRect()
+  const anchorClientY = hr.top + anchorYHost
+  const vv = typeof window !== 'undefined' ? window.visualViewport : null
+  const winTop = vv?.offsetTop ?? 0
+  const winH = vv?.height ?? window.innerHeight
+  const screenTop = winTop + pad
+  const screenBottom = winTop + winH - pad
+
+  const topBelowHost = anchorYHost + offsetBelow
+  const belowTopClient = hr.top + topBelowHost
+
+  popup.style.maxHeight = ''
+  popup.style.overflowY = ''
+  popup.style.top = `${topBelowHost}px`
+  void popup.offsetHeight
+  const h = popup.getBoundingClientRect().height
+
+  const spaceBelow = screenBottom - belowTopClient
+  const spaceAbove = anchorClientY - pad - screenTop
+
+  if (h <= spaceBelow) return topBelowHost
+  if (h <= spaceAbove) return (anchorClientY - pad - h) - hr.top
+  return topBelowHost
+}
+
 function clampPopupInHost(popup: HTMLElement, host: HTMLElement, left: number, top: number) {
   const pad = 8
+  popup.style.maxHeight = ''
+  popup.style.overflowY = ''
   const c = host.getBoundingClientRect()
   const vv = typeof window !== 'undefined' ? window.visualViewport : null
   const winW = vv?.width ?? window.innerWidth
@@ -875,8 +910,17 @@ function clampPopupInHost(popup: HTMLElement, host: HTMLElement, left: number, t
       apply()
       r = popup.getBoundingClientRect()
       if (r.bottom > boundBottom) t -= r.bottom - boundBottom
-    } else {
-      t += boundTop - r.top
+    }
+    else {
+      const capY = Math.max(1, Math.floor(spanY))
+      popup.style.maxHeight = `${capY}px`
+      popup.style.overflowY = 'auto'
+      apply()
+      r = popup.getBoundingClientRect()
+      if (r.top < boundTop) t += boundTop - r.top
+      apply()
+      r = popup.getBoundingClientRect()
+      if (r.bottom > boundBottom) t -= r.bottom - boundBottom
     }
 
     apply()
@@ -915,9 +959,12 @@ function applyGraphPopupClamp() {
   if (selectedNode.value && !nodePopupPanelClosed.value) {
     const el = document.querySelector('.graph-popup-node') as HTMLElement | null
     if (el) {
-      const x = currentTransform.value.applyX(selectedNode.value.x) + 15
-      const y = currentTransform.value.applyY(selectedNode.value.y) + 15
-      clampPopupInHost(el, host, x, y)
+      const nx = currentTransform.value.applyX(selectedNode.value.x)
+      const ny = currentTransform.value.applyY(selectedNode.value.y)
+      const off = 15
+      const left = nx + off
+      const topPref = pickPreferredPopupTopHost(el, host, ny, off)
+      clampPopupInHost(el, host, left, topPref)
     }
   }
 
@@ -926,9 +973,14 @@ function applyGraphPopupClamp() {
     if (el) {
       const s = selectedLink.value.source
       const tN = selectedLink.value.target
-      const x = currentTransform.value.applyX((s.x + tN.x) / 2)
-      const y = currentTransform.value.applyY((s.y + tN.y) / 2)
-      clampPopupInHost(el, host, x, y)
+      const midX = (s.x + tN.x) / 2
+      const midY = (s.y + tN.y) / 2
+      const hx = currentTransform.value.applyX(midX)
+      const hy = currentTransform.value.applyY(midY)
+      const off = 8
+      const left = hx
+      const topPref = pickPreferredPopupTopHost(el, host, hy, off)
+      clampPopupInHost(el, host, left, topPref)
     }
   }
 }

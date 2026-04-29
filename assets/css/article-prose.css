@@ -10,8 +10,12 @@
   line-height: 1.5;
   color: #000000;
   max-width: 100%;
+  width: 100%;
+  min-width: 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .dark .article-prose {
@@ -26,6 +30,25 @@
 .article-prose h5,
 .article-prose h6 {
   text-indent: 1.25cm;
+}
+
+/* Якорная прокрутка (TOC): учитываем фиксированный header + на моб. плавающее оглавление */
+.article-prose h2,
+.article-prose h3,
+.article-prose h4,
+.article-prose h5,
+.article-prose h6 {
+  scroll-margin-top: calc(var(--header-height, 65px) + 0.75rem);
+}
+
+@media (max-width: 1023px) {
+  .article-prose h2,
+  .article-prose h3,
+  .article-prose h4,
+  .article-prose h5,
+  .article-prose h6 {
+    scroll-margin-top: calc(var(--header-height, 65px) + 4.25rem);
+  }
 }
 
 .article-prose h1 {
@@ -87,18 +110,21 @@
   margin: 0 0 1em;
   text-indent: 1.25cm;
   text-align: justify;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 /* ─── Links ─── */
 .article-prose a {
   color: #0369a1;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
   transition: color 0.2s;
 }
 
 .article-prose a:hover {
   color: #0284c7;
+  text-decoration: none;
 }
 
 .dark .article-prose a {
@@ -109,29 +135,30 @@
   color: #7dd3fc;
 }
 
-/* Wiki term links (Phase 3 prep) */
+/* Ссылки на термины — зелёный акцент как «term» на графе, без линии */
 .article-prose a.wiki-term {
-  color: #6366f1;
+  color: #047857;
   text-decoration: none;
-  border-bottom: 1px solid #6366f1;
+  border-bottom: none;
   cursor: pointer;
-  transition: all 0.2s;
+  font-weight: 600;
+  transition: color 0.2s ease, background-color 0.2s ease;
 }
 
 .article-prose a.wiki-term:hover {
-  color: #4f46e5;
-  background: #eef2ff;
-  border-radius: 2px;
+  color: #065f46;
+  background: color-mix(in srgb, #10b981 14%, transparent);
+  border-radius: 0;
 }
 
 .dark .article-prose a.wiki-term {
-  color: #818cf8;
-  border-bottom-color: #818cf8;
+  color: #34d399;
 }
 
 .dark .article-prose a.wiki-term:hover {
-  color: #a5b4fc;
-  background: #1e1b4b;
+  color: #6ee7b7;
+  background: color-mix(in srgb, #10b981 20%, transparent);
+  border-radius: 0;
 }
 
 /* ─── Lists ─── */
@@ -145,6 +172,8 @@
   list-style-position: inside;
   text-indent: 1.25cm;
   margin: 0.25em 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .article-prose ul { list-style-type: disc; }
@@ -167,11 +196,10 @@
   margin: 2em auto;
   border-collapse: collapse;
   font-size: 0.9em;
-  width: auto;
-  min-width: 50%;
+  width: 100%;
   max-width: 100%;
-  overflow-x: auto;
   display: table;
+  table-layout: auto;
 }
 
 .article-prose thead {
@@ -188,6 +216,9 @@
   border: 1px solid #e5e7eb;
   text-align: center;
   vertical-align: middle;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .article-prose td p {

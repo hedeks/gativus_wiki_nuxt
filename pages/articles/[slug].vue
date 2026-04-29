@@ -7,7 +7,7 @@
     <div :class="[{ 'active': !hasPresentation || isTheory, 'inactive': hasPresentation && !isTheory }]" ref="lection"
       class="flex flex-col-reverse lg:grid lg:grid-cols-8 xl:grid-cols-8 gap-10 w-full lg:col-span-8 xl:col-span-8 view-transition">
       <div
-        class="w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm">
+        class="w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col min-w-0 overflow-x-auto bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm">
         <!-- Article Header -->
         <div v-if="article" class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800">
           <!-- Dynamic Breadcrumbs -->
@@ -59,10 +59,17 @@
             </div>
           </div>
         </Transition>
-        <!-- Button to switch to presentation (only if presentation exists) -->
-        <GvButton v-if="hasPresentation" variant="solid" block color="sky"
-          class="rounded-none lg:text-xl sm:text-lg mt-5 h-20 not-prose" :label="t.presentation"
-          @click="changeView('quiz')" />
+        <div v-if="hasPresentation" class="gv-pres-cta not-prose">
+          <GvButton
+            variant="solid"
+            block
+            color="sky"
+            icon="i-heroicons-presentation-chart-bar"
+            trailing
+            :label="t.presentation"
+            @click="changeView('quiz')"
+          />
+        </div>
 
         <!-- Book Navigation -->
         <div v-if="article.book_id && (article.prev || article.next)"
@@ -102,12 +109,12 @@
       <aside :class="[
         'flex flex-col z-30 transition-all duration-500 overflow-x-hidden',
         'lg:sticky lg:top-[--header-height] lg:bg-transparent lg:border-none lg:shadow-none lg:p-0 lg:h-fit lg:w-full lg:col-span-2 xl:col-span-2',
-        'fixed top-[calc(var(--header-height)+0.75rem)] right-4 w-[240px] max-w-[85vw] sm:w-[320px] bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-gray-100 dark:border-zinc-800 rounded-xl shadow-lg py-3 pl-3 pr-5 lg:static lg:z-auto lg:max-w-none'
+        'fixed top-[calc(var(--header-height)+0.75rem)] right-4 w-[240px] max-w-[85vw] sm:w-[320px] bg-transparent dark:bg-transparent border-0 shadow-none backdrop-blur-none py-3 pl-3 pr-5 lg:static lg:z-auto lg:max-w-none'
       ]" class="presentation-sidebar">
 
         <!-- Mobile Toggle (Matching TOC Style) -->
         <div
-          class="flex items-center justify-between cursor-pointer select-none px-3 py-1 lg:sticky lg:top-0 lg:z-20 lg:bg-white/50 lg:dark:bg-zinc-900/50 lg:backdrop-blur-md"
+          class="flex items-center justify-between cursor-pointer select-none px-3 py-1 lg:sticky lg:top-0 lg:z-20 lg:bg-transparent lg:dark:bg-transparent"
           @click="isPresSidebarOpen = !isPresSidebarOpen">
           <p
             class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase transition-all duration-500 mr-4 flex-shrink-0">
@@ -334,7 +341,7 @@ const tocLinks = computed<TocLink[]>(() => {
     const text = match[3].replace(/<[^>]*>/g, '').trim()
     if (!text) continue
 
-    const id = match[2] || generateId(text)
+    const id = (match[2]?.trim() || generateId(text)).trim()
 
     flat.push({ id, text, depth })
   }
@@ -380,6 +387,7 @@ const isDesktop = ref(true)
 
 const checkSize = () => {
   isDesktop.value = window.innerWidth >= 1024
+  scheduleScrollSpy()
 }
 
 // ─── Lightbox logic ───
@@ -421,9 +429,11 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 }
 
-let isFirstObsCall = true
 let isScrollingManually = false
-let scrollTimeout: NodeJS.Timeout
+let scrollTimeout: ReturnType<typeof setTimeout>
+
+/** Heading nodes in document order (for scroll-spy; avoids IntersectionObserver races). */
+const headingElements = ref<Element[]>([])
 
 const handleTocClick = (id: string) => {
   activeID.value = id
@@ -448,53 +458,59 @@ const resetToFirstHeading = () => {
   }, 1000)
 }
 
+/** Last heading whose top is at or above the “reading line” (under fixed header). */
+function updateActiveHeadingFromScroll() {
+  if (!process.client || !isTheory.value || isScrollingManually)
+    return
+  const els = headingElements.value
+  if (!els.length)
+    return
+  const headerH = document.getElementById('header')?.clientHeight ?? 80
+  const line = headerH + 16
+  let currentId = (els[0] as HTMLElement).id
+  for (const el of els) {
+    const top = el.getBoundingClientRect().top
+    if (top <= line && el.id)
+      currentId = el.id
+    else if (top > line)
+      break
+  }
+  if (currentId && activeID.value !== currentId)
+    activeID.value = currentId
+}
+
+let scrollSpyRaf: number | null = null
+function scheduleScrollSpy() {
+  if (!process.client)
+    return
+  if (scrollSpyRaf != null)
+    return
+  scrollSpyRaf = requestAnimationFrame(() => {
+    scrollSpyRaf = null
+    updateActiveHeadingFromScroll()
+  })
+}
+
 const updateHeadingsAndObserve = () => {
   if (!process.client) return
   nextTick(() => {
-    const container = document.querySelector('.parent')
+    const container = document.querySelector('.parent.article-prose')
+      || document.querySelector('.article-prose.parent')
     if (container) {
       const headings = container.querySelectorAll('h2, h3, h4, h5')
       headings.forEach((heading) => {
-        if (!heading.id) {
-          heading.id = generateId(heading.textContent || '')
+        const h = heading as HTMLElement
+        if (h.id) h.id = h.id.trim()
+        if (!h.id) {
+          h.id = generateId(heading.textContent || '')
         }
       })
 
-      const filteredElements = Array.from(headings).filter(el => el.id !== '')
-      if (obs.value) obs.value.disconnect()
-      obs.value = observe(filteredElements)
+      headingElements.value = Array.from(headings).filter(el => el.id !== '')
+      scheduleScrollSpy()
     }
   })
 }
-
-const observe = (filteredElements: Element[]) => {
-  const callback: IntersectionObserverCallback = (entries: IntersectionObserverEntry[]) => {
-    entries.forEach((entry: IntersectionObserverEntry) => {
-      if (!entry.isIntersecting && entry.boundingClientRect.y > 0 && !isFirstObsCall) {
-        let index = filteredElements.indexOf(entry.target)
-        if (index > 0 && !isScrollingManually) {
-          activeID.value = filteredElements[index - 1].id
-        }
-      }
-      if (entry.isIntersecting) {
-        if (entry.target.id !== '' && !isScrollingManually) {
-          activeID.value = entry.target.id
-        }
-      }
-    })
-    isFirstObsCall = false
-  }
-  const observer = new IntersectionObserver(callback, {
-    root: null,
-    rootMargin: '0px 0px -80% 0px'
-  })
-  filteredElements.forEach((item: Element) => {
-    observer.observe(item)
-  })
-  return observer
-}
-
-const obs = ref<IntersectionObserver>()
 const currentPosition = ref<number>()
 
 const changeView = (name: string) => {
@@ -510,7 +526,11 @@ const changeView = (name: string) => {
     if (currentPosition.value) {
       nextTick(() => {
         window.scrollTo({ top: currentPosition.value })
+        scheduleScrollSpy()
       })
+    }
+    else {
+      nextTick(() => scheduleScrollSpy())
     }
   }
 }
@@ -526,8 +546,9 @@ onMounted(() => {
   window?.addEventListener('scroll', () => {
     if (isTheory.value) {
       currentPosition.value = scrollY
+      scheduleScrollSpy()
     }
-  })
+  }, { passive: true })
   updateHeadingsAndObserve()
   window.addEventListener('keydown', handleKeydown)
 })
@@ -535,6 +556,10 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', checkSize)
+  if (scrollSpyRaf != null) {
+    cancelAnimationFrame(scrollSpyRaf)
+    scrollSpyRaf = null
+  }
 })
 </script>
 
