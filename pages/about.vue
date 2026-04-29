@@ -1,18 +1,19 @@
 <template>
   <div class="about-page gv-page">
-    <!-- Hero -->
-    <section class="about-hero">
-      <div class="hero-title-container">
-        <img src="/images/121px-Logo.jpg" alt="Gativus Logo" class="hero-logo" />
-        <div class="hero-text">
-          <h1 class="hero-title gv-hero-gradient uppercase">{{ t.heroTitle }}</h1>
-          <p class="hero-subtitle">{{ t.heroSubtitle }}</p>
+    <PageHero crisp class="about-page-hero w-full">
+      <template #default>
+        <div class="hero-title-container">
+          <img src="/images/121px-Logo.jpg" alt="Gativus Logo" class="hero-logo">
+          <div class="hero-text">
+            <h1 class="hero-title gv-hero-gradient uppercase about-hero-heading">{{ t.heroTitle }}</h1>
+            <p class="hero-subtitle">{{ t.heroSubtitle }}</p>
+          </div>
         </div>
-      </div>
-      <p class="hero-description">
-        {{ t.heroDescription }}
-      </p>
-    </section>
+        <p class="hero-description mt-8">
+          {{ t.heroDescription }}
+        </p>
+      </template>
+    </PageHero>
 
     <!-- GTOM -->
     <section class="section-card">
@@ -285,34 +286,15 @@ definePageMeta({ layout: 'default' })
   width: 100%;
 }
 
-/* ─── Hero ─── */
-.about-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  min-height: calc(40vh - var(--header-height, 64px));
-  text-align: center;
-  padding: 10px 20px 10px;
+.about-page-hero {
   width: 100%;
 }
 
+/* ─── Hero (содержимое внутри PageHero) ─── */
 .hero-title-container {
   display: flex;
   gap: 20px;
   align-items: center;
-}
-
-.hero-title {
-  margin: 0;
-  font-size: 48px;
-  line-height: 1.1;
-  letter-spacing: 6px;
-  font-weight: 700;
-  color: #18181b;
-  padding-bottom: 8px;
-  user-select: none;
 }
 
 .hero-logo {
@@ -327,6 +309,11 @@ definePageMeta({ layout: 'default' })
   flex-direction: column;
 }
 
+.about-hero-heading {
+  border-bottom: 1px solid var(--gv-border-principal);
+  margin-bottom: 0 !important;
+}
+
 .hero-title {
   margin: 0;
   font-size: 42px;
@@ -334,13 +321,15 @@ definePageMeta({ layout: 'default' })
   letter-spacing: 6px;
   font-weight: 700;
   color: #333;
-  border-bottom: 1px solid #bababa;
   padding-bottom: 8px;
   filter: none;
 }
 
 .dark .hero-title {
   color: #e5e5e5;
+}
+
+.dark .about-hero-heading {
   border-bottom-color: #555;
 }
 

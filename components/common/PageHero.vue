@@ -5,9 +5,16 @@
     :class="{ 'page-hero--crisp': crisp }"
   >
     <div class="hero-content flex flex-col items-center text-center">
-      <h1 class="hero-title gv-hero-gradient uppercase">{{ title }}</h1>
-      <p class="hero-description mt-8">{{ description }}</p>
-
+      <slot name="prepend" />
+      <template v-if="$slots.default">
+        <slot />
+      </template>
+      <template v-else>
+        <h1 class="hero-title gv-hero-gradient uppercase">{{ title }}</h1>
+        <p v-if="description" class="hero-description mt-8">{{ description }}</p>
+        <p v-if="eyebrow" class="gv-hero-subtitle mt-6">{{ eyebrow }}</p>
+      </template>
+      <slot name="append" />
       <div v-if="$slots.search" class="hero-actions mt-10 w-full max-w-3xl mx-auto">
         <slot name="search" />
       </div>
@@ -18,12 +25,15 @@
 <script setup lang="ts">
 withDefaults(
   defineProps<{
-    title: string
-    description: string
-    /** Tighter edge, subtle inner highlight (knowledge index) */
+    /** Если задан слот default — заголовок из пропа не рендерится */
+    title?: string
+    description?: string
+    /** Строка под описанием (режим без default-слота), напр. подзаголовок панели */
+    eyebrow?: string
+    /** Как на индексах knowledge: тонкая кромка и шум */
     crisp?: boolean
   }>(),
-  { crisp: false }
+  { crisp: false },
 )
 </script>
 
@@ -64,41 +74,6 @@ withDefaults(
   opacity: 0.14;
 }
 
-.hero-title {
-  margin: 0;
-  font-size: 48px;
-  line-height: 1;
-  letter-spacing: 6px;
-  font-weight: 700;
-  color: #18181b;
-  padding-bottom: 8px;
-  margin-bottom: 12px;
-  user-select: none;
-  display: inline-block;
-}
-
-@media (max-width: 768px) {
-  .hero-title {
-    font-size: 36px;
-    letter-spacing: 4px;
-  }
-}
-
-.dark .hero-title {
-  color: #e5e5e5;
-}
-
-.hero-description {
-  font-size: 17px;
-  line-height: 1.7;
-  color: #555;
-  max-width: 700px;
-}
-
-.dark .hero-description {
-  color: #aaa;
-}
-
 .hero-actions {
   display: flex;
   align-items: center;
@@ -112,5 +87,43 @@ withDefaults(
     flex-direction: column;
     gap: 10px;
   }
+}
+</style>
+
+<!-- Типографика для дефолтного режима и для содержимого слота default (разметка из родителя) -->
+<style>
+.page-hero .hero-title {
+  margin: 0;
+  font-size: 48px;
+  line-height: 1;
+  letter-spacing: 6px;
+  font-weight: 700;
+  color: #18181b;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  user-select: none;
+  display: inline-block;
+}
+
+@media (max-width: 768px) {
+  .page-hero .hero-title {
+    font-size: 36px;
+    letter-spacing: 4px;
+  }
+}
+
+.dark .page-hero .hero-title {
+  color: #e5e5e5;
+}
+
+.page-hero .hero-description {
+  font-size: 17px;
+  line-height: 1.7;
+  color: #555;
+  max-width: 700px;
+}
+
+.dark .page-hero .hero-description {
+  color: #aaa;
 }
 </style>

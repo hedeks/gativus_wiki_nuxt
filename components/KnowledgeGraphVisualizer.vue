@@ -1,167 +1,401 @@
 <template>
-  <div class="knowledge-graph-visualizer">
-    <!-- Header removed, moved to parent if needed -->
-    <div ref="graphContainer" class="graph-container">
-      <div v-if="pending" class="loading-overlay">
-        <UIcon name="i-heroicons-arrow-path" class="animate-spin text-4xl" />
-        <span>{{ t.loading }}</span>
-      </div>
-      <div v-else-if="!pending && (!graphData?.nodes || graphData.nodes.length === 0)" class="empty-state-overlay">
-        <UIcon name="i-heroicons-share" class="text-4xl opacity-20 mb-2" />
-        <p>{{ t.empty }}</p>
+  <div class="knowledge-graph-visualizer" :class="{ 'knowledge-graph-visualizer--frameless': frameless }">
+    <div ref="graphViewport" class="graph-viewport">
+      <div ref="graphContainer" class="graph-container" :class="{ 'graph-container--frameless': frameless }">
+        <svg ref="svgRef" class="graph-svg"></svg>
       </div>
 
-      <svg ref="svgRef" class="graph-svg"></svg>
+      <!-- Слой UI вне .graph-container — иначе overflow:hidden обрезает backdrop-filter («стекло») -->
+      <div class="graph-chrome">
+        <div v-if="pending" class="loading-overlay">
+          <UIcon name="i-heroicons-arrow-path" class="animate-spin text-4xl" />
+          <span>{{ t.loading }}</span>
+        </div>
+        <div v-else-if="!pending && (!graphData?.nodes || graphData.nodes.length === 0)" class="empty-state-overlay">
+          <UIcon name="i-heroicons-share" class="text-4xl opacity-20 mb-2" />
+          <p>{{ t.empty }}</p>
+        </div>
 
-      <!-- Top Actions (Search, Filters, Fullscreen) -->
-      <div class="graph-actions-container" @wheel.stop @mousewheel.stop>
-        <!-- Search -->
-        <div class="custom-search-wrapper">
-          <UIcon name="i-heroicons-magnifying-glass" class="search-icon" />
-          <input v-model="searchQuery" type="text" :placeholder="t.search" class="custom-search-input"
-            @input="handleSearch" />
+      <!-- Top: hero (страница графа) + контролы в одной карточке ДС -->
+      <div
+        class="graph-actions-container kg-glass-surface"
+        :class="{
+          'graph-actions-container--frameless': frameless,
+          'graph-actions-container--mobile-compact': graphActionsMobileCompact,
+        }"
+        @wheel.stop
+        @mousewheel.stop
+      >
+        <div v-show="graphActionsMobileCompact" class="graph-actions-compact">
+          <span class="graph-actions-compact-label">{{ frameless ? t.graphHeroTitle : t.toolbarCompactLabel }}</span>
           <GvButton
-            v-show="searchQuery"
             type="button"
             unstyled
             chromeless
             square
-            class="clear-search-btn"
-            icon="i-heroicons-x-mark"
-            title="Clear"
-            aria-label="Clear search"
-            @click="clearSearch"
+            class="action-btn graph-actions-compact-open"
+            icon="i-heroicons-bars-3"
+            :title="t.toolbarExpand"
+            :aria-label="t.toolbarExpand"
+            @click="isMobileToolbarExpanded = true"
           />
         </div>
 
-        <div class="control-divider"></div>
+        <div v-show="!graphActionsMobileCompact" class="graph-actions-expanded">
+          <header v-if="frameless" class="kg-graph-hero" aria-label="Introduction">
+            <h1 class="kg-graph-headline">
+              <span class="kg-graph-title uppercase">{{ t.graphHeroTitle }}</span>
+              <span class="kg-graph-sep" aria-hidden="true" />
+              <span class="kg-graph-brand gv-hero-gradient uppercase">Gativus</span>
+            </h1>
+          </header>
 
-        <!-- Filters -->
-        <div class="custom-popover-wrapper">
+          <div class="graph-actions-toolbar">
+            <div v-if="isMobileChrome" class="graph-actions-toolbar-collapse-row">
+              <GvButton
+                type="button"
+                unstyled
+                chromeless
+                square
+                class="action-btn"
+                icon="i-heroicons-chevron-up"
+                :title="t.toolbarCollapse"
+                :aria-label="t.toolbarCollapse"
+                @click="isMobileToolbarExpanded = false"
+              />
+            </div>
+            <div class="custom-search-wrapper">
+            <UIcon name="i-heroicons-magnifying-glass" class="search-icon" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              :placeholder="t.search"
+              class="custom-search-input"
+              @input="handleSearch"
+            >
+            <GvButton
+              v-show="searchQuery"
+              type="button"
+              unstyled
+              chromeless
+              square
+              class="clear-search-btn"
+              icon="i-heroicons-x-mark"
+              title="Clear"
+              aria-label="Clear search"
+              @click="clearSearch"
+            />
+          </div>
+
+          <div class="control-divider control-divider--toolbar"></div>
+
+          <!-- Filters -->
+          <div class="custom-popover-wrapper">
+            <GvButton
+              type="button"
+              unstyled
+              chromeless
+              square
+              class="action-btn"
+              :class="{ active: isFilterMenuOpen }"
+              icon="i-heroicons-funnel"
+              :title="t.filters"
+              @click="isFilterMenuOpen = !isFilterMenuOpen"
+            />
+
+            <transition name="menu-slide">
+              <div v-if="isFilterMenuOpen" class="custom-popover-panel">
+                <div class="filter-menu-header">{{ t.filters }}</div>
+                <div class="filter-menu-list">
+                  <div
+                    v-for="(label, key) in filterLabels"
+                    :key="key"
+                    class="filter-line"
+                    @click="activeFilters[key] = !activeFilters[key]"
+                  >
+                    <span class="filter-label-text">{{ label }}</span>
+                    <div class="custom-switch" :class="{ checked: activeFilters[key] }">
+                      <div class="switch-handle"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="filter-menu-footer">
+                  <GvButton type="button" unstyled chromeless class="footer-btn primary" @click="setAllFilters(true)">{{ t.all }}</GvButton>
+                  <div class="divider-small"></div>
+                  <GvButton type="button" unstyled chromeless class="footer-btn" @click="setAllFilters(false)">{{ t.none }}</GvButton>
+                </div>
+              </div>
+            </transition>
+          </div>
+
+          <div class="control-divider control-divider--toolbar"></div>
+
+          <!-- Language Switcher -->
+          <div class="lang-switcher">
+            <GvButton
+              type="button"
+              unstyled
+              chromeless
+              class="lang-btn"
+              :class="{ active: langStore.currentLang === 'en' }"
+              @click="langStore.setLanguage('en')"
+            >
+              EN
+            </GvButton>
+            <div class="lang-sep"></div>
+            <GvButton
+              type="button"
+              unstyled
+              chromeless
+              class="lang-btn"
+              :class="{ active: langStore.currentLang === 'ru' }"
+              @click="langStore.setLanguage('ru')"
+            >
+              RU
+            </GvButton>
+            <div class="lang-sep"></div>
+            <GvButton
+              type="button"
+              unstyled
+              chromeless
+              class="lang-btn"
+              :class="{ active: langStore.currentLang === 'zh' }"
+              @click="langStore.setLanguage('zh')"
+            >
+              ZH
+            </GvButton>
+          </div>
+
+          <div class="control-divider control-divider--toolbar"></div>
+
+          <!-- Fullscreen -->
           <GvButton
             type="button"
             unstyled
             chromeless
             square
             class="action-btn"
-            :class="{ active: isFilterMenuOpen }"
-            icon="i-heroicons-funnel"
-            :title="t.filters"
-            @click="isFilterMenuOpen = !isFilterMenuOpen"
-          />
-
-          <transition name="menu-slide">
-            <div v-if="isFilterMenuOpen" class="custom-popover-panel">
-              <div class="filter-menu-header">{{ t.filters }}</div>
-              <div class="filter-menu-list">
-                <div v-for="(label, key) in filterLabels" :key="key" class="filter-line"
-                  @click="activeFilters[key] = !activeFilters[key]">
-                  <span class="filter-label-text">{{ label }}</span>
-                  <div class="custom-switch" :class="{ 'checked': activeFilters[key] }">
-                    <div class="switch-handle"></div>
-                  </div>
-                </div>
-              </div>
-              <div class="filter-menu-footer">
-                <GvButton type="button" unstyled chromeless class="footer-btn primary" @click="setAllFilters(true)">{{ t.all }}</GvButton>
-                <div class="divider-small"></div>
-                <GvButton type="button" unstyled chromeless class="footer-btn" @click="setAllFilters(false)">{{ t.none }}</GvButton>
-              </div>
-            </div>
-          </transition>
+            :title="isFullscreen ? 'Exit' : 'Fullscreen'"
+            @click="toggleFullscreen"
+          >
+            <UIcon :name="isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'" />
+          </GvButton>
+          </div>
         </div>
+      </div>
 
-        <div class="control-divider"></div>
-
-        <!-- Language Switcher -->
-        <div class="lang-switcher" @mousedown.stop>
-          <GvButton
-            type="button"
-            unstyled
-            chromeless
-            class="lang-btn"
-            :class="{ active: langStore.currentLang === 'en' }"
-            @click="langStore.setLanguage('en')"
-          >
-            EN
-          </GvButton>
-          <div class="lang-sep"></div>
-          <GvButton
-            type="button"
-            unstyled
-            chromeless
-            class="lang-btn"
-            :class="{ active: langStore.currentLang === 'ru' }"
-            @click="langStore.setLanguage('ru')"
-          >
-            RU
-          </GvButton>
-          <div class="lang-sep"></div>
-          <GvButton
-            type="button"
-            unstyled
-            chromeless
-            class="lang-btn"
-            :class="{ active: langStore.currentLang === 'zh' }"
-            @click="langStore.setLanguage('zh')"
-          >
-            ZH
-          </GvButton>
+      <div class="kg-graph-ui-cluster" @wheel.stop @mousewheel.stop>
+        <div class="custom-zoom-controls kg-glass-surface">
+          <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-plus" title="+" @click="zoomIn" />
+          <div class="divider-hor"></div>
+          <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-minus" title="-" @click="zoomOut" />
+          <div class="divider-hor"></div>
+          <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-arrows-right-left" :title="t.reset" @click="zoomFit" />
         </div>
+      </div>
 
-        <div class="control-divider"></div>
-
-        <!-- Fullscreen -->
-        <GvButton
+      <aside
+        v-if="!pending && graphData?.nodes?.length"
+        class="graph-stats-panel kg-glass-surface"
+        :class="{ 'graph-stats-panel--collapsed': isStatsCollapsed }"
+        :aria-label="t.statsTitle"
+      >
+        <button
           type="button"
-          unstyled
-          chromeless
-          square
-          class="action-btn"
-          :title="isFullscreen ? 'Exit' : 'Fullscreen'"
-          @click="toggleFullscreen"
+          class="graph-stats-toggle"
+          :aria-expanded="!isStatsCollapsed"
+          :title="isStatsCollapsed ? t.statsExpand : t.statsCollapse"
+          @click="isStatsCollapsed = !isStatsCollapsed"
         >
-          <UIcon :name="isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'" />
-        </GvButton>
-      </div>
-
-      <!-- Zoom Controls -->
-      <div class="custom-zoom-controls" @wheel.stop @mousewheel.stop>
-        <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-plus" title="+" @click="zoomIn" />
-        <div class="divider-hor"></div>
-        <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-minus" title="-" @click="zoomOut" />
-        <div class="divider-hor"></div>
-        <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-arrows-right-left" :title="t.reset" @click="zoomFit" />
-      </div>
-
-      <!-- Floating Popup on Click -->
-      <transition name="pop">
-        <div v-if="selectedNode" class="graph-popup" :style="nodePopupStyle" @mousedown.stop @wheel.stop
-          @mousewheel.stop @click.stop="navigateToNode">
-          <div class="popup-content">
-            <div class="tooltip-header">
-              <UIcon :name="getNodeIcon(selectedNode)" :style="{ color: getNodeColor(selectedNode) }"
-                class="tooltip-icon" />
-              <span class="tooltip-type">{{ getTypeLabel(selectedNode.type) }}</span>
+          <span class="graph-stats-heading">{{ t.statsTitle }}</span>
+          <UIcon
+            :name="isStatsCollapsed ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
+            class="graph-stats-chevron"
+            aria-hidden="true"
+          />
+        </button>
+        <div v-show="!isStatsCollapsed" class="graph-stats-body">
+          <div class="graph-stats-summary">
+            <div class="graph-stats-pill">
+              <span class="graph-stats-pill-label">{{ t.statsNodes }}</span>
+              <span class="graph-stats-pill-value tabular-nums">{{ visibleGraphStats.nodesTotal }}</span>
             </div>
-            <div class="tooltip-title">{{ selectedNode.title }}</div>
-            <div v-if="selectedNode.description" class="popup-desc line-clamp-2">{{ selectedNode.description }}</div>
-            <div class="popup-hint">{{ t.hint }}</div>
+            <div class="graph-stats-pill">
+              <span class="graph-stats-pill-label">{{ t.statsLinks }}</span>
+              <span class="graph-stats-pill-value tabular-nums">{{ visibleGraphStats.linksTotal }}</span>
+            </div>
+          </div>
+          <div class="graph-stats-section">{{ t.statsByType }}</div>
+          <ul class="graph-stats-list" role="list">
+            <li v-for="row in statsTypeRows" :key="row.key" class="graph-stats-line" role="listitem">
+              <span class="graph-stats-line-left">
+                <span class="dot" :class="row.dotClass" aria-hidden="true" />
+                <span>{{ row.label }}</span>
+              </span>
+              <span class="tabular-nums graph-stats-count">{{ row.count }}</span>
+            </li>
+          </ul>
+          <template v-if="statsLinkRows.length">
+            <div class="graph-stats-section">{{ t.statsLinkTypes }}</div>
+            <ul class="graph-stats-list graph-stats-list--compact" role="list">
+              <li v-for="row in statsLinkRows" :key="row.key" class="graph-stats-line" role="listitem">
+                <span class="graph-stats-link-label">{{ row.label }}</span>
+                <span class="tabular-nums graph-stats-count">{{ row.count }}</span>
+              </li>
+            </ul>
+          </template>
+        </div>
+      </aside>
+
+      <!-- Node detail: как theTermPopover для терминов + адаптив -->
+      <transition name="pop">
+        <div
+          v-if="selectedNode && !nodePopupPanelClosed"
+          class="graph-popup graph-popup-node"
+          :class="{ 'graph-popup--mobile': isMobileChrome }"
+          :style="nodePopupStyle"
+          :aria-busy="selectedNode.type === 'term' && termPopupLoading"
+          @mousedown.stop
+          @wheel.stop
+          @mousewheel.stop
+        >
+          <div class="graph-popup__top">
+            <div class="graph-popup__head">
+              <UIcon
+                :name="getNodeIcon(selectedNode)"
+                :style="{ color: getNodeColor(selectedNode) }"
+                class="graph-popup__head-icon"
+              />
+              <span class="graph-popup__type-label">{{ getTypeLabel(selectedNode.type) }}</span>
+            </div>
+            <GvButton
+              type="button"
+              unstyled
+              chromeless
+              square
+              class="action-btn graph-popup__close"
+              icon="i-heroicons-x-mark"
+              :title="t.popupClose"
+              :aria-label="t.popupClose"
+              @click="closeNodePopupPanel"
+            />
+          </div>
+
+          <template v-if="selectedNode.type === 'term' && termPopupLoading">
+            <div class="graph-popup__title-text graph-popup__title-text--loading-preview">
+              {{ selectedNode.title }}
+            </div>
+            <div class="graph-popup__skeleton" aria-hidden="true">
+              <div class="graph-popup__sk-line graph-popup__sk-line--sm" />
+              <div class="graph-popup__sk-line graph-popup__sk-line--lg" />
+              <div class="graph-popup__sk-media" />
+              <div class="graph-popup__sk-chips">
+                <span class="graph-popup__sk-chip" />
+                <span class="graph-popup__sk-chip" />
+                <span class="graph-popup__sk-chip" />
+              </div>
+              <div class="graph-popup__sk-line" />
+              <div class="graph-popup__sk-line" />
+              <div class="graph-popup__sk-line graph-popup__sk-line--md" />
+            </div>
+          </template>
+          <template v-else-if="selectedNode.type === 'term'">
+            <div
+              v-if="termPopupDetail?.category_title"
+              class="graph-popup__category"
+              :style="termPopupDetail.category_color ? { color: termPopupDetail.category_color } : {}"
+            >
+              <UIcon
+                v-if="termPopupDetail.category_icon"
+                :name="termPopupDetail.category_icon"
+                class="graph-popup__cat-icon"
+              />
+              {{ termPopupDetail.category_title }}
+            </div>
+            <div class="graph-popup__title-text">{{ termPopupDetail?.title || selectedNode.title }}</div>
+            <div v-if="termPopupDetail?.image_url || termPopupDetail?.video_url" class="graph-popup__media">
+              <img
+                v-if="termPopupDetail.image_url"
+                :src="termPopupDetail.image_url"
+                class="graph-popup__media-preview"
+                alt=""
+              >
+              <video
+                v-else-if="termPopupDetail.video_url"
+                :src="termPopupDetail.video_url"
+                class="graph-popup__media-preview"
+                muted
+                autoplay
+                loop
+                playsinline
+              />
+            </div>
+            <div v-if="termPopupDetail?.aliases?.length" class="graph-popup__aliases">
+              <span
+                v-for="alias in termPopupDetail.aliases.slice(0, 3)"
+                :key="alias"
+                class="graph-popup__alias-chip"
+              >{{ alias }}</span>
+            </div>
+            <p
+              v-if="termPopupDetail?.definition || selectedNode.description"
+              class="graph-popup__definition"
+            >{{ termPopupDetail?.definition || selectedNode.description }}</p>
+          </template>
+          <template v-else>
+            <div class="graph-popup__title-text">{{ selectedNode.title }}</div>
+            <p v-if="selectedNode.description" class="graph-popup__definition">{{ selectedNode.description }}</p>
+          </template>
+
+          <div class="graph-popup__footer">
+            <span
+              v-if="selectedNode.type === 'term' && termPopupLoading"
+              class="graph-popup__loading graph-popup__loading--footer"
+            >
+              <UIcon name="i-heroicons-arrow-path" class="graph-popup__spin" />
+              {{ t.loadingDetail }}
+            </span>
+            <NuxtLink
+              v-if="enableNavigation && selectedNodePath"
+              :to="selectedNodePath"
+              class="graph-popup__link"
+              @click.stop
+            >{{ t.openEntity }}</NuxtLink>
           </div>
         </div>
       </transition>
 
-      <!-- Link Popup -->
+      <!-- Link popup -->
       <transition name="pop">
-        <div v-if="selectedLink" class="graph-popup link-popup" :style="linkPopupStyle" @mousedown.stop @click.stop
-          @wheel.stop @mousewheel.stop>
+        <div
+          v-if="selectedLink && !linkPopupPanelClosed"
+          class="graph-popup link-popup graph-popup-link"
+          :class="{ 'graph-popup--mobile': isMobileChrome }"
+          :style="linkPopupStyle"
+          @mousedown.stop
+          @wheel.stop
+          @mousewheel.stop
+        >
           <div class="link-popup-accent" :style="{
             borderColor: getNodeColor(getLinkHierarchy(selectedLink).child),
             borderLeftStyle: getLinkHierarchy(selectedLink).parent.type === 'category' ? 'dashed' : 'solid'
           }"></div>
 
-          <div class="tooltip-header">
-            <span class="tooltip-type">{{ relLabels[selectedLink.type] || 'Relationship' }}</span>
+          <div class="graph-popup__top graph-popup__top--link">
+            <div class="graph-popup__head">
+              <span class="tooltip-type">{{ relLabels[selectedLink.type] || 'Relationship' }}</span>
+            </div>
+            <GvButton
+              type="button"
+              unstyled
+              chromeless
+              square
+              class="action-btn graph-popup__close"
+              icon="i-heroicons-x-mark"
+              :title="t.popupClose"
+              :aria-label="t.popupClose"
+              @click="closeLinkPopupPanel"
+            />
           </div>
 
           <div class="link-hierarchy">
@@ -199,19 +433,6 @@
         </div>
       </transition>
 
-      <!-- Legend -->
-      <div class="custom-legend" :class="{ 'legend-collapsed': isLegendCollapsed }" @wheel.stop @mousewheel.stop>
-        <div class="legend-header-row" @click="isLegendCollapsed = !isLegendCollapsed">
-          <div class="legend-title">{{ t.legend }}</div>
-          <UIcon :name="isLegendCollapsed ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
-            class="legend-toggle-icon" />
-        </div>
-        <div v-if="!isLegendCollapsed" class="legend-items-list">
-          <div class="legend-item"><span class="dot dot-book"></span> {{ t.book }}</div>
-          <div class="legend-item"><span class="dot dot-cat-red"></span> {{ t.category }}</div>
-          <div class="legend-item"><span class="dot dot-art"></span> {{ t.article }}</div>
-          <div class="legend-item"><span class="dot dot-term"></span> {{ t.term }}</div>
-        </div>
       </div>
     </div>
   </div>
@@ -219,9 +440,11 @@
 
 <script setup lang="ts">
 import * as d3 from 'd3'
+import { useMediaQuery } from '@vueuse/core'
 import { useLanguageStore } from '~/stores/language'
 
 const langStore = useLanguageStore()
+const graphViewport = ref<HTMLElement | null>(null)
 const graphContainer = ref<HTMLElement | null>(null)
 const svgRef = ref<SVGElement | null>(null)
 
@@ -240,11 +463,24 @@ const uiDict: Record<string, any> = {
     mentions: 'Occurrences in article text',
     context: 'Context',
     object: 'Object',
-    legend: 'Legend',
     book: 'Books',
     category: 'Categories',
     article: 'Articles',
-    term: 'Terms'
+    term: 'Terms',
+    graphHeroTitle: 'Knowledge graph',
+    statsTitle: 'Overview',
+    statsNodes: 'Nodes',
+    statsLinks: 'Links',
+    statsByType: 'By type',
+    statsLinkTypes: 'Link types',
+    statsExpand: 'Expand summary',
+    statsCollapse: 'Collapse summary',
+    toolbarExpand: 'Open toolbar',
+    toolbarCollapse: 'Collapse toolbar',
+    toolbarCompactLabel: 'Graph panel',
+    popupClose: 'Close',
+    openEntity: 'Open page →',
+    loadingDetail: 'Loading...',
   },
   ru: {
     title: 'Граф знаний Gativus',
@@ -260,11 +496,24 @@ const uiDict: Record<string, any> = {
     mentions: 'Вхождений в тексте статьи',
     context: 'Контекст',
     object: 'Объект',
-    legend: 'Легенда',
     book: 'Книги',
     category: 'Категории',
     article: 'Статьи',
-    term: 'Термины'
+    term: 'Термины',
+    graphHeroTitle: 'Граф знаний',
+    statsTitle: 'Сводка',
+    statsNodes: 'Узлы',
+    statsLinks: 'Связи',
+    statsByType: 'По типам',
+    statsLinkTypes: 'Типы связей',
+    statsExpand: 'Развернуть сводку',
+    statsCollapse: 'Свернуть сводку',
+    toolbarExpand: 'Открыть панель',
+    toolbarCollapse: 'Свернуть панель',
+    toolbarCompactLabel: 'Граф',
+    popupClose: 'Закрыть',
+    openEntity: 'Открыть страницу →',
+    loadingDetail: 'Загрузка...',
   },
   zh: {
     title: 'Gativus 知识图谱',
@@ -280,15 +529,41 @@ const uiDict: Record<string, any> = {
     mentions: '文章正文中的出现次数',
     context: '上下文',
     object: '对象',
-    legend: '图例',
     book: '书籍',
     category: '类别',
     article: '文章',
-    term: '术语'
+    term: '术语',
+    graphHeroTitle: '知识图谱',
+    statsTitle: '概览',
+    statsNodes: '节点',
+    statsLinks: '关系',
+    statsByType: '按类型',
+    statsLinkTypes: '关系类型',
+    statsExpand: '展开概览',
+    statsCollapse: '收起概览',
+    toolbarExpand: '展开工具栏',
+    toolbarCollapse: '收起工具栏',
+    toolbarCompactLabel: '图谱',
+    popupClose: '关闭',
+    openEntity: '打开页面 →',
+    loadingDetail: '加载中...',
   }
 }
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+
+const isMobileChrome = useMediaQuery('(max-width: 640px)')
+const isMobileToolbarExpanded = ref(false)
+
+/** На мобиле по умолчанию компактная панель; на десктопе всегда полная */
+const graphActionsMobileCompact = computed(
+  () => Boolean(isMobileChrome.value && !isMobileToolbarExpanded.value),
+)
+
+watch(isMobileChrome, (mobile) => {
+  if (!mobile)
+    isMobileToolbarExpanded.value = false
+})
 
 const mentionCountForSelectedLink = computed(() => {
   const l = selectedLink.value
@@ -305,11 +580,16 @@ const filterLabels = computed(() => ({
   term: t.value.term
 }))
 
-const props = defineProps<{
-  graphData: any;
-  pending?: boolean;
-  enableNavigation?: boolean;
-}>()
+const props = withDefaults(
+  defineProps<{
+    graphData: any
+    pending?: boolean
+    enableNavigation?: boolean
+    /** Встроенная страница: без рамки/тени у области графа (слитно с фоном лейаута) */
+    frameless?: boolean
+  }>(),
+  { pending: false, frameless: false },
+)
 
 watch(() => props.graphData, () => {
   nextTick(() => initGraph())
@@ -317,6 +597,10 @@ watch(() => props.graphData, () => {
 
 const selectedNode = ref<any>(null)
 const selectedLink = ref<any>(null)
+const nodePopupPanelClosed = ref(false)
+const linkPopupPanelClosed = ref(false)
+const termPopupDetail = ref<any>(null)
+const termPopupLoading = ref(false)
 const hoveredNode = ref<any>(null)
 const hoveredLink = ref<any>(null)
 const currentTransform = ref(d3.zoomIdentity)
@@ -330,8 +614,13 @@ const activeFilters = ref({
 })
 
 const isFullscreen = ref(false)
-const isLegendCollapsed = ref(false)
+const isStatsCollapsed = ref(false)
 const isFilterMenuOpen = ref(false)
+
+watch(isMobileToolbarExpanded, (open) => {
+  if (!open)
+    isFilterMenuOpen.value = false
+})
 
 const ontologyLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
 
@@ -444,16 +733,6 @@ const designSystemEase = (t: number) => {
   return Math.pow(t, 2.5) * (1.5 - 0.5 * t) // Roughly approximates the feel
 }
 
-// Close filter menu when clicking outside
-onMounted(() => {
-  window.addEventListener('mousedown', (e: MouseEvent) => {
-    const target = e.target as HTMLElement
-    if (isFilterMenuOpen.value && !target.closest('.custom-popover-wrapper')) {
-      isFilterMenuOpen.value = false
-    }
-  })
-})
-
 // Auto-reset highlights when selection is cleared, but DON'T clear search query
 watch(selectedNode, (newVal) => {
   if (!newVal && !selectedLink.value) {
@@ -472,8 +751,48 @@ watch(() => langStore.currentLang, async () => {
   updateHighlights()
 })
 
+const selectedNodePath = computed(() => {
+  const node = selectedNode.value
+  if (!node?.slug) return null
+  if (node.type === 'term') return `/glossary/${node.slug}`
+  if (node.type === 'article') return `/articles/${node.slug}`
+  if (node.type === 'book') return `/books/${node.slug}`
+  if (node.type === 'category') return `/categories/${node.slug}`
+  return null
+})
+
+const closeNodePopupPanel = (e?: MouseEvent) => {
+  e?.stopPropagation()
+  nodePopupPanelClosed.value = true
+}
+
+const closeLinkPopupPanel = (e?: MouseEvent) => {
+  e?.stopPropagation()
+  linkPopupPanelClosed.value = true
+}
+
+watch([selectedNode, () => langStore.currentLang], async ([node]) => {
+  termPopupDetail.value = null
+  if (!process.client || !node || node.type !== 'term' || !node.slug) {
+    termPopupLoading.value = false
+    return
+  }
+  termPopupLoading.value = true
+  try {
+    termPopupDetail.value = await $fetch(`/api/terms/${encodeURIComponent(node.slug)}`, {
+      query: { lang: langStore.currentLang },
+    })
+  }
+  catch {
+    termPopupDetail.value = null
+  }
+  finally {
+    termPopupLoading.value = false
+  }
+}, { immediate: true })
+
 const nodePopupStyle = computed(() => {
-  if (!selectedNode.value) return {}
+  if (!selectedNode.value || isMobileChrome.value) return {}
   const x = currentTransform.value.applyX(selectedNode.value.x)
   const y = currentTransform.value.applyY(selectedNode.value.y)
   return {
@@ -483,7 +802,7 @@ const nodePopupStyle = computed(() => {
 })
 
 const linkPopupStyle = computed(() => {
-  if (!selectedLink.value) return {}
+  if (!selectedLink.value || isMobileChrome.value) return {}
   const source = selectedLink.value.source
   const target = selectedLink.value.target
   const midX = (source.x + target.x) / 2
@@ -496,6 +815,147 @@ const linkPopupStyle = computed(() => {
   }
 })
 
+/** Удерживаем попап в пересечении .graph-viewport с видимой областью окна (прокрутка страницы, dynamic toolbar). */
+let graphPopupClampRaf = 0
+
+function clampPopupInHost(popup: HTMLElement, host: HTMLElement, left: number, top: number) {
+  const pad = 8
+  const c = host.getBoundingClientRect()
+  const vv = typeof window !== 'undefined' ? window.visualViewport : null
+  const winW = vv?.width ?? window.innerWidth
+  const winH = vv?.height ?? window.innerHeight
+  const winLeft = vv?.offsetLeft ?? 0
+  const winTop = vv?.offsetTop ?? 0
+
+  const screenLeft = winLeft + pad
+  const screenTop = winTop + pad
+  const screenRight = winLeft + winW - pad
+  const screenBottom = winTop + winH - pad
+
+  const boundLeft = Math.max(c.left + pad, screenLeft)
+  const boundTop = Math.max(c.top + pad, screenTop)
+  const boundRight = Math.min(c.right - pad, screenRight)
+  const boundBottom = Math.min(c.bottom - pad, screenBottom)
+
+  let l = left
+  let t = top
+
+  const apply = () => {
+    popup.style.left = `${l}px`
+    popup.style.top = `${t}px`
+  }
+
+  apply()
+  let r = popup.getBoundingClientRect()
+
+  // Нет пересечения хоста с экраном — центрируем в видимой области
+  if (boundRight <= boundLeft || boundBottom <= boundTop) {
+    l += screenLeft + Math.max(0, (winW - 2 * pad - r.width) / 2) - r.left
+    t += screenTop + Math.max(0, (winH - 2 * pad - r.height) / 2) - r.top
+    apply()
+    r = popup.getBoundingClientRect()
+  } else {
+    const spanX = boundRight - boundLeft
+    const spanY = boundBottom - boundTop
+
+    if (r.width <= spanX) {
+      if (r.left < boundLeft) l += boundLeft - r.left
+      apply()
+      r = popup.getBoundingClientRect()
+      if (r.right > boundRight) l -= r.right - boundRight
+    } else {
+      l += boundLeft - r.left
+    }
+
+    apply()
+    r = popup.getBoundingClientRect()
+
+    if (r.height <= spanY) {
+      if (r.top < boundTop) t += boundTop - r.top
+      apply()
+      r = popup.getBoundingClientRect()
+      if (r.bottom > boundBottom) t -= r.bottom - boundBottom
+    } else {
+      t += boundTop - r.top
+    }
+
+    apply()
+  }
+
+  // Финально не даём уйти за пределы экрана (погрешность; попап шире/выше коридора)
+  for (let pass = 0; pass < 6; pass++) {
+    r = popup.getBoundingClientRect()
+    let moved = false
+    if (r.left < screenLeft) {
+      l += screenLeft - r.left
+      moved = true
+    }
+    if (r.right > screenRight) {
+      l -= r.right - screenRight
+      moved = true
+    }
+    if (r.top < screenTop) {
+      t += screenTop - r.top
+      moved = true
+    }
+    if (r.bottom > screenBottom) {
+      t -= r.bottom - screenBottom
+      moved = true
+    }
+    apply()
+    if (!moved) break
+  }
+}
+
+function applyGraphPopupClamp() {
+  if (!process.client || isMobileChrome.value) return
+  const host = graphViewport.value
+  if (!host || !currentTransform.value) return
+
+  if (selectedNode.value && !nodePopupPanelClosed.value) {
+    const el = document.querySelector('.graph-popup-node') as HTMLElement | null
+    if (el) {
+      const x = currentTransform.value.applyX(selectedNode.value.x) + 15
+      const y = currentTransform.value.applyY(selectedNode.value.y) + 15
+      clampPopupInHost(el, host, x, y)
+    }
+  }
+
+  if (selectedLink.value && !linkPopupPanelClosed.value) {
+    const el = document.querySelector('.graph-popup-link') as HTMLElement | null
+    if (el) {
+      const s = selectedLink.value.source
+      const tN = selectedLink.value.target
+      const x = currentTransform.value.applyX((s.x + tN.x) / 2)
+      const y = currentTransform.value.applyY((s.y + tN.y) / 2)
+      clampPopupInHost(el, host, x, y)
+    }
+  }
+}
+
+function requestGraphPopupClamp() {
+  if (!process.client || isMobileChrome.value) return
+  if (graphPopupClampRaf) cancelAnimationFrame(graphPopupClampRaf)
+  graphPopupClampRaf = requestAnimationFrame(() => {
+    graphPopupClampRaf = 0
+    applyGraphPopupClamp()
+  })
+}
+
+watch(
+  [
+    termPopupLoading,
+    termPopupDetail,
+    selectedNode,
+    selectedLink,
+    nodePopupPanelClosed,
+    linkPopupPanelClosed,
+  ],
+  () => {
+    nextTick(() => requestGraphPopupClamp())
+  },
+)
+
 const setAllFilters = (value: boolean) => {
   activeFilters.value = {
     book: value,
@@ -506,9 +966,9 @@ const setAllFilters = (value: boolean) => {
 }
 
 const toggleFullscreen = () => {
-  if (!graphContainer.value) return
+  if (!graphViewport.value) return
   if (!document.fullscreenElement) {
-    graphContainer.value.requestFullscreen().then(() => {
+    graphViewport.value.requestFullscreen().then(() => {
       isFullscreen.value = true
     })
   } else {
@@ -527,23 +987,32 @@ const handleSearch = () => {
     return
   }
 
-  // Find matches
   const matches = props.graphData?.nodes?.filter((n: any) =>
-    n.title.toLowerCase().includes(query) || (n.slug && n.slug.toLowerCase() === query)
+    n.title.toLowerCase().includes(query) || (n.slug && n.slug.toLowerCase() === query),
   ) || []
 
-  // Only update "Focus" if there's EXACTLY one match
-  if (matches.length === 1) {
-    const match = matches[0]
-    // Only restart camera animation if it's a NEW node
-    if (selectedNode.value?.id !== match.id) {
-      focusOnNode(match)
+  // Одинаковые названия у разных типов: приоритет выше по иерархии (category → book → article → term),
+  // плюс точное совпадение slug / заголовка важнее частичного.
+  const typeRank = (n: any) => ontologyLevels[n.type as keyof typeof ontologyLevels] ?? 99
+  const slugExact = (n: any) => (n.slug && String(n.slug).toLowerCase() === query) ? 0 : 1
+  const titleExact = (n: any) => (n.title && String(n.title).toLowerCase() === query) ? 0 : 1
+
+  matches.sort((a, b) => {
+    const dSlug = slugExact(a) - slugExact(b)
+    if (dSlug !== 0) return dSlug
+    const dTitle = titleExact(a) - titleExact(b)
+    if (dTitle !== 0) return dTitle
+    return typeRank(a) - typeRank(b)
+  })
+
+  if (matches.length >= 1) {
+    const best = matches[0]
+    if (selectedNode.value?.id !== best.id) {
+      focusOnNode(best)
     } else {
       updateHighlights()
     }
   } else {
-    // If ambiguous (0 or >1 matches), we DON'T reset the screen anymore.
-    // We only update highlights (nodes stay fully visible because focusNode still points to previous match or null)
     updateHighlights()
   }
 }
@@ -564,6 +1033,7 @@ const focusOnNode = (nodeData: any) => {
   const target = simulation.nodes().find((n: any) => n.id === nodeData.id)
   if (!target) return
 
+  nodePopupPanelClosed.value = false
   selectedNode.value = target
   updateHighlights()
 
@@ -633,6 +1103,73 @@ const relDescriptions = computed<Record<string, string>>(() => {
   }
 })
 
+type VisibleGraphByType = { book: number, category: number, article: number, term: number }
+
+const visibleGraphStats = computed(() => {
+  const emptyByType: VisibleGraphByType = { book: 0, category: 0, article: 0, term: 0 }
+  const data = props.graphData
+  if (!data?.nodes?.length) {
+    return {
+      nodesTotal: 0,
+      linksTotal: 0,
+      byType: { ...emptyByType },
+      linkTypes: {} as Record<string, number>,
+    }
+  }
+  const allNodes = data.nodes as any[]
+  const allLinks = (data.links || []) as any[]
+  const nodes = allNodes.filter((n: any) => activeFilters.value[n.type as keyof typeof activeFilters.value])
+  const nodeIds = new Set(nodes.map((n: any) => n.id))
+  const links = allLinks.filter((l: any) => {
+    const sourceId = typeof l.source === 'object' ? l.source.id : l.source
+    const targetId = typeof l.target === 'object' ? l.target.id : l.target
+    return nodeIds.has(sourceId) && nodeIds.has(targetId)
+  })
+  const byType = { ...emptyByType }
+  for (const n of nodes) {
+    const ty = n.type as keyof VisibleGraphByType
+    if (ty in byType)
+      byType[ty]++
+  }
+  const linkTypes: Record<string, number> = {}
+  for (const l of links) {
+    const k = typeof l.type === 'string' ? l.type : 'relation'
+    linkTypes[k] = (linkTypes[k] || 0) + 1
+  }
+  return {
+    nodesTotal: nodes.length,
+    linksTotal: links.length,
+    byType,
+    linkTypes,
+  }
+})
+
+const statsTypeRows = computed(() => {
+  const s = visibleGraphStats.value
+  const labels = filterLabels.value
+  const order: Array<keyof VisibleGraphByType> = ['category', 'book', 'article', 'term']
+  const dotMap: Record<keyof VisibleGraphByType, string> = {
+    category: 'dot-cat-red',
+    book: 'dot-book',
+    article: 'dot-art',
+    term: 'dot-term',
+  }
+  return order.map(key => ({
+    key,
+    label: labels[key],
+    count: s.byType[key],
+    dotClass: dotMap[key],
+  }))
+})
+
+const statsLinkRows = computed(() => {
+  const s = visibleGraphStats.value
+  const labels = relLabels.value
+  return Object.entries(s.linkTypes)
+    .map(([key, count]) => ({ key, label: labels[key] || key, count }))
+    .sort((a, b) => b.count - a.count)
+})
+
 let simulation: any = null
 let zoomHandler: any = null
 
@@ -694,19 +1231,6 @@ const getTypeLabel = (type: string) => {
   return currentDict[type] || ''
 }
 
-const navigateToNode = () => {
-  if (!props.enableNavigation) return
-  if (!selectedNode.value) return
-  const node = selectedNode.value
-  let path = ''
-  if (node.type === 'term') path = '/glossary/' + node.slug
-  else if (node.type === 'article') path = '/articles/' + node.slug
-  else if (node.type === 'book') path = '/books/' + node.slug
-  else if (node.type === 'category') path = '/categories/' + node.slug
-
-  if (path) useRouter().push(path)
-}
-
 const initGraph = () => {
   if (!process.client || !props.graphData || !svgRef.value || !graphContainer.value) return
 
@@ -755,6 +1279,7 @@ const initGraph = () => {
     .on('zoom', (event: any) => {
       g.attr('transform', event.transform)
       currentTransform.value = event.transform
+      requestGraphPopupClamp()
     })
 
   svg.call(zoomHandler)
@@ -846,6 +1371,7 @@ const initGraph = () => {
       selectedNode.value = null
       selectedLink.value = d
       hoveredLink.value = null
+      linkPopupPanelClosed.value = false
       updateHighlights()
       event.stopPropagation()
     })
@@ -860,6 +1386,7 @@ const initGraph = () => {
       selectedNode.value = d
       selectedLink.value = null
       hoveredLink.value = null
+      nodePopupPanelClosed.value = false
       updateHighlights()
       event.stopPropagation()
     })
@@ -947,30 +1474,8 @@ const initGraph = () => {
     node
       .attr('transform', (d: any) => `translate(${d.x},${d.y})`)
 
-    // Update popup positions directly via DOM to bypass Vue reactivity overhead (huge performance gain)
-    if (selectedNode.value) {
-      const popup = document.querySelector('.graph-popup:not(.link-popup)') as HTMLElement
-      if (popup && currentTransform.value) {
-        const x = currentTransform.value.applyX(selectedNode.value.x)
-        const y = currentTransform.value.applyY(selectedNode.value.y)
-        popup.style.left = `${x + 15}px`
-        popup.style.top = `${y + 15}px`
-      }
-    }
-
-    if (selectedLink.value) {
-      const popup = document.querySelector('.link-popup') as HTMLElement
-      if (popup && currentTransform.value) {
-        const source = selectedLink.value.source
-        const target = selectedLink.value.target
-        const midX = (source.x + target.x) / 2
-        const midY = (source.y + target.y) / 2
-        const x = currentTransform.value.applyX(midX)
-        const y = currentTransform.value.applyY(midY)
-        popup.style.left = `${x}px`
-        popup.style.top = `${y}px`
-      }
-    }
+    // Позиции попапов: rAF + clamp (тот же путь, что и при zoom)
+    requestGraphPopupClamp()
   })
 
   updateHighlights()
@@ -982,14 +1487,13 @@ let resizeObserver: ResizeObserver | null = null
 const handleOutsideClick = (event: MouseEvent) => {
   const target = event.target as HTMLElement
 
-  // Do NOT close if we clicked inside a popup
   if (target.closest('.graph-popup')) return
-
-  // Do NOT close if we clicked on a node or a link
+  if (target.closest('.graph-actions-container')) return
+  if (target.closest('.kg-graph-ui-cluster')) return
+  if (target.closest('.graph-stats-panel')) return
   if (target.closest('.node-group')) return
-  if (target.tagName === 'line') return
+  if (target.tagName.toLowerCase() === 'line') return
 
-  // Otherwise, clear selection
   selectedNode.value = null
   selectedLink.value = null
   hoveredNode.value = null
@@ -997,8 +1501,30 @@ const handleOutsideClick = (event: MouseEvent) => {
   updateHighlights()
 }
 
+const handleWindowClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  if (isFilterMenuOpen.value && !target.closest('.custom-popover-wrapper')) {
+    isFilterMenuOpen.value = false
+  }
+  handleOutsideClick(event)
+}
+
+function onGraphPopupEscape(e: KeyboardEvent) {
+  if (e.key !== 'Escape') return
+  if (selectedNode.value && !nodePopupPanelClosed.value) {
+    nodePopupPanelClosed.value = true
+    e.preventDefault()
+    return
+  }
+  if (selectedLink.value && !linkPopupPanelClosed.value) {
+    linkPopupPanelClosed.value = true
+    e.preventDefault()
+  }
+}
+
 onMounted(async () => {
-  window.addEventListener('mousedown', handleOutsideClick)
+  window.addEventListener('click', handleWindowClick)
+  window.addEventListener('keydown', onGraphPopupEscape)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   await nextTick()
   initGraph()
@@ -1015,13 +1541,19 @@ onMounted(async () => {
       // zoom extent тоже обновим
       zoomHandler?.extent([[0, 0], [w, h]])
       // координаты сил не обновляем — они останутся прежними
+      nextTick(() => requestGraphPopupClamp())
     })
     resizeObserver.observe(graphContainer.value)
   }
 })
 
 onUnmounted(() => {
-  window.removeEventListener('mousedown', handleOutsideClick)
+  window.removeEventListener('click', handleWindowClick)
+  window.removeEventListener('keydown', onGraphPopupEscape)
+  if (graphPopupClampRaf) {
+    cancelAnimationFrame(graphPopupClampRaf)
+    graphPopupClampRaf = 0
+  }
   if (resizeObserver) {
     resizeObserver.disconnect()
   }
@@ -1053,6 +1585,26 @@ watch(activeFilters, () => {
   user-select: none;
 }
 
+.graph-viewport {
+  flex: 1 1 0;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-chrome {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.graph-chrome * {
+  pointer-events: auto;
+}
+
 :deep(.dark) .knowledge-graph-visualizer,
 .dark .knowledge-graph-visualizer,
 :global(.dark) .knowledge-graph-visualizer {
@@ -1078,25 +1630,329 @@ watch(activeFilters, () => {
   border-color: #333333;
 }
 
-/* New Manual Controls */
+.graph-container.graph-container--frameless {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--gv-canvas-gradient);
+}
+
+.dark .graph-container.graph-container--frameless {
+  border: none;
+  background: var(--gv-canvas-gradient);
+}
+
+/* Полноэкран — градиент на внешнем viewport, подложка графа прозрачна */
+.graph-viewport:fullscreen,
+.graph-viewport:-webkit-full-screen {
+  background: var(--gv-canvas-gradient) !important;
+}
+
+.graph-viewport:fullscreen .graph-container,
+.graph-viewport:-webkit-full-screen .graph-container {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.knowledge-graph-visualizer--frameless {
+  min-height: 0;
+}
+
+/* Общее «стекло» для панелей на графе */
+.kg-glass-surface {
+  border-radius: var(--gv-radius-container);
+  border: 1px solid var(--gv-border-principal);
+  box-shadow: var(--gv-shadow-sm);
+  background: color-mix(in srgb, var(--gv-surface) 62%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+}
+
+.dark .kg-glass-surface {
+  border-color: var(--gv-border-principal);
+  background: color-mix(in srgb, var(--gv-surface) 48%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* Зум справа сверху */
+.kg-graph-ui-cluster {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.graph-stats-panel {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 40;
+  padding: 12px 14px;
+  min-width: 200px;
+  max-width: min(280px, calc(100vw - 40px));
+  pointer-events: auto;
+}
+
+.graph-stats-panel--collapsed {
+  min-width: auto;
+  padding: 10px 12px;
+}
+
+.graph-stats-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  margin: 0 0 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  border-radius: var(--gv-radius-control, 8px);
+}
+
+.graph-stats-toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--gv-primary) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.graph-stats-panel--collapsed .graph-stats-toggle {
+  margin-bottom: 0;
+}
+
+.graph-stats-heading {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--gv-text-secondary) 78%, transparent);
+}
+
+.graph-stats-chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.55;
+  color: var(--gv-text-secondary);
+}
+
+.graph-stats-body .graph-stats-section:first-of-type {
+  margin-top: 0;
+}
+
+.graph-stats-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.graph-stats-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--gv-radius-container, 12px);
+  background: color-mix(in srgb, var(--gv-text-primary) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gv-border-principal) 80%, transparent);
+}
+
+.dark .graph-stats-pill {
+  background: color-mix(in srgb, var(--gv-surface-card) 40%, transparent);
+}
+
+.graph-stats-pill-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--gv-text-secondary) 85%, transparent);
+}
+
+.graph-stats-pill-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gv-text-primary);
+}
+
+.graph-stats-section {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--gv-text-secondary) 72%, transparent);
+  margin: 8px 0 6px;
+}
+
+.graph-stats-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.graph-stats-list--compact {
+  gap: 4px;
+}
+
+.graph-stats-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gv-text-primary);
+}
+
+.graph-stats-line-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.graph-stats-line-left .dot {
+  flex-shrink: 0;
+}
+
+.graph-stats-count {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--gv-text-secondary) 92%, transparent);
+}
+
+.graph-stats-link-label {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--gv-text-secondary);
+  min-width: 0;
+}
+
+/* Toolbar + hero (frameless page) */
+.graph-actions-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 0;
+}
+
 .graph-actions-container {
   position: absolute;
   top: 20px;
   left: 20px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  padding: 6px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
   z-index: 50;
+  width: max-content;
+  max-width: calc(100% - 40px);
+  padding: 6px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 }
 
-.dark .graph-actions-container {
-  background: rgba(24, 24, 27, 0.85);
-  border-color: rgba(255, 255, 255, 0.1);
+.graph-actions-container--frameless {
+  top: clamp(8px, 1.6dvh, 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 16px);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: clamp(10px, 1.8vw, 14px) clamp(18px, 3.2vw, 28px) clamp(8px, 1.2vw, 10px);
+}
+
+.graph-actions-container--frameless .graph-actions-toolbar {
+  margin-top: 0;
+  padding-top: clamp(4px, 0.8vw, 8px);
+}
+
+.graph-actions-expanded {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  align-items: stretch;
+}
+
+.graph-actions-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+}
+
+.graph-actions-compact-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--gv-text-secondary) 82%, transparent);
+  max-width: min(220px, 72vw);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.graph-actions-toolbar-collapse-row {
+  flex: 1 0 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.kg-graph-hero {
+  flex-shrink: 0;
+}
+
+.kg-graph-headline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex-wrap: wrap;
+  margin: 0;
+  line-height: 1.05;
+}
+
+.kg-graph-title {
+  font-size: clamp(2.25rem, 5.5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: 6px;
+  line-height: 1;
+  color: var(--gv-text-secondary);
+}
+
+.kg-graph-brand {
+  font-size: clamp(2.25rem, 5.5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: 6px;
+  line-height: 1;
+}
+
+.kg-graph-sep {
+  width: 1px;
+  height: 1em;
+  min-height: 1.75rem;
+  margin: 0 clamp(12px, 2vw, 18px);
+  align-self: center;
+  background: color-mix(in srgb, var(--gv-text-secondary) 55%, transparent);
+}
+
+.graph-actions-container--frameless .kg-graph-hero {
+  padding-bottom: clamp(6px, 1.2vw, 10px);
+  margin-bottom: clamp(2px, 0.5vw, 4px);
+  border-bottom: 1px solid color-mix(in srgb, var(--gv-border-principal) 65%, transparent);
 }
 
 .custom-search-wrapper {
@@ -1110,7 +1966,7 @@ watch(activeFilters, () => {
   left: 10px;
   width: 16px;
   height: 16px;
-  color: #94a3b8;
+  color: color-mix(in srgb, var(--gv-text-secondary) 62%, transparent);
   pointer-events: none;
 }
 
@@ -1121,13 +1977,13 @@ watch(activeFilters, () => {
   font-size: 14px;
   width: 200px;
   outline: none;
-  color: #334155;
+  color: var(--gv-text-primary);
   transition: width 0.3s ease;
   user-select: text;
 }
 
 .dark .custom-search-input {
-  color: #e2e8f0;
+  color: var(--gv-text-primary);
 }
 
 :deep(.clear-search-btn) {
@@ -1139,26 +1995,27 @@ watch(activeFilters, () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: color-mix(in srgb, var(--gv-text-secondary) 62%, transparent);
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.2s;
 }
 
 :deep(.clear-search-btn:hover) {
-  background: rgba(0, 0, 0, 0.05);
-  color: #ef4444;
+  background: color-mix(in srgb, var(--gv-text-primary) 8%, transparent);
+  color: var(--gv-danger, #ef4444);
 }
 
 .control-divider {
   width: 1px;
   height: 20px;
-  background: rgba(0, 0, 0, 0.1);
+  background: color-mix(in srgb, var(--gv-border-principal) 85%, transparent);
   margin: 0 8px;
+  flex-shrink: 0;
 }
 
 .dark .control-divider {
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--gv-border-principal) 90%, transparent);
 }
 
 :deep(.action-btn) {
@@ -1170,15 +2027,15 @@ watch(activeFilters, () => {
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  color: #64748b;
+  color: color-mix(in srgb, var(--gv-text-secondary) 88%, transparent);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.705, 0.01, 0, 0.915);
 }
 
 :deep(.action-btn:hover),
 :deep(.action-btn.active) {
-  background: rgba(14, 165, 233, 0.1);
-  color: #0ea5e9;
+  background: color-mix(in srgb, var(--gv-primary) 14%, transparent);
+  color: var(--gv-primary);
 }
 
 :deep(.action-btn .gv-btn__label),
@@ -1196,12 +2053,13 @@ watch(activeFilters, () => {
   top: calc(100% + 12px);
   left: 0;
   width: 220px;
-  background: rgba(255, 255, 255, 0.98);
+  background: color-mix(in srgb, var(--gv-surface-card) 96%, transparent);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 16px;
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--gv-border-principal);
+  border-radius: var(--gv-radius-container);
   padding: 16px;
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--gv-shadow-md);
   z-index: 100;
 }
 
@@ -1214,8 +2072,8 @@ watch(activeFilters, () => {
 }
 
 .dark .custom-popover-panel {
-  background: rgba(24, 24, 27, 0.98);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: color-mix(in srgb, var(--gv-surface-card) 94%, transparent);
+  border-color: var(--gv-border-principal);
 }
 
 .filter-menu-header {
@@ -1223,10 +2081,10 @@ watch(activeFilters, () => {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  color: #94a3b8;
+  color: color-mix(in srgb, var(--gv-text-secondary) 72%, transparent);
   margin-bottom: 16px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid color-mix(in srgb, var(--gv-border-principal) 70%, transparent);
 }
 
 .filter-menu-list {
@@ -1246,12 +2104,12 @@ watch(activeFilters, () => {
 
 .filter-label-text {
   font-size: 14px;
-  color: #334155;
+  color: var(--gv-text-primary);
   font-weight: 500;
 }
 
 .dark .filter-label-text {
-  color: #e2e8f0;
+  color: var(--gv-text-primary);
 }
 
 /* Custom Switch */
@@ -1269,7 +2127,7 @@ watch(activeFilters, () => {
 }
 
 .custom-switch.checked {
-  background: #0ea5e9;
+  background: var(--gv-primary);
 }
 
 .switch-handle {
@@ -1291,7 +2149,7 @@ watch(activeFilters, () => {
 .filter-menu-footer {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-top: 1px solid color-mix(in srgb, var(--gv-border-principal) 70%, transparent);
   display: flex;
   gap: 8px;
 }
@@ -1305,45 +2163,28 @@ watch(activeFilters, () => {
   padding: 8px;
   border-radius: 8px;
   cursor: pointer;
-  color: #64748b;
+  color: color-mix(in srgb, var(--gv-text-secondary) 92%, transparent);
   transition: background 0.2s;
 }
 
 :deep(.footer-btn:hover) {
-  background: rgba(0, 0, 0, 0.05);
+  background: color-mix(in srgb, var(--gv-text-primary) 6%, transparent);
 }
 
 :deep(.footer-btn.primary) {
-  color: #0ea5e9;
+  color: var(--gv-primary);
 }
 
 :deep(.footer-btn .gv-btn__label) {
   display: contents;
 }
 
-.dark .filter-menu-footer {
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Zoom Controls */
+/* Zoom — оболочка .kg-glass-surface на элементе */
 .custom-zoom-controls {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 16px;
+  pointer-events: auto;
   display: flex;
   flex-direction: column;
   padding: 4px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-  z-index: 50;
-}
-
-.dark .custom-zoom-controls {
-  background: rgba(24, 24, 27, 0.85);
-  border-color: rgba(255, 255, 255, 0.1);
 }
 
 :deep(.zoom-btn) {
@@ -1355,83 +2196,25 @@ watch(activeFilters, () => {
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  color: #64748b;
+  color: color-mix(in srgb, var(--gv-text-secondary) 88%, transparent);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 :deep(.zoom-btn:hover) {
-  background: rgba(0, 0, 0, 0.05);
-  color: #0ea5e9;
+  background: color-mix(in srgb, var(--gv-primary) 14%, transparent);
+  color: var(--gv-primary);
 }
 
 .divider-hor {
   height: 1px;
   width: 24px;
-  background: rgba(0, 0, 0, 0.1);
+  background: color-mix(in srgb, var(--gv-border-principal) 85%, transparent);
   margin: 4px auto;
 }
 
 .dark .divider-hor {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-/* Legend Rendering */
-.custom-legend {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  padding: 12px 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-  z-index: 40;
-}
-
-.dark .custom-legend {
-  background: rgba(24, 24, 27, 0.85);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.legend-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.legend-title {
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-size: 11px;
-  opacity: 0.6;
-}
-
-.legend-toggle-icon {
-  width: 14px;
-  height: 14px;
-  opacity: 0.5;
-  display: none;
-}
-
-.legend-items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-  font-size: 11px;
+  background: color-mix(in srgb, var(--gv-border-principal) 90%, transparent);
 }
 
 .dot {
@@ -1456,12 +2239,6 @@ watch(activeFilters, () => {
   background: linear-gradient(135deg, #10b981, #047857);
 }
 
-@media (max-width: 768px) {
-  .legend-toggle-icon {
-    display: block;
-  }
-}
-
 /* Base Overlays */
 .loading-overlay {
   position: absolute;
@@ -1471,12 +2248,14 @@ watch(activeFilters, () => {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  background: rgba(255, 255, 255, 0.8);
   z-index: 60;
+  background: color-mix(in srgb, var(--gv-surface) 78%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 .dark .loading-overlay {
-  background: rgba(15, 23, 42, 0.8);
+  background: color-mix(in srgb, var(--gv-surface) 55%, transparent);
 }
 
 .empty-state-overlay {
@@ -1486,7 +2265,8 @@ watch(activeFilters, () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #64748b;
+  z-index: 55;
+  color: color-mix(in srgb, var(--gv-text-secondary) 88%, transparent);
   font-size: 14px;
 }
 
@@ -1509,37 +2289,47 @@ watch(activeFilters, () => {
 .lang-switcher {
   display: flex;
   align-items: center;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
-  padding: 2px;
+  background: color-mix(in srgb, var(--gv-text-primary) 5%, transparent);
+  border-radius: 10px;
+  padding: 4px;
   margin: 0 4px;
+  gap: 2px;
 }
 
 .dark .lang-switcher {
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--gv-surface-card) 45%, transparent);
 }
 
 :deep(.lang-btn) {
   background: transparent;
   border: none;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 4px 8px;
-  border-radius: 6px;
+  letter-spacing: 0.04em;
+  padding: 8px 14px;
+  min-height: 34px;
+  min-width: 2.75rem;
+  border-radius: 8px;
   cursor: pointer;
-  color: #64748b;
+  color: color-mix(in srgb, var(--gv-text-secondary) 88%, transparent);
   transition: all 0.2s;
 }
 
+:deep(.lang-btn.gv-btn--chromeless) {
+  padding: 8px 14px !important;
+  min-height: 34px !important;
+  min-width: 2.75rem !important;
+}
+
 :deep(.lang-btn.active) {
-  background: #ffffff;
-  color: #0ea5e9;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background: var(--gv-surface-card);
+  color: var(--gv-primary);
+  box-shadow: var(--gv-shadow-sm);
 }
 
 .dark :deep(.lang-btn.active) {
-  background: #3f3f46;
-  color: #38bdf8;
+  background: color-mix(in srgb, var(--gv-surface-card) 95%, transparent);
+  color: var(--gv-primary);
 }
 
 :deep(.lang-btn .gv-btn__label) {
@@ -1548,12 +2338,13 @@ watch(activeFilters, () => {
 
 .lang-sep {
   width: 1px;
-  height: 10px;
-  background: rgba(0, 0, 0, 0.1);
+  height: 14px;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--gv-border-principal) 85%, transparent);
 }
 
 .dark .lang-sep {
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--gv-border-principal) 90%, transparent);
 }
 
 .graph-svg {
@@ -1570,52 +2361,305 @@ watch(activeFilters, () => {
 .graph-popup {
   position: absolute;
   z-index: 100;
-  width: 260px;
-  max-width: min(260px, calc(100vw - 24px));
-  background: rgba(255, 255, 255, 0.90);
+  width: min(320px, calc(100vw - 24px));
+  max-width: min(320px, calc(100vw - 24px));
+  background: color-mix(in srgb, var(--gv-surface-card) 92%, transparent);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  border: 1px solid #e9e9e9;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  cursor: pointer;
+  border: 1px solid var(--gv-border-principal);
+  border-radius: var(--gv-radius-container);
+  padding: 14px 16px 16px;
+  box-shadow: var(--gv-shadow-md);
+  cursor: default;
   user-select: none;
-  transition: transform 0.3s cubic-bezier(0.705, 0.01, 0, 0.915),
-    background 0.3s ease,
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: background 0.3s ease,
     border-color 0.3s ease,
     box-shadow 0.3s ease;
 }
 
-.graph-popup:hover {
-  transform: translateY(-4px);
-  border-color: #0ea5e9;
-  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.12);
+.graph-popup--mobile {
+  position: fixed;
+  left: 12px !important;
+  right: 12px !important;
+  top: auto !important;
+  bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
+  width: auto !important;
+  max-width: none !important;
+  max-height: min(55vh, 480px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  transform: none !important;
+  z-index: 200;
+}
+
+.graph-popup--mobile:hover {
+  transform: none !important;
+}
+
+.graph-popup__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -2px 0 0;
+}
+
+.graph-popup__top--link {
+  margin-bottom: 2px;
+}
+
+.graph-popup__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.graph-popup__head-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.graph-popup__type-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gv-text-secondary);
+}
+
+.graph-popup__close {
+  flex-shrink: 0;
+}
+
+.graph-popup__category {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--gv-text-secondary);
+}
+
+.graph-popup__cat-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.graph-popup__title-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gv-text-primary);
+  line-height: 1.35;
+}
+
+.graph-popup__title-text--loading-preview {
+  opacity: 0.9;
+}
+
+.graph-popup__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.graph-popup__sk-line,
+.graph-popup__sk-media,
+.graph-popup__sk-chip {
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    var(--gv-surface-header) 0%,
+    color-mix(in srgb, var(--gv-surface-header) 55%, var(--gv-border-principal)) 45%,
+    var(--gv-surface-header) 100%
+  );
+  background-size: 220% 100%;
+  animation: graph-popup-skel 1.15s ease-in-out infinite;
+}
+
+.graph-popup__sk-line {
+  height: 12px;
+  width: 100%;
+}
+
+.graph-popup__sk-line--sm {
+  width: 38%;
+}
+
+.graph-popup__sk-line--md {
+  width: 74%;
+}
+
+.graph-popup__sk-line--lg {
+  width: 94%;
+}
+
+.graph-popup__sk-media {
+  height: 140px;
+  width: 100%;
+  border-radius: 10px;
+}
+
+.graph-popup__sk-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.graph-popup__sk-chip {
+  height: 24px;
+  width: 52px;
+}
+
+@keyframes graph-popup-skel {
+  0% {
+    background-position: 120% 0;
+  }
+
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+.graph-popup__media {
+  width: 100%;
+  height: 140px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--gv-surface-header);
+  border: 1px solid var(--gv-border-principal);
+}
+
+.graph-popup__media-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.graph-popup__aliases {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.graph-popup__alias-chip {
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: var(--gv-surface-header);
+  border: 1px solid var(--gv-border-principal);
+  color: var(--gv-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.graph-popup__definition {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--gv-text-secondary);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.graph-popup--mobile .graph-popup__definition {
+  -webkit-line-clamp: 8;
+  line-clamp: 8;
+}
+
+.graph-popup__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 10px;
+  margin-top: 2px;
+  border-top: 1px solid var(--gv-border-principal);
+}
+
+.graph-popup__loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--gv-text-secondary);
+  margin-right: auto;
+}
+
+.graph-popup__spin {
+  width: 14px;
+  height: 14px;
+  animation: graph-popup-spin 0.8s linear infinite;
+}
+
+@keyframes graph-popup-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.graph-popup__link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gv-text-secondary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+  white-space: nowrap;
+}
+
+.graph-popup__link:hover {
+  color: var(--gv-primary);
+}
+
+.dark .graph-popup__link:hover {
+  color: var(--gv-primary);
+}
+
+.graph-popup:hover:not(.graph-popup--mobile) {
+  border-color: color-mix(in srgb, var(--gv-primary) 45%, var(--gv-border-principal));
+  box-shadow: var(--gv-shadow-lg);
 }
 
 .dark .graph-popup {
-  background: rgba(26, 26, 26, 0.90);
-  border-color: #3a3a3a;
+  background: color-mix(in srgb, var(--gv-surface-card) 88%, transparent);
+  border-color: var(--gv-border-principal);
 }
 
-.dark .graph-popup:hover {
-  border-color: #0ea5e9;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), 0 0 10px rgba(14, 165, 233, 0.08);
+.dark .graph-popup:hover:not(.graph-popup--mobile) {
+  border-color: color-mix(in srgb, var(--gv-primary) 50%, var(--gv-border-principal));
+  box-shadow: var(--gv-shadow-lg);
 }
 
 .link-popup {
+  position: relative;
   padding-left: 20px !important;
   overflow: hidden;
 }
 
+.graph-popup--mobile.link-popup {
+  padding-left: 16px !important;
+}
+
 .link-popup:hover {
   transform: none;
-  border-color: #e9e9e9;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  border-color: var(--gv-border-principal);
+  box-shadow: var(--gv-shadow-md);
 }
 
 .dark .link-popup:hover {
-  border-color: #3a3a3a;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  border-color: var(--gv-border-principal);
+  box-shadow: var(--gv-shadow-md);
 }
 
 .link-popup-accent {
@@ -1773,32 +2817,73 @@ watch(activeFilters, () => {
 }
 
 @media (max-width: 1024px) {
-  .graph-actions-container {
+  .graph-actions-container:not(.graph-actions-container--frameless) {
     top: 10px;
     left: 10px;
     right: 10px;
-    padding: 4px;
+    max-width: none;
+    width: auto;
+  }
+
+  .graph-actions-container--frameless {
+    max-width: calc(100% - 20px);
+  }
+
+  .graph-actions-container {
+    padding: 6px;
   }
 
   .custom-search-input {
     flex: 1;
     width: auto;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .kg-graph-title,
+  .kg-graph-brand {
+    font-size: clamp(2rem, 6.5vw, 2.25rem);
+    letter-spacing: 4px;
   }
 }
 
 @media (max-width: 640px) {
-  .graph-actions-container {
+  .graph-actions-container--mobile-compact {
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%);
+    width: max-content;
+    min-width: min(240px, calc(100vw - 24px));
+    max-width: min(340px, calc(100vw - 24px));
+    padding: 8px 12px;
+  }
+
+  .graph-actions-container:not(.graph-actions-container--frameless) {
     top: 8px;
     left: 8px;
     right: 8px;
-    gap: 2px;
-    flex-wrap: wrap;
-    justify-content: space-between;
+  }
+
+  .graph-actions-container--frameless {
+    padding: 10px 14px 11px;
+    max-width: calc(100% - 16px);
+  }
+
+  .kg-graph-sep {
+    margin: 0 10px;
+    min-height: 1.5rem;
+  }
+
+  .graph-actions-toolbar {
+    gap: 6px;
+    justify-content: center;
   }
 
   .custom-search-wrapper {
     order: 1;
     width: 100%;
+    flex: 1 1 100%;
   }
 
   .custom-search-input {
@@ -1806,7 +2891,7 @@ watch(activeFilters, () => {
     padding: 8px 30px;
   }
 
-  .control-divider {
+  .control-divider--toolbar {
     display: none;
   }
 
@@ -1814,24 +2899,30 @@ watch(activeFilters, () => {
     margin: 0;
   }
 
-  .custom-zoom-controls {
+  .kg-graph-ui-cluster {
     top: auto;
     bottom: 10px;
     left: 50%;
     right: auto;
     transform: translateX(-50%);
-    flex-direction: row;
+    align-items: center;
     z-index: 70;
+    max-width: calc(100vw - 20px);
   }
 
-  .custom-legend {
-    bottom: 58px;
+  .graph-stats-panel {
+    bottom: 64px;
     left: 10px;
+    right: auto;
+    max-width: min(280px, calc(100% - 88px));
     padding: 10px 12px;
-    max-width: calc(100% - 20px);
   }
 
-  .graph-popup {
+  .custom-zoom-controls {
+    flex-direction: row;
+  }
+
+  .graph-popup:not(.graph-popup--mobile) {
     width: min(240px, calc(100vw - 20px));
     padding: 12px;
   }

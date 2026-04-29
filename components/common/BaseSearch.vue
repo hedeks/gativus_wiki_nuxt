@@ -4,8 +4,8 @@
     <div
       class="search-icon absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors duration-300"
       :class="[
-        showActivity ? 'text-sky-500' : 'text-gray-400 dark:text-gray-500',
-        isFocused ? 'text-sky-500' : '',
+        showActivity ? 'text-[var(--gv-primary)]' : 'text-[var(--gv-text-secondary)]',
+        isFocused && !showActivity ? 'text-[var(--gv-primary)]' : '',
       ]"
     >
       <UIcon
@@ -93,34 +93,35 @@ function clear() {
   padding-left: 42px;
   padding-right: 44px;
   border-radius: 12px;
-  background: #ffffff;
-  border: 1px solid #dfe7f3;
+  background: var(--gv-surface-card);
+  border: 1px solid color-mix(in srgb, var(--gv-border-principal) 82%, var(--gv-primary) 18%);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    0 8px 18px rgba(15, 23, 42, 0.06);
+    0 1px 0 color-mix(in srgb, var(--gv-surface) 88%, transparent) inset,
+    var(--gv-shadow-md);
   font-size: 14px;
-  color: #1e293b;
-  transition: all 0.25s ease;
+  color: var(--gv-text-primary);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
   outline: none;
 }
 
 .premium-search-input:hover {
-  border-color: #cdd9ea;
+  border-color: color-mix(in srgb, var(--gv-border-principal) 62%, var(--gv-primary) 22%);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.92) inset,
-    0 12px 20px rgba(15, 23, 42, 0.08);
+    0 1px 0 color-mix(in srgb, var(--gv-surface) 90%, transparent) inset,
+    var(--gv-shadow-lg);
 }
 
 .premium-search-input:focus {
-  border-color: #0ea5e9;
+  border-color: var(--gv-primary);
   box-shadow:
-    0 0 0 4px rgba(14, 165, 233, 0.14),
-    0 16px 28px rgba(2, 132, 199, 0.12);
+    0 0 0 3px color-mix(in srgb, var(--gv-primary) 24%, transparent),
+    0 12px 28px color-mix(in srgb, var(--gv-primary) 14%, rgba(0, 0, 0, 0.12));
 }
 
 .premium-search-input::placeholder {
-  color: #94a3b8;
+  color: var(--gv-text-secondary);
   letter-spacing: 0.2px;
+  opacity: 0.92;
 }
 
 .search-icon {
@@ -138,48 +139,20 @@ function clear() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--gv-text-secondary);
   background: transparent;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
 :deep(.search-clear-btn:hover) {
-  color: #0ea5e9;
-  border-color: rgba(14, 165, 233, 0.28);
-  background: rgba(14, 165, 233, 0.08);
-}
-
-.dark .premium-search-input {
-  background: #1a1a1a;
-  border: 1px solid #343c49;
-  color: #e2e8f0;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 10px 20px rgba(0, 0, 0, 0.3);
-}
-
-.dark .premium-search-input:hover {
-  border-color: #445063;
+  color: var(--gv-primary);
+  border-color: color-mix(in srgb, var(--gv-primary) 30%, transparent);
+  background: color-mix(in srgb, var(--gv-primary) 12%, transparent);
 }
 
 .dark .premium-search-input:focus {
-  border-color: #0ea5e9;
   box-shadow:
-    0 0 0 4px rgba(14, 165, 233, 0.18),
-    0 18px 30px rgba(2, 132, 199, 0.18);
-}
-
-.dark .premium-search-input::placeholder {
-  color: #64748b;
-}
-
-.dark :deep(.search-clear-btn) {
-  color: #64748b;
-}
-
-.dark :deep(.search-clear-btn:hover) {
-  color: #7dd3fc;
-  border-color: rgba(125, 211, 252, 0.28);
-  background: rgba(14, 165, 233, 0.14);
+    0 0 0 3px color-mix(in srgb, var(--gv-primary) 34%, transparent),
+    0 14px 32px rgba(0, 0, 0, 0.45);
 }
 </style>

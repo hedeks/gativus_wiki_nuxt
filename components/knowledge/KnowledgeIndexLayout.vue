@@ -126,35 +126,6 @@ const props = defineProps<{
   }
 }
 
-.knowledge-index .filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--gv-primary) 18%, var(--gv-border-principal));
-  background: var(--gv-surface-card);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.dark .knowledge-index .filter-group {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.knowledge-index .filter-group-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--gv-primary) 45%, var(--gv-text-secondary));
-}
-
-.knowledge-index .filter-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .knowledge-index .search-shell {
   padding: 0;
   border-radius: 12px;
@@ -189,7 +160,9 @@ const props = defineProps<{
 
 .dark .knowledge-index .expandable-filters .filters-trigger.gv-btn--chromeless.is-open {
   color: color-mix(in srgb, var(--gv-primary) 88%, #fff);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gv-primary) 32%, transparent);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--gv-primary) 32%, transparent),
+    0 18px 40px rgba(0, 0, 0, 0.52);
 }
 
 .knowledge-index .expandable-filters .filters-trigger.gv-btn--chromeless.has-active {
@@ -282,19 +255,6 @@ const props = defineProps<{
   .knowledge-index .page-container {
     padding: 16px 12px 48px;
     gap: 16px;
-  }
-
-  .knowledge-index .filter-group {
-    padding: 10px 12px;
-    border-radius: 12px;
-  }
-
-  .knowledge-index .filter-pills {
-    gap: 6px;
-  }
-
-  .knowledge-index .filter-group-label {
-    letter-spacing: 0.12em;
   }
 
   .knowledge-index .cards-list {

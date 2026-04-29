@@ -1,25 +1,38 @@
 <template>
   <div class="landing-page gv-page">
-    <!-- Hero Section -->
-    <section class="hero-section">
-      <div class="hero-title-container">
-        <img src="/images/121px-Logo.jpg" alt="Gativus Logo" class="hero-logo" />
-        <div class="hero-text">
-          <h1 class="hero-title gv-hero-gradient">GATIVUS</h1>
-          <p class="hero-subtitle">Theory of Mind · Network · Edge</p>
+    <PageHero crisp class="landing-page-hero w-full">
+      <template #default>
+        <div class="hero-title-container">
+          <img src="/images/121px-Logo.jpg" alt="Gativus Logo" class="hero-logo">
+          <div class="hero-text">
+            <h1 class="hero-title gv-hero-gradient landing-brand-title">GATIVUS</h1>
+            <p class="hero-subtitle">{{ t.heroTagline }}</p>
+          </div>
         </div>
-      </div>
-      <p class="hero-description">
-        {{ t.heroDescription }}
-      </p>
-      <div class="hero-cta">
-        <GvButton to="/books" color="sky" variant="solid" size="md" icon="i-heroicons-book-open">
-          {{ t.articles }}
-        </GvButton>
-        <GvButton to="/about" variant="outline" color="gray" size="md" icon="i-heroicons-information-circle">
-          {{ t.about }}
-        </GvButton>
-      </div>
+        <p class="hero-description mt-8">
+          {{ t.heroDescription }}
+        </p>
+        <div class="hero-cta mt-10">
+          <GvButton to="/books" color="sky" variant="solid" size="md" icon="i-heroicons-book-open">
+            {{ t.articles }}
+          </GvButton>
+          <GvButton to="/about" variant="outline" color="gray" size="md" icon="i-heroicons-information-circle">
+            {{ t.about }}
+          </GvButton>
+        </div>
+      </template>
+    </PageHero>
+
+    <section class="pillars-section w-full" aria-label="Pillars">
+      <article v-for="block in pillarBlocks" :key="block.badge" class="pillar-card">
+        <div class="pillar-header">
+          <span class="pillar-badge">{{ block.badge }}</span>
+          <h2 class="pillar-name">{{ block.title }}</h2>
+        </div>
+        <div class="pillar-body">
+          <p class="pillar-desc">{{ block.desc }}</p>
+        </div>
+      </article>
     </section>
   </div>
 </template>
@@ -31,22 +44,66 @@ const langStore = useLanguageStore()
 
 const uiDict: Record<string, any> = {
   en: {
+    heroTagline: 'Theory of Mind · Network · Edge',
     heroDescription: 'Implementation of the transition from abstract theory of mind to network protocol and physical hardware.',
     articles: 'Books',
     about: 'About Project',
     metaTitle: 'Gativus — Home',
-    metaDesc: 'Gativus — from theory of mind (GTOM) through network (GNET) to physical device (GATE). Official knowledge base.'
+    metaDesc: 'Gativus — from theory of mind (GTOM) through network (GNET) to physical device (GATE). Official knowledge base.',
+    pillars: [
+      {
+        badge: 'GTOM',
+        title: 'Gativus Theory of Mind',
+        desc:
+          'GTOM treats consciousness as a dynamic superposition of levels — from spatial navigation to qualitative judgment — with a computable, hardware-realizable model.',
+      },
+      {
+        badge: 'GNET',
+        title: 'Gativus Network',
+        desc:
+          'Principles from GTOM inform a coherent distributed network over real infrastructure — unique IPv6 addressing and logical links between digital entities on GATE devices.',
+      },
+      {
+        badge: 'GATE',
+        title: 'Gativus Edge Device',
+        desc:
+          'GATE is the physical substrate: storage, execution, and protection of neural nodes, built for scaling on open-source foundations.',
+      },
+    ],
   },
   ru: {
+    heroTagline: 'Теория сознания · Сеть · Устройство',
     heroDescription: 'Реализация перехода от абстрактной теории сознания к сетевому протоколу и физическому оборудованию.',
     articles: 'Книги',
     about: 'О проекте',
     metaTitle: 'Gativus — Главная',
-    metaDesc: 'Gativus — от теории сознания (GTOM) через сеть (GNET) к физическому устройству (GATE). Официальная база знаний.'
-  }
+    metaDesc: 'Gativus — от теории сознания (GTOM) через сеть (GNET) к физическому устройству (GATE). Официальная база знаний.',
+    pillars: [
+      {
+        badge: 'GTOM',
+        title: 'Gativus Theory of Mind',
+        desc:
+          'GTOM рассматривает сознание как динамическую суперпозицию уровней — от пространственной навигации до качественных суждений — в вычислимой модели, реализуемой аппаратно.',
+      },
+      {
+        badge: 'GNET',
+        title: 'Gativus Network',
+        desc:
+          'Идеи GTOM ложатся в основу когерентной распределённой сети на реальной инфраструктуре — уникальная адресация IPv6 и логические связи между сущностями на устройствах GATE.',
+      },
+      {
+        badge: 'GATE',
+        title: 'Gativus Edge Device',
+        desc:
+          'GATE — физический субстрат: хранение, исполнение и защита узлов нейросети, с упором на масштабирование и open-source базу.',
+      },
+    ],
+  },
 }
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+
+const pillarBlocks = computed(() => t.value.pillars || uiDict.ru.pillars)
 
 useSeoMeta({
   ogImage: '/favicon.ico',
@@ -73,17 +130,8 @@ useHead({
 }
 
 
-/* ─── Hero ─── */
-.hero-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  min-height: calc(100dvh - var(--header-height, 65px));
-  text-align: center;
-  padding: 0;
-  width: 100%;
+.landing-page-hero {
+  min-height: min(72dvh, 640px);
 }
 
 .hero-title-container {
@@ -104,44 +152,24 @@ useHead({
   flex-direction: column;
 }
 
-.hero-title {
-  margin: 0;
-  font-size: 48px;
-  line-height: 1.1;
-  letter-spacing: 6px;
-  font-weight: 700;
-  color: #18181b;
-  padding-bottom: 4px;
-  user-select: none;
+.landing-brand-title {
+  line-height: 1.08;
+  letter-spacing: 0.34em !important;
 }
 
-.dark .hero-title {
-  color: #e5e5e5;
+@media (max-width: 768px) {
+  .landing-brand-title {
+    letter-spacing: 0.2em !important;
+  }
 }
 
 .hero-subtitle {
   margin: 8px 0 0;
   font-size: 15px;
-  color: #777;
-  letter-spacing: 3px;
+  color: var(--gv-text-secondary);
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   font-weight: 400;
-}
-
-.dark .hero-subtitle {
-  color: #999;
-}
-
-.hero-description {
-  max-width: 640px;
-  font-size: 17px;
-  line-height: 1.7;
-  color: #555;
-  margin: 0;
-}
-
-.dark .hero-description {
-  color: #aaa;
 }
 
 .hero-cta {
@@ -149,63 +177,6 @@ useHead({
   gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: 4px;
-}
-
-.cta-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: all 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
-  cursor: pointer;
-}
-
-.cta-button.primary {
-  background: #0284c7;
-  color: #fff;
-  border: 1px solid #0369a1;
-}
-
-.cta-button.primary:hover {
-  background: #0369a1;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
-}
-
-.dark .cta-button.primary {
-  background: #0ea5e9;
-  /* sky-500 */
-  color: #fff;
-  border-color: #0284c7;
-}
-
-.dark .cta-button.primary:hover {
-  background: #38bdf8;
-}
-
-.cta-button.secondary {
-  background: transparent;
-  color: #555;
-  border: 1px solid #c8c8c8;
-}
-
-.cta-button.secondary:hover {
-  background: #f5f5f5;
-  transform: translateY(-1px);
-}
-
-.dark .cta-button.secondary {
-  color: #aaa;
-  border-color: #444;
-}
-
-.dark .cta-button.secondary:hover {
-  background: #2a2a2a;
 }
 
 /* ─── Pillars ─── */
@@ -395,11 +366,6 @@ useHead({
 @media (max-width: 640px) {
   .hero-title-container {
     flex-direction: column;
-  }
-
-  .hero-title {
-    font-size: 36px;
-    letter-spacing: 5px;
   }
 
   .hero-logo {

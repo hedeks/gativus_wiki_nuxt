@@ -176,20 +176,21 @@ onUnmounted(() => {
   min-height: 42px !important;
   padding: 0 18px !important;
   border-radius: 12px;
-  background: #ffffff;
-  border: 1px solid #dde6f2;
-  color: #475569;
+  background: var(--gv-surface-card);
+  border: 1px solid color-mix(in srgb, var(--gv-border-principal) 78%, var(--gv-primary) 22%);
+  color: color-mix(in srgb, var(--gv-text-secondary) 82%, var(--gv-primary) 18%);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease,
+    background 0.25s ease, transform 0.25s ease;
   white-space: nowrap;
   user-select: none;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.86) inset,
-    0 8px 18px rgba(15, 23, 42, 0.06);
+    0 1px 0 color-mix(in srgb, var(--gv-surface) 85%, transparent) inset,
+    var(--gv-shadow-md);
 }
 
 .filters-icon-wrap {
@@ -199,30 +200,37 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #0ea5e9;
-  background: rgba(14, 165, 233, 0.1);
+  color: var(--gv-primary);
+  background: color-mix(in srgb, var(--gv-primary) 12%, var(--gv-surface-card));
 }
 
 :deep(.filters-trigger.gv-btn--chromeless:hover) {
-  border-color: #c8d7ea;
-  color: #0369a1;
+  border-color: color-mix(in srgb, var(--gv-border-principal) 52%, var(--gv-primary) 30%);
+  color: var(--gv-primary-hover);
   transform: translateY(-1px);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 12px 22px rgba(15, 23, 42, 0.1);
+    0 1px 0 color-mix(in srgb, var(--gv-surface) 88%, transparent) inset,
+    var(--gv-shadow-lg);
 }
 
 :deep(.filters-trigger.gv-btn--chromeless.is-open) {
-  border-color: #0ea5e9;
-  color: #0369a1;
+  border-color: var(--gv-primary);
+  color: var(--gv-primary);
   box-shadow:
-    0 0 0 4px rgba(14, 165, 233, 0.14),
-    0 14px 24px rgba(2, 132, 199, 0.14);
+    0 0 0 3px color-mix(in srgb, var(--gv-primary) 22%, transparent),
+    0 14px 28px color-mix(in srgb, var(--gv-primary) 12%, rgba(0, 0, 0, 0.08));
+}
+
+.dark :deep(.filters-trigger.gv-btn--chromeless.is-open) {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--gv-primary) 32%, transparent),
+    0 18px 40px rgba(0, 0, 0, 0.52);
 }
 
 :deep(.filters-trigger.gv-btn--chromeless.has-active) {
-  border-color: #0ea5e9;
-  background: #eff9ff;
+  border-color: var(--gv-primary);
+  background: color-mix(in srgb, var(--gv-primary) 9%, var(--gv-surface-card));
+  color: var(--gv-primary);
 }
 
 .filters-label {
@@ -237,12 +245,17 @@ onUnmounted(() => {
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: #0284c7;
+  background: var(--gv-primary);
   color: #fff;
   font-size: 11px;
   font-weight: 800;
   line-height: 1;
-  box-shadow: 0 6px 12px rgba(2, 132, 199, 0.3);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--gv-primary) 42%, transparent);
+}
+
+.dark .filters-dot {
+  color: color-mix(in srgb, #fff 94%, var(--gv-surface) 6%);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--gv-primary) 38%, rgba(0, 0, 0, 0.45));
 }
 
 .chevron {
@@ -259,55 +272,23 @@ onUnmounted(() => {
 }
 
 .filters-dropdown-inner {
-  padding: 14px;
+  padding: 20px 22px;
   border-radius: 12px;
-  background: #ffffff;
-  border: 1px solid #dbe5f2;
+  background: var(--gv-surface-card);
+  border: 1px solid color-mix(in srgb, var(--gv-border-principal) 80%, var(--gv-primary) 20%);
   box-shadow:
-    0 24px 40px rgba(15, 23, 42, 0.12),
-    0 1px 0 rgba(255, 255, 255, 0.82) inset;
+    var(--gv-shadow-lg),
+    0 1px 0 color-mix(in srgb, var(--gv-surface) 75%, transparent) inset;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.dark :deep(.filters-trigger.gv-btn--chromeless) {
-  background: #1a1c22;
-  border-color: #3a4352;
-  color: #aab9cf;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 10px 22px rgba(0, 0, 0, 0.34);
-}
-
-.dark .filters-icon-wrap {
-  color: #7dd3fc;
-  background: rgba(14, 165, 233, 0.16);
-}
-
-.dark :deep(.filters-trigger.gv-btn--chromeless:hover) {
-  border-color: #4b5a6f;
-  color: #bae6fd;
-}
-
-.dark :deep(.filters-trigger.gv-btn--chromeless.is-open) {
-  border-color: #0ea5e9;
-  color: #bae6fd;
-  box-shadow:
-    0 0 0 4px rgba(14, 165, 233, 0.22),
-    0 14px 26px rgba(0, 0, 0, 0.45);
-}
-
-.dark :deep(.filters-trigger.gv-btn--chromeless.has-active) {
-  background: rgba(14, 165, 233, 0.12);
+  gap: 26px;
 }
 
 .dark .filters-dropdown-inner {
-  background: #191b21;
-  border-color: #333c49;
+  border-color: color-mix(in srgb, var(--gv-border-principal) 72%, var(--gv-primary) 28%);
   box-shadow:
-    0 26px 44px rgba(0, 0, 0, 0.5),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    0 26px 44px rgba(0, 0, 0, 0.55),
+    0 1px 0 color-mix(in srgb, var(--gv-text-primary) 8%, transparent) inset;
 }
 
 .filters-drop-enter-active,
@@ -334,6 +315,70 @@ onUnmounted(() => {
   :deep(.filters-trigger.gv-btn--chromeless) {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .filters-dropdown-inner {
+    padding: 18px 16px;
+    gap: 22px;
+  }
+}
+</style>
+
+<style>
+/* Слот: filter-group в телепорте без scoped data-v — общий ритм для индексов и админки */
+.expandable-filters .filters-dropdown-inner .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--gv-primary) 18%, var(--gv-border-principal));
+  background: var(--gv-surface-card);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.dark .expandable-filters .filters-dropdown-inner .filter-group {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.expandable-filters .filters-dropdown-inner .filter-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--gv-primary) 45%, var(--gv-text-secondary));
+  line-height: 1.45;
+}
+
+.expandable-filters .filters-dropdown-inner .filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  gap: 12px 14px;
+}
+
+.expandable-filters .filters-dropdown-inner .filter-select,
+.expandable-filters .filters-dropdown-inner select.filter-select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .expandable-filters .filters-dropdown-inner .filter-group {
+    padding: 14px 16px;
+    gap: 12px;
+    border-radius: 12px;
+  }
+
+  .expandable-filters .filters-dropdown-inner .filter-pills {
+    gap: 10px 12px;
+  }
+
+  .expandable-filters .filters-dropdown-inner .filter-group-label {
+    letter-spacing: 0.12em;
   }
 }
 </style>

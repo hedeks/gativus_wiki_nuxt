@@ -1,87 +1,116 @@
 <template>
-  <div class="book-details-page min-h-screen gv-page">
-    <div v-if="pending" class="flex items-center justify-center min-h-[60vh]">
-      <UIcon name="i-heroicons-arrow-path" class="animate-spin text-4xl text-sky-500" />
+  <div class="book-details-page gv-page">
+    <div v-if="pending" class="book-state book-state--center">
+      <UIcon name="i-heroicons-arrow-path" class="book-spinner h-10 w-10 animate-spin" />
     </div>
 
-    <div v-else-if="error" class="page-container text-center pt-40">
-      <UIcon name="i-heroicons-exclamation-triangle" class="text-6xl text-red-500 mb-6 mx-auto" />
-      <h2 class="hero-title">{{ t.notFound }}</h2>
-      <p class="hero-description mx-auto mt-4 mb-8">{{ t.notFoundDesc }}</p>
-      <GvButton to="/books" size="lg" color="sky" icon="i-heroicons-arrow-left" class="rounded-xl">{{ t.backToLib }}
+    <div v-else-if="error" class="book-state book-state--center book-state--narrow">
+      <UIcon name="i-heroicons-exclamation-triangle" class="book-state-icon book-state-icon--warn" />
+      <h2 class="book-hero-title-text">{{ t.notFound }}</h2>
+      <p class="book-lead">{{ t.notFoundDesc }}</p>
+      <GvButton to="/books" size="lg" color="sky" icon="i-heroicons-arrow-left" class="mt-2">
+        {{ t.backToLib }}
       </GvButton>
     </div>
 
-    <div v-else-if="book" class="book-content pb-20">
-      <header class="book-hero flex flex-col md:flex-row gap-12 items-center md:items-start w-full pt-10 pb-16">
-        <TheBreadcrumbs v-if="book" class="md:absolute top-10 left-0" :items="[
-          { label: t.library, to: '/books' },
-          { label: book.title }
-        ]" />
-        <div class="book-cover-large shadow-soft hover:shadow-hover transition-all duration-500">
-          <img v-if="book.cover_image" :src="book.cover_image" :alt="book.title" class="w-full h-full object-cover" />
-          <div v-else
-            class="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-800 text-gray-400">
-            <UIcon name="i-heroicons-book-open" class="text-6xl mb-2" />
-            <span class="text-[10px] font-bold uppercase tracking-widest text-center px-4">Gativus</span>
-          </div>
-        </div>
+    <div v-else-if="book" class="book-content">
+      <header class="book-hero">
+        <TheBreadcrumbs
+          v-if="book"
+          class="book-breadcrumbs"
+          :items="[
+            { label: t.library, to: '/books' },
+            { label: book.title },
+          ]"
+        />
 
-        <div class="book-header-info flex-1 text-center md:text-left">
-          <div class="flex flex-wrap gap-2 mb-6 justify-center md:justify-start">
-            <span v-for="catId in book.category_ids" :key="catId" class="badge">
-              {{ getCategoryTitle(catId) }}
-            </span>
-          </div>
-
-          <h1 class="hero-title uppercase block">{{ book.title }}</h1>
-          <p class="hero-subtitle mb-8">Архитектура и фундаментальные принципы</p>
-
-          <p class="hero-description mb-10">
-            {{ book.description || `В этой книге пока нет подробного описания. Изучите оглавление ниже, чтобы
-            ознакомиться с ключевыми материалами.` }}
-          </p>
-
-          <div v-if="book.articles && book.articles.length > 0" class="flex justify-center md:justify-start mb-10">
-            <NuxtLink :to="`/articles/${book.articles[0].slug}`" class="read-button group">
-              <span>{{ t.read }}</span>
-              <UIcon name="i-heroicons-arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </NuxtLink>
+        <div class="book-hero-grid">
+          <div class="book-cover gv-surface-card">
+            <img
+              v-if="book.cover_image"
+              :src="book.cover_image"
+              :alt="book.title"
+              class="h-full w-full object-cover"
+            />
+            <div
+              v-else
+              class="book-cover-placeholder"
+            >
+              <UIcon name="i-heroicons-book-open" class="h-14 w-14 opacity-50" />
+              <span class="book-cover-placeholder-label">Gativus</span>
+            </div>
           </div>
 
-          <div
-            class="flex flex-wrap gap-8 items-center justify-center md:justify-start text-[12px] font-bold text-gray-400 uppercase tracking-widest">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-heroicons-document-text" />
+          <div class="book-header-info">
+            <div v-if="book.category_ids?.length" class="book-badges">
+              <span v-for="catId in book.category_ids" :key="catId" class="book-badge">
+                {{ getCategoryTitle(catId) }}
+              </span>
+            </div>
+
+            <h1 class="book-hero-title-text gv-hero-gradient uppercase">
+              {{ book.title }}
+            </h1>
+            <p class="gv-hero-subtitle book-hero-tagline">{{ t.heroTagline }}</p>
+
+            <p class="book-description">
+              {{
+                book.description
+                  || t.fallbackDescription
+              }}
+            </p>
+
+            <div v-if="book.articles?.length" class="book-cta-row">
+              <GvButton
+                :to="`/articles/${book.articles[0].slug}`"
+                color="sky"
+                size="lg"
+                icon="i-heroicons-arrow-right"
+                trailing
+              >
+                {{ t.read }}
+              </GvButton>
+            </div>
+
+            <div class="book-meta-row">
+              <UIcon name="i-heroicons-document-text" class="book-meta-icon" />
               <span>{{ book.articles?.length || 0 }} {{ t.chapters }}</span>
             </div>
           </div>
         </div>
       </header>
 
-      <!-- Chapters List -->
-      <section class="chapters-section w-full pt-10">
-        <div class="section-divider mb-12">
-          <span class="divider-text">{{ t.toc }}</span>
+      <section class="book-chapters gv-surface-card" aria-labelledby="book-toc-heading">
+        <div class="book-section-heading" role="presentation">
+          <h2 id="book-toc-heading" class="book-section-heading-text">{{ t.toc }}</h2>
         </div>
 
-        <div v-if="book.articles && book.articles.length > 0" class="chapters-grid flex flex-col gap-5">
-          <NuxtLink v-for="(article, index) in book.articles" :key="article.id" :to="`/articles/${article.slug}`"
-            class="inner-card group">
-            <div class="letter-block">
+        <div v-if="book.articles?.length" class="book-chapter-list">
+          <NuxtLink
+            v-for="(article, index) in book.articles"
+            :key="article.id"
+            :to="`/articles/${article.slug}`"
+            class="chapter-card gv-focusable"
+          >
+            <div class="chapter-index" aria-hidden="true">
               {{ Number(index) + 1 }}
             </div>
-            <div class="flex-1">
+            <div class="chapter-body">
               <h3 class="chapter-title">{{ article.title }}</h3>
-              <p class="chapter-excerpt line-clamp-1" v-if="article.excerpt">{{ article.excerpt }}</p>
+              <p v-if="article.excerpt" class="chapter-excerpt line-clamp-1">
+                {{ article.excerpt }}
+              </p>
             </div>
-            <UIcon name="i-heroicons-arrow-right" class="text-gray-300 group-hover:text-sky-500 transition-colors" />
+            <UIcon
+              name="i-heroicons-arrow-right"
+              class="chapter-chevron"
+            />
           </NuxtLink>
         </div>
 
-        <div v-else class="inner-card w-full text-center py-20 border-dashed justify-center">
-          <UIcon name="i-heroicons-clock" class="text-4xl text-gray-300 mb-4" />
-          <p class="text-gray-500 font-medium tracking-wide">{{ t.noChapters }}</p>
+        <div v-else class="chapter-empty">
+          <UIcon name="i-heroicons-clock" class="chapter-empty-icon" />
+          <p>{{ t.noChapters }}</p>
         </div>
       </section>
     </div>
@@ -97,36 +126,41 @@ const slug = route.params.slug
 const langStore = useLanguageStore()
 
 const { data: book, pending, error, refresh } = await useFetch<any>(`/api/books/${slug}`, {
-  query: computed(() => ({ locale: langStore.currentLang }))
+  query: computed(() => ({ locale: langStore.currentLang })),
 })
 const { data: categories } = await useFetch<any[]>('/api/categories')
 
 const uiDict: Record<string, any> = {
   en: {
-    library: 'LIBRARY',
+    library: 'Library',
     read: 'Read',
-    chapters: 'Chapters',
-    notFound: 'BOOK NOT FOUND',
+    chapters: 'chapters',
+    notFound: 'Book not found',
     notFoundDesc: 'It might have been deleted or the link is incorrect.',
-    backToLib: 'Back to Library',
-    toc: 'CONTENTS',
-    noChapters: 'Chapters for this book have not been published in this language yet.'
+    backToLib: 'Back to library',
+    toc: 'Contents',
+    noChapters: 'Chapters for this book have not been published in this language yet.',
+    heroTagline: 'Architecture and fundamentals',
+    fallbackDescription:
+      'There is no detailed description yet. Browse the table of contents below for key materials.',
   },
   ru: {
-    library: 'БИБЛИОТЕКА',
+    library: 'Библиотека',
     read: 'Читать',
     chapters: 'глав',
-    notFound: 'КНИГА НЕ НАЙДЕНА',
+    notFound: 'Книга не найдена',
     notFoundDesc: 'Возможно, она была удалена или ссылка неверна.',
     backToLib: 'Вернуться в библиотеку',
-    toc: 'ОГЛАВЛЕНИЕ',
-    noChapters: 'Главы этой книги еще не опубликованы на этом языке.'
-  }
+    toc: 'Оглавление',
+    noChapters: 'Главы этой книги ещё не опубликованы на этом языке.',
+    heroTagline: 'Архитектура и фундаментальные принципы',
+    fallbackDescription:
+      'В этой книге пока нет подробного описания. Изучите оглавление ниже, чтобы ознакомиться с ключевыми материалами.',
+  },
 }
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 
-// Watch for language changes to refresh book data (localized title/description/chapters)
 watch(() => langStore.currentLang, () => {
   refresh()
 })
@@ -137,7 +171,7 @@ function getCategoryTitle(id: number) {
 }
 
 useSeoMeta({
-  title: () => book.value?.title ? `${book.value.title} — Gativus` : 'Книга — Gativus',
+  title: () => (book.value?.title ? `${book.value.title} — Gativus` : 'Книга — Gativus'),
   ogTitle: () => book.value?.title,
   description: () => book.value?.description || 'Книга из библиотеки Gativus.',
   ogDescription: () => book.value?.description,
@@ -147,254 +181,365 @@ useSeoMeta({
 </script>
 
 <style scoped>
+/* Акцент «book» как на knowledge-index */
 .book-details-page {
-  background-color: #fff;
+  --gv-primary: #0284c7;
+  --gv-primary-hover: #0369a1;
+  padding-bottom: clamp(2rem, 5vw, 4rem);
 }
 
-.dark .book-details-page {
-  background-color: #1a1a1a;
-}
-
-.page-container {
+.book-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 30px;
-  padding: 40px 10px 80px;
-  max-width: 1100px;
+  text-align: center;
+  gap: 1rem;
+}
+
+.book-state--center {
+  min-height: 45vh;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.book-state--narrow {
+  max-width: 28rem;
   margin: 0 auto;
-  width: 100%;
-  position: relative;
-  /* For absolute breadcrumbs */
 }
 
-/* Hero Typography */
-.hero-title {
-  font-size: 48px;
-  font-weight: 700;
-  letter-spacing: 6px;
-  color: #18181b;
-  border-bottom: 1px solid #bababa;
-  padding-bottom: 8px;
-  margin-bottom: 12px;
-  display: inline-block;
-  line-height: 1.2;
+.book-spinner {
+  color: var(--gv-primary);
 }
 
-@media (max-width: 768px) {
-  .hero-title {
-    font-size: 32px;
-    letter-spacing: 4px;
-  }
+.book-state-icon {
+  width: 3.5rem;
+  height: 3.5rem;
 }
 
-.dark .hero-title {
-  color: #e5e5e5;
-  border-bottom-color: #333;
+.book-state-icon--warn {
+  color: #ef4444;
 }
 
-.hero-subtitle {
-  font-size: 16px;
-  font-weight: 400;
-  letter-spacing: 2px;
-  color: #666;
-  text-transform: uppercase;
+.dark .book-state-icon--warn {
+  color: #f87171;
 }
 
-.dark .hero-subtitle {
-  color: #999;
+.book-lead {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--gv-text-secondary);
 }
 
-.hero-description {
-  font-size: 17px;
-  line-height: 1.7;
-  color: #555;
-}
-
-.dark .hero-description {
-  color: #aaa;
-}
-
-/* Read Button */
-.read-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  background: #0284c7;
-  color: #fff;
-  padding: 14px 36px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  text-decoration: none;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.12);
-  transition: all 0.4s cubic-bezier(0.705, 0.010, 0.000, 0.915);
-}
-
-.read-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.16);
-  background: #0369a1;
-}
-
-.read-button:active {
-  transform: translateY(-2px);
-}
-
-/* Layout Parts */
-.book-cover-large {
-  width: 280px;
-  height: 400px;
-  border-radius: 15px;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: #fff;
-  border: 1px solid #c8c8c8;
-}
-
-.dark .book-cover-large {
-  background: #1a1a1a;
-  border-color: #333;
-}
-
-@media (max-width: 768px) {
-  .book-cover-large {
-    width: 200px;
-    height: 280px;
-  }
-}
-
-/* Divider */
-.section-divider {
-  width: 100%;
+.book-content {
   display: flex;
+  flex-direction: column;
+  gap: clamp(1.75rem, 4vw, 2.5rem);
+  width: 100%;
+}
+
+.book-hero {
+  position: relative;
+  width: 100%;
+}
+
+.book-breadcrumbs {
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 768px) {
+  .book-breadcrumbs {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    margin-bottom: 0;
+  }
+}
+
+.book-hero-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(1.5rem, 4vw, 2.5rem);
+  padding-top: clamp(0.25rem, 2vw, 2.5rem);
+}
+
+@media (min-width: 768px) {
+  .book-hero-grid {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: clamp(2rem, 4vw, 3rem);
+  }
+}
+
+.book-cover {
+  width: 200px;
+  height: 280px;
+  flex-shrink: 0;
+  border-radius: var(--gv-radius-container);
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .book-cover {
+    width: 260px;
+    height: 370px;
+  }
+}
+
+.book-cover-placeholder {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  position: relative;
+  gap: 0.5rem;
+  background: var(--gv-surface-header);
+  color: var(--gv-text-secondary);
 }
 
-.section-divider::before {
-  content: "";
+.book-cover-placeholder-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0 1rem;
+}
+
+.book-header-info {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .book-header-info {
+    text-align: left;
+  }
+}
+
+.book-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .book-badges {
+    justify-content: flex-start;
+  }
+}
+
+.book-badge {
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--gv-primary) 14%, var(--gv-surface-header));
+  color: color-mix(in srgb, var(--gv-primary) 55%, var(--gv-text-primary));
+  border: 1px solid color-mix(in srgb, var(--gv-primary) 28%, var(--gv-border-principal));
+}
+
+.dark .book-badge {
+  background: color-mix(in srgb, var(--gv-primary) 18%, var(--gv-surface-card));
+  color: color-mix(in srgb, var(--gv-primary) 72%, #e2e8f0);
+}
+
+.book-hero-title-text {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.75rem, 4.5vw, 2.75rem);
+  line-height: 1.1;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+.book-hero-tagline {
+  margin: 0 0 1rem;
+}
+
+.book-description {
+  margin: 0 0 1.5rem;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--gv-text-secondary);
+  max-width: 40rem;
+}
+
+@media (min-width: 768px) {
+  .book-description {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+.book-cta-row {
+  margin-bottom: 1.25rem;
+  display: flex;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .book-cta-row {
+    justify-content: flex-start;
+  }
+}
+
+.book-meta-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gv-text-secondary);
+}
+
+.book-meta-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--gv-primary);
+}
+
+/* Оглавление */
+.book-chapters {
+  overflow: hidden;
+  padding-bottom: 0.5rem;
+}
+
+.book-section-heading {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 1.25rem 1rem 0.75rem;
+}
+
+.book-section-heading::before {
+  content: '';
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 1rem;
+  right: 1rem;
+  top: 50%;
   height: 1px;
-  background: #bababa;
+  background: var(--gv-border-principal);
   z-index: 0;
 }
 
-.dark .section-divider::before {
-  background: #333;
-}
-
-.divider-text {
+.book-section-heading-text {
   position: relative;
   z-index: 1;
-  background: #fff;
-  padding: 0 24px;
-  font-size: 13px;
+  margin: 0;
+  padding: 0 1.25rem;
+  background: var(--gv-surface-card);
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 4px;
-  color: #333;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gv-text-primary);
 }
 
-.dark .divider-text {
-  background: #1a1a1a;
-  color: #e5e5e5;
+.book-chapter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem clamp(0.75rem, 2vw, 1.25rem) 1.25rem;
 }
 
-/* Inner Cards (Chapters) */
-.inner-card {
+.chapter-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 24px;
-  border: 1px solid #e9e9e9;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 0 2px rgba(34, 60, 80, 0.1);
-  transition: all 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--gv-radius-control);
+  border: 1px solid var(--gv-border-principal);
+  background: var(--gv-surface-card);
+  box-shadow: var(--gv-shadow-sm);
   text-decoration: none !important;
+  color: inherit;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
 }
 
-.dark .inner-card {
-  background: #1a1a1a;
-  border-color: #3a3a3a;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
-}
-
-.inner-card:hover {
-  box-shadow: 0 4px 16px rgba(34, 60, 80, 0.12);
+.chapter-card:hover {
+  border-color: color-mix(in srgb, var(--gv-primary) 45%, var(--gv-border-principal));
+  box-shadow: var(--gv-shadow-md);
   transform: translateY(-2px);
-  border-color: #0ea5e9;
 }
 
-.letter-block {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #ededed, #d5d5d5);
+.chapter-index {
   display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  border-radius: 8px;
+  font-size: 0.95rem;
   font-weight: 700;
-  font-size: 16px;
-  color: #454545;
+  background: var(--gv-surface-header);
+  color: var(--gv-text-primary);
+  border: 1px solid var(--gv-border-principal);
 }
 
-.dark .letter-block {
-  background: linear-gradient(135deg, #333, #444);
-  color: #dddddd;
+.chapter-body {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
 }
 
 .chapter-title {
-  font-size: 16px;
+  margin: 0 0 0.15rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 2px;
-}
-
-.dark .chapter-title {
-  color: #e5e5e5;
+  color: var(--gv-text-primary);
 }
 
 .chapter-excerpt {
-  font-size: 13px;
-  color: #666;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--gv-text-secondary);
 }
 
-.dark .chapter-excerpt {
-  color: #999;
+.chapter-chevron {
+  height: 1.25rem;
+  width: 1.25rem;
+  flex-shrink: 0;
+  color: var(--gv-border-subtle);
+  transition: color 0.2s ease;
 }
 
-/* Badge */
-.badge {
-  background: linear-gradient(90deg, #e0f2fe, #bae6fd);
-  /* sky-100 to 200 */
-  color: #0c4a6e;
-  /* sky-900 */
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 10px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+.chapter-card:hover .chapter-chevron {
+  color: var(--gv-primary);
 }
 
-.dark .badge {
-  background: linear-gradient(90deg, #0c4a6e, #082f49);
-  /* sky-900 to 950 */
-  color: #e0f2fe;
+.chapter-empty {
+  margin: 1rem clamp(0.75rem, 2vw, 1.25rem) 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1rem;
+  border-radius: var(--gv-radius-control);
+  border: 1px dashed var(--gv-border-principal);
+  background: color-mix(in srgb, var(--gv-surface-header) 40%, transparent);
+  text-align: center;
+  color: var(--gv-text-secondary);
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
-.shadow-soft {
-  box-shadow: 0 0 1px 1px rgba(119, 119, 119, 0.1);
-}
-
-.hover\:shadow-hover:hover {
-  box-shadow: 0 2px 12px rgba(119, 119, 119, 0.15);
+.chapter-empty-icon {
+  height: 2.5rem;
+  width: 2.5rem;
+  opacity: 0.35;
 }
 </style>
