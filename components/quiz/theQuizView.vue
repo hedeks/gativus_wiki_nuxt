@@ -209,19 +209,19 @@ const options = {
                 </div>
                 <Doughnut class="chart max-h-72 w-full max-w-full" ref="chart" v-if="isScore" :data="chartData"
                     :options="options" />
-                <UButton icon="i-heroicons-arrow-path" size="xl" block trailing color="sky"
-                    class="max-w-1/2 mt-5 mb-0" variant="solid" label="Перепройти тест"
-                    :ui="{ rounded: 'rounded-none rounded-br rounded-bl' }" @click="resetScore" />
+                <GvButton icon="i-heroicons-arrow-path" size="xl" block trailing color="sky"
+                    class="max-w-1/2 mt-5 mb-0 rounded-none rounded-br rounded-bl" variant="solid" label="Перепройти тест"
+                    @click="resetScore" />
             </div>
             <div class="flex flex-wrap justify-center items-center w-full gap-4" :class="{ 'fadeOUT': isScore }">
-                <UButton v-if="currentQuestion > 0" size="xl" icon="i-heroicons-arrow-left" color="sky"
+                <GvButton v-if="currentQuestion > 0" size="xl" icon="i-heroicons-arrow-left" color="sky"
                     class="mt-5 shadow-lg shadow-sky-500/20 max-w-1/2 uppercase tracking-widest font-bold" variant="soft" label="Назад"
                     @click="lastQuestion" />
-                <UButton v-if="currentQuestion + 1 === quizJSON.questions.length" size="xl"
+                <GvButton v-if="currentQuestion + 1 === quizJSON.questions.length" size="xl"
                     icon="i-heroicons-check-circle" trailing color="sky"
                     class="mt-5 shadow-lg shadow-sky-500/20 max-w-1/2 uppercase tracking-widest font-bold" variant="solid" label="Завершить"
                     @click="printScore" />
-                <UButton v-else icon="i-heroicons-arrow-right" size="xl" trailing color="sky"
+                <GvButton v-else icon="i-heroicons-arrow-right" size="xl" trailing color="sky"
                     class="mt-5 shadow-lg shadow-sky-500/20 max-w-1/2 uppercase tracking-widest font-bold" variant="solid" label="Далее"
                     @click="nextQuestion" />
             </div>

@@ -12,24 +12,34 @@
     </section>
 
     <div class="cta-buttons admin-index-toolbar cta-buttons--left">
-      <button
+      <GvButton
         type="button"
-        class="cta-button secondary"
+        variant="outline"
+        color="gray"
+        size="sm"
+        icon="i-heroicons-wrench-screwdriver"
+        :loading="repairingHtml"
         :disabled="relinking || repairingHtml"
         title="Снимает повреждённые wiki-term ссылки и мусор в HTML. Сразу после этого обязательно нажмите «Перелинковать статьи»."
         @click="repairLinkerHtml"
       >
-        <UIcon name="i-heroicons-wrench-screwdriver" :class="{ 'icon-spin': repairingHtml }" />
-        <span>Починить разметку ссылок</span>
-      </button>
-      <button type="button" class="cta-button secondary" :disabled="relinking || repairingHtml" @click="relinkAll">
-        <UIcon name="i-heroicons-arrow-path" :class="{ 'icon-spin': relinking }" />
-        <span>Перелинковать статьи</span>
-      </button>
-      <NuxtLink to="/admin/glossary/create" class="cta-button primary">
-        <UIcon name="i-heroicons-plus" />
-        <span>Создать термин</span>
-      </NuxtLink>
+        Починить разметку ссылок
+      </GvButton>
+      <GvButton
+        type="button"
+        variant="outline"
+        color="gray"
+        size="sm"
+        icon="i-heroicons-arrow-path"
+        :loading="relinking"
+        :disabled="relinking || repairingHtml"
+        @click="relinkAll"
+      >
+        Перелинковать статьи
+      </GvButton>
+      <GvButton to="/admin/glossary/create" color="sky" variant="solid" size="sm" icon="i-heroicons-plus">
+        Создать термин
+      </GvButton>
     </div>
 
     <section v-if="relinkResult" class="section-card" :class="{ 'section-card--error': relinkResult.error }">
@@ -85,7 +95,7 @@
           <span>Терминов нет — создайте первый</span>
         </div>
 
-        <table v-else class="terms-table min-w-[760px]">
+        <table v-else class="admin-table min-w-[760px]">
         <thead>
           <tr>
             <th>Термин</th>
@@ -93,7 +103,7 @@
             <th>Категория</th>
             <th>Статья</th>
             <th>Синонимы</th>
-            <th class="col-actions">Действия</th>
+            <th>Действия</th>
           </tr>
         </thead>
         <tbody>
@@ -149,9 +159,31 @@
             </td>
             <td>
               <div class="actions-cell">
-                <UButton icon="i-heroicons-pencil-square" color="gray" variant="ghost" size="xs"
-                  :to="`/admin/glossary/${term.id}/edit`" />
-                <UButton icon="i-heroicons-trash" color="red" variant="ghost" size="xs" @click="confirmDelete(term)" />
+                <GvButton
+                  :to="`/admin/glossary/${term.id}/edit`"
+                  icon="i-heroicons-pencil-square"
+                  size="xs"
+                  variant="ghost"
+                  color="gray"
+                  title="Редактировать"
+                />
+                <GvButton
+                  :to="`/glossary/${term.slug}`"
+                  target="_blank"
+                  icon="i-heroicons-eye"
+                  size="xs"
+                  variant="ghost"
+                  color="gray"
+                  title="Просмотр"
+                />
+                <GvButton
+                  icon="i-heroicons-trash"
+                  size="xs"
+                  variant="ghost"
+                  color="red"
+                  title="Удалить"
+                  @click="confirmDelete(term)"
+                />
               </div>
             </td>
           </tr>
@@ -174,8 +206,8 @@
           Это действие необратимо.
         </p>
         <div class="modal-actions">
-          <UButton color="gray" variant="soft" @click="showDeleteModal = false">Отмена</UButton>
-          <UButton color="red" :loading="deleting" @click="doDelete">Удалить</UButton>
+          <GvButton color="gray" variant="soft" @click="showDeleteModal = false">Отмена</GvButton>
+          <GvButton color="red" :loading="deleting" @click="doDelete">Удалить</GvButton>
         </div>
       </div>
     </UModal>
@@ -363,54 +395,59 @@ async function doDelete() {
   font-size: 14px;
 }
 
-.terms-table {
+.admin-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.terms-table thead {
-  background: #f8fafc;
-}
-
-.dark .terms-table thead {
-  background: #1c1c1f;
-}
-
-.terms-table th {
-  padding: 12px 16px;
+.admin-table th {
   text-align: left;
+  padding: 14px 20px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: #94a3b8;
-  border-bottom: 1px solid #f1f5f9;
+  letter-spacing: 0.1em;
+  color: #6b7280;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.dark .terms-table th {
-  border-color: #27272a;
+.dark .admin-table th {
+  background: #27272a;
+  color: #9ca3af;
+  border-bottom-color: #3f3f46;
 }
 
-.terms-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #f8fafc;
+.admin-table td {
+  padding: 14px 20px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 14px;
+  color: #374151;
   vertical-align: top;
 }
 
-.dark .terms-table td {
-  border-color: #1c1c1f;
+.dark .admin-table td {
+  border-bottom-color: #27272a;
+  color: #d1d5db;
+}
+
+.term-row:hover td {
+  background: #fafafa;
+}
+
+.dark .term-row:hover td {
+  background: #232326;
 }
 
 .term-row:last-child td {
   border-bottom: none;
 }
 
-.term-row:hover td {
-  background: rgba(14, 165, 233, 0.02);
-}
-
-.col-actions {
-  width: 100px;
+.actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
 }
 
 .term-name-cell {
@@ -498,12 +535,6 @@ async function doDelete() {
   color: #94a3b8;
 }
 
-.actions-cell {
-  display: flex;
-  gap: 4px;
-}
-
-/* Delete modal */
 .delete-modal {
   padding: 24px;
   display: flex;
@@ -549,6 +580,11 @@ async function doDelete() {
 
   .definition-preview {
     max-width: none;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 10px 12px;
   }
 }
 </style>

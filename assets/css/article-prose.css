@@ -297,6 +297,10 @@
   cursor: zoom-out;
 }
 
+.lightbox-close .gv-btn__label {
+  display: contents;
+}
+
 .lightbox-close {
   position: fixed;
   top: 20px;

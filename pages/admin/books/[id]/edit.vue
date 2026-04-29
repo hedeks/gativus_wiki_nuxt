@@ -9,10 +9,9 @@
 
     <template v-else>
       <div class="cta-buttons admin-index-toolbar cta-buttons--left">
-        <NuxtLink to="/admin/books" class="cta-button secondary">
-          <UIcon name="i-heroicons-arrow-left" />
-          <span>Назад к списку</span>
-        </NuxtLink>
+        <GvButton to="/admin/books" variant="outline" color="gray" size="sm" icon="i-heroicons-arrow-left">
+          Назад к списку
+        </GvButton>
       </div>
 
       <section class="admin-dash-hero">
@@ -107,10 +106,10 @@
           </div>
 
           <div class="form-footer mt-6 flex justify-end">
-            <UButton type="submit" color="black" :loading="savingMetadata" icon="i-heroicons-check"
+            <GvButton type="submit" color="sky" :loading="savingMetadata" icon="i-heroicons-check"
               class="rounded-xl px-8">
               Сохранить метаданные
-            </UButton>
+            </GvButton>
           </div>
         </form>
       </div>
@@ -151,7 +150,7 @@
               <span v-if="!chapter.is_published" class="draft-badge">Черновик</span>
             </div>
             <div class="chapter-actions">
-              <UButton
+              <GvButton
                 :to="`/admin/articles/${chapter.id}/edit`"
                 icon="i-heroicons-pencil-square"
                 variant="ghost"
@@ -159,11 +158,11 @@
                 size="xs"
                 title="Редактировать статью"
               />
-              <UButton icon="i-heroicons-chevron-up" variant="ghost" color="gray" size="xs" :disabled="index === 0"
+              <GvButton icon="i-heroicons-chevron-up" variant="ghost" color="gray" size="xs" :disabled="index === 0"
                 @click="moveChapter(index, -1)" />
-              <UButton icon="i-heroicons-chevron-down" variant="ghost" color="gray" size="xs"
+              <GvButton icon="i-heroicons-chevron-down" variant="ghost" color="gray" size="xs"
                 :disabled="index === currentChapters.length - 1" @click="moveChapter(index, 1)" />
-              <UButton icon="i-heroicons-trash" variant="ghost" color="red" size="xs" @click="removeChapter(index)" />
+              <GvButton icon="i-heroicons-trash" variant="ghost" color="red" size="xs" @click="removeChapter(index)" />
             </div>
           </div>
         </div>
@@ -173,10 +172,10 @@
           <span class="text-sm text-blue-700 dark:text-blue-300">
             Порядок глав изменен.
           </span>
-          <UButton color="black" :loading="savingChapters" icon="i-heroicons-check" class="rounded-xl"
+          <GvButton color="sky" :loading="savingChapters" icon="i-heroicons-check" class="rounded-xl"
             @click="saveChapters">
             Сохранить состав
-          </UButton>
+          </GvButton>
         </div>
       </div>
       </div>

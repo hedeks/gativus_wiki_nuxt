@@ -253,10 +253,16 @@ async function runImport() {
             <h3>Экспорт Базы</h3>
             <p>Скачать полную копию графа знаний и контента статей в виде файла.</p>
           </div>
-          <button type="button" class="action-btn action-btn--export" @click="exportGraph">
-            <UIcon name="i-heroicons-arrow-down-tray" />
+          <GvButton
+            type="button"
+            unstyled
+            chromeless
+            class="action-btn action-btn--export"
+            icon="i-heroicons-arrow-down-tray"
+            @click="exportGraph"
+          >
             Сгенерировать Дамп
-          </button>
+          </GvButton>
         </div>
       </div>
     </section>
@@ -302,9 +308,16 @@ async function runImport() {
           <span class="file-name">{{ selectedFile.name }}</span>
           <span class="file-size">{{ formatFileSize(selectedFile.size) }}</span>
         </div>
-        <button class="file-remove" @click="removeFile">
-          <UIcon name="i-heroicons-x-mark" />
-        </button>
+        <GvButton
+          type="button"
+          unstyled
+          chromeless
+          square
+          class="file-remove"
+          icon="i-heroicons-x-mark"
+          aria-label="Удалить файл"
+          @click="removeFile"
+        />
       </div>
 
       <div class="import-warning">
@@ -324,11 +337,17 @@ async function runImport() {
 
       <!-- Actions -->
       <div class="import-actions">
-        <button class="action-btn action-btn--import" @click="runImport" :disabled="isImportLoading">
-          <UIcon v-if="!isImportLoading" name="i-heroicons-arrow-up-tray" />
-          <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
-          <span>Загрузить Дамп</span>
-        </button>
+        <GvButton
+          type="button"
+          unstyled
+          chromeless
+          class="action-btn action-btn--import"
+          icon="i-heroicons-arrow-up-tray"
+          :loading="isImportLoading"
+          @click="runImport"
+        >
+          Загрузить Дамп
+        </GvButton>
       </div>
     </div>
       </div>
@@ -343,10 +362,16 @@ async function runImport() {
         </div>
         <h2 class="result-title">{{ importResult.message }}</h2>
         <div class="result-actions">
-          <button class="action-btn action-btn--secondary" @click="removeFile">
-            <UIcon name="i-heroicons-arrow-path" />
-            <span>Готово</span>
-          </button>
+          <GvButton
+            type="button"
+            unstyled
+            chromeless
+            class="action-btn action-btn--secondary"
+            icon="i-heroicons-arrow-path"
+            @click="removeFile"
+          >
+            Готово
+          </GvButton>
         </div>
       </div>
       </div>
@@ -662,7 +687,7 @@ async function runImport() {
   color: #888;
 }
 
-.file-remove {
+:deep(.file-remove) {
   padding: 6px;
   border-radius: 8px;
   border: none;
@@ -672,12 +697,12 @@ async function runImport() {
   transition: all 0.2s;
 }
 
-.file-remove:hover {
+:deep(.file-remove:hover) {
   background: #fef2f2;
   color: #ef4444;
 }
 
-.dark .file-remove:hover {
+.dark :deep(.file-remove:hover) {
   background: #2a1a1a;
   color: #f87171;
 }
@@ -704,7 +729,11 @@ async function runImport() {
   gap: 10px;
 }
 
-.action-btn {
+:deep(.action-btn .gv-btn__label) {
+  display: contents;
+}
+
+:deep(.action-btn) {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -718,46 +747,46 @@ async function runImport() {
   text-decoration: none;
 }
 
-.action-btn:disabled {
+:deep(.action-btn:disabled) {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.action-btn--export {
+:deep(.action-btn--export) {
   background: var(--gv-primary);
   color: #fff;
 }
 
-.action-btn--export:hover {
+:deep(.action-btn--export:hover) {
   background: var(--gv-primary-hover);
   transform: translateY(-1px);
 }
 
-.action-btn--import {
+:deep(.action-btn--import) {
   background: var(--gv-primary);
   color: #fff;
 }
 
-.action-btn--import:hover:not(:disabled) {
+:deep(.action-btn--import:hover:not(:disabled)) {
   background: var(--gv-primary-hover);
   transform: translateY(-1px);
 }
 
-.action-btn--secondary {
+:deep(.action-btn--secondary) {
   background: #f3f4f6;
   color: #555;
 }
 
-.action-btn--secondary:hover:not(:disabled) {
+:deep(.action-btn--secondary:hover:not(:disabled)) {
   background: #e5e7eb;
 }
 
-.dark .action-btn--secondary {
+.dark :deep(.action-btn--secondary) {
   background: #252528;
   color: #aaa;
 }
 
-.dark .action-btn--secondary:hover:not(:disabled) {
+.dark :deep(.action-btn--secondary:hover:not(:disabled)) {
   background: #333;
 }
 
@@ -830,8 +859,8 @@ async function runImport() {
     height: 320px;
   }
 
-  .import-actions .action-btn,
-  .result-actions .action-btn {
+  .import-actions :deep(.action-btn),
+  .result-actions :deep(.action-btn) {
     width: 100%;
     justify-content: center;
   }

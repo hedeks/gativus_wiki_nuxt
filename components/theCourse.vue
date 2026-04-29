@@ -39,15 +39,11 @@ const isShowDesc = ref(false);
                 </p>
             </div>
         </div>
-        <UButton icon="i-heroicons-book-open" trailing block :to="'/books/' + props.name"
-            class="mt-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:translate-y-0 shadow-lg shadow-sky-500/20"
-            :ui="{
-                base: 'py-3 transition-all duration-300 ease-[cubic-bezier(0.705,0.01,0,0.915)] uppercase tracking-widest',
-                rounded: 'rounded-[10px]',
-                font: 'font-bold text-[15px]',
-                background: 'bg-[#0c4a6e] hover:bg-[#075985] text-white dark:bg-[#0ea5e9] dark:hover:bg-[#38bdf8]',
-                body: { base: 'text-center' }
-            }" label="ПЕРЕЙТИ"></UButton>
+        <GvButton icon="i-heroicons-book-open" trailing block :to="'/books/' + props.name"
+            class="mt-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:translate-y-0 shadow-lg shadow-sky-500/20 py-3 uppercase tracking-widest font-bold text-[15px] rounded-[10px]"
+            color="sky"
+            variant="solid"
+            label="ПЕРЕЙТИ" />
         <template #footer>
             <div
                 class="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-zinc-500">

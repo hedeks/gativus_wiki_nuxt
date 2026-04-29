@@ -38,42 +38,47 @@ const toggle = () => {
       </div>
 
       <div class="item-actions">
-        <UButton
+        <GvButton
           size="xs"
           color="gray"
           variant="ghost"
+          square
           icon="i-heroicons-arrow-up"
           @click="$emit('move-up', category)"
           title="Вверх"
         />
-        <UButton
+        <GvButton
           size="xs"
           color="gray"
           variant="ghost"
+          square
           icon="i-heroicons-arrow-down"
           @click="$emit('move-down', category)"
           title="Вниз"
         />
-        <UButton
+        <GvButton
           size="xs"
           color="red"
           variant="ghost"
+          square
           icon="i-heroicons-plus"
           @click="$emit('create-child', category.id)"
           title="Добавить подкатегорию"
         />
-        <UButton
+        <GvButton
           size="xs"
           color="gray"
           variant="ghost"
+          square
           icon="i-heroicons-pencil-square"
           :to="`/admin/categories/${category.id}/edit`"
           title="Редактировать"
         />
-        <UButton
+        <GvButton
           size="xs"
           color="red"
           variant="ghost"
+          square
           icon="i-heroicons-trash"
           @click="$emit('delete', category.id)"
           title="Удалить"

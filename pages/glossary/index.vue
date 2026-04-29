@@ -22,46 +22,60 @@
           <div v-if="availableLetters.length" class="filter-group">
             <span class="filter-group-label">{{ t.byLetter }}</span>
             <div class="filter-pills">
-              <button
+              <GvButton
                 type="button"
+                chromeless
+                variant="ghost"
+                color="gray"
                 class="gv-filter-pill gv-focusable"
                 :class="{ 'is-active': activeLetter === null }"
                 @click="activeLetter = null"
               >
                 {{ t.allLetters }}
-              </button>
-              <button
+              </GvButton>
+              <GvButton
                 v-for="letter in availableLetters"
                 :key="letter"
                 type="button"
+                chromeless
+                variant="ghost"
+                color="gray"
                 class="gv-filter-pill gv-focusable"
                 :class="{ 'is-active': activeLetter === letter }"
                 @click="activeLetter = activeLetter === letter ? null : letter"
               >
                 {{ letter }}
-              </button>
+              </GvButton>
             </div>
           </div>
 
-          <div v-if="categories.length" class="filter-group">
+          <div v-if="categoriesList.length" class="filter-group">
             <span class="filter-group-label">{{ t.categories }}</span>
             <div class="filter-pills">
-              <button
-                v-for="cat in categories"
+              <GvButton
+                type="button"
+                chromeless
+                variant="ghost"
+                color="gray"
+                class="gv-filter-pill gv-focusable"
+                :class="{ 'is-active': activeCategory === null }"
+                @click="activeCategory = null"
+              >
+                {{ t.allCategories }}
+              </GvButton>
+              <GvButton
+                v-for="cat in categoriesList"
                 :key="cat.id"
                 type="button"
+                chromeless
+                variant="ghost"
+                color="gray"
                 class="gv-filter-pill gv-focusable"
                 :class="{ 'is-active': activeCategory === cat.id }"
                 @click="activeCategory = activeCategory === cat.id ? null : cat.id"
-                :style="
-                  activeCategory === cat.id
-                    ? { backgroundColor: cat.color, borderColor: cat.color }
-                    : {}
-                "
               >
-                <UIcon :name="cat.icon || 'i-heroicons-tag'" class="mr-1" />
-                {{ cat.title.split('—')[0].trim() }}
-              </button>
+                {{ cat.title }}
+              </GvButton>
             </div>
           </div>
         </ExpandableFilters>
@@ -72,7 +86,7 @@
       <BaseStateWrapper
         :pending="pending"
         :error="error"
-        :empty="!pending && !paginatedTerms.length"
+        :empty="!pending && !error && filteredTerms.length === 0"
         :error-title="t.loadingError"
         :error-hint="t.refreshHint"
         class="w-full"
@@ -83,14 +97,16 @@
               <UIcon name="i-heroicons-beaker" class="w-6 h-6" />
             </div>
             <p>{{ t.notFound }}</p>
-            <button
-              v-if="searchQuery || activeLetter || activeCategory"
+            <GvButton
+              v-if="searchQuery || activeLetter || activeCategory !== null"
               type="button"
+              unstyled
+              chromeless
               class="reset-btn"
               @click="resetFilters"
             >
               {{ t.resetFilters }}
-            </button>
+            </GvButton>
           </div>
         </template>
 
@@ -111,12 +127,10 @@
     </div>
 
     <div v-if="totalPageButtons > 1" class="pagination-footer">
-      <UPagination
+      <GvPagination
         v-model="page"
-        :page-count="20"
         :total="filteredTerms.length"
-        size="lg"
-        :ui="{ rounded: 'rounded-xl', base: 'pagination-button' }"
+        :page-size="20"
       />
     </div>
   </KnowledgeIndexLayout>
@@ -141,8 +155,9 @@ const uiDict: Record<string, any> = {
     allLetters: 'ALL',
     termsList: 'Terms',
     filters: 'Filters',
-    byLetter: 'By Letter',
+    byLetter: 'By letter',
     categories: 'Categories',
+    allCategories: 'All categories',
     loadingError: 'LOADING ERROR',
     refreshHint: 'Please try refreshing the page.',
     notFound: 'Nothing found',
@@ -160,6 +175,7 @@ const uiDict: Record<string, any> = {
     filters: 'Фильтры',
     byLetter: 'По букве',
     categories: 'Категории',
+    allCategories: 'Все категории',
     loadingError: 'ОШИБКА ЗАГРУЗКИ',
     refreshHint: 'Пожалуйста, попробуйте обновить страницу.',
     notFound: 'Ничего не найдено',
@@ -182,11 +198,24 @@ const activeCategory = ref<number | null>(
   route.query.category_id ? parseInt(route.query.category_id as string) : null
 )
 
-const categories = ref<any[]>([])
-const allTerms = ref<any[]>([])
-const availableLetters = ref<string[]>([])
-const pending = ref(true)
-const error = ref<any>(null)
+const { data: allTerms, pending, error, refresh: refreshTerms } = await useFetch<any[]>(
+  '/api/terms/all',
+  { query: computed(() => ({ lang: langStore.currentLang })) }
+)
+const { data: categories, refresh: refreshCategories } = await useFetch<any[]>('/api/categories', {
+  query: computed(() => ({ lang: langStore.currentLang })),
+})
+
+const categoriesList = computed(() => categories.value || [])
+
+const availableLetters = computed(() => {
+  const letters = new Set<string>()
+  for (const term of allTerms.value || []) {
+    const char = term.title.charAt(0).toUpperCase()
+    if (/[A-ZА-ЯЁ]/.test(char)) letters.add(char)
+  }
+  return Array.from(letters).sort((a, b) => a.localeCompare(b, langStore.currentLang))
+})
 
 const activeFilterCount = computed(() =>
   countActiveFilters({
@@ -196,7 +225,7 @@ const activeFilterCount = computed(() =>
 )
 
 const filteredTerms = computed(() => {
-  let result = allTerms.value
+  let result = allTerms.value || []
   if (activeLetter.value) {
     result = result.filter(
       (x) => x.title.charAt(0).toUpperCase() === activeLetter.value
@@ -216,15 +245,6 @@ const totalPageButtons = computed(() =>
 const paginatedTerms = computed(() =>
   slicePage(filteredTerms.value, page.value, 20)
 )
-
-watchEffect(() => {
-  const letters = new Set<string>()
-  for (const term of allTerms.value) {
-    const char = term.title.charAt(0).toUpperCase()
-    if (/[A-ZА-Я]/.test(char)) letters.add(char)
-  }
-  availableLetters.value = Array.from(letters).sort()
-})
 
 function termBadges(term: any): CardBadge[] {
   const badges: CardBadge[] = []
@@ -259,6 +279,12 @@ watch([debouncedQuery, activeLetter, activeCategory], () => {
   page.value = 1
 })
 
+watch([page, totalPageButtons], () => {
+  if (page.value > 1 && totalPageButtons.value > 0 && page.value > totalPageButtons.value) {
+    page.value = totalPageButtons.value
+  }
+})
+
 watch([page, searchQuery, activeLetter, activeCategory], () => {
   navigateTo(
     {
@@ -275,38 +301,9 @@ watch([page, searchQuery, activeLetter, activeCategory], () => {
   )
 })
 
-async function loadAllTerms() {
-  pending.value = true
-  error.value = null
-  try {
-    const res = await $fetch<any[]>('/api/terms/all', {
-      query: { lang: langStore.currentLang },
-    })
-    allTerms.value = res || []
-  } catch (e) {
-    error.value = e
-    allTerms.value = []
-  } finally {
-    pending.value = false
-  }
-}
-
-async function fetchCategories() {
-  try {
-    const res = await $fetch<any[]>('/api/categories', {
-      query: { lang: langStore.currentLang },
-    })
-    categories.value = res || []
-  } catch {
-    categories.value = []
-  }
-}
-
-await Promise.all([loadAllTerms(), fetchCategories()])
-
 watch(() => langStore.currentLang, () => {
-  loadAllTerms()
-  fetchCategories()
+  refreshTerms()
+  refreshCategories()
 })
 
 useSeoMeta({

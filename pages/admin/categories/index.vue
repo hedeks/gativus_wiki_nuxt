@@ -85,10 +85,9 @@ const moveDown = async (cat: any) => {
     </section>
 
     <div class="cta-buttons admin-index-toolbar cta-buttons--left">
-      <button type="button" class="cta-button primary" @click="openCreate()">
-        <UIcon name="i-heroicons-plus" />
-        <span>Добавить корень</span>
-      </button>
+      <GvButton type="button" color="sky" variant="solid" size="sm" icon="i-heroicons-plus" @click="openCreate()">
+        Добавить корень
+      </GvButton>
     </div>
 
     <section class="section-card">
@@ -112,14 +111,17 @@ const moveDown = async (cat: any) => {
           >
             <div class="filter-group">
               <span class="filter-group-label">Структура</span>
-              <button
+              <GvButton
                 type="button"
+                chromeless
+                variant="ghost"
+                color="gray"
                 class="gv-filter-pill gv-focusable"
                 :class="{ 'is-active': hasChildrenOnly }"
                 @click="hasChildrenOnly = !hasChildrenOnly"
               >
                 Только с подкатегориями
-              </button>
+              </GvButton>
             </div>
           </ExpandableFilters>
         </div>

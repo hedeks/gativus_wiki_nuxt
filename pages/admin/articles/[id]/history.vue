@@ -106,10 +106,15 @@ function formatDate(dateStr: string): string {
 <template>
   <div class="admin-page-stack admin-page-stack--fluid history-page">
     <div class="cta-buttons admin-index-toolbar cta-buttons--left">
-      <NuxtLink :to="`/admin/articles/${articleId}/edit`" class="cta-button secondary">
-        <UIcon name="i-heroicons-arrow-left" />
-        <span>К редактированию</span>
-      </NuxtLink>
+      <GvButton
+        :to="`/admin/articles/${articleId}/edit`"
+        variant="outline"
+        color="gray"
+        size="sm"
+        icon="i-heroicons-arrow-left"
+      >
+        К редактированию
+      </GvButton>
     </div>
 
     <section class="admin-dash-hero">
@@ -148,14 +153,17 @@ function formatDate(dateStr: string): string {
             </span>
           </div>
           <div class="revision-actions">
-            <button
+            <GvButton
               v-if="rev.revision_num !== revisionsList[0]?.revision_num"
+              type="button"
+              unstyled
+              chromeless
+              square
               class="revert-btn"
-              @click.stop="revertTarget = { id: rev.id, num: rev.revision_num }"
+              icon="i-heroicons-arrow-uturn-left"
               title="Откатить к этой ревизии"
-            >
-              <UIcon name="i-heroicons-arrow-uturn-left" />
-            </button>
+              @click.stop="revertTarget = { id: rev.id, num: rev.revision_num }"
+            />
             <span v-else class="current-badge">Текущая</span>
           </div>
         </div>
@@ -191,11 +199,19 @@ function formatDate(dateStr: string): string {
             Текущее содержимое будет заменено. Будет создана новая ревизия с пометкой «Откат».
           </p>
           <div class="modal-actions">
-            <button class="modal-btn modal-btn--cancel" @click="revertTarget = null">Отмена</button>
-            <button class="modal-btn modal-btn--confirm" @click="confirmRevert" :disabled="isReverting">
-              <UIcon v-if="isReverting" name="i-heroicons-arrow-path" class="animate-spin" />
-              <span>Откатить</span>
-            </button>
+            <GvButton type="button" unstyled chromeless class="modal-btn modal-btn--cancel" @click="revertTarget = null">
+              Отмена
+            </GvButton>
+            <GvButton
+              type="button"
+              unstyled
+              chromeless
+              class="modal-btn modal-btn--confirm"
+              :loading="isReverting"
+              @click="confirmRevert"
+            >
+              Откатить
+            </GvButton>
           </div>
         </div>
       </div>
@@ -321,7 +337,7 @@ function formatDate(dateStr: string): string {
 
 .revision-actions { flex-shrink: 0; }
 
-.revert-btn {
+:deep(.revert-btn) {
   padding: 6px;
   border-radius: 6px;
   border: none;
@@ -330,8 +346,8 @@ function formatDate(dateStr: string): string {
   color: #888;
   transition: all 0.2s;
 }
-.revert-btn:hover { background: #fef2f2; color: #f59e0b; }
-.dark .revert-btn:hover { background: #451a03; color: #fbbf24; }
+:deep(.revert-btn:hover) { background: #fef2f2; color: #f59e0b; }
+.dark :deep(.revert-btn:hover) { background: #451a03; color: #fbbf24; }
 
 .current-badge {
   font-size: 10px;
@@ -428,7 +444,7 @@ function formatDate(dateStr: string): string {
 
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
-.modal-btn {
+:deep(.modal-btn) {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -440,11 +456,11 @@ function formatDate(dateStr: string): string {
   font-weight: 600;
   transition: all 0.2s;
 }
-.modal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.modal-btn--cancel { background: #f3f4f6; color: #555; }
-.dark .modal-btn--cancel { background: #252528; color: #aaa; }
-.modal-btn--confirm { background: #f59e0b; color: #fff; }
-.modal-btn--confirm:hover { background: #d97706; }
+:deep(.modal-btn:disabled) { opacity: 0.5; cursor: not-allowed; }
+:deep(.modal-btn--cancel) { background: #f3f4f6; color: #555; }
+.dark :deep(.modal-btn--cancel) { background: #252528; color: #aaa; }
+:deep(.modal-btn--confirm) { background: #f59e0b; color: #fff; }
+:deep(.modal-btn--confirm:hover) { background: #d97706; }
 
 @media (max-width: 768px) {
   .history-body { flex-direction: column; }

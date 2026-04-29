@@ -20,19 +20,35 @@
           <UIcon name="i-heroicons-magnifying-glass" class="search-icon" />
           <input v-model="searchQuery" type="text" :placeholder="t.search" class="custom-search-input"
             @input="handleSearch" />
-          <button v-show="searchQuery" class="clear-search-btn" @click="clearSearch">
-            <UIcon name="i-heroicons-x-mark" />
-          </button>
+          <GvButton
+            v-show="searchQuery"
+            type="button"
+            unstyled
+            chromeless
+            square
+            class="clear-search-btn"
+            icon="i-heroicons-x-mark"
+            title="Clear"
+            aria-label="Clear search"
+            @click="clearSearch"
+          />
         </div>
 
         <div class="control-divider"></div>
 
         <!-- Filters -->
         <div class="custom-popover-wrapper">
-          <button class="action-btn" :class="{ 'active': isFilterMenuOpen }"
-            @click="isFilterMenuOpen = !isFilterMenuOpen" :title="t.filters">
-            <UIcon name="i-heroicons-funnel" />
-          </button>
+          <GvButton
+            type="button"
+            unstyled
+            chromeless
+            square
+            class="action-btn"
+            :class="{ active: isFilterMenuOpen }"
+            icon="i-heroicons-funnel"
+            :title="t.filters"
+            @click="isFilterMenuOpen = !isFilterMenuOpen"
+          />
 
           <transition name="menu-slide">
             <div v-if="isFilterMenuOpen" class="custom-popover-panel">
@@ -47,9 +63,9 @@
                 </div>
               </div>
               <div class="filter-menu-footer">
-                <button class="footer-btn primary" @click="setAllFilters(true)">{{ t.all }}</button>
+                <GvButton type="button" unstyled chromeless class="footer-btn primary" @click="setAllFilters(true)">{{ t.all }}</GvButton>
                 <div class="divider-small"></div>
-                <button class="footer-btn" @click="setAllFilters(false)">{{ t.none }}</button>
+                <GvButton type="button" unstyled chromeless class="footer-btn" @click="setAllFilters(false)">{{ t.none }}</GvButton>
               </div>
             </div>
           </transition>
@@ -59,43 +75,63 @@
 
         <!-- Language Switcher -->
         <div class="lang-switcher" @mousedown.stop>
-          <button class="lang-btn" :class="{ 'active': langStore.currentLang === 'en' }"
-            @click="langStore.setLanguage('en')">
+          <GvButton
+            type="button"
+            unstyled
+            chromeless
+            class="lang-btn"
+            :class="{ active: langStore.currentLang === 'en' }"
+            @click="langStore.setLanguage('en')"
+          >
             EN
-          </button>
+          </GvButton>
           <div class="lang-sep"></div>
-          <button class="lang-btn" :class="{ 'active': langStore.currentLang === 'ru' }"
-            @click="langStore.setLanguage('ru')">
+          <GvButton
+            type="button"
+            unstyled
+            chromeless
+            class="lang-btn"
+            :class="{ active: langStore.currentLang === 'ru' }"
+            @click="langStore.setLanguage('ru')"
+          >
             RU
-          </button>
+          </GvButton>
           <div class="lang-sep"></div>
-          <button class="lang-btn" :class="{ 'active': langStore.currentLang === 'zh' }"
-            @click="langStore.setLanguage('zh')">
+          <GvButton
+            type="button"
+            unstyled
+            chromeless
+            class="lang-btn"
+            :class="{ active: langStore.currentLang === 'zh' }"
+            @click="langStore.setLanguage('zh')"
+          >
             ZH
-          </button>
+          </GvButton>
         </div>
 
         <div class="control-divider"></div>
 
         <!-- Fullscreen -->
-        <button class="action-btn" @click="toggleFullscreen" :title="isFullscreen ? 'Exit' : 'Fullscreen'">
+        <GvButton
+          type="button"
+          unstyled
+          chromeless
+          square
+          class="action-btn"
+          :title="isFullscreen ? 'Exit' : 'Fullscreen'"
+          @click="toggleFullscreen"
+        >
           <UIcon :name="isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'" />
-        </button>
+        </GvButton>
       </div>
 
       <!-- Zoom Controls -->
       <div class="custom-zoom-controls" @wheel.stop @mousewheel.stop>
-        <button class="zoom-btn" @click="zoomIn" title="+">
-          <UIcon name="i-heroicons-plus" />
-        </button>
+        <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-plus" title="+" @click="zoomIn" />
         <div class="divider-hor"></div>
-        <button class="zoom-btn" @click="zoomOut" title="-">
-          <UIcon name="i-heroicons-minus" />
-        </button>
+        <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-minus" title="-" @click="zoomOut" />
         <div class="divider-hor"></div>
-        <button class="zoom-btn" @click="zoomFit" :title="t.reset">
-          <UIcon name="i-heroicons-arrows-right-left" />
-        </button>
+        <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-arrows-right-left" :title="t.reset" @click="zoomFit" />
       </div>
 
       <!-- Floating Popup on Click -->
@@ -1094,7 +1130,7 @@ watch(activeFilters, () => {
   color: #e2e8f0;
 }
 
-.clear-search-btn {
+:deep(.clear-search-btn) {
   position: absolute;
   right: 8px;
   background: transparent;
@@ -1109,7 +1145,7 @@ watch(activeFilters, () => {
   transition: all 0.2s;
 }
 
-.clear-search-btn:hover {
+:deep(.clear-search-btn:hover) {
   background: rgba(0, 0, 0, 0.05);
   color: #ef4444;
 }
@@ -1125,7 +1161,7 @@ watch(activeFilters, () => {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.action-btn {
+:deep(.action-btn) {
   background: transparent;
   border: none;
   width: 36px;
@@ -1139,10 +1175,15 @@ watch(activeFilters, () => {
   transition: all 0.2s cubic-bezier(0.705, 0.01, 0, 0.915);
 }
 
-.action-btn:hover,
-.action-btn.active {
+:deep(.action-btn:hover),
+:deep(.action-btn.active) {
   background: rgba(14, 165, 233, 0.1);
   color: #0ea5e9;
+}
+
+:deep(.action-btn .gv-btn__label),
+:deep(.zoom-btn .gv-btn__label) {
+  display: contents;
 }
 
 /* Custom Popover */
@@ -1255,7 +1296,7 @@ watch(activeFilters, () => {
   gap: 8px;
 }
 
-.footer-btn {
+:deep(.footer-btn) {
   flex: 1;
   background: transparent;
   border: none;
@@ -1268,12 +1309,16 @@ watch(activeFilters, () => {
   transition: background 0.2s;
 }
 
-.footer-btn:hover {
+:deep(.footer-btn:hover) {
   background: rgba(0, 0, 0, 0.05);
 }
 
-.footer-btn.primary {
+:deep(.footer-btn.primary) {
   color: #0ea5e9;
+}
+
+:deep(.footer-btn .gv-btn__label) {
+  display: contents;
 }
 
 .dark .filter-menu-footer {
@@ -1301,7 +1346,7 @@ watch(activeFilters, () => {
   border-color: rgba(255, 255, 255, 0.1);
 }
 
-.zoom-btn {
+:deep(.zoom-btn) {
   background: transparent;
   border: none;
   width: 36px;
@@ -1315,7 +1360,7 @@ watch(activeFilters, () => {
   transition: all 0.2s;
 }
 
-.zoom-btn:hover {
+:deep(.zoom-btn:hover) {
   background: rgba(0, 0, 0, 0.05);
   color: #0ea5e9;
 }
@@ -1474,7 +1519,7 @@ watch(activeFilters, () => {
   background: rgba(255, 255, 255, 0.05);
 }
 
-.lang-btn {
+:deep(.lang-btn) {
   background: transparent;
   border: none;
   font-size: 10px;
@@ -1486,15 +1531,19 @@ watch(activeFilters, () => {
   transition: all 0.2s;
 }
 
-.lang-btn.active {
+:deep(.lang-btn.active) {
   background: #ffffff;
   color: #0ea5e9;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.dark .lang-btn.active {
+.dark :deep(.lang-btn.active) {
   background: #3f3f46;
   color: #38bdf8;
+}
+
+:deep(.lang-btn .gv-btn__label) {
+  display: contents;
 }
 
 .lang-sep {

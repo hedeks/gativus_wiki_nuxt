@@ -1,10 +1,9 @@
 <template>
   <div class="admin-page-stack book-create-page">
     <div class="cta-buttons admin-index-toolbar cta-buttons--left">
-      <NuxtLink to="/admin/books" class="cta-button secondary">
-        <UIcon name="i-heroicons-arrow-left" />
-        <span>Назад к списку</span>
-      </NuxtLink>
+      <GvButton to="/admin/books" variant="outline" color="gray" size="sm" icon="i-heroicons-arrow-left">
+        Назад к списку
+      </GvButton>
     </div>
 
     <section class="admin-dash-hero">
@@ -97,9 +96,9 @@
         </div>
 
         <div class="form-footer mt-8 pt-6 border-t border-gray-100 dark:border-gray-800">
-          <UButton type="submit" color="primary" size="lg" :loading="saving" icon="i-heroicons-check">
+          <GvButton type="submit" color="primary" size="lg" :loading="saving" icon="i-heroicons-check">
             Создать книгу
-          </UButton>
+          </GvButton>
         </div>
       </form>
       </div>

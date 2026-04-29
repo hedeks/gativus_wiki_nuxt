@@ -2,10 +2,9 @@
   <div class="admin-page-stack glossary-form-page">
     <template v-if="term">
       <div class="cta-buttons admin-index-toolbar cta-buttons--left">
-        <NuxtLink to="/admin/glossary" class="cta-button secondary">
-          <UIcon name="i-heroicons-arrow-left" />
-          <span>Назад к глоссарию</span>
-        </NuxtLink>
+        <GvButton to="/admin/glossary" variant="outline" color="gray" size="sm" icon="i-heroicons-arrow-left">
+          Назад к глоссарию
+        </GvButton>
       </div>
 
       <section class="admin-dash-hero">
@@ -32,7 +31,7 @@
         <label class="field-label">Импорт из ODT</label>
         <div class="odt-dropzone">
           <input type="file" ref="odtFileInput" class="hidden" accept=".odt" @change="handleOdtUpload" />
-          <UButton 
+          <GvButton 
             color="gray" 
             variant="soft" 
             icon="i-heroicons-arrow-up-tray" 
@@ -40,7 +39,7 @@
             @click="(odtFileInput as HTMLInputElement).click()"
           >
             Выбрать .odt файл
-          </UButton>
+          </GvButton>
           <p class="text-xs text-gray-500 mt-2">Текст из ODT можно вставить в определение или в статью-раскрытие</p>
         </div>
       </div>
@@ -181,7 +180,7 @@
               <UIcon name="i-heroicons-pencil-square" />
               Редактировать статью
             </NuxtLink>
-            <UButton 
+            <GvButton 
               color="red" 
               variant="ghost" 
               size="xs" 
@@ -189,23 +188,21 @@
               @click="confirmDeleteArticle = true"
             >
               Удалить связь
-            </UButton>
+            </GvButton>
           </div>
         </div>
 
         <div v-else class="no-article-placeholder">
           <UIcon name="i-heroicons-document-plus" class="text-3xl text-gray-300 mb-2" />
           <p class="font-medium text-gray-500 mb-4">У данного термина пока нет расширенной статьи-раскрытия.</p>
-          <UButton 
-            color="black" 
-            variant="solid" 
-            icon="i-heroicons-plus"
-            :loading="creatingArticle"
-            class="rounded-xl px-6"
-            @click="createDisclosureArticle"
+          <GvButton
+            :to="`/admin/articles/create?term_id=${term.id}`"
+            color="primary"
+            variant="solid"
+            icon="i-heroicons-document-plus"
           >
             Создать статью-раскрытие
-          </UButton>
+          </GvButton>
         </div>
       </div>
 
@@ -215,15 +212,11 @@
       </div>
 
       <div class="form-actions">
-        <NuxtLink to="/admin/glossary">
-          <UButton color="gray" variant="soft" size="lg">Отмена</UButton>
-        </NuxtLink>
-        <NuxtLink :to="`/glossary/${term.slug}`" target="_blank">
-          <UButton color="gray" variant="ghost" size="lg" icon="i-heroicons-eye">Просмотр</UButton>
-        </NuxtLink>
-        <UButton type="submit" color="black" :loading="submitting" size="lg" icon="i-heroicons-check" class="rounded-xl px-8">
+        <GvButton to="/admin/glossary" color="gray" variant="soft" size="lg">Отмена</GvButton>
+        <GvButton :to="`/glossary/${term.slug}`" target="_blank" color="gray" variant="ghost" size="lg" icon="i-heroicons-eye">Просмотр</GvButton>
+        <GvButton type="submit" color="primary" :loading="submitting" size="lg" icon="i-heroicons-check">
           Сохранить изменения
-        </UButton>
+        </GvButton>
       </div>
 
       <div v-if="success" class="success-banner">
@@ -240,7 +233,7 @@
     <section v-else-if="!pending" class="section-card">
       <div class="card-body not-found-inner">
         <p>Термин не найден</p>
-        <NuxtLink to="/admin/glossary" class="cta-button secondary">← Назад</NuxtLink>
+        <GvButton to="/admin/glossary" variant="outline" color="gray" size="sm">← Назад</GvButton>
       </div>
     </section>
 
@@ -323,7 +316,6 @@ const submitting = ref(false)
 const odtUploading = ref(false)
 const error = ref('')
 const success = ref(false)
-const creatingArticle = ref(false)
 const confirmDeleteArticle = ref(false)
 
 // 2. Pure functions
@@ -400,32 +392,6 @@ async function handleOdtUpload(event: Event) {
   } finally {
     odtUploading.value = false
     input.value = ''
-  }
-}
-
-async function createDisclosureArticle() {
-  if (!term.value) return
-  creatingArticle.value = true
-  try {
-    await $fetch<any>(`/api/terms/${term.value.slug}`, {
-      method: 'PUT',
-      headers: store.getAuthHeader(),
-      body: {
-        html_content: `<h2>${term.value.title}</h2><p>${term.value.definition}</p>`,
-        change_summary: 'Auto-created disclosure article'
-      }
-    })
-    toast.add({ title: 'Статья создана', color: 'green' })
-    refresh()
-    setTimeout(() => {
-      if (term.value?.term_article_id) {
-        navigateTo(`/admin/articles/${term.value.term_article_id}/edit`)
-      }
-    }, 500)
-  } catch (e: any) {
-    toast.add({ title: 'Ошибка', description: e.data?.statusMessage || e.message, color: 'red' })
-  } finally {
-    creatingArticle.value = false
   }
 }
 

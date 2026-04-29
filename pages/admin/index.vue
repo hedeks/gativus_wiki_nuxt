@@ -10,7 +10,7 @@ useHead({ title: 'Dashboard — Gativus Admin' })
 
 const store = userStore()
 
-/** Онтология визуального языка графа (docs/design/FOUNDATION.md) */
+/** Онтология визуального языка графа (docs/design/design_system.md) */
 const ONTO = {
   category: '#ef4444',
   book: '#0ea5e9',
@@ -146,7 +146,7 @@ const quickLinks = [
       <div class="card-body card-body--row">
         <UIcon name="i-heroicons-exclamation-triangle" class="icon-err" />
         <span>{{ error.message }}</span>
-        <button type="button" class="cta-button secondary" @click="refresh()">Повторить</button>
+        <GvButton type="button" variant="outline" color="gray" size="sm" @click="refresh()">Повторить</GvButton>
       </div>
     </section>
 
@@ -243,16 +243,17 @@ const quickLinks = [
         </div>
         <div class="card-body">
           <div class="cta-buttons cta-buttons--left">
-            <NuxtLink
+            <GvButton
               v-for="link in quickLinks"
               :key="link.to"
               :to="link.to"
-              class="cta-button"
-              :class="link.primary ? 'primary' : 'secondary'"
+              :color="link.primary ? 'sky' : 'gray'"
+              :variant="link.primary ? 'solid' : 'outline'"
+              size="sm"
+              :icon="link.icon"
             >
-              <UIcon :name="link.icon" />
               {{ link.label }}
-            </NuxtLink>
+            </GvButton>
           </div>
         </div>
       </section>

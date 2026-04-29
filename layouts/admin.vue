@@ -7,9 +7,17 @@
           <img src="/images/121px-Logo.jpg" alt="Gativus" class="sidebar-logo-img" />
           <span class="sidebar-logo-text">Gativus</span>
         </NuxtLink>
-        <button class="sidebar-close-btn" @click="sidebarOpen = false">
+        <GvButton
+          type="button"
+          chromeless
+          square
+          variant="ghost"
+          color="gray"
+          class="sidebar-close-btn"
+          @click="sidebarOpen = false"
+        >
           <UIcon name="i-heroicons-x-mark" />
-        </button>
+        </GvButton>
       </div>
 
       <nav class="sidebar-nav">
@@ -31,10 +39,10 @@
             <span class="sidebar-user-role">{{ store.userInfo?.role || 'editor' }}</span>
           </div>
         </div>
-        <button class="sidebar-logout" @click="handleLogout">
+        <GvButton type="button" chromeless variant="ghost" color="gray" class="sidebar-logout" @click="handleLogout">
           <UIcon name="i-heroicons-arrow-right-on-rectangle" />
           <span>Выйти</span>
-        </button>
+        </GvButton>
       </div>
     </aside>
 
@@ -43,20 +51,69 @@
 
     <!-- Main content -->
     <div class="admin-main">
-      <header class="admin-topbar gv-glass">
-        <button class="topbar-menu-btn" @click="sidebarOpen = true">
-          <UIcon name="i-heroicons-bars-3" />
-        </button>
-        <button v-if="canGoBack" class="topbar-back-btn" @click="goBack" title="Назад">
-          <UIcon name="i-heroicons-arrow-left" />
-        </button>
-        <h1 class="topbar-title">Панель управления</h1>
-        <div class="topbar-actions">
-          <NuxtLink to="/" class="topbar-link">
-            <UIcon name="i-heroicons-arrow-top-right-on-square" />
-            <span>На сайт</span>
-          </NuxtLink>
-          <theThemeChanger />
+      <header
+        class="admin-topbar gv-glass sticky top-0 z-20 shrink-0 border-b border-gray-100 shadow-sm dark:border-zinc-800"
+      >
+        <div
+          class="admin-topbar-inner mx-auto flex min-h-[65px] w-full max-w-[1920px] items-center gap-3 px-3 py-2 box-border sm:gap-4 sm:px-4"
+        >
+          <div class="admin-topbar-start flex shrink-0 items-center gap-2">
+            <GvButton
+              type="button"
+              chromeless
+              square
+              variant="ghost"
+              color="gray"
+              size="md"
+              class="topbar-icon-btn md:hidden"
+              aria-label="Открыть меню"
+              @click="sidebarOpen = true"
+            >
+              <UIcon name="i-heroicons-bars-3" class="h-5 w-5" />
+            </GvButton>
+            <GvButton
+              v-if="canGoBack"
+              type="button"
+              chromeless
+              square
+              variant="ghost"
+              color="gray"
+              size="md"
+              class="topbar-icon-btn"
+              title="Назад"
+              @click="goBack"
+            >
+              <UIcon name="i-heroicons-arrow-left" class="h-5 w-5" />
+            </GvButton>
+          </div>
+          <div class="topbar-title-wrap min-w-0 flex-1">
+            <p class="topbar-eyebrow">Админ</p>
+            <h1 class="topbar-title">Панель управления</h1>
+          </div>
+          <div class="topbar-actions flex shrink-0 items-center gap-2 sm:gap-3">
+            <GvButton
+              to="/"
+              variant="outline"
+              color="gray"
+              size="sm"
+              class="topbar-site-link hidden sm:inline-flex"
+            >
+              <UIcon name="i-heroicons-arrow-top-right-on-square" class="h-4 w-4" />
+              <span>На сайт</span>
+            </GvButton>
+            <GvButton
+              to="/"
+              variant="outline"
+              color="gray"
+              size="sm"
+              square
+              class="topbar-site-link sm:hidden"
+              aria-label="На сайт"
+            >
+              <UIcon name="i-heroicons-arrow-top-right-on-square" class="h-5 w-5" />
+            </GvButton>
+            <theThemeChanger />
+          </div>
         </div>
       </header>
 
@@ -76,11 +133,15 @@ const sidebarOpen = ref(false)
 
 const { pushRoute, goBack, canGoBack } = useAdminHistory()
 
-watch(() => route.path, (newPath) => {
-  if (newPath.startsWith('/admin')) {
-    pushRoute(newPath)
-  }
-}, { immediate: true })
+watch(
+  () => route.fullPath,
+  (fullPath) => {
+    if (fullPath.startsWith('/admin')) {
+      pushRoute(fullPath)
+    }
+  },
+  { immediate: true },
+)
 
 interface NavItem {
   label: string
@@ -110,11 +171,11 @@ function handleLogout() {
 .admin-layout {
   display: flex;
   min-height: 100vh;
-  background: var(--gv-surface);
+  background: transparent;
 }
 
 .dark .admin-layout {
-  background: var(--gv-surface);
+  background: transparent;
 }
 
 /* ─── Sidebar ─── */
@@ -123,8 +184,8 @@ function handleLogout() {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: var(--gv-surface-card);
-  border-right: 1px solid var(--gv-border-principal);
+  background: #fff;
+  border-right: 1px solid #f3f4f6;
   position: fixed;
   top: 0;
   left: 0;
@@ -134,20 +195,22 @@ function handleLogout() {
 }
 
 .dark .admin-sidebar {
-  background: var(--gv-surface-card);
-  border-right-color: var(--gv-border-principal);
+  background: #18181b;
+  border-right-color: #27272a;
 }
 
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 16px;
-  border-bottom: 1px solid #e5e7eb;
+  box-sizing: border-box;
+  min-height: 65px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .dark .sidebar-header {
-  border-bottom-color: #2a2a2e;
+  border-bottom-color: #27272a;
 }
 
 .sidebar-logo {
@@ -158,20 +221,21 @@ function handleLogout() {
 }
 
 .sidebar-logo-img {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 8px;
 }
 
 .sidebar-logo-text {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 2px;
-  color: #1a1a1a;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #18181b;
 }
 
 .dark .sidebar-logo-text {
-  color: #e5e5e5;
+  color: #f4f4f5;
 }
 
 .sidebar-close-btn {
@@ -339,6 +403,16 @@ function handleLogout() {
   color: #f87171;
 }
 
+/* GvButton: сохраняем прежний hover поверх ghost */
+.sidebar-logout.gv-btn--ghost:hover:not(.gv-btn--disabled) {
+  background: #fef2f2;
+  color: #ef4444;
+}
+.dark .sidebar-logout.gv-btn--ghost:hover:not(.gv-btn--disabled) {
+  background: #2a1a1a;
+  color: #f87171;
+}
+
 /* ─── Overlay ─── */
 .sidebar-overlay {
   display: none;
@@ -356,117 +430,82 @@ function handleLogout() {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background: var(--gv-canvas-gradient);
+  box-shadow: inset 1px 0 0 rgba(15, 23, 42, 0.06);
 }
 
-.admin-topbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 24px;
-  background: transparent;
-  border-bottom: 1px solid var(--gv-border-principal);
-  position: sticky;
-  top: 0;
-  z-index: 20;
+.dark .admin-main {
+  background: var(--gv-canvas-gradient);
+  box-shadow: inset 1px 0 0 rgba(0, 0, 0, 0.22);
 }
 
+/* Топбар: стекло над фоном рабочей области */
 .dark .admin-topbar {
-  background: color-mix(in srgb, var(--gv-surface) 85%, transparent);
-  border-bottom-color: var(--gv-border-principal);
+  background: color-mix(in srgb, rgb(39 39 42) 92%, transparent);
 }
 
-.topbar-menu-btn {
-  display: none;
-  padding: 8px;
-  border-radius: 8px;
-  background: none;
-  border: 1px solid #e5e7eb;
-  cursor: pointer;
-  color: #555;
-  font-size: 20px;
-}
-
-.dark .topbar-menu-btn {
-  border-color: #333;
-  color: #aaa;
-}
-
-.topbar-back-btn {
+.topbar-title-wrap {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
-  padding: 8px;
-  border-radius: 8px;
-  background: none;
-  border: 1px solid #e5e7eb;
-  cursor: pointer;
-  color: #555;
-  font-size: 18px;
-  transition: all 0.2s;
+  gap: 2px;
+  line-height: 1.2;
 }
 
-.topbar-back-btn:hover {
-  background: #f3f4f6;
-  color: #1a1a1a;
+.topbar-eyebrow {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #64748b;
 }
 
-.dark .topbar-back-btn {
-  border-color: #333;
-  color: #aaa;
-}
-
-.dark .topbar-back-btn:hover {
-  background: #252528;
-  color: #e5e5e5;
+.dark .topbar-eyebrow {
+  color: #94a3b8;
 }
 
 .topbar-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: #1a1a1a;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
   margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #18181b;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+@media (min-width: 640px) {
+  .topbar-title {
+    font-size: 14px;
+    letter-spacing: 0.2em;
+  }
 }
 
 .dark .topbar-title {
-  color: #e5e5e5;
+  color: #f4f4f5;
 }
 
 .topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-left: auto;
+  margin-left: 0;
 }
 
-.topbar-link {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #555;
-  text-decoration: none;
-  border: 1px solid #e5e7eb;
-  transition: all 0.2s;
+:deep(.topbar-icon-btn.gv-btn--chromeless.gv-btn--ghost) {
+  border-radius: var(--gv-radius-control, 12px);
+  color: #52525b;
 }
 
-.topbar-link:hover {
-  background: #f3f4f6;
-  color: #1a1a1a;
+.dark :deep(.topbar-icon-btn.gv-btn--chromeless.gv-btn--ghost) {
+  color: #a1a1aa;
 }
 
-.dark .topbar-link {
-  color: #aaa;
-  border-color: #333;
+:deep(.topbar-icon-btn.gv-btn--chromeless.gv-btn--ghost:hover:not(.gv-btn--disabled)) {
+  background: rgb(244 244 245);
+  color: #18181b;
 }
 
-.dark .topbar-link:hover {
-  background: #252528;
-  color: #e5e5e5;
+.dark :deep(.topbar-icon-btn.gv-btn--chromeless.gv-btn--ghost:hover:not(.gv-btn--disabled)) {
+  background: rgb(39 39 42);
+  color: #fafafa;
 }
 
 .admin-content {
@@ -501,10 +540,6 @@ function handleLogout() {
     margin-left: 0;
   }
 
-  .topbar-menu-btn {
-    display: flex;
-  }
-
   .admin-content {
     padding: 16px;
   }
@@ -514,24 +549,17 @@ function handleLogout() {
     letter-spacing: 0.12em;
   }
 
+  .topbar-eyebrow {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+
   .topbar-actions {
     gap: 6px;
-  }
-
-  .topbar-link span {
-    display: none;
-  }
-
-  .topbar-link {
-    padding: 7px 9px;
   }
 }
 
 @media (max-width: 480px) {
-  .admin-topbar {
-    padding: 10px 12px;
-  }
-
   .admin-content {
     padding: 12px;
   }
@@ -542,10 +570,6 @@ function handleLogout() {
     width: min(300px, 92vw);
   }
 
-  .admin-topbar {
-    padding: 8px 10px;
-  }
-
   .topbar-title {
     font-size: 11px;
     letter-spacing: 0.1em;
@@ -553,17 +577,6 @@ function handleLogout() {
 
   .topbar-actions {
     gap: 4px;
-  }
-
-  .topbar-back-btn,
-  .topbar-menu-btn {
-    padding: 6px;
-    font-size: 16px;
-  }
-
-  .topbar-link {
-    padding: 6px 7px;
-    min-height: 36px;
   }
 
   .admin-content {

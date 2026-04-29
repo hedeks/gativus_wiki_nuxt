@@ -8,8 +8,8 @@
       <UIcon name="i-heroicons-exclamation-triangle" class="text-6xl text-red-500 mb-6 mx-auto" />
       <h2 class="hero-title">{{ t.notFound }}</h2>
       <p class="hero-description mx-auto mt-4 mb-8">{{ t.notFoundDesc }}</p>
-      <UButton to="/books" size="lg" color="black" icon="i-heroicons-arrow-left" class="rounded-xl">{{ t.backToLib }}
-      </UButton>
+      <GvButton to="/books" size="lg" color="sky" icon="i-heroicons-arrow-left" class="rounded-xl">{{ t.backToLib }}
+      </GvButton>
     </div>
 
     <div v-else-if="book" class="book-content pb-20">
@@ -141,7 +141,7 @@ useSeoMeta({
   ogTitle: () => book.value?.title,
   description: () => book.value?.description || 'Книга из библиотеки Gativus.',
   ogDescription: () => book.value?.description,
-  ogImage: () => book.value?.cover_image || '/logo.jpg',
+  ogImage: () => book.value?.cover_image || '/favicon.ico',
   twitterCard: 'summary_large_image',
 })
 </script>

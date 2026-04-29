@@ -11,8 +11,8 @@
 - `api/AUTH_AND_SECURITY.md` — auth flow, roles, and guard model.
 - `api/ENDPOINTS_PUBLIC.md` — public API endpoints and locale notes.
 - `api/ENDPOINTS_EDITOR_ADMIN.md` — editor/admin endpoint matrix.
-- `design/FOUNDATION.md` — UI/design foundation (premium minimalism, admin patterns, mobile rules).
-- `design/COMPONENT_RECIPES.md` — practical UI recipes for cards/tables/forms and very small screens.
+- `design/design_system.md` — **единый** конспект UI: токены, фон, онтология цветов, `GvButton` / `GvPagination`, admin/public паттерны, mobile.
+- `design/FOUNDATION.md`, `design/VISUAL_STYLE_CONSPECT.md`, `design/COMPONENT_RECIPES.md` — редиректы на `design_system.md`.
 
 ## Назначение
 

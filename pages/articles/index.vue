@@ -22,21 +22,30 @@
           <div class="filter-group">
             <span class="filter-group-label">{{ t.categories }}</span>
             <div class="filter-pills">
-              <button
-                v-for="cat in categories"
+              <GvButton
+                type="button"
+                chromeless
+                variant="ghost"
+                color="gray"
+                class="gv-filter-pill gv-focusable"
+                :class="{ 'is-active': activeCategory === null }"
+                @click="onSelectCategory(null)"
+              >
+                {{ t.allArticles }}
+              </GvButton>
+              <GvButton
+                v-for="cat in categoriesList"
                 :key="cat.id"
+                type="button"
+                chromeless
+                variant="ghost"
+                color="gray"
                 class="gv-filter-pill gv-focusable"
                 :class="{ 'is-active': activeCategory === cat.id }"
-                @click="toggleCategory(cat.id)"
-                :style="
-                  activeCategory === cat.id
-                    ? { backgroundColor: cat.color, borderColor: cat.color }
-                    : {}
-                "
+                @click="onSelectCategory(activeCategory === cat.id ? null : cat.id)"
               >
-                <UIcon :name="cat.icon || 'i-heroicons-tag'" class="mr-1" />
-                {{ cat.title.split('—')[0].trim() }}
-              </button>
+                {{ cat.title }}
+              </GvButton>
             </div>
           </div>
         </ExpandableFilters>
@@ -47,7 +56,7 @@
       <BaseStateWrapper
         :pending="pending"
         :error="error"
-        :empty="!pending && !error && !paginatedArticles.length"
+        :empty="!pending && !error && filteredArticles.length === 0"
         :error-title="t.loadingError"
         :error-hint="t.refreshHint"
         class="w-full"
@@ -58,14 +67,16 @@
               <UIcon name="i-heroicons-document-text" class="w-6 h-6" />
             </div>
             <p>{{ t.notFound }}</p>
-            <button
+            <GvButton
               v-if="searchQuery || activeCategory !== null"
               type="button"
+              unstyled
+              chromeless
               class="reset-btn"
               @click="resetFilters"
             >
               {{ t.resetFilters }}
-            </button>
+            </GvButton>
           </div>
         </template>
 
@@ -87,12 +98,10 @@
     </div>
 
     <div v-if="totalPages > 1" class="pagination-footer">
-      <UPagination
+      <GvPagination
         v-model="page"
-        :page-count="10"
         :total="totalFiltered"
-        size="lg"
-        :ui="{ rounded: 'rounded-xl', base: 'pagination-button' }"
+        :page-size="10"
       />
     </div>
   </KnowledgeIndexLayout>
@@ -118,6 +127,7 @@ const uiDict: Record<string, any> = {
     refreshHint: 'Please try refreshing the page.',
     notFound: 'Nothing found',
     resetFilters: 'Reset filters',
+    allArticles: 'All articles',
   },
   ru: {
     heroTitle: 'СТАТЬИ',
@@ -129,6 +139,7 @@ const uiDict: Record<string, any> = {
     refreshHint: 'Пожалуйста, попробуйте обновить страницу.',
     notFound: 'Ничего не найдено',
     resetFilters: 'Сбросить фильтры',
+    allArticles: 'Все статьи',
   },
 }
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
@@ -143,15 +154,21 @@ const activeCategory = ref<number | null>(
   route.query.category_id ? parseInt(route.query.category_id as string) : null
 )
 
-const categories = ref<any[]>([])
-const allArticles = ref<any[]>([])
-const pending = ref(true)
-const error = ref<any>(null)
+const { data: allArticles, pending, error, refresh: refreshArticles } = await useFetch<any[]>(
+  '/api/articles/all',
+  { query: computed(() => ({ lang: langStore.currentLang })) }
+)
+const { data: categories, refresh: refreshCategories } = await useFetch<any[]>('/api/categories', {
+  query: computed(() => ({ lang: langStore.currentLang })),
+})
 
-const activeFilterCount = computed(() => (activeCategory.value ? 1 : 0))
+const categoriesList = computed(() => categories.value || [])
+
+const activeFilterCount = computed(() => (activeCategory.value !== null ? 1 : 0))
 
 const filteredArticles = computed(() => {
-  let result = allArticles.value
+  const list = allArticles.value || []
+  let result = list
   if (activeCategory.value !== null) {
     result = result.filter((a: any) => a.category_id === activeCategory.value)
   }
@@ -165,6 +182,11 @@ const totalPages = computed(() => Math.ceil(totalFiltered.value / 10))
 const paginatedArticles = computed(() =>
   slicePage(filteredArticles.value, page.value, 10)
 )
+
+function onSelectCategory(id: number | null) {
+  activeCategory.value = id
+  page.value = 1
+}
 
 function getArticleBadges(article: any): CardBadge[] {
   const badges: CardBadge[] = []
@@ -188,40 +210,25 @@ function getArticleBadges(article: any): CardBadge[] {
   return badges
 }
 
-function toggleCategory(id: number) {
-  activeCategory.value = activeCategory.value === id ? null : id
-  page.value = 1
-}
-
 function resetFilters() {
   searchQuery.value = ''
   activeCategory.value = null
   page.value = 1
 }
 
-async function loadAll() {
-  pending.value = true
-  error.value = null
-  try {
-    const [articlesRes, categoriesRes] = await Promise.all([
-      $fetch<any[]>('/api/articles/all', { query: { lang: langStore.currentLang } }),
-      $fetch<any[]>('/api/categories', { query: { lang: langStore.currentLang } }),
-    ])
-    allArticles.value = articlesRes || []
-    categories.value = categoriesRes || []
-  } catch (e) {
-    error.value = e
-  } finally {
-    pending.value = false
-  }
-}
-
-await loadAll()
-
-watch(() => langStore.currentLang, () => loadAll())
+watch(() => langStore.currentLang, () => {
+  refreshArticles()
+  refreshCategories()
+})
 
 watch([debouncedQuery, activeCategory], () => {
   page.value = 1
+})
+
+watch([page, totalPages], () => {
+  if (page.value > 1 && totalPages.value > 0 && page.value > totalPages.value) {
+    page.value = totalPages.value
+  }
 })
 
 watch([page, searchQuery, activeCategory], () => {

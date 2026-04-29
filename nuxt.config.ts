@@ -34,7 +34,7 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
-      link: [{ rel: 'icon', type: 'image/jpeg', href: '/logo.jpg' }],
+      link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
       "meta": [
         {
           "name": "viewport",

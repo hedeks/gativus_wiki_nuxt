@@ -69,16 +69,22 @@ const groupedResults = computed(() => {
 <template>
   <div class="search-wrap">
     <!-- Trigger Button -->
-    <button @click="isOpen = true" class="search-trigger group">
-      <UIcon name="i-heroicons-magnifying-glass"
-        class="w-5 h-5 text-gray-400 group-hover:text-sky-500 transition-colors" />
-      <span
-        class="hidden lg:inline text-sm text-gray-400 group-hover:text-gray-600 transition-colors uppercase tracking-widest font-bold ml-2">
-        {{ t.placeholder }}
-      </span>
-      <UKbd class="ml-4 hidden lg:inline-flex opacity-50">{{ (navigator?.platform?.indexOf('Mac') > -1) ? '⌘' : 'Ctrl'
-        }} K</UKbd>
-    </button>
+      <GvButton
+        type="button"
+        unstyled
+        chromeless
+        class="search-trigger group"
+        @click="isOpen = true"
+      >
+        <UIcon name="i-heroicons-magnifying-glass"
+          class="w-5 h-5 text-gray-400 group-hover:text-sky-500 transition-colors" />
+        <span
+          class="hidden lg:inline text-sm text-gray-400 group-hover:text-gray-600 transition-colors uppercase tracking-widest font-bold ml-2">
+          {{ t.placeholder }}
+        </span>
+        <UKbd class="ml-4 hidden lg:inline-flex opacity-50">{{ (navigator?.platform?.indexOf('Mac') > -1) ? '⌘' : 'Ctrl'
+          }} K</UKbd>
+      </GvButton>
 
     <!-- Modal / Command Palette Style -->
     <UModal v-model="isOpen" :ui="{
@@ -102,8 +108,16 @@ const groupedResults = computed(() => {
             <div v-if="groupedResults.article.length > 0" class="group-wrap">
               <h3 class="result-group-title">{{ t.articles }}</h3>
               <div class="flex flex-col gap-1 mt-2">
-                <button v-for="res in groupedResults.article" :key="res.id" @click="navigateTo(res.url)"
-                  class="result-item">
+                <GvButton
+                  v-for="res in groupedResults.article"
+                  :key="res.id"
+                  type="button"
+                  unstyled
+                  chromeless
+                  block
+                  class="result-item"
+                  @click="navigateTo(res.url)"
+                >
                   <div class="flex items-center gap-3">
                     <div class="result-icon-wrap bg-sky-50 dark:bg-sky-900/20">
                       <UIcon name="i-heroicons-document-text" class="w-4 h-4 text-sky-600" />
@@ -113,7 +127,7 @@ const groupedResults = computed(() => {
                       <span class="result-snippet" v-html="res.snippet"></span>
                     </div>
                   </div>
-                </button>
+                </GvButton>
               </div>
             </div>
 
@@ -121,8 +135,16 @@ const groupedResults = computed(() => {
             <div v-if="groupedResults.term.length > 0" class="group-wrap">
               <h3 class="result-group-title">{{ t.terms }}</h3>
               <div class="flex flex-col gap-1 mt-2">
-                <button v-for="res in groupedResults.term" :key="res.id" @click="navigateTo(res.url)"
-                  class="result-item">
+                <GvButton
+                  v-for="res in groupedResults.term"
+                  :key="res.id"
+                  type="button"
+                  unstyled
+                  chromeless
+                  block
+                  class="result-item"
+                  @click="navigateTo(res.url)"
+                >
                   <div class="flex items-center gap-3">
                     <div class="result-icon-wrap bg-purple-50 dark:bg-purple-900/20">
                       <UIcon name="i-heroicons-document-magnifying-glass" class="w-4 h-4 text-purple-600" />
@@ -132,7 +154,7 @@ const groupedResults = computed(() => {
                       <span class="result-snippet" v-html="res.snippet"></span>
                     </div>
                   </div>
-                </button>
+                </GvButton>
               </div>
             </div>
           </div>
@@ -164,10 +186,17 @@ const groupedResults = computed(() => {
 </template>
 
 <style scoped>
-.search-trigger {
+.search-wrap :deep(.search-trigger .gv-btn__label),
+.search-wrap :deep(.result-item .gv-btn__label) {
+  display: contents;
+}
+
+:deep(.search-trigger.gv-btn--chromeless) {
   display: flex;
   align-items: center;
-  padding: 8px 16px;
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 8px 18px !important;
   border-radius: 99px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -175,18 +204,18 @@ const groupedResults = computed(() => {
   transition: all 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915);
 }
 
-.dark .search-trigger {
+.dark :deep(.search-trigger.gv-btn--chromeless) {
   background: #18181b;
   border-color: #27272a;
 }
 
-.search-trigger:hover {
+:deep(.search-trigger.gv-btn--chromeless:hover) {
   border-color: #d4d4d8;
   background: #fff;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
-.dark .search-trigger:hover {
+.dark :deep(.search-trigger.gv-btn--chromeless:hover) {
   background: #1e1e21;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
@@ -200,18 +229,18 @@ const groupedResults = computed(() => {
   margin-left: 8px;
 }
 
-.result-item {
+:deep(.result-item) {
   width: 100%;
   padding: 10px;
   border-radius: 12px;
   transition: all 0.2s ease;
 }
 
-.result-item:hover {
+:deep(.result-item:hover) {
   background: #f1f5f9;
 }
 
-.dark .result-item:hover {
+.dark :deep(.result-item:hover) {
   background: #27272a;
 }
 

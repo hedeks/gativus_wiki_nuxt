@@ -200,9 +200,16 @@ function formatFileSize(bytes: number): string {
           <span class="file-name">{{ selectedFile.name }}</span>
           <span class="file-size">{{ formatFileSize(selectedFile.size) }}</span>
         </div>
-        <button class="file-remove" @click="removeFile">
-          <UIcon name="i-heroicons-x-mark" />
-        </button>
+        <GvButton
+          type="button"
+          unstyled
+          chromeless
+          square
+          class="file-remove"
+          icon="i-heroicons-x-mark"
+          aria-label="Удалить файл"
+          @click="removeFile"
+        />
       </div>
 
       <!-- Options -->
@@ -210,21 +217,54 @@ function formatFileSize(bytes: number): string {
         <div class="option-group">
           <label class="option-label">Разбивка на статьи по</label>
           <div class="option-row">
-            <button class="option-btn" :class="{ 'option-btn--active': splitLevel === 'none' }"
-              @click="splitLevel = 'none'">Без разбивки</button>
-            <button class="option-btn" :class="{ 'option-btn--active': splitLevel === 'h1' }"
-              @click="splitLevel = 'h1'">Главам (H1)</button>
-            <button class="option-btn" :class="{ 'option-btn--active': splitLevel === 'h2' }"
-              @click="splitLevel = 'h2'">Разделам (H2)</button>
+            <GvButton
+              type="button"
+              unstyled
+              chromeless
+              class="option-btn"
+              :class="{ 'option-btn--active': splitLevel === 'none' }"
+              @click="splitLevel = 'none'"
+            >
+              Без разбивки
+            </GvButton>
+            <GvButton
+              type="button"
+              unstyled
+              chromeless
+              class="option-btn"
+              :class="{ 'option-btn--active': splitLevel === 'h1' }"
+              @click="splitLevel = 'h1'"
+            >
+              Главам (H1)
+            </GvButton>
+            <GvButton
+              type="button"
+              unstyled
+              chromeless
+              class="option-btn"
+              :class="{ 'option-btn--active': splitLevel === 'h2' }"
+              @click="splitLevel = 'h2'"
+            >
+              Разделам (H2)
+            </GvButton>
           </div>
         </div>
 
         <div class="option-group">
           <label class="option-label">Язык контента</label>
           <div class="option-row">
-            <button v-for="opt in localeOptions" :key="opt.value" class="option-btn"
-              :class="{ 'option-btn--active': locale === opt.value }" @click="locale = opt.value">{{ opt.label
-              }}</button>
+            <GvButton
+              v-for="opt in localeOptions"
+              :key="opt.value"
+              type="button"
+              unstyled
+              chromeless
+              class="option-btn"
+              :class="{ 'option-btn--active': locale === opt.value }"
+              @click="locale = opt.value"
+            >
+              {{ opt.label }}
+            </GvButton>
           </div>
         </div>
 
@@ -251,17 +291,29 @@ function formatFileSize(bytes: number): string {
 
       <!-- Actions -->
       <div class="import-actions">
-        <button class="action-btn action-btn--preview" @click="runPreview" :disabled="isPreviewLoading">
-          <UIcon v-if="!isPreviewLoading" name="i-heroicons-eye" />
-          <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
-          <span>Preview</span>
-        </button>
-        <button class="action-btn action-btn--import" @click="runImport"
-          :disabled="isImportLoading || previewArticles.length === 0">
-          <UIcon v-if="!isImportLoading" name="i-heroicons-arrow-down-tray" />
-          <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
-          <span>Импортировать</span>
-        </button>
+        <GvButton
+          type="button"
+          unstyled
+          chromeless
+          class="action-btn action-btn--preview"
+          icon="i-heroicons-eye"
+          :loading="isPreviewLoading"
+          @click="runPreview"
+        >
+          Preview
+        </GvButton>
+        <GvButton
+          type="button"
+          unstyled
+          chromeless
+          class="action-btn action-btn--import"
+          icon="i-heroicons-arrow-down-tray"
+          :loading="isImportLoading"
+          :disabled="previewArticles.length === 0"
+          @click="runImport"
+        >
+          Импортировать
+        </GvButton>
       </div>
     </div>
       </div>
@@ -310,14 +362,25 @@ function formatFileSize(bytes: number): string {
           </NuxtLink>
         </div>
         <div class="result-actions">
-          <button class="action-btn action-btn--preview" @click="removeFile">
-            <UIcon name="i-heroicons-arrow-up-tray" />
-            <span>Импортировать ещё</span>
-          </button>
-          <NuxtLink to="/admin/articles" class="action-btn action-btn--import">
-            <UIcon name="i-heroicons-list-bullet" />
-            <span>К списку статей</span>
-          </NuxtLink>
+          <GvButton
+            type="button"
+            unstyled
+            chromeless
+            class="action-btn action-btn--preview"
+            icon="i-heroicons-arrow-up-tray"
+            @click="removeFile"
+          >
+            Импортировать ещё
+          </GvButton>
+          <GvButton
+            to="/admin/articles"
+            unstyled
+            chromeless
+            class="action-btn action-btn--import"
+            icon="i-heroicons-list-bullet"
+          >
+            К списку статей
+          </GvButton>
         </div>
       </div>
       </div>
@@ -510,7 +573,7 @@ function formatFileSize(bytes: number): string {
   color: #888;
 }
 
-.file-remove {
+:deep(.file-remove) {
   padding: 6px;
   border-radius: 8px;
   border: none;
@@ -520,12 +583,12 @@ function formatFileSize(bytes: number): string {
   transition: all 0.2s;
 }
 
-.file-remove:hover {
+:deep(.file-remove:hover) {
   background: #fef2f2;
   color: #ef4444;
 }
 
-.dark .file-remove:hover {
+.dark :deep(.file-remove:hover) {
   background: #2a1a1a;
   color: #f87171;
 }
@@ -558,7 +621,7 @@ function formatFileSize(bytes: number): string {
   gap: 8px;
 }
 
-.option-btn {
+:deep(.option-btn) {
   flex: 1;
   padding: 8px 12px;
   border-radius: 8px;
@@ -571,25 +634,29 @@ function formatFileSize(bytes: number): string {
   transition: all 0.2s;
 }
 
-.option-btn:hover {
+:deep(.option-btn:hover) {
   border-color: #c5c7cb;
 }
 
-.option-btn--active {
+:deep(.option-btn--active) {
   background: #6366f1;
   border-color: #6366f1;
   color: #fff;
 }
 
-.dark .option-btn {
+.dark :deep(.option-btn) {
   border-color: #333;
   color: #aaa;
 }
 
-.dark .option-btn--active {
+.dark :deep(.option-btn--active) {
   background: #6366f1;
   border-color: #6366f1;
   color: #fff;
+}
+
+:deep(.option-btn .gv-btn__label) {
+  display: contents;
 }
 
 .option-select {
@@ -617,12 +684,16 @@ function formatFileSize(bytes: number): string {
 }
 
 @media (max-width: 640px) {
-  .import-actions button {
+  .import-actions :deep(.action-btn) {
     width: 100%;
   }
 }
 
-.action-btn {
+:deep(.action-btn .gv-btn__label) {
+  display: contents;
+}
+
+:deep(.action-btn) {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -636,35 +707,35 @@ function formatFileSize(bytes: number): string {
   text-decoration: none;
 }
 
-.action-btn:disabled {
+:deep(.action-btn:disabled) {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.action-btn--preview {
+:deep(.action-btn--preview) {
   background: #f3f4f6;
   color: #555;
 }
 
-.action-btn--preview:hover:not(:disabled) {
+:deep(.action-btn--preview:hover:not(:disabled)) {
   background: #e5e7eb;
 }
 
-.dark .action-btn--preview {
+.dark :deep(.action-btn--preview) {
   background: #252528;
   color: #aaa;
 }
 
-.dark .action-btn--preview:hover:not(:disabled) {
+.dark :deep(.action-btn--preview:hover:not(:disabled)) {
   background: #333;
 }
 
-.action-btn--import {
+:deep(.action-btn--import) {
   background: var(--gv-primary);
   color: #fff;
 }
 
-.action-btn--import:hover:not(:disabled) {
+:deep(.action-btn--import:hover:not(:disabled)) {
   background: var(--gv-primary-hover);
   transform: translateY(-1px);
 }
@@ -887,7 +958,7 @@ function formatFileSize(bytes: number): string {
     flex-direction: column;
   }
 
-  .action-btn {
+  :deep(.action-btn) {
     justify-content: center;
   }
 }

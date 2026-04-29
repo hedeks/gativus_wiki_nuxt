@@ -27,14 +27,17 @@
     />
 
     <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-      <button
+      <GvButton
         v-show="modelValue !== ''"
         type="button"
+        unstyled
+        chromeless
+        square
         class="search-clear-btn"
+        icon="i-heroicons-x-mark-20-solid"
+        aria-label="Clear search"
         @click="clear"
-      >
-        <UIcon name="i-heroicons-x-mark-20-solid" class="w-4 h-4" />
-      </button>
+      />
     </div>
   </div>
 </template>
@@ -88,7 +91,7 @@ function clear() {
   width: 100%;
   height: 42px;
   padding-left: 42px;
-  padding-right: 38px;
+  padding-right: 44px;
   border-radius: 12px;
   background: #ffffff;
   border: 1px solid #dfe7f3;
@@ -124,9 +127,12 @@ function clear() {
   z-index: 2;
 }
 
-.search-clear-btn {
-  width: 24px;
-  height: 24px;
+:deep(.search-clear-btn) {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0 !important;
   border-radius: 999px;
   border: 1px solid transparent;
   display: inline-flex;
@@ -137,7 +143,7 @@ function clear() {
   transition: all 0.2s ease;
 }
 
-.search-clear-btn:hover {
+:deep(.search-clear-btn:hover) {
   color: #0ea5e9;
   border-color: rgba(14, 165, 233, 0.28);
   background: rgba(14, 165, 233, 0.08);
@@ -167,11 +173,11 @@ function clear() {
   color: #64748b;
 }
 
-.dark .search-clear-btn {
+.dark :deep(.search-clear-btn) {
   color: #64748b;
 }
 
-.dark .search-clear-btn:hover {
+.dark :deep(.search-clear-btn:hover) {
   color: #7dd3fc;
   border-color: rgba(125, 211, 252, 0.28);
   background: rgba(14, 165, 233, 0.14);

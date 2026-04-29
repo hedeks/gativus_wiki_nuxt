@@ -19,19 +19,19 @@
     <!-- Right Control Panel (Zoom & Fullscreen) - MINIMIZED -->
     <div
       class="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2 opacity-50 hover:opacity-100 transition-opacity">
-      <UButton icon="i-heroicons-plus" size="sm" color="sky" variant="soft"
+      <GvButton icon="i-heroicons-plus" size="sm" color="sky" variant="soft"
         class="rounded-full shadow-md backdrop-blur-md bg-white/50 dark:bg-zinc-900/50" @click="zoomIn" />
       <div
         class="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md px-1 py-0.5 rounded text-[10px] font-black text-center shadow-sm border border-gray-100 dark:border-zinc-800">
         {{ Math.round(scale * 100) }}%
       </div>
-      <UButton icon="i-heroicons-minus" size="sm" color="sky" variant="soft"
+      <GvButton icon="i-heroicons-minus" size="sm" color="sky" variant="soft"
         class="rounded-full shadow-md backdrop-blur-md bg-white/50 dark:bg-zinc-900/50" @click="zoomOut" />
-      <UButton :icon="isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'" size="sm"
+      <GvButton :icon="isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'" size="sm"
         color="rose" variant="soft"
         class="rounded-full shadow-md backdrop-blur-md bg-rose-50/50 dark:bg-rose-900/20 mt-2"
         @click="toggleFullscreen" />
-      <UButton icon="i-heroicons-arrow-path" size="xs" color="gray" variant="ghost"
+      <GvButton icon="i-heroicons-arrow-path" size="xs" color="gray" variant="ghost"
         class="rounded-full opacity-50 hover:opacity-100" @click="resetZoom" />
     </div>
 
@@ -71,8 +71,8 @@
           Возможно, ваш браузер или сервер блокирует компоненты рендеринга. Попробуйте переключиться на встроенный просмотрщик.
         </p>
         <div class="flex gap-4">
-          <UButton label="Встроенный просмотрщик" color="black" variant="solid" icon="i-heroicons-window" @click="useNativeViewer = true" />
-          <UButton label="Повторить" color="gray" variant="ghost" icon="i-heroicons-arrow-path" @click="initViewer" />
+          <GvButton label="Встроенный просмотрщик" color="sky" variant="solid" icon="i-heroicons-window" @click="useNativeViewer = true" />
+          <GvButton label="Повторить" color="gray" variant="ghost" icon="i-heroicons-arrow-path" @click="initViewer" />
         </div>
       </div>
 
@@ -83,13 +83,13 @@
     <!-- Floating Navigation Bar (Overlay) - MINIMIZED -->
     <div
       class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 dark:bg-black/5 backdrop-blur-md border border-white/10 dark:border-white/5 shadow-xl z-40 transition-all duration-500 opacity-40 hover:opacity-100 hover:bg-white/20 dark:hover:bg-black/20">
-      <UButton v-if="pageNum > 1" size="md" icon="i-heroicons-chevron-left" color="sky" variant="ghost"
+      <GvButton v-if="pageNum > 1" size="md" icon="i-heroicons-chevron-left" color="sky" variant="ghost"
         class="hover:bg-sky-500/10 rounded-lg" @click="prevPage" />
       <div v-else class="w-8"></div>
 
       <div class="h-4 w-[1px] bg-white/10"></div>
 
-      <UButton v-if="numPages > 0" size="md" icon="i-heroicons-chevron-right" color="sky" variant="ghost"
+      <GvButton v-if="numPages > 0" size="md" icon="i-heroicons-chevron-right" color="sky" variant="ghost"
         class="hover:bg-sky-500/10 rounded-lg" @click="nextPage" />
       <div v-else class="w-8"></div>
     </div>

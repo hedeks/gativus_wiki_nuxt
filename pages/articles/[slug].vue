@@ -46,13 +46,23 @@
             <div class="lightbox-content">
               <img :src="lightboxImage" class="lightbox-image" :class="{ 'is-zoomed': isZoomed }"
                 alt="Full screen preview" @click.stop="toggleZoom" />
-              <button class="lightbox-close" @click="closeLightbox">&times;</button>
+              <GvButton
+                type="button"
+                unstyled
+                chromeless
+                class="lightbox-close"
+                aria-label="Close"
+                @click="closeLightbox"
+              >
+                &times;
+              </GvButton>
             </div>
           </div>
         </Transition>
         <!-- Button to switch to presentation (only if presentation exists) -->
-        <UButton v-if="hasPresentation" @click="changeView('quiz')" variant="solid" block color="sky"
-          class="rounded-none lg:text-xl sm:text-lg mt-5 h-20 not-prose" :label="t.presentation" />
+        <GvButton v-if="hasPresentation" variant="solid" block color="sky"
+          class="rounded-none lg:text-xl sm:text-lg mt-5 h-20 not-prose" :label="t.presentation"
+          @click="changeView('quiz')" />
 
         <!-- Book Navigation -->
         <div v-if="article.book_id && (article.prev || article.next)"
@@ -257,12 +267,24 @@ useSeoMeta({
   ogTitle: () => article.value?.title,
   description: () => article.value?.excerpt || '',
   ogDescription: () => article.value?.excerpt || '',
+  ogImage: '/favicon.ico',
 })
 
 // Watch for language changes to refresh
 watch(() => langStore.currentLang, () => {
   refresh()
 })
+
+const { saveFromArticle } = useReadingProgress()
+
+watch(
+  () => article.value,
+  (a) => {
+    if (a?.book_id)
+      saveFromArticle(a)
+  },
+  { immediate: true },
+)
 
 // ─── TOC generation from HTML headings ───
 

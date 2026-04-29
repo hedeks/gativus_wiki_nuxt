@@ -3,7 +3,7 @@
     <div class="term-selector-modal">
       <div class="modal-header">
         <h3>Выбрать термин</h3>
-        <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark" @click="isOpen = false" />
+        <GvButton color="gray" variant="ghost" square icon="i-heroicons-x-mark" @click="isOpen = false" />
       </div>
 
       <div class="modal-search">

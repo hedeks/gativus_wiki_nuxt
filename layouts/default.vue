@@ -1,7 +1,7 @@
 <template>
-    <div class="w-full mx-auto flex flex-col bg-white dark:bg-zinc-900">
+    <div class="gv-public-layout mx-auto">
         <theHeader class="flex w-full flex-wrap sticky top-0 z-20 gv-glass border-b border-zinc-200 dark:border-zinc-800" />
-        <main class="main flex flex-col w-full items-center justify-items-center z-3">
+        <main class="main flex flex-col w-full flex-1 items-center justify-items-center z-3">
             <slot />
         </main>
         <theFooter class="flex w-full p-1" />
@@ -27,14 +27,6 @@ const route = useRoute();
 </script>
 
 <style>
-:root {
-    --footer-height: 93px;
-}
-
-.main {
-    min-height: calc(100dvh - var(--header-height) - var(--footer-height));
-}
-
 .head {
     backdrop-filter: blur(10px);
 }

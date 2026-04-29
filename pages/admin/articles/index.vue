@@ -88,14 +88,12 @@ function formatDate(dateStr: string): string {
     </section>
 
     <div class="cta-buttons admin-index-toolbar cta-buttons--left">
-      <NuxtLink to="/admin/import" class="cta-button secondary">
-        <UIcon name="i-heroicons-arrow-up-tray" />
-        <span>Импорт ODT</span>
-      </NuxtLink>
-      <NuxtLink to="/admin/articles/create" class="cta-button primary">
-        <UIcon name="i-heroicons-plus" />
-        <span>Создать статью</span>
-      </NuxtLink>
+      <GvButton to="/admin/import" variant="outline" color="gray" size="sm" icon="i-heroicons-arrow-up-tray">
+        Импорт ODT
+      </GvButton>
+      <GvButton to="/admin/articles/create" color="sky" variant="solid" size="sm" icon="i-heroicons-plus">
+        Создать статью
+      </GvButton>
     </div>
 
     <section class="section-card">
@@ -137,7 +135,7 @@ function formatDate(dateStr: string): string {
         <h2 class="card-header-title">Список статей</h2>
       </header>
       <div class="card-body card-body--flush overflow-x-auto">
-        <table class="articles-table min-w-[760px]">
+        <table class="admin-table min-w-[760px]">
         <thead>
           <tr>
             <th>Название</th>
@@ -145,7 +143,7 @@ function formatDate(dateStr: string): string {
             <th>Модель</th>
             <th>Статус</th>
             <th>Обновлено</th>
-            <th class="th-actions"></th>
+            <th>Действия</th>
           </tr>
         </thead>
         <tbody>
@@ -174,19 +172,42 @@ function formatDate(dateStr: string): string {
                 title="Есть презентация" />
             </td>
             <td class="text-muted">{{ formatDate(article.updated_at) }}</td>
-            <td class="td-actions">
-              <NuxtLink :to="`/articles/${article.slug}`" class="row-btn" title="Просмотр">
-                <UIcon name="i-heroicons-eye" />
-              </NuxtLink>
-              <NuxtLink :to="`/admin/articles/${article.id}/edit`" class="row-btn" title="Редактировать">
-                <UIcon name="i-heroicons-pencil-square" />
-              </NuxtLink>
-              <NuxtLink :to="`/admin/articles/${article.id}/history`" class="row-btn" title="История">
-                <UIcon name="i-heroicons-clock" />
-              </NuxtLink>
-              <button class="row-btn row-btn--danger" @click="deleteSlug = article.slug" title="Удалить">
-                <UIcon name="i-heroicons-trash" />
-              </button>
+            <td>
+              <div class="actions-cell">
+                <GvButton
+                  :to="`/admin/articles/${article.id}/edit`"
+                  icon="i-heroicons-pencil-square"
+                  size="xs"
+                  variant="ghost"
+                  color="gray"
+                  title="Редактировать"
+                />
+                <GvButton
+                  :to="`/articles/${article.slug}`"
+                  target="_blank"
+                  icon="i-heroicons-eye"
+                  size="xs"
+                  variant="ghost"
+                  color="gray"
+                  title="Просмотр"
+                />
+                <GvButton
+                  :to="`/admin/articles/${article.id}/history`"
+                  icon="i-heroicons-clock"
+                  size="xs"
+                  variant="ghost"
+                  color="gray"
+                  title="История"
+                />
+                <GvButton
+                  icon="i-heroicons-trash"
+                  size="xs"
+                  variant="ghost"
+                  color="red"
+                  title="Удалить"
+                  @click="deleteSlug = article.slug"
+                />
+              </div>
             </td>
           </tr>
           <tr v-if="articles.length === 0">
@@ -203,13 +224,31 @@ function formatDate(dateStr: string): string {
       </div>
       <div v-if="totalPages > 1" class="card-after-table">
         <div class="pagination">
-          <button class="page-btn" :disabled="currentPage <= 1" @click="currentPage--; refresh()">
+          <GvButton
+            type="button"
+            variant="outline"
+            color="gray"
+            size="sm"
+            square
+            class="page-btn"
+            :disabled="currentPage <= 1"
+            @click="currentPage--; refresh()"
+          >
             <UIcon name="i-heroicons-chevron-left" />
-          </button>
+          </GvButton>
           <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
-          <button class="page-btn" :disabled="currentPage >= totalPages" @click="currentPage++; refresh()">
+          <GvButton
+            type="button"
+            variant="outline"
+            color="gray"
+            size="sm"
+            square
+            class="page-btn"
+            :disabled="currentPage >= totalPages"
+            @click="currentPage++; refresh()"
+          >
             <UIcon name="i-heroicons-chevron-right" />
-          </button>
+          </GvButton>
         </div>
       </div>
     </section>
@@ -221,11 +260,10 @@ function formatDate(dateStr: string): string {
           <h3 class="modal-title">Удалить статью?</h3>
           <p class="modal-desc">Это действие нельзя отменить. Все ревизии также будут удалены.</p>
           <div class="modal-actions">
-            <button class="action-btn action-btn--preview" @click="deleteSlug = null">Отмена</button>
-            <button class="action-btn action-btn--danger" @click="confirmDelete" :disabled="isDeleting">
-              <UIcon v-if="isDeleting" name="i-heroicons-arrow-path" class="animate-spin" />
-              <span>Удалить</span>
-            </button>
+            <GvButton type="button" variant="outline" color="gray" size="sm" @click="deleteSlug = null">Отмена</GvButton>
+            <GvButton type="button" color="red" variant="solid" size="sm" :loading="isDeleting" @click="confirmDelete">
+              Удалить
+            </GvButton>
           </div>
         </div>
       </div>
@@ -252,55 +290,55 @@ function formatDate(dateStr: string): string {
   color: #e5e5e5;
 }
 
-/* ─── Table ─── */
-.articles-table {
+/* ─── Table (как admin/books) ─── */
+.admin-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.articles-table thead {
-  background: #f8fafc;
-}
-
-.dark .articles-table thead {
-  background: #252528;
-}
-
-.articles-table th {
-  padding: 12px 16px;
+.admin-table th {
   text-align: left;
+  padding: 14px 20px;
   font-size: 11px;
   font-weight: 700;
-  color: #888;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
+  color: #6b7280;
+  background: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
 }
 
-.dark .articles-table th {
-  border-bottom-color: #2a2a2e;
+.dark .admin-table th {
+  background: #27272a;
+  color: #9ca3af;
+  border-bottom-color: #3f3f46;
 }
 
-.table-row td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #f0f0f2;
+.admin-table td {
+  padding: 14px 20px;
+  border-bottom: 1px solid #f3f4f6;
   font-size: 14px;
+  color: #374151;
 }
 
-.dark .table-row td {
-  border-bottom-color: #232326;
+.dark .admin-table td {
+  border-bottom-color: #27272a;
+  color: #d1d5db;
 }
 
-.table-row:last-child td {
-  border-bottom: none;
-}
-
-.table-row:hover {
+.table-row:hover td {
   background: #fafafa;
 }
 
-.dark .table-row:hover {
+.dark .table-row:hover td {
   background: #232326;
+}
+
+.actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
 }
 
 .article-cell {
@@ -349,7 +387,20 @@ function formatDate(dateStr: string): string {
 }
 
 .locale-badge {
-  font-size: 16px;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dark .locale-badge {
+  background: #27272a;
+  color: #9ca3af;
 }
 
 .status-badge {
@@ -412,47 +463,6 @@ function formatDate(dateStr: string): string {
   margin-left: 6px;
   color: #6366f1;
   vertical-align: middle;
-}
-
-.th-actions {
-  width: 160px;
-}
-
-.td-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.row-btn {
-  padding: 6px;
-  border-radius: 6px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: #888;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-}
-
-.row-btn:hover {
-  background: #f3f4f6;
-  color: #1a1a1a;
-}
-
-.dark .row-btn:hover {
-  background: #252528;
-  color: #e5e5e5;
-}
-
-.row-btn--danger:hover {
-  background: #fef2f2;
-  color: #ef4444;
-}
-
-.dark .row-btn--danger:hover {
-  background: #2a1a1a;
-  color: #f87171;
 }
 
 /* ─── Empty State ─── */
@@ -610,11 +620,12 @@ function formatDate(dateStr: string): string {
 }
 
 @media (max-width: 768px) {
-  .td-actions {
-    flex-wrap: wrap;
+  .admin-table th,
+  .admin-table td {
+    padding: 10px 12px;
   }
 
-  .articles-table {
+  .admin-table {
     font-size: 13px;
   }
 }

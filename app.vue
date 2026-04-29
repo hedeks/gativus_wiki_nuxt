@@ -59,6 +59,16 @@ const pageTransition = {
   --gv-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
   --gv-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --gv-shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  /* Фон «холста» — светлая тема: читаемый мягкий градиент (холодный серый) */
+  --gv-canvas-gradient: linear-gradient(
+    168deg,
+    #fcfcfd 0%,
+    #f5f7fb 20%,
+    #ecf0f6 42%,
+    #e4e9f2 64%,
+    #dde3ec 100%
+  );
+  --gv-canvas-fallback: #ecf0f6;
 }
 
 .dark {
@@ -74,6 +84,16 @@ const pageTransition = {
   --gv-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
   --gv-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
   --gv-shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  /* Тёмный холст: едва заметный градиент без полос */
+  --gv-canvas-gradient: linear-gradient(
+    168deg,
+    #29292b 0%,
+    #28282a 28%,
+    #27272a 52%,
+    #262628 78%,
+    #27272a 100%
+  );
+  --gv-canvas-fallback: #27272a;
 }
 
 .page-enter-active,
@@ -99,12 +119,24 @@ const pageTransition = {
 }
 html {
   font-family: Arial, sans-serif;
+  min-height: 100%;
+  background-color: var(--gv-canvas-fallback);
 }
 body {
-  background: var(--gv-surface);
+  min-height: 100%;
+  background: transparent;
   color: var(--gv-text-primary);
   overflow-y: scroll;
   line-height: 1.35;
+}
+
+/* Публичный layout: тот же градиент и скролл вместе с контентом, что у admin-main (без fixed на html) */
+.gv-public-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100dvh;
+  background: var(--gv-canvas-gradient);
 }
 
 .gv-page {
@@ -228,6 +260,34 @@ body {
   background: color-mix(in srgb, var(--gv-primary) 12%, var(--gv-surface-card));
   color: var(--gv-primary);
   box-shadow: var(--gv-shadow-sm);
+}
+
+/* GvButton + pill: тон кнопки из компонента иначе перебивает глобальные пиллы */
+.gv-filter-pill.gv-btn.gv-btn--chromeless {
+  background: var(--gv-surface-card) !important;
+  color: var(--gv-text-secondary) !important;
+  border: 1px solid var(--gv-border-principal) !important;
+  box-shadow: none !important;
+  text-transform: uppercase !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  padding: 8px 14px !important;
+  border-radius: 12px !important;
+  gap: 6px !important;
+  line-height: inherit !important;
+  font-family: inherit !important;
+}
+.gv-filter-pill.gv-btn.gv-btn--chromeless:hover:not(.gv-btn--disabled) {
+  border-color: var(--gv-primary) !important;
+  color: var(--gv-primary) !important;
+  transform: translateY(-1px);
+}
+.gv-filter-pill.gv-btn.gv-btn--chromeless.is-active {
+  border-color: var(--gv-primary) !important;
+  background: color-mix(in srgb, var(--gv-primary) 12%, var(--gv-surface-card)) !important;
+  color: var(--gv-primary) !important;
+  box-shadow: var(--gv-shadow-sm) !important;
 }
 
 .gv-focusable:focus-visible {

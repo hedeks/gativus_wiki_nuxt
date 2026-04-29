@@ -46,13 +46,15 @@ const links = [{
     align-items: center;
     gap: 20px;
     padding: 32px 24px 40px;
-    border-top: 1px solid #c8c8c8;
-    background: #ffffff;
+    border-top: 1px solid color-mix(in srgb, #c8c8c8 70%, transparent);
+    background: color-mix(in srgb, #ffffff 82%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
 }
 
 .dark .gativus-footer {
-    background: #18181b;
-    border-top-color: #333;
+    background: color-mix(in srgb, #18181b 85%, transparent);
+    border-top-color: color-mix(in srgb, #404040 60%, transparent);
 }
 
 .footer-nav {

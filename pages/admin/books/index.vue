@@ -12,10 +12,9 @@
     </section>
 
     <div class="cta-buttons admin-index-toolbar cta-buttons--left">
-      <NuxtLink to="/admin/books/create" class="cta-button primary">
-        <UIcon name="i-heroicons-plus" />
-        <span>Создать книгу</span>
-      </NuxtLink>
+      <GvButton to="/admin/books/create" color="sky" variant="solid" size="sm" icon="i-heroicons-plus">
+        Создать книгу
+      </GvButton>
     </div>
 
     <section v-if="pending" class="section-card">
@@ -110,9 +109,9 @@
             </td>
             <td>
               <div class="actions-cell">
-                <UButton :to="`/admin/books/${book.id}/edit`" icon="i-heroicons-pencil-square" size="xs" variant="ghost" color="gray" title="Редактировать" />
-                <UButton :to="`/books/${book.slug}`" target="_blank" icon="i-heroicons-eye" size="xs" variant="ghost" color="gray" title="Просмотр" />
-                <UButton icon="i-heroicons-trash" size="xs" variant="ghost" color="red" title="Удалить" @click="confirmDelete(book)" />
+                <GvButton :to="`/admin/books/${book.id}/edit`" icon="i-heroicons-pencil-square" size="xs" variant="ghost" color="gray" title="Редактировать" />
+                <GvButton :to="`/books/${book.slug}`" target="_blank" icon="i-heroicons-eye" size="xs" variant="ghost" color="gray" title="Просмотр" />
+                <GvButton icon="i-heroicons-trash" size="xs" variant="ghost" color="red" title="Удалить" @click="confirmDelete(book)" />
               </div>
             </td>
           </tr>
@@ -134,8 +133,8 @@
           Статьи останутся в базе, но перестанут быть привязаны к этой книге.
         </p>
         <div class="flex justify-end gap-3">
-          <UButton color="gray" variant="ghost" @click="deleteModalOpen = false">Отмена</UButton>
-          <UButton color="red" :loading="deleting" @click="handleDelete">Удалить</UButton>
+          <GvButton color="gray" variant="ghost" @click="deleteModalOpen = false">Отмена</GvButton>
+          <GvButton color="red" :loading="deleting" @click="handleDelete">Удалить</GvButton>
         </div>
       </div>
     </UModal>

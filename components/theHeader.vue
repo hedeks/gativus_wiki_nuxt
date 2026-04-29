@@ -129,8 +129,8 @@ const links = computed(() => {
           <theThemeChanger />
           <theProfileIcon />
         </div>
-        <UButton :icon="isMenuOpen ? 'i-heroicons-x-mark' : 'i-heroicons-bars-3-bottom-right'" color="gray"
-          variant="ghost" @click="isMenuOpen = !isMenuOpen" class="transition-transform duration-300"
+        <GvButton :icon="isMenuOpen ? 'i-heroicons-x-mark' : 'i-heroicons-bars-3-bottom-right'" color="gray"
+          variant="ghost" square @click="isMenuOpen = !isMenuOpen" class="transition-transform duration-300"
           :class="{ 'rotate-90': isMenuOpen }" />
       </div>
     </div>

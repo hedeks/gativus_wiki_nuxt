@@ -2,8 +2,10 @@
 <template>
   <div ref="rootRef" class="expandable-filters">
     <div class="filters-row">
-      <button
+      <GvButton
         type="button"
+        unstyled
+        chromeless
         class="filters-trigger gv-focusable"
         :class="{ 'is-open': isOpen, 'has-active': hasActiveFilters }"
         @click="isOpen = !isOpen"
@@ -25,16 +27,23 @@
           :name="isOpen ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
           class="w-4 h-4 chevron"
         />
-      </button>
+      </GvButton>
     </div>
 
-    <Transition name="filters-drop">
-      <div v-if="isOpen" class="filters-dropdown">
-        <div class="filters-dropdown-inner">
-          <slot />
+    <Teleport to="body">
+      <Transition name="filters-drop">
+        <div
+          v-if="isOpen"
+          ref="dropdownRef"
+          class="filters-dropdown filters-dropdown--portal"
+          :style="dropdownStyle"
+        >
+          <div class="filters-dropdown-inner">
+            <slot />
+          </div>
         </div>
-      </div>
-    </Transition>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -54,13 +63,71 @@ withDefaults(
 
 const isOpen = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
+const dropdownRef = ref<HTMLElement | null>(null)
+
+const dropdownStyle = ref<Record<string, string>>({})
+
+function computeDropdownStyle() {
+  const el = rootRef.value
+  if (!el || !isOpen.value) return
+
+  const rect = el.getBoundingClientRect()
+  const vw = window.innerWidth
+  const pad = 12
+  const gap = 8
+
+  if (vw <= 640) {
+    dropdownStyle.value = {
+      position: 'fixed',
+      top: `${rect.bottom + gap}px`,
+      left: `${pad}px`,
+      right: `${pad}px`,
+      width: 'auto',
+      zIndex: '1000',
+      minWidth: '0',
+      maxWidth: 'none',
+    }
+    return
+  }
+
+  const maxW = Math.min(560, vw - 2 * pad)
+  const minW = 340
+  const width = Math.min(maxW, Math.max(minW, rect.width))
+  let left = rect.right - width
+  left = Math.max(pad, Math.min(left, vw - pad - width))
+
+  dropdownStyle.value = {
+    position: 'fixed',
+    top: `${rect.bottom + gap}px`,
+    left: `${left}px`,
+    width: `${width}px`,
+    right: 'auto',
+    zIndex: '1000',
+    minWidth: '',
+    maxWidth: '',
+  }
+}
+
+function onReposition() {
+  if (isOpen.value) computeDropdownStyle()
+}
+
+watch(isOpen, async (open) => {
+  if (open) {
+    await nextTick()
+    requestAnimationFrame(() => computeDropdownStyle())
+  }
+  else {
+    dropdownStyle.value = {}
+  }
+})
 
 function onDocPointerDown(e: Event) {
   const target = e.target as Node | null
-  if (!isOpen.value || !rootRef.value || !target) return
-  if (!rootRef.value.contains(target)) {
-    isOpen.value = false
-  }
+  if (!isOpen.value || !target) return
+  if (rootRef.value?.contains(target)) return
+  if (dropdownRef.value?.contains(target)) return
+  isOpen.value = false
 }
 
 function onEsc(e: KeyboardEvent) {
@@ -72,11 +139,15 @@ function onEsc(e: KeyboardEvent) {
 onMounted(() => {
   document.addEventListener('pointerdown', onDocPointerDown)
   document.addEventListener('keydown', onEsc)
+  window.addEventListener('resize', onReposition)
+  window.addEventListener('scroll', onReposition, true)
 })
 
 onUnmounted(() => {
   document.removeEventListener('pointerdown', onDocPointerDown)
   document.removeEventListener('keydown', onEsc)
+  window.removeEventListener('resize', onReposition)
+  window.removeEventListener('scroll', onReposition, true)
 })
 </script>
 
@@ -91,12 +162,19 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.filters-trigger {
+:deep(.filters-trigger .gv-btn__label) {
+  display: contents;
+}
+
+/* chromeless в GvButton задаёт padding: 0 !important — дублируем отступы здесь с !important */
+:deep(.filters-trigger.gv-btn--chromeless) {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-height: 42px;
-  padding: 0 16px 0 12px;
+  box-sizing: border-box;
+  height: 42px;
+  min-height: 42px !important;
+  padding: 0 18px !important;
   border-radius: 12px;
   background: #ffffff;
   border: 1px solid #dde6f2;
@@ -125,7 +203,7 @@ onUnmounted(() => {
   background: rgba(14, 165, 233, 0.1);
 }
 
-.filters-trigger:hover {
+:deep(.filters-trigger.gv-btn--chromeless:hover) {
   border-color: #c8d7ea;
   color: #0369a1;
   transform: translateY(-1px);
@@ -134,7 +212,7 @@ onUnmounted(() => {
     0 12px 22px rgba(15, 23, 42, 0.1);
 }
 
-.filters-trigger.is-open {
+:deep(.filters-trigger.gv-btn--chromeless.is-open) {
   border-color: #0ea5e9;
   color: #0369a1;
   box-shadow:
@@ -142,7 +220,7 @@ onUnmounted(() => {
     0 14px 24px rgba(2, 132, 199, 0.14);
 }
 
-.filters-trigger.has-active {
+:deep(.filters-trigger.gv-btn--chromeless.has-active) {
   border-color: #0ea5e9;
   background: #eff9ff;
 }
@@ -171,17 +249,13 @@ onUnmounted(() => {
   transition: transform 0.25s ease;
 }
 
-.filters-trigger.is-open .chevron {
+:deep(.filters-trigger.gv-btn--chromeless.is-open .chevron) {
   transform: rotate(180deg);
 }
 
-.filters-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 200;
-  min-width: 340px;
-  max-width: min(94vw, 560px);
+.filters-dropdown--portal {
+  box-sizing: border-box;
+  pointer-events: auto;
 }
 
 .filters-dropdown-inner {
@@ -197,7 +271,7 @@ onUnmounted(() => {
   gap: 16px;
 }
 
-.dark .filters-trigger {
+.dark :deep(.filters-trigger.gv-btn--chromeless) {
   background: #1a1c22;
   border-color: #3a4352;
   color: #aab9cf;
@@ -211,12 +285,12 @@ onUnmounted(() => {
   background: rgba(14, 165, 233, 0.16);
 }
 
-.dark .filters-trigger:hover {
+.dark :deep(.filters-trigger.gv-btn--chromeless:hover) {
   border-color: #4b5a6f;
   color: #bae6fd;
 }
 
-.dark .filters-trigger.is-open {
+.dark :deep(.filters-trigger.gv-btn--chromeless.is-open) {
   border-color: #0ea5e9;
   color: #bae6fd;
   box-shadow:
@@ -224,7 +298,7 @@ onUnmounted(() => {
     0 14px 26px rgba(0, 0, 0, 0.45);
 }
 
-.dark .filters-trigger.has-active {
+.dark :deep(.filters-trigger.gv-btn--chromeless.has-active) {
   background: rgba(14, 165, 233, 0.12);
 }
 
@@ -257,16 +331,9 @@ onUnmounted(() => {
     width: 100%;
   }
 
-  .filters-trigger {
+  :deep(.filters-trigger.gv-btn--chromeless) {
     width: 100%;
     justify-content: space-between;
-  }
-
-  .filters-dropdown {
-    left: 0;
-    right: 0;
-    min-width: 0;
-    max-width: 100%;
   }
 }
 </style>

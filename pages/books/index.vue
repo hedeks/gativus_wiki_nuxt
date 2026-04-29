@@ -22,24 +22,30 @@
           <div class="filter-group">
             <span class="filter-group-label">{{ t.categories }}</span>
             <div class="filter-pills">
-              <button
+              <GvButton
                 type="button"
+                chromeless
+                variant="ghost"
+                color="gray"
                 class="gv-filter-pill gv-focusable"
                 :class="{ 'is-active': activeCategory === null }"
                 @click="activeCategory = null"
               >
                 {{ t.allBooks }}
-              </button>
-              <button
+              </GvButton>
+              <GvButton
                 v-for="cat in categories"
                 :key="cat.id"
                 type="button"
+                chromeless
+                variant="ghost"
+                color="gray"
                 class="gv-filter-pill gv-focusable"
                 :class="{ 'is-active': activeCategory === cat.id }"
                 @click="activeCategory = activeCategory === cat.id ? null : cat.id"
               >
                 {{ cat.title }}
-              </button>
+              </GvButton>
             </div>
           </div>
         </ExpandableFilters>
@@ -61,20 +67,22 @@
               <UIcon name="i-heroicons-book-open" class="w-6 h-6" />
             </div>
             <p>{{ t.notFound }}</p>
-            <button
+            <GvButton
               v-if="searchQuery || activeCategory !== null"
               type="button"
+              unstyled
+              chromeless
               class="reset-btn"
               @click="resetFilters"
             >
               {{ t.resetFilters }}
-            </button>
+            </GvButton>
           </div>
         </template>
 
         <KnowledgeListTransition class="cards-list">
           <ListItemCard
-            v-for="book in filteredBooks"
+            v-for="book in paginatedBooks"
             :key="book.id"
             variant="book"
             category-link-kind="virtual"
@@ -88,13 +96,21 @@
         </KnowledgeListTransition>
       </BaseStateWrapper>
     </div>
+
+    <div v-if="totalBookPages > 1" class="pagination-footer">
+      <GvPagination
+        v-model="page"
+        :total="filteredBooks.length"
+        :page-size="BOOKS_PAGE_SIZE"
+      />
+    </div>
   </KnowledgeIndexLayout>
 </template>
 
 <script setup lang="ts">
 import { useLanguageStore } from '~/stores/language'
 import { useDebounce } from '~/composables/useDebounce'
-import { filterBySearch } from '~/composables/useSearch'
+import { filterBySearch, slicePage, totalPagesFor } from '~/composables/useSearch'
 import type { CardBadge } from '~/components/common/ListItemCard.vue'
 
 const route = useRoute()
@@ -134,6 +150,10 @@ const uiDict: Record<string, any> = {
 }
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 
+const BOOKS_PAGE_SIZE = 12
+
+const page = ref(parseInt(route.query.page as string) || 1)
+
 const { searchQuery, debouncedQuery, isTyping } = useDebounce(
   (route.query.search as string) || '',
   300
@@ -161,6 +181,12 @@ const filteredBooks = computed(() => {
   return result
 })
 
+const totalBookPages = computed(() => totalPagesFor(filteredBooks.value.length, BOOKS_PAGE_SIZE))
+
+const paginatedBooks = computed(() =>
+  slicePage(filteredBooks.value, page.value, BOOKS_PAGE_SIZE),
+)
+
 function bookBadges(book: any): CardBadge[] {
   const badges: CardBadge[] = []
   if (book.category_ids) {
@@ -183,17 +209,29 @@ function bookBadges(book: any): CardBadge[] {
 function resetFilters() {
   searchQuery.value = ''
   activeCategory.value = null
+  page.value = 1
 }
 
 watch(() => langStore.currentLang, () => {
   refresh()
 })
 
-watch([searchQuery, activeCategory], () => {
+watch([debouncedQuery, activeCategory], () => {
+  page.value = 1
+})
+
+watch([page, totalBookPages], () => {
+  if (page.value > 1 && totalBookPages.value > 0 && page.value > totalBookPages.value) {
+    page.value = totalBookPages.value
+  }
+})
+
+watch([page, searchQuery, activeCategory], () => {
   navigateTo(
     {
       path: '/books',
       query: {
+        page: page.value > 1 ? String(page.value) : undefined,
         search: searchQuery.value || undefined,
         category_id:
           activeCategory.value != null ? String(activeCategory.value) : undefined,

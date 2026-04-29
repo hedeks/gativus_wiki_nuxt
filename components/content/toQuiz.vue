@@ -1,12 +1,12 @@
 <template>
-    <UButton
-    @click="$emit('changeView', 'quiz')"
+  <GvButton
+    color="sky"
     variant="solid"
     block
-    color="black"
+    icon="i-heroicons-arrow-right"
+    trailing
     class="rounded-none lg:text-xl sm:text-lg"
-    trailing-icon="i-heroicons-arrow-right"
-    :ui="{base: 'items-center'}"
     label="Перейти к тесту"
-    />
+    @click="$emit('changeView', 'quiz')"
+  />
 </template>

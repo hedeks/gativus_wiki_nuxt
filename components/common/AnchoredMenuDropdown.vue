@@ -4,7 +4,8 @@ const open = ref(false)
 const anchorRef = ref<HTMLElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
 
-const PANEL_W = 224
+/** Ширина панели (px); синхронизировать с классом Tailwind на панели (w-72 = 288). */
+const PANEL_W = 288
 const MARGIN = 8
 
 const panelStyle = ref<Record<string, string>>({
@@ -96,7 +97,7 @@ defineExpose({ open, toggle, close })
       <div
         v-if="open"
         ref="panelRef"
-        class="anchored-menu-panel fixed z-[300] w-56 overflow-y-auto rounded-md bg-white/80 shadow-lg ring-1 ring-gray-200 backdrop-blur-md dark:bg-zinc-900/80 dark:ring-zinc-800"
+        class="anchored-menu-panel fixed z-[300] w-72 max-w-[calc(100vw-16px)] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.12),0_1px_0_rgba(255,255,255,0.9)_inset] dark:border-zinc-600 dark:bg-zinc-900 dark:shadow-[0_20px_48px_rgba(0,0,0,0.45)]"
         :style="panelStyle"
         role="menu"
         @click.stop

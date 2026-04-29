@@ -1,10 +1,9 @@
 <template>
   <div class="admin-page-stack glossary-form-page">
     <div class="cta-buttons admin-index-toolbar cta-buttons--left">
-      <NuxtLink to="/admin/glossary" class="cta-button secondary">
-        <UIcon name="i-heroicons-arrow-left" />
-        <span>Назад к глоссарию</span>
-      </NuxtLink>
+      <GvButton to="/admin/glossary" variant="outline" color="gray" size="sm" icon="i-heroicons-arrow-left">
+        Назад к глоссарию
+      </GvButton>
     </div>
 
     <section class="admin-dash-hero">
@@ -31,11 +30,11 @@
         <label class="field-label">Импорт из ODT</label>
         <div class="odt-dropzone">
           <input type="file" ref="odtFileInput" class="hidden" accept=".odt" @change="handleOdtUpload" />
-          <UButton color="gray" variant="soft" icon="i-heroicons-arrow-up-tray" :loading="odtUploading"
+          <GvButton color="gray" variant="soft" icon="i-heroicons-arrow-up-tray" :loading="odtUploading"
             @click="(odtFileInput as HTMLInputElement).click()">
             Выбрать .odt файл
-          </UButton>
-          <p class="text-xs text-gray-500 mt-2">Текст из ODT можно вставить в определение или в статью-раскрытие</p>
+          </GvButton>
+          <p class="text-xs text-gray-500 mt-2">Текст из ODT подставляется в поле определения активной вкладки; полный HTML оформляйте в редакторе статьи.</p>
         </div>
       </div>
 
@@ -131,51 +130,19 @@
         <input v-model="form.presentation_path_zh" class="field-input" placeholder="/presentations/..." />
       </div>
 
-      <!-- Full article -->
+      <!-- Article disclosure: use full article editor -->
       <div class="field">
-        <label class="field-label">Статья-раскрытие (HTML)</label>
-        <div class="editor-wrap">
-          <div class="editor-toolbar">
-            <button type="button" class="toolbar-btn" @click="wrapSelection('strong')">
-              <strong>B</strong>
-            </button>
-            <button type="button" class="toolbar-btn" @click="wrapSelection('em')">
-              <em>I</em>
-            </button>
-            <button type="button" class="toolbar-btn" @click="wrapSelection('code')">
-              &lt;/&gt;
-            </button>
-            <button type="button" class="toolbar-btn" @click="insertTag('h2')">H2</button>
-            <button type="button" class="toolbar-btn" @click="insertTag('h3')">H3</button>
-            <button type="button" class="toolbar-btn" @click="showTermModal = true" title="Wiki Link">
-              <UIcon name="i-heroicons-book-open" class="text-sky-500" />
-            </button>
-            <button type="button" class="toolbar-btn" @click="insertTag('p')">¶</button>
-          </div>
-          <textarea
-            v-if="activeTab === 'en'"
-            ref="editorRef"
-            v-model="form.html_content"
-            class="field-textarea editor-textarea"
-            rows="12"
-            placeholder="Опционально. Расширенное раскрытие термина в HTML-формате (EN). Будет отображаться на странице /glossary/:slug."
-          />
-          <textarea
-            v-else-if="activeTab === 'ru'"
-            ref="editorRef"
-            v-model="form.html_content_ru"
-            class="field-textarea editor-textarea"
-            rows="12"
-            placeholder="Опционально. Расширенное раскрытие термина в HTML-формате (RU). Будет отображаться на странице /glossary/:slug."
-          />
-          <textarea
-            v-else-if="activeTab === 'zh'"
-            ref="editorRef"
-            v-model="form.html_content_zh"
-            class="field-textarea editor-textarea"
-            rows="12"
-            placeholder="Опционально. Расширенное раскрытие термина в HTML-формате (ZH). Будет отображаться на странице /glossary/:slug."
-          />
+        <label class="field-label">Статья-раскрытие</label>
+        <div class="disclosure-hint">
+          <p class="disclosure-hint__text">
+            Развёрнутый HTML и вики-ссылки оформляются в обычном редакторе статьи. После нажатия «Создать термин» откроется страница редактирования — там можно создать статью уже с привязкой к термину.
+          </p>
+          <GvButton to="/admin/articles/create" color="primary" variant="solid" size="lg" icon="i-heroicons-document-plus">
+            Создать статью
+          </GvButton>
+          <p class="disclosure-hint__note">
+            Нужна привязка к термину? Сохраните термин ниже и на следующей странице откройте «Создать статью-раскрытие» — откроется создание статьи с подставленным term_id.
+          </p>
         </div>
       </div>
 
@@ -205,13 +172,10 @@
 
       <!-- Actions -->
       <div class="form-actions">
-        <NuxtLink to="/admin/glossary">
-          <UButton color="gray" variant="soft" size="lg">Отмена</UButton>
-        </NuxtLink>
-        <UButton type="submit" color="black" :loading="submitting" size="lg" icon="i-heroicons-check"
-          class="rounded-xl">
+        <GvButton to="/admin/glossary" color="gray" variant="soft" size="lg">Отмена</GvButton>
+        <GvButton type="submit" color="primary" :loading="submitting" size="lg" icon="i-heroicons-check">
           Создать термин
-        </UButton>
+        </GvButton>
       </div>
 
       <!-- Error -->
@@ -222,9 +186,6 @@
     </form>
       </div>
     </section>
-
-    <!-- Modal for glossary terms -->
-    <AdminTermSelectorModal v-model="showTermModal" @select="insertTerm" />
   </div>
 </template>
 
@@ -258,9 +219,6 @@ const form = reactive({
   definition: '',
   definition_ru: '',
   definition_zh: '',
-  html_content: '',
-  html_content_ru: '',
-  html_content_zh: '',
   presentation_path: '',
   presentation_path_ru: '',
   presentation_path_zh: '',
@@ -273,8 +231,6 @@ const aliasInput = ref('')
 const submitting = ref(false)
 const odtUploading = ref(false)
 const error = ref('')
-const editorRef = ref<HTMLTextAreaElement>()
-const showTermModal = ref(false)
 
 async function handleOdtUpload(event: Event) {
   const input = event.target as HTMLInputElement
@@ -292,11 +248,6 @@ async function handleOdtUpload(event: Event) {
       body: formData
     })
 
-    // Populate both full article and definitions as defaults
-    if (activeTab.value === 'en') form.html_content = html
-    else if (activeTab.value === 'ru') form.html_content_ru = html
-    else if (activeTab.value === 'zh') form.html_content_zh = html
-    
     const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
     if (activeTab.value === 'en') {
       if (!form.definition) form.definition = text
@@ -306,33 +257,13 @@ async function handleOdtUpload(event: Event) {
       if (!form.definition_zh) form.definition_zh = text
     }
 
-    toast.add({ title: 'ODT импортирован', description: 'Контент добавлен в форму', color: 'green' })
+    toast.add({ title: 'ODT импортирован', description: 'Текст добавлен в определение', color: 'green' })
   } catch (e: any) {
     toast.add({ title: 'Ошибка импорта', description: e.data?.statusMessage || e.message, color: 'red' })
   } finally {
     odtUploading.value = false
     input.value = ''
   }
-}
-
-function insertTerm(term: any) {
-  const ta = editorRef.value
-  if (!ta) return
-  const { selectionStart: s, selectionEnd: e } = ta
-  const text = ta.value
-  const selectedText = text.substring(s, e) || term.title
-
-  const insertion = `<a class="wiki-term" data-term-slug="${term.slug}">${selectedText}</a>`
-
-  if (activeTab.value === 'en') form.html_content = text.substring(0, s) + insertion + text.substring(e)
-  else if (activeTab.value === 'ru') form.html_content_ru = text.substring(0, s) + insertion + text.substring(e)
-  else if (activeTab.value === 'zh') form.html_content_zh = text.substring(0, s) + insertion + text.substring(e)
-
-  nextTick(() => {
-    ta.focus()
-    const newPos = s + insertion.length
-    ta.setSelectionRange(newPos, newPos)
-  })
 }
 
 const autoSlug = computed(() => form.title ? slugify(form.title) : 'auto')
@@ -353,31 +284,6 @@ function addAlias() {
 }
 function removeAlias(i: number) { form.aliases.splice(i, 1) }
 
-// Simple HTML toolbar helpers
-function wrapSelection(tag: string) {
-  const ta = editorRef.value
-  if (!ta) return
-  const { selectionStart: s, selectionEnd: e } = ta
-  const sel = ta.value.slice(s, e)
-  const wrapped = `<${tag}>${sel}</${tag}>`
-  
-  if (activeTab.value === 'en') form.html_content = ta.value.slice(0, s) + wrapped + ta.value.slice(e)
-  else if (activeTab.value === 'ru') form.html_content_ru = ta.value.slice(0, s) + wrapped + ta.value.slice(e)
-  else if (activeTab.value === 'zh') form.html_content_zh = ta.value.slice(0, s) + wrapped + ta.value.slice(e)
-  
-  nextTick(() => { ta.setSelectionRange(s, s + wrapped.length) })
-}
-function insertTag(tag: string) {
-  const ta = editorRef.value
-  if (!ta) return
-  const insert = `<${tag}></${tag}>`
-  const pos = ta.selectionStart
-  
-  if (activeTab.value === 'en') form.html_content = ta.value.slice(0, pos) + insert + ta.value.slice(pos)
-  else if (activeTab.value === 'ru') form.html_content_ru = ta.value.slice(0, pos) + insert + ta.value.slice(pos)
-  else if (activeTab.value === 'zh') form.html_content_zh = ta.value.slice(0, pos) + insert + ta.value.slice(pos)
-}
-
 async function handleSubmit() {
   if (!form.title || !form.definition) {
     error.value = 'Заполните обязательные поля EN: название и определение'
@@ -386,7 +292,7 @@ async function handleSubmit() {
   submitting.value = true
   error.value = ''
   try {
-    await $fetch('/api/terms', {
+    const res = await $fetch<{ id: number }>('/api/terms', {
       method: 'POST',
       headers: {
         ...store.getAuthHeader(),
@@ -402,9 +308,6 @@ async function handleSubmit() {
         definition: form.definition,
         definition_ru: form.definition_ru || undefined,
         definition_zh: form.definition_zh || undefined,
-        html_content: form.html_content || undefined,
-        html_content_ru: form.html_content_ru || undefined,
-        html_content_zh: form.html_content_zh || undefined,
         presentation_path: form.presentation_path || undefined,
         presentation_path_ru: form.presentation_path_ru || undefined,
         presentation_path_zh: form.presentation_path_zh || undefined,
@@ -413,7 +316,7 @@ async function handleSubmit() {
         category_id: form.category_id,
       },
     })
-    router.push('/admin/glossary')
+    router.push(`/admin/glossary/${res.id}/edit`)
   } catch (e: any) {
     error.value = e.data?.statusMessage || 'Ошибка при создании термина'
   } finally {
@@ -603,66 +506,37 @@ async function handleSubmit() {
   color: #e2e8f0;
 }
 
-.editor-wrap {
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  overflow: hidden;
-  transition: border-color 0.2s;
-}
-
-.dark .editor-wrap {
-  border-color: #3f3f46;
-}
-
-.editor-wrap:focus-within {
-  border-color: #0ea5e9;
-}
-
-.editor-toolbar {
+.disclosure-hint {
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px dashed #e2e8f0;
+  background: #fafafa;
   display: flex;
-  gap: 2px;
-  padding: 8px 10px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
 }
 
-.dark .editor-toolbar {
-  background: #1c1c1f;
-  border-color: #3f3f46;
+.dark .disclosure-hint {
+  background: #111113;
+  border-color: #27272a;
 }
 
-.toolbar-btn {
-  padding: 5px 10px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 13px;
+.disclosure-hint__text,
+.disclosure-hint__note {
+  font-size: 14px;
+  line-height: 1.5;
   color: #64748b;
-  font-family: inherit;
-  transition: background 0.15s, color 0.15s;
+  margin: 0;
 }
 
-.toolbar-btn:hover {
-  background: #e0f2fe;
-  color: #0284c7;
+.dark .disclosure-hint__text,
+.dark .disclosure-hint__note {
+  color: #94a3b8;
 }
 
-.dark .toolbar-btn:hover {
-  background: #1e3a5f;
-  color: #38bdf8;
-}
-
-.editor-textarea {
-  border: none;
-  border-radius: 0;
-  resize: vertical;
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
-  font-size: 13px;
-}
-
-.editor-textarea:focus {
-  box-shadow: none;
+.disclosure-hint__note {
+  font-size: 12px;
 }
 
 .form-actions {
@@ -703,14 +577,6 @@ async function handleSubmit() {
   .form-title {
     font-size: 20px;
     letter-spacing: 1px;
-  }
-
-  .editor-toolbar {
-    flex-wrap: wrap;
-  }
-
-  .toolbar-btn {
-    min-width: 34px;
   }
 }
 

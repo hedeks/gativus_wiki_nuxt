@@ -57,20 +57,26 @@
         </div>
 
         <!-- Presentation Toggle -->
-        <UButton v-if="term.presentation_path" @click="changeView('quiz')" variant="solid" block color="sky"
-          class="rounded-xl lg:text-xl sm:text-lg mt-10 h-20 not-prose" :label="t.presentation" />
+        <GvButton v-if="term.presentation_path" variant="solid" block color="sky"
+          class="rounded-xl lg:text-xl sm:text-lg mt-10 h-20 not-prose" :label="t.presentation"
+          @click="changeView('quiz')" />
 
         <!-- Actions -->
-        <div class="mt-12 pt-8 border-t border-gray-100 dark:border-zinc-800 flex justify-between gap-4 not-prose">
+        <div class="mt-12 pt-8 border-t border-gray-100 dark:border-zinc-800 flex justify-between gap-4 not-prose term-footer-actions">
           <NuxtLink to="/glossary"
             class="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-sky-600 transition-colors">
             <UIcon name="i-heroicons-arrow-left" /> {{ t.back }}
           </NuxtLink>
-          <button @click="copyLink"
-            :class="['flex items-center gap-2 text-sm font-bold transition-colors', copied ? 'text-green-500' : 'text-gray-500 hover:text-sky-600']">
+          <GvButton
+            type="button"
+            unstyled
+            chromeless
+            :class="['flex items-center gap-2 text-sm font-bold transition-colors', copied ? 'text-green-500' : 'text-gray-500 hover:text-sky-600']"
+            @click="copyLink"
+          >
             <UIcon :name="copied ? 'i-heroicons-check' : 'i-heroicons-link'" />
             {{ copied ? t.copied : t.share }}
-          </button>
+          </GvButton>
         </div>
       </div>
 
@@ -84,8 +90,8 @@
     <div v-if="term.presentation_path" :class="[{ 'active': !isTheory }, { 'inactive': isTheory }]"
       class="flex w-full lg:h-[calc(100dvh_-_var(--header-height)_-_5rem)] dark:bg-zinc-950 bg-gray-50 items-center justify-center h-[calc(100dvh_-_var(--header-height)_-_1.5rem)] lg:col-span-10 xl:col-span-9 view-transition">
       <div class="absolute top-4 left-4 z-50">
-        <UButton icon="i-heroicons-chevron-left" variant="ghost" color="gray" @click="changeView('theory')">{{ t.theory
-        }}</UButton>
+        <GvButton icon="i-heroicons-chevron-left" variant="ghost" color="gray" @click="changeView('theory')">{{ t.theory
+        }}</GvButton>
       </div>
       <thePresentationView :presentationPath="term.presentation_path" :articleTitle="term.title" />
     </div>
@@ -96,7 +102,16 @@
         <div class="lightbox-content">
           <img :src="lightboxImage" class="lightbox-image" :class="{ 'is-zoomed': isZoomed }"
             @click.stop="toggleZoom" />
-          <button class="lightbox-close" @click="closeLightbox">&times;</button>
+          <GvButton
+            type="button"
+            unstyled
+            chromeless
+            class="lightbox-close"
+            aria-label="Close"
+            @click="closeLightbox"
+          >
+            &times;
+          </GvButton>
         </div>
       </div>
     </Transition>
@@ -199,7 +214,7 @@ useSeoMeta({
   ogTitle: computed(() => term.value?.title),
   description: computed(() => term.value?.definition || ''),
   ogDescription: computed(() => term.value?.definition || ''),
-  ogImage: computed(() => term.value?.image_url || '/logo.jpg'),
+  ogImage: computed(() => term.value?.image_url || '/favicon.ico'),
   twitterCard: 'summary_large_image',
 })
 
@@ -428,6 +443,14 @@ onUnmounted(() => { if (obs.value) obs.value.disconnect() })
   backdrop-filter: blur(8px);
 }
 
+.term-footer-actions :deep(.gv-btn__label) {
+  display: contents;
+}
+
+:deep(.lightbox-close .gv-btn__label) {
+  display: contents;
+}
+
 .lightbox-content {
   position: relative;
   max-width: 90vw;
@@ -447,7 +470,7 @@ onUnmounted(() => { if (obs.value) obs.value.disconnect() })
   cursor: zoom-out;
 }
 
-.lightbox-close {
+:deep(.lightbox-close) {
   position: fixed;
   top: 20px;
   right: 20px;

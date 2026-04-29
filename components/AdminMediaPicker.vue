@@ -7,7 +7,7 @@
         class="flex-1"
         :placeholder="placeholder || 'https://...'"
       />
-      <UButton
+      <GvButton
         v-if="modelValue"
         icon="i-heroicons-eye"
         color="gray"
@@ -15,7 +15,7 @@
         title="Предпросмотр"
         @click="previewOpen = true"
       />
-      <UButton
+      <GvButton
         icon="i-heroicons-cloud-arrow-up"
         color="gray"
         variant="soft"
@@ -23,7 +23,7 @@
         :loading="uploading"
         @click="fileInput?.click()"
       />
-      <UButton
+      <GvButton
         icon="i-heroicons-folder-open"
         color="gray"
         variant="soft"
@@ -55,7 +55,7 @@
           </div>
         </div>
         <div class="mt-4 flex justify-end">
-          <UButton color="gray" @click="previewOpen = false">Закрыть</UButton>
+          <GvButton color="gray" variant="soft" @click="previewOpen = false">Закрыть</GvButton>
         </div>
       </div>
     </UModal>
@@ -65,7 +65,7 @@
       <div class="p-6">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-bold">Галерея файлов</h3>
-          <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark" @click="galleryOpen = false" />
+          <GvButton color="gray" variant="ghost" square icon="i-heroicons-x-mark" @click="galleryOpen = false" />
         </div>
 
         <div v-if="loadingGallery" class="flex justify-center p-8">

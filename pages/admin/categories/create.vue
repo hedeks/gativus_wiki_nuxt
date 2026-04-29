@@ -81,10 +81,9 @@ async function saveCategory() {
 <template>
   <div class="admin-page-stack">
     <div class="cta-buttons admin-index-toolbar cta-buttons--left">
-      <NuxtLink to="/admin/categories" class="cta-button secondary">
-        <UIcon name="i-heroicons-arrow-left" />
-        <span>К списку</span>
-      </NuxtLink>
+      <GvButton to="/admin/categories" variant="outline" color="gray" size="sm" icon="i-heroicons-arrow-left">
+        К списку
+      </GvButton>
     </div>
 
     <section class="admin-dash-hero">
@@ -157,7 +156,7 @@ async function saveCategory() {
           <div class="flex gap-2">
             <UInput v-model="form.icon" class="flex-1" />
             <UPopover v-model:open="showIconSelector">
-              <UButton color="gray" variant="soft" :icon="form.icon" />
+              <GvButton color="gray" variant="soft" square :icon="form.icon" type="button" />
               <template #panel>
                 <div class="p-3 grid grid-cols-6 gap-1 max-h-[300px] overflow-y-auto w-[240px]">
                   <button
@@ -177,8 +176,8 @@ async function saveCategory() {
         </UFormGroup>
 
         <div class="flex justify-end gap-3">
-          <UButton to="/admin/categories" color="gray" variant="ghost">Отмена</UButton>
-          <UButton type="submit" color="primary" :loading="saving">Сохранить</UButton>
+          <GvButton to="/admin/categories" color="gray" variant="ghost">Отмена</GvButton>
+          <GvButton type="submit" color="primary" :loading="saving">Сохранить</GvButton>
         </div>
           </UForm>
         </div>

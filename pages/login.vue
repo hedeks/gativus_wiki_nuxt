@@ -1,132 +1,285 @@
 <script setup lang="ts">
+import type { User } from '~/types'
 
-const toast = useToast()
-const store = userStore();
-const email: Ref<HTMLInputElement> = ref() as Ref<HTMLInputElement>;
-const password: Ref<HTMLInputElement> = ref() as Ref<HTMLInputElement>;
-const login: Ref<HTMLInputElement> = ref() as Ref<HTMLInputElement>;
-const isSignup: Ref<Boolean> = ref(false);
-const errorMain = ref<{ message: string } | null>(null);
-const isLoading: Ref<boolean> = ref(false)
+definePageMeta({
+  layout: 'default',
+})
 
-const signUp = async (): Promise<void> => {
-    isLoading.value = true;
-    try {
-        const data = await $fetch("/api/auth/register", {
-            method: "POST",
-            body: {
-                email: email.value.value,
-                password: password.value.value,
-                login: login.value.value
-            }
-        });
-        const user = data.res.user;
-        if (user) {
-            store.setUser(user, data.res.access_token);
-            toast.add({
-                title: `Аккаунт создан! Добро пожаловать, ${user.login}`, ui: {
-                    background: 'bg-white dark:bg-zinc-900',
-                    progress: { background: 'bg-sky-600 dark:bg-sky-400' }
-                }
-            });
-            navigateTo('/profile');
-        }
-    } catch (err: any) {
-        errorMain.value = { message: err?.data?.message || 'Ошибка регистрации' };
-    }
-    isLoading.value = false;
+const store = userStore()
+store.checkAuth()
+if (store.isLoggedIn) {
+  await navigateTo('/profile')
 }
 
-const loginFunc = async (): Promise<void> => {
-    isLoading.value = true;
-    try {
-        const data = await $fetch("/api/auth/login", {
-            method: "POST", body: {
-                email: email.value.value,
-                password: password.value.value
-            }
-        });
-        const user = data.res.user;
-        if (user) {
-            store.setUser(user, data.res.access_token);
-            toast.add({
-                title: `Вы вошли в аккаунт ${user.email}`, ui: {
-                    background: 'bg-white dark:bg-zinc-900',
-                    progress: { background: 'bg-sky-600 dark:bg-sky-400' }
-                }
-            });
-            navigateTo('/profile');
-        }
-    } catch (err: any) {
-        errorMain.value = { message: err?.data?.message || 'Ошибка входа' };
+const toast = useToast()
+
+const email = ref('')
+const password = ref('')
+const loginName = ref('')
+const isSignup = ref(false)
+const errorMain = ref<string | null>(null)
+const isLoading = ref(false)
+
+const pageTitle = computed(() => (isSignup.value ? 'Регистрация' : 'Вход'))
+useHead({
+  title: pageTitle,
+})
+
+watch(isSignup, () => {
+  errorMain.value = null
+})
+
+watch([email, password, loginName], () => {
+  errorMain.value = null
+})
+
+async function signUp(): Promise<void> {
+  isLoading.value = true
+  errorMain.value = null
+  try {
+    const data = await $fetch<{ res: { user: User, access_token: string } }>('/api/auth/register', {
+      method: 'POST',
+      body: {
+        email: email.value.trim(),
+        password: password.value,
+        login: loginName.value.trim(),
+      },
+    })
+    const user = data.res.user
+    if (user) {
+      store.setUser(user, data.res.access_token)
+      toast.add({
+        title: `Аккаунт создан! Добро пожаловать, ${user.login}`,
+        ui: {
+          background: 'bg-white dark:bg-zinc-900',
+          progress: { background: 'bg-sky-600 dark:bg-sky-400' },
+        },
+      })
+      await navigateTo('/profile')
     }
-    isLoading.value = false;
+  } catch (err: unknown) {
+    const msg = err && typeof err === 'object' && 'data' in err
+      ? (err as { data?: { message?: string } }).data?.message
+      : undefined
+    errorMain.value = msg || 'Ошибка регистрации'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function loginFunc(): Promise<void> {
+  isLoading.value = true
+  errorMain.value = null
+  try {
+    const data = await $fetch<{ res: { user: User, access_token: string } }>('/api/auth/login', {
+      method: 'POST',
+      body: {
+        email: email.value.trim(),
+        password: password.value,
+      },
+    })
+    const user = data.res.user
+    if (user) {
+      store.setUser(user, data.res.access_token)
+      toast.add({
+        title: `Вы вошли: ${user.email}`,
+        ui: {
+          background: 'bg-white dark:bg-zinc-900',
+          progress: { background: 'bg-sky-600 dark:bg-sky-400' },
+        },
+      })
+      await navigateTo('/profile')
+    }
+  } catch (err: unknown) {
+    const msg = err && typeof err === 'object' && 'data' in err
+      ? (err as { data?: { message?: string } }).data?.message
+      : undefined
+    errorMain.value = msg || 'Ошибка входа'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function onSubmit(): Promise<void> {
+  if (isSignup.value)
+    await signUp()
+  else
+    await loginFunc()
+}
+
+function toggleSignup(): void {
+  isSignup.value = !isSignup.value
 }
 </script>
 
 <template>
-    <div class="container m-auto w-full h-full flex flex-col items-center justify-center">
-        <UCard class="max-w-sm w-80 dark:shadow-darkShadow"
-            :ui="{ ring: 'dark:ring-zinc-700', divide: 'dark:divide-zinc-700', background: 'bg-white dark:bg-zinc-900', header: { base: 'dark:bg-zinc-950 rounded-xl bg-gray-50' } }">
-            <template #header>
-                <div class="h-3 flex items-center justify-start text-xl font-bold">
-                    <span v-if="isSignup">Регистрация</span>
-                    <span v-else>Вход</span>
-                </div>
-            </template>
-            <div class="h-fit">
-                <form @submit.prevent="isSignup ? signUp() : loginFunc()" class="flex flex-col gap-2 items-center">
-                    <input placeholder="почта email" type="text" ref="email" class="input">
-                    <input v-if="isSignup" ref="login" class="input" placeholder="логин" type="text">
-                    <input placeholder="пароль" type="password" ref="password" class="input">
-                    <UButton block color="sky" variant="solid" square type="submit"
-                        class="mt-7 shadow-lg shadow-sky-500/20"
-                        :ui="{ base: 'focus:outline-none focus-visible:outline-0 disabled:cursor-not-allowed disabled:opacity-75 flex-shrink-0' }"
-                        label="Подтвердить" :loading="isLoading">
-                        <template #trailing>
-                            <UIcon name="i-heroicons-arrow-up-circle" class="w-5 h-5" />
-                        </template>
-                    </UButton>
+  <div class="auth-page gv-page flex flex-col items-center justify-center py-12 px-4">
+    <div
+      class="auth-card w-full max-w-md rounded-2xl border border-zinc-200/80 bg-[var(--gv-surface-card)] shadow-[var(--gv-shadow-md)] dark:border-zinc-800/80 overflow-hidden"
+    >
+      <div class="auth-card-head border-b border-zinc-200/70 dark:border-zinc-800 px-6 py-5 bg-[var(--gv-surface-header)]">
+        <h1 class="text-xl font-bold tracking-tight text-[var(--gv-text-primary)]">
+          {{ isSignup ? 'Регистрация' : 'Вход' }}
+        </h1>
+        <p class="text-sm text-[var(--gv-text-secondary)] mt-1">
+          {{ isSignup ? 'Создайте аккаунт для доступа к материалам.' : 'Войдите, чтобы открыть профиль и закрытые разделы.' }}
+        </p>
+      </div>
 
-                </form>
-                <div v-if="errorMain" class="alert mt-5">
-                    {{ errorMain.message }}</div>
-            </div>
-            <template #footer>
-                <div class="h-8 flex items-center justify-center">
-                    <span @click="isSignup = !isSignup" v-if="isSignup" class="cursor-pointer text-sky-600 dark:text-sky-400 hover:underline">У вас уже есть аккаунт? Войти</span>
-                    <span @click="isSignup = !isSignup" v-else class="cursor-pointer text-sky-600 dark:text-sky-400 hover:underline">Зарегистрироваться</span>
-                </div>
-            </template>
-        </UCard>
-        <span v-if="!store.isLoggedIn" class="alert mt-5 border-none shadow-none text-gray-500 bg-transparent lowercase tracking-normal">Просматривать курсы и профиль можно только войдя в аккаунт</span>
+      <form class="auth-card-body px-6 py-6 flex flex-col gap-4" @submit.prevent="onSubmit">
+        <label class="auth-field">
+          <span class="auth-label">Электронная почта</span>
+          <input
+            v-model="email"
+            type="email"
+            name="email"
+            autocomplete="email"
+            required
+            class="auth-input"
+            placeholder="you@example.com"
+          >
+        </label>
+
+        <label v-if="isSignup" class="auth-field">
+          <span class="auth-label">Логин</span>
+          <input
+            v-model="loginName"
+            type="text"
+            name="login"
+            autocomplete="username"
+            required
+            class="auth-input"
+            placeholder="Уникальное имя"
+          >
+        </label>
+
+        <label class="auth-field">
+          <span class="auth-label">Пароль</span>
+          <input
+            v-model="password"
+            type="password"
+            name="password"
+            :autocomplete="isSignup ? 'new-password' : 'current-password'"
+            required
+            class="auth-input"
+            placeholder="••••••••"
+          >
+        </label>
+
+        <p
+          v-if="errorMain"
+          class="auth-error"
+          role="alert"
+        >
+          {{ errorMain }}
+        </p>
+
+        <GvButton
+          type="submit"
+          block
+          color="sky"
+          variant="solid"
+          trailing
+          icon="i-heroicons-arrow-right"
+          class="mt-2 shadow-lg shadow-sky-500/15"
+          :loading="isLoading"
+        >
+          {{ isSignup ? 'Зарегистрироваться' : 'Войти' }}
+        </GvButton>
+      </form>
+
+      <div class="auth-card-foot px-6 py-4 border-t border-zinc-200/70 dark:border-zinc-800">
+        <button
+          type="button"
+          class="auth-toggle"
+          @click="toggleSignup"
+        >
+          {{ isSignup ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться' }}
+        </button>
+      </div>
     </div>
+
+    <p
+      v-if="!store.isLoggedIn"
+      class="mt-6 text-center text-sm text-[var(--gv-text-secondary)] max-w-md"
+    >
+      Просмотр части контента и личного кабинета доступен после входа.
+    </p>
+  </div>
 </template>
 
 <style scoped>
-.input {
-    @apply shadow-sm rounded bg-white dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 px-3 py-2 outline-none focus:border-sky-600 dark:focus:border-sky-400 transition-all duration-300 w-full;
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-
-@keyframes wrong {
-    0% {
-        transform: translateX(5px);
-        opacity: 0;
-    }
-
-    50% {
-        transform: translateX(-5px);
-        opacity: 0.5;
-    }
-
-    100% {
-        transform: translateX(0);
-        opacity: 1;
-    }
+.auth-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gv-text-secondary);
 }
 
-.alert {
-    @apply text-center border border-red-500 text-red-900 dark:text-red-400 dark:bg-red-950 bg-red-50 p-5 rounded shadow uppercase tracking-widest font-mono font-bold transition ease-linear duration-300 animate-slide;
+.auth-input {
+  width: 100%;
+  border-radius: var(--gv-radius-control);
+  border: 1px solid var(--gv-border-principal);
+  background: var(--gv-surface);
+  color: var(--gv-text-primary);
+  padding: 10px 14px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-input::placeholder {
+  color: var(--gv-text-secondary);
+  opacity: 0.7;
+}
+
+.auth-input:focus {
+  border-color: var(--gv-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gv-primary) 22%, transparent);
+}
+
+.auth-error {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--gv-radius-control);
+  font-size: 14px;
+  line-height: 1.4;
+  color: #b91c1c;
+  background: color-mix(in srgb, #fecaca 35%, transparent);
+  border: 1px solid color-mix(in srgb, #ef4444 45%, transparent);
+}
+
+.dark .auth-error {
+  color: #fca5a5;
+  background: color-mix(in srgb, #7f1d1d 45%, transparent);
+  border-color: color-mix(in srgb, #b91c1c 50%, transparent);
+}
+
+.auth-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gv-primary);
+  cursor: pointer;
+  border-radius: var(--gv-radius-control);
+  transition: background 0.15s ease;
+}
+
+.auth-toggle:hover {
+  background: color-mix(in srgb, var(--gv-primary) 12%, transparent);
+}
+
+.auth-card-foot {
+  background: color-mix(in srgb, var(--gv-surface-header) 88%, transparent);
 }
 </style>

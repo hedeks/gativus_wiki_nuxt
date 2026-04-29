@@ -13,14 +13,12 @@
         {{ t.heroDescription }}
       </p>
       <div class="hero-cta">
-        <NuxtLink to="/books" class="cta-button primary">
-          <UIcon name="i-heroicons-book-open" />
+        <GvButton to="/books" color="sky" variant="solid" size="md" icon="i-heroicons-book-open">
           {{ t.articles }}
-        </NuxtLink>
-        <NuxtLink to="/about" class="cta-button secondary">
-          <UIcon name="i-heroicons-information-circle" />
+        </GvButton>
+        <GvButton to="/about" variant="outline" color="gray" size="md" icon="i-heroicons-information-circle">
           {{ t.about }}
-        </NuxtLink>
+        </GvButton>
       </div>
     </section>
   </div>
@@ -51,7 +49,7 @@ const uiDict: Record<string, any> = {
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 
 useSeoMeta({
-  ogImage: '/images/121px-Logo.jpg',
+  ogImage: '/favicon.ico',
   description: () => t.value.metaDesc,
   ogDescription: () => t.value.metaDesc,
   title: () => t.value.metaTitle,
@@ -59,7 +57,7 @@ useSeoMeta({
 
 useHead({
   htmlAttrs: { lang: () => langStore.currentLang },
-  link: [{ rel: 'icon', type: 'image/svg', href: '/logo.jpg' }]
+  link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }]
 })
 </script>
 

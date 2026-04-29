@@ -145,7 +145,7 @@ async function patchRole(user: AdminUserPublic) {
       <div class="card-body card-body--row">
         <UIcon name="i-heroicons-exclamation-triangle" class="icon-err" />
         <span>{{ error.message }}</span>
-        <button type="button" class="cta-button secondary" @click="refresh()">Повторить</button>
+        <GvButton type="button" variant="outline" color="gray" size="sm" @click="refresh()">Повторить</GvButton>
       </div>
     </section>
 
@@ -175,11 +175,16 @@ async function patchRole(user: AdminUserPublic) {
                 </select>
               </UFormGroup>
             </div>
-            <button type="submit" class="cta-button primary" :disabled="createSubmitting">
-              <UIcon v-if="createSubmitting" name="i-heroicons-arrow-path" class="icon-spin" />
-              <UIcon v-else name="i-heroicons-user-plus" />
-              <span>Создать</span>
-            </button>
+            <GvButton
+              type="submit"
+              color="sky"
+              variant="solid"
+              size="sm"
+              icon="i-heroicons-user-plus"
+              :loading="createSubmitting"
+            >
+              Создать
+            </GvButton>
           </form>
         </div>
       </section>
@@ -232,7 +237,7 @@ async function patchRole(user: AdminUserPublic) {
               <td class="td-muted">{{ formatDt(u.created_at) }}</td>
               <td class="td-muted">{{ formatDt(u.last_visited) }}</td>
               <td v-if="isAdmin" class="col-save">
-                <UButton
+                <GvButton
                   v-if="roleDraft[u.id] !== u.role"
                   size="xs"
                   color="sky"
@@ -242,7 +247,7 @@ async function patchRole(user: AdminUserPublic) {
                   @click="patchRole(u)"
                 >
                   Сохранить
-                </UButton>
+                </GvButton>
               </td>
             </tr>
           </tbody>

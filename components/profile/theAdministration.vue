@@ -1,35 +1,145 @@
 <script setup lang="ts">
-const store = userStore();
-const role = computed(() => store.userInfo?.role);
+import type { Quiz } from '~/types'
 
-const { data, pending } = useFetch('/api/quiz');
+const store = userStore()
+const role = computed(() => store.userInfo?.role)
+
+const { data, pending } = useFetch<Quiz[]>('/api/quiz')
 
 const courses = computed(() => {
-    return (data.value as any[])?.sort((a: any, b: any) => a.course_id - b.course_id)
-});
+  const d = data.value
+  if (!Array.isArray(d))
+    return [] as Quiz[]
+  return [...d].sort((a, b) => a.course_id - b.course_id)
+})
+
+const heading = computed(() =>
+  role.value === 'admin' ? 'Администрирование' : 'Панель редактора',
+)
 </script>
 
-
 <template>
-    <div id="admistration" v-if="role === 'admin'" class="flex col-span-1 p-5 items-start h-full justify-center py-2">
-        <UCard class="text-center dark:shadow-darkShadow w-fit sm:w-full"
-            :ui="{ ring: 'dark:ring-gray-500', divide: 'dark:divide-gray-500', background: 'bg-gray-50 dark:bg-zinc-800', header: { base: 'dark:bg-black rounded-xl bg-gray-100' } }">
-            <template #header>
-                <h2 class="text-xl font-bold text-center">
-                    Администрирование
-                </h2>
-            </template>
-            <div class="flex flex-col p-1 gap-3">
-                <h3 class="font-semibold w-fit">
-                    {{ "Количество курсов на сайте: " + data?.length }}
-                </h3>
-                <span class="flex shadow-sm dark:shadow-darkShadow border text-sm px-2 py-1 rounded text-start"
-                    v-for="course in courses as Quiz[]" :key="course.course_id">
-                    {{ "(course_id: " + course.course_id + ") " + course.title }} </span>
-            </div>
-            <UButton icon="i-heroicons-arrow-right" trailing block color="black"
-                class="dark:shadow-darkShadow flex flex-wrap mx-auto mt-5" variant="solid" to="/admin"
-                label="Перейти к панели управления контентом" :loading="pending" />
-        </UCard>
+  <section
+    v-if="role === 'admin' || role === 'editor'"
+    id="administration"
+    class="gv-surface-card overflow-hidden"
+  >
+    <div class="gv-card-header flex flex-col gap-1">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="admin-eyebrow">Админ</span>
+        <h2 class="admin-card-title">
+          {{ heading }}
+        </h2>
+      </div>
+      <p class="admin-card-sub m-0">
+        Курсы (legacy API) и переход в панель контента.
+      </p>
     </div>
+    <div class="admin-card-body">
+      <p class="admin-stat m-0">
+        Курсов на сайте: {{ courses.length }}
+      </p>
+      <ul class="admin-course-list">
+        <li
+          v-for="course in courses"
+          :key="course.course_id"
+          class="admin-course-item"
+        >
+          <span class="admin-course-id">{{ course.course_id }}</span>
+          {{ course.title }}
+        </li>
+      </ul>
+      <GvButton
+        icon="i-heroicons-arrow-right"
+        trailing
+        block
+        color="sky"
+        variant="solid"
+        to="/admin"
+        class="mt-1"
+        label="Панель управления контентом"
+        :loading="pending"
+      />
+    </div>
+  </section>
 </template>
+
+<style scoped>
+.admin-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #e0f2fe, #bae6fd);
+  color: #0c4a6e;
+}
+
+.dark .admin-eyebrow {
+  background: linear-gradient(90deg, #0c4a6e, #082f49);
+  color: #e0f2fe;
+}
+
+.admin-card-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--gv-text-primary);
+}
+
+.admin-card-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gv-text-secondary);
+}
+
+.admin-card-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-stat {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gv-text-primary);
+}
+
+.admin-course-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.admin-course-item {
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 8px 10px;
+  border-radius: var(--gv-radius-control);
+  border: 1px solid var(--gv-border-principal);
+  background: var(--gv-surface);
+  color: var(--gv-text-primary);
+  text-align: left;
+}
+
+.admin-course-id {
+  display: inline-block;
+  min-width: 2rem;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gv-text-secondary);
+  font-variant-numeric: tabular-nums;
+  margin-right: 8px;
+}
+</style>

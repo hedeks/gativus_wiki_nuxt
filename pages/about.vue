@@ -129,14 +129,18 @@
           {{ t.ctaText }}
         </p>
         <div class="cta-buttons">
-          <NuxtLink to="/books" class="cta-button primary">
-            <UIcon name="i-heroicons-book-open" />
+          <GvButton to="/books" color="sky" variant="solid" size="md" icon="i-heroicons-book-open">
             {{ t.ctaArticles }}
-          </NuxtLink>
-          <a href="mailto:gativusmedia@outlook.com" class="cta-button secondary">
-            <UIcon name="i-heroicons-envelope" />
+          </GvButton>
+          <GvButton
+            href="mailto:gativusmedia@outlook.com"
+            variant="outline"
+            color="gray"
+            size="md"
+            icon="i-heroicons-envelope"
+          >
             gativusmedia@outlook.com
-          </a>
+          </GvButton>
         </div>
       </div>
     </section>
@@ -263,7 +267,7 @@ useSeoMeta({
   title: () => t.value.metaTitle,
   description: () => t.value.metaDesc,
   ogDescription: () => t.value.metaDesc,
-  ogImage: '/images/121px-Logo.jpg',
+  ogImage: '/favicon.ico',
 })
 
 definePageMeta({ layout: 'default' })
