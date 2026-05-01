@@ -5,7 +5,6 @@
         v-if="visible && term"
         ref="popoverEl"
         class="term-popover"
-        :class="{ 'term-popover--mobile': isMobilePopover }"
         :style="popoverStyle"
         :aria-busy="loading"
         @click.stop
@@ -73,8 +72,14 @@
 </template>
 
 <script setup lang="ts">
-import { useMediaQuery } from '@vueuse/core'
 import { useLanguageStore } from '~/stores/language'
+import {
+  ANCHORED_POPUP_GAP_PX,
+  ANCHORED_POPUP_PAD_PX,
+  ANCHORED_POPUP_PLAN_WIDTH_PX,
+  pickPopupRectFromPoint,
+  viewportScreenBox,
+} from '~/utils/anchoredPopupPlacement'
 
 interface TermData {
   id: number
@@ -113,9 +118,11 @@ const uiDict: Record<string, { loading: string; openArticle: string; loadError: 
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 
-/** Нижняя шторка на узком экране — не привязываем к getBoundingClientRect().left якоря (часто уезжает влево). */
-const isMobilePopover = useMediaQuery('(max-width: 640px)')
+/** Координаты клика в системе клиента (viewport) — единственный якорь позиции попапа. */
+const pointerClient = ref<{ x: number, y: number } | null>(null)
 const lastAnchorEl = ref<HTMLElement | null>(null)
+
+const cache = new Map<string, TermData>()
 
 const visible = ref(false)
 const loading = ref(false)
@@ -133,268 +140,170 @@ const popoverStyle = ref<Record<string, string>>({
 })
 
 /**
- * Плановая высота под размещение: скелетон loading (категория + медиа 140px + чипы + линии + футер)
- * — типично самый «высокий» каркас до загрузки. После монтирования уточняем через measurePlacementBoxHeight.
- * Подгоняйте под .popover-skel-* + padding/gap в стилях.
+ * Позиционирование от точки курсора: высота для расчёта квадранта ограничивается окном и зоной у курсора,
+ * чтобы высокий скелетон не раздувал «виртуальный» прямоугольник и не уносил попап вверх.
  */
-const POPOVER_PLACEMENT_BOX_PX = 368
 
-const cache = new Map<string, TermData>()
-
-/** true — попап открыт снизу от якоря, false — сверху */
-const popoverPlaceBelow = ref(true)
-
-function parseStylePx(v: string | undefined): number | undefined {
-  if (v == null || v === 'auto') return undefined
-  const n = parseFloat(v)
-  return Number.isFinite(n) ? n : undefined
-}
-
-function computeAnchorLockedTop(
-  rect: DOMRect,
-  planBoxH: number,
-  margin: number,
-  gap: number,
-): { placeBelow: boolean, topPx: number } {
-  const vv = window.visualViewport
-  const winH = vv?.height ?? window.innerHeight
-  const winTop = vv?.offsetTop ?? 0
-  const st = winTop + margin
-  const sb = winTop + winH - margin
-
-  const spaceBelow = sb - (rect.bottom + gap)
-  const spaceAbove = rect.top - gap - st
-
-  if (planBoxH <= spaceBelow) {
-    return { placeBelow: true, topPx: rect.bottom + gap }
-  }
-  if (planBoxH <= spaceAbove) {
-    return { placeBelow: false, topPx: rect.top - gap - planBoxH }
-  }
-  if (spaceBelow >= spaceAbove) {
-    return { placeBelow: true, topPx: rect.bottom + gap }
-  }
-  return { placeBelow: false, topPx: rect.top - gap - Math.min(planBoxH, spaceAbove) }
-}
-
-function measurePlacementBoxHeight(el: HTMLElement | undefined): number {
-  if (!el) return POPOVER_PLACEMENT_BOX_PX
-  const h = el.getBoundingClientRect().height
-  return Math.max(POPOVER_PLACEMENT_BOX_PX, h)
-}
-
-function applyPopoverAnchorPosition(anchor: HTMLElement) {
-  const margin = 8
-  const gap = 8
-
-  if (isMobilePopover.value) return
-
-  const rect = anchor.getBoundingClientRect()
-  const planH = measurePlacementBoxHeight(popoverEl.value)
-  const { placeBelow, topPx } = computeAnchorLockedTop(rect, planH, margin, gap)
-  popoverPlaceBelow.value = placeBelow
-
-  popoverStyle.value = {
-    ...popoverStyle.value,
-    left: `${rect.left}px`,
-    top: `${topPx}px`,
-  }
-}
-
-function seedPopoverPositionFromStyleOrAnchor(popup: HTMLElement): { l: number, t: number } {
-  let l = parseStylePx(popoverStyle.value.left)
-  let t = parseStylePx(popoverStyle.value.top)
-  if (l !== undefined && t !== undefined) return { l, t }
-
-  const anchor = lastAnchorEl.value
-  const gap = 8
-  if (anchor && !isMobilePopover.value) {
-    const r = anchor.getBoundingClientRect()
-    if (l === undefined) l = r.left
-    if (t === undefined) t = r.bottom + gap
-  }
-
-  const br = popup.getBoundingClientRect()
-  if (l === undefined) l = br.left
-  if (t === undefined) t = br.top
-  return { l, t }
-}
-
-function onPopoverAfterEnter() {
-  if (!visible.value || isMobilePopover.value) return
-  clampPopoverToScreen()
-}
-
-function clampPopoverToScreen() {
+function syncPopoverLayout() {
   const popup = popoverEl.value
-  const anchor = lastAnchorEl.value
-  if (!popup || !visible.value || isMobilePopover.value) return
+  if (!popup || !visible.value || !pointerClient.value) return
 
-  const pad = 8
-  const gap = 8
-  let maxHStr = ''
+  const { x: cx, y: cy } = pointerClient.value
+  const { screenLeft, screenRight, screenTop, screenBottom, winW } = viewportScreenBox()
+  const gap = ANCHORED_POPUP_GAP_PX
+  const pad = ANCHORED_POPUP_PAD_PX
+  const width = Math.min(ANCHORED_POPUP_PLAN_WIDTH_PX, winW - 2 * pad)
 
   popup.style.maxHeight = ''
   popup.style.overflowY = ''
   void popup.offsetHeight
 
+  const rawNaturalH = popup.getBoundingClientRect().height
+  const viewportStrip = screenBottom - screenTop
+  /** Высота, которая реально помещается в окно; скелетон часто выше — иначе pickPopupRectFromPoint считает «ящик» огромным и уводит попап далеко вверх от курсора. */
+  const viewportCap = Math.max(160, Math.floor(viewportStrip - gap * 4))
+  const availBelow = Math.max(0, screenBottom - cy - gap * 2)
+  const availAbove = Math.max(0, cy - screenTop - gap * 2)
+  const adjacentCap = Math.max(availBelow, availAbove, 140)
+  const hPlacement = Math.min(rawNaturalH, viewportCap, adjacentCap)
+
+  let { left, top } = pickPopupRectFromPoint(
+    cx,
+    cy,
+    width,
+    hPlacement,
+    gap,
+    screenLeft,
+    screenRight,
+    screenTop,
+    screenBottom,
+  )
+
+  popup.style.position = 'fixed'
+  popup.style.left = `${left}px`
+  popup.style.top = `${top}px`
+  popup.style.width = `${width}px`
+  void popup.offsetHeight
+
+  let r = popup.getBoundingClientRect()
+  const hRefined = Math.min(r.height, viewportCap, adjacentCap)
+  ;({ left, top } = pickPopupRectFromPoint(
+    cx,
+    cy,
+    width,
+    hRefined,
+    gap,
+    screenLeft,
+    screenRight,
+    screenTop,
+    screenBottom,
+  ))
+
+  let maxHStr = ''
+  if (rawNaturalH > viewportCap) {
+    maxHStr = `${viewportCap}px`
+  }
+  else if (top + r.height > screenBottom - pad) {
+    maxHStr = `${Math.max(120, Math.floor(screenBottom - pad - top))}px`
+  }
+
+  popup.style.left = `${left}px`
+  popup.style.top = `${top}px`
+  if (maxHStr) {
+    popup.style.maxHeight = maxHStr
+    popup.style.overflowY = 'auto'
+  }
+  else {
+    popup.style.maxHeight = ''
+    popup.style.overflowY = ''
+  }
+  void popup.offsetHeight
+
   const vv = window.visualViewport
-  const winW = vv?.width ?? window.innerWidth
   const winH = vv?.height ?? window.innerHeight
   const winLeft = vv?.offsetLeft ?? 0
   const winTop = vv?.offsetTop ?? 0
 
-  const screenLeft = winLeft + pad
-  const screenTop = winTop + pad
-  const screenRight = winLeft + winW - pad
-  const screenBottom = winTop + winH - pad
-
-  const seeded = seedPopoverPositionFromStyleOrAnchor(popup)
-  let l = seeded.l
-  let t: number
-
-  if (anchor) {
-    const rect = anchor.getBoundingClientRect()
-    const pl = parseStylePx(popoverStyle.value.left)
-    if (pl !== undefined) l = pl
-
-    void popup.offsetHeight
-    const H = popup.getBoundingClientRect().height
-
-    if (popoverPlaceBelow.value) {
-      t = rect.bottom + gap
-      if (t + H > screenBottom - pad) {
-        maxHStr = `${Math.max(48, Math.floor(screenBottom - pad - t))}px`
-      }
-    }
-    else {
-      const roomAbove = rect.top - gap - screenTop
-      if (H <= roomAbove - pad) {
-        t = rect.top - gap - H
-      }
-      else {
-        const cap = Math.max(48, Math.floor(roomAbove - pad))
-        maxHStr = `${cap}px`
-        t = rect.top - gap - cap
-      }
-    }
-  }
-  else {
-    t = seeded.t
-  }
-
-  const applyDom = () => {
-    popup.style.left = `${l}px`
-    popup.style.top = `${t}px`
-    if (maxHStr) {
-      popup.style.maxHeight = maxHStr
-      popup.style.overflowY = 'auto'
-    }
-    else {
-      popup.style.maxHeight = ''
-      popup.style.overflowY = ''
-    }
-  }
-
-  applyDom()
-  void popup.offsetHeight
-
   if (screenRight <= screenLeft || screenBottom <= screenTop) {
-    let r = popup.getBoundingClientRect()
-    l += screenLeft + Math.max(0, (winW - 2 * pad - r.width) / 2) - r.left
-    t += screenTop + Math.max(0, (winH - 2 * pad - r.height) / 2) - r.top
-    applyDom()
+    r = popup.getBoundingClientRect()
+    left += winLeft + pad + Math.max(0, (winW - 2 * pad - r.width) / 2) - r.left
+    top += winTop + pad + Math.max(0, (winH - 2 * pad - r.height) / 2) - r.top
+    popup.style.left = `${left}px`
+    popup.style.top = `${top}px`
     void popup.offsetHeight
   }
 
   for (let pass = 0; pass < 8; pass++) {
-    const r = popup.getBoundingClientRect()
+    r = popup.getBoundingClientRect()
     let moved = false
     if (r.left < screenLeft) {
-      l += screenLeft - r.left
+      left += screenLeft - r.left
       moved = true
     }
     if (r.right > screenRight) {
-      l -= r.right - screenRight
+      left -= r.right - screenRight
       moved = true
     }
-    applyDom()
-    void popup.offsetHeight
     if (!moved) break
+    popup.style.left = `${left}px`
+    void popup.offsetHeight
+  }
+
+  for (let pass = 0; pass < 8; pass++) {
+    r = popup.getBoundingClientRect()
+    let moved = false
+    if (r.top < screenTop) {
+      top += screenTop - r.top
+      moved = true
+    }
+    if (r.bottom > screenBottom) {
+      top -= r.bottom - screenBottom
+      moved = true
+    }
+    if (!moved) break
+    popup.style.top = `${top}px`
+    void popup.offsetHeight
   }
 
   popoverStyle.value = {
-    ...popoverStyle.value,
-    left: `${l}px`,
-    top: `${t}px`,
+    position: 'fixed',
+    left: `${left}px`,
+    top: `${top}px`,
+    width: `${width}px`,
     maxHeight: maxHStr || '',
     overflowY: maxHStr ? 'auto' : '',
     overflow: maxHStr ? 'auto' : '',
+    right: 'auto',
+    bottom: 'auto',
+    zIndex: '1000',
   }
 
   popup.style.removeProperty('left')
   popup.style.removeProperty('top')
+  popup.style.removeProperty('width')
   popup.style.removeProperty('max-height')
   popup.style.removeProperty('overflow-y')
+  popup.style.removeProperty('position')
 }
 
-function positionPopover(anchor: HTMLElement) {
-  const margin = 8
-  const gap = 8
+function onPopoverAfterEnter() {
+  if (!visible.value) return
+  syncPopoverLayout()
+}
 
-  if (isMobilePopover.value) {
-    popoverStyle.value = {
-      position: 'fixed',
-      left: '12px',
-      right: '12px',
-      width: 'auto',
-      top: 'auto',
-      bottom: 'max(12px, env(safe-area-inset-bottom, 0px))',
-      maxHeight: 'min(58vh, 520px)',
-      zIndex: '1000',
-      overflow: 'auto',
-    }
-    return
-  }
-
-  const rect = anchor.getBoundingClientRect()
-  const w = Math.min(320, window.innerWidth - margin * 2)
-  const planH = popoverEl.value ? measurePlacementBoxHeight(popoverEl.value) : POPOVER_PLACEMENT_BOX_PX
-  const { placeBelow, topPx } = computeAnchorLockedTop(rect, planH, margin, gap)
-  popoverPlaceBelow.value = placeBelow
-
-  popoverStyle.value = {
-    position: 'fixed',
-    left: `${rect.left}px`,
-    top: `${topPx}px`,
-    width: `${w}px`,
-    maxHeight: '',
-    right: 'auto',
-    bottom: 'auto',
-    overflow: '',
-    overflowY: '',
-    zIndex: '1000',
-  }
-
+function positionPopover() {
   nextTick(() => {
     if (!popoverEl.value) {
-      nextTick(() => {
-        applyPopoverAnchorPosition(anchor)
-        clampPopoverToScreen()
-      })
+      nextTick(() => syncPopoverLayout())
       return
     }
-    applyPopoverAnchorPosition(anchor)
-    nextTick(() => clampPopoverToScreen())
+    syncPopoverLayout()
   })
 }
 
 function onViewportResize() {
   if (!visible.value) return
-  nextTick(() => {
-    if (lastAnchorEl.value) positionPopover(lastAnchorEl.value)
-    else clampPopoverToScreen()
-  })
+  nextTick(() => syncPopoverLayout())
 }
 
 watch(() => route.fullPath, () => {
@@ -421,7 +330,7 @@ function handleDocClick(e: MouseEvent) {
   if (termEl) {
     e.preventDefault()
     const slug = termEl.dataset.termSlug
-    if (slug) showPopover(slug, termEl)
+    if (slug) showPopover(slug, termEl, e.clientX, e.clientY)
     return
   }
 
@@ -450,11 +359,12 @@ function placeholderTerm(slug: string, anchor: HTMLElement): TermData {
   }
 }
 
-async function showPopover(slug: string, anchor: HTMLElement) {
+async function showPopover(slug: string, anchor: HTMLElement, clientX: number, clientY: number) {
   loadError.value = false
+  pointerClient.value = { x: clientX, y: clientY }
   lastAnchorEl.value = anchor
   term.value = placeholderTerm(slug, anchor)
-  positionPopover(anchor)
+  positionPopover()
   visible.value = true
   loading.value = true
 
@@ -464,14 +374,8 @@ async function showPopover(slug: string, anchor: HTMLElement) {
     term.value = cache.get(slug)!
     loading.value = false
     loadError.value = false
-    positionPopover(anchor)
-    nextTick(() => {
-      if (!popoverEl.value) {
-        nextTick(() => clampPopoverToScreen())
-        return
-      }
-      clampPopoverToScreen()
-    })
+    positionPopover()
+    nextTick(() => syncPopoverLayout())
     return
   }
 
@@ -500,14 +404,8 @@ async function showPopover(slug: string, anchor: HTMLElement) {
     loadError.value = true
   } finally {
     loading.value = false
-    if (lastAnchorEl.value) positionPopover(lastAnchorEl.value)
-    nextTick(() => {
-      if (!popoverEl.value) {
-        nextTick(() => clampPopoverToScreen())
-        return
-      }
-      clampPopoverToScreen()
-    })
+    if (pointerClient.value) positionPopover()
+    nextTick(() => syncPopoverLayout())
   }
 }
 
@@ -516,11 +414,8 @@ function close() {
   term.value = null
   loadError.value = false
   lastAnchorEl.value = null
+  pointerClient.value = null
 }
-
-watch(isMobilePopover, () => {
-  if (visible.value && lastAnchorEl.value) nextTick(() => positionPopover(lastAnchorEl.value))
-})
 
 watch(() => langStore.currentLang, () => {
   cache.clear()
@@ -546,6 +441,7 @@ onUnmounted(() => {
   z-index: 1000;
   max-width: calc(100vw - 24px);
   min-height: 0;
+  -webkit-overflow-scrolling: touch;
   background: color-mix(in srgb, var(--gv-surface-card) 94%, transparent);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
@@ -575,20 +471,6 @@ onUnmounted(() => {
   background: color-mix(in srgb, var(--gv-surface-card) 94%, transparent);
   border-color: color-mix(in srgb, var(--gv-primary) 45%, var(--gv-border-principal));
   box-shadow: var(--gv-shadow-lg);
-}
-
-.term-popover--mobile {
-  left: 12px !important;
-  right: 12px !important;
-  width: auto !important;
-  top: auto !important;
-  max-width: none;
-  transform: none !important;
-  -webkit-overflow-scrolling: touch;
-}
-
-.term-popover--mobile:hover {
-  transform: none !important;
 }
 
 .popover-skel-line,
@@ -789,15 +671,5 @@ onUnmounted(() => {
 .popover-leave-to {
   opacity: 0;
   transform: scale(0.96) translateY(6px);
-}
-
-.popover-enter-from.term-popover--mobile,
-.popover-leave-to.term-popover--mobile {
-  transform: translateY(12px);
-}
-
-.term-popover--mobile.popover-enter-active,
-.term-popover--mobile.popover-leave-active {
-  transform-origin: bottom center;
 }
 </style>

@@ -70,11 +70,11 @@ function onAuth (close: () => void) {
           v-else
           icon="i-heroicons-user"
           size="sm"
-          class="bg-gray-200 dark:bg-zinc-700 text-gray-500 dark:text-zinc-400"
+          class="profile-avatar-guest"
         />
         <UIcon
           name="i-heroicons-chevron-down"
-          class="profile-trigger-chevron w-4 h-4 text-gray-400 group-hover:text-sky-600 dark:text-zinc-500 dark:group-hover:text-sky-400"
+          class="profile-trigger-chevron h-4 w-4"
         />
       </GvButton>
     </template>
@@ -105,13 +105,13 @@ function onAuth (close: () => void) {
             unstyled
             chromeless
             block
-            class="profile-menu-row profile-menu-link flex w-full items-center gap-3 text-base font-medium text-gray-700 dark:text-zinc-200"
+            class="profile-menu-row profile-menu-link flex w-full items-center gap-3"
             @click="close"
           >
             <span class="truncate">{{ item.label }}</span>
             <UIcon
               :name="item.icon"
-              class="profile-menu-icon ms-auto h-5 w-5 flex-shrink-0 text-gray-400 dark:text-zinc-500"
+              class="profile-menu-icon ms-auto h-[18px] w-[18px] flex-shrink-0"
             />
           </GvButton>
 
@@ -121,13 +121,13 @@ function onAuth (close: () => void) {
             unstyled
             chromeless
             block
-            class="profile-menu-row profile-menu-auth flex w-full items-center gap-3 border-t border-gray-200 text-left text-base font-medium text-gray-700 dark:border-zinc-700 dark:text-zinc-200"
+            class="profile-menu-row profile-menu-auth flex w-full items-center gap-3 text-left"
             @click="onAuth(close)"
           >
             <span class="truncate">{{ authRow.label }}</span>
             <UIcon
               :name="authRow.icon"
-              class="profile-menu-icon ms-auto h-5 w-5 flex-shrink-0 text-gray-400 dark:text-zinc-500"
+              class="profile-menu-icon ms-auto h-[18px] w-[18px] flex-shrink-0"
             />
           </GvButton>
         </div>
@@ -145,6 +145,17 @@ function onAuth (close: () => void) {
   display: contents;
 }
 
+/* Гостевой аватар: фон/иконка в токенах (UAvatar пробрасывает class на корень) */
+:deep(.profile-avatar-guest),
+.profile-avatar-guest {
+  background: color-mix(
+    in srgb,
+    var(--gv-surface-header) 82%,
+    var(--gv-border-principal) 18%
+  ) !important;
+  color: var(--gv-text-secondary) !important;
+}
+
 /*
  * chromeless задаёт padding: 0 !important — без .gv-btn--chromeless отступы не применяются.
  */
@@ -156,38 +167,48 @@ function onAuth (close: () => void) {
   border-radius: 9999px;
   outline: none;
   transition:
-    transform 0.28s cubic-bezier(0.34, 1.35, 0.64, 1),
-    box-shadow 0.28s ease,
-    background-color 0.22s ease;
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    background-color 0.2s ease;
 }
 
 :deep(.profile-button.gv-btn--chromeless:hover) {
-  background-color: rgb(243 244 246) !important;
-  transform: translateY(-2px) scale(1.03);
-  box-shadow:
-    0 8px 20px rgba(15, 23, 42, 0.1),
-    0 0 0 1px rgba(148, 163, 184, 0.25);
+  background-color: color-mix(
+    in srgb,
+    var(--gv-surface-header) 88%,
+    var(--gv-primary) 12%
+  ) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--gv-shadow-md);
 }
 
 .dark :deep(.profile-button.gv-btn--chromeless:hover) {
-  background-color: rgb(39 39 42) !important;
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(82, 82, 91, 0.5);
+  background-color: color-mix(
+    in srgb,
+    var(--gv-surface-card) 82%,
+    var(--gv-primary) 18%
+  ) !important;
+  box-shadow: var(--gv-shadow-lg);
 }
 
 :deep(.profile-button.gv-btn--chromeless:active) {
-  transform: translateY(0) scale(0.97);
-  transition-duration: 0.12s;
+  transform: translateY(0);
+  transition-duration: 0.1s;
 }
 
 :deep(.profile-button.gv-btn--chromeless:hover .profile-trigger-chevron) {
   transform: rotate(-180deg);
+  color: var(--gv-primary);
+}
+
+.dark :deep(.profile-button.gv-btn--chromeless:hover .profile-trigger-chevron) {
+  color: var(--gv-primary-hover);
 }
 
 :deep(.profile-trigger-chevron) {
+  color: color-mix(in srgb, var(--gv-text-secondary) 92%, var(--gv-primary) 8%);
   transition:
-    transform 0.35s cubic-bezier(0.34, 1.35, 0.64, 1),
+    transform 0.28s cubic-bezier(0.34, 1.2, 0.64, 1),
     color 0.2s ease;
 }
 
@@ -200,13 +221,8 @@ function onAuth (close: () => void) {
 .profile-menu-header {
   cursor: default;
   user-select: text;
-  padding: 18px 20px 16px;
-  border-bottom: 2px solid #e2e8f0;
-  margin: 0 12px;
-}
-
-.dark .profile-menu-header {
-  border-bottom-color: #3f3f46;
+  padding: 14px 16px 14px;
+  border-bottom: 1px solid var(--gv-border-principal);
 }
 
 .profile-menu-kicker {
@@ -215,55 +231,47 @@ function onAuth (close: () => void) {
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: #64748b;
-  margin: 0 0 8px;
-}
-
-.dark .profile-menu-kicker {
-  color: #94a3b8;
+  color: var(--gv-text-secondary);
+  margin: 0 0 6px;
 }
 
 .profile-menu-email {
   text-align: left;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gv-text-primary);
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.45;
   word-break: break-word;
-}
-
-.dark .profile-menu-email {
-  color: #f8fafc;
 }
 
 .profile-menu-guest {
   text-align: left;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
-  color: #0f172a;
+  color: var(--gv-text-primary);
   margin: 0;
-}
-
-.dark .profile-menu-guest {
-  color: #f8fafc;
+  line-height: 1.45;
 }
 
 .profile-menu-actions {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px 10px 12px;
+  gap: 2px;
+  padding: 8px;
 }
 
 /* Пункты меню */
 :deep(.profile-menu-row.gv-btn--chromeless) {
-  padding: 14px 16px !important;
-  min-height: 48px;
+  padding: 11px 12px !important;
+  min-height: 44px;
   justify-content: flex-start;
   text-align: left;
-  border-radius: 10px;
-  margin: 0 2px;
+  border-radius: var(--gv-radius-control);
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gv-text-primary);
   transition:
     background-color 0.18s ease,
     color 0.18s ease,
@@ -271,60 +279,82 @@ function onAuth (close: () => void) {
     transform 0.18s ease;
 }
 
+:deep(.profile-menu-auth.gv-btn--chromeless) {
+  margin-top: 4px;
+  padding-top: 12px !important;
+  border-top: 1px solid var(--gv-border-principal);
+}
+
 :deep(.profile-menu-link.gv-btn--chromeless:hover),
 :deep(.profile-menu-auth.gv-btn--chromeless:hover),
 :deep(a.profile-menu-link.gv-btn--chromeless:hover) {
-  background-color: rgb(241 245 249) !important;
-  color: rgb(15 23 42) !important;
-  box-shadow: inset 4px 0 0 0 #0ea5e9;
-  transform: translateX(2px);
+  background-color: color-mix(
+    in srgb,
+    var(--gv-primary) 9%,
+    var(--gv-surface-card)
+  ) !important;
+  color: var(--gv-text-primary) !important;
+  box-shadow: inset 3px 0 0 0 var(--gv-primary);
+  transform: translateX(1px);
 }
 
 .dark :deep(.profile-menu-link.gv-btn--chromeless:hover),
 .dark :deep(.profile-menu-auth.gv-btn--chromeless:hover),
 .dark :deep(a.profile-menu-link.gv-btn--chromeless:hover) {
-  background-color: rgb(51 65 85 / 0.35) !important;
-  color: rgb(248 250 252) !important;
-  box-shadow: inset 4px 0 0 0 #38bdf8;
+  background-color: color-mix(
+    in srgb,
+    var(--gv-primary) 14%,
+    var(--gv-surface-card)
+  ) !important;
+  box-shadow: inset 3px 0 0 0 var(--gv-primary-hover);
 }
 
 :deep(.profile-menu-icon) {
+  color: var(--gv-text-secondary);
   transition: transform 0.2s ease, color 0.2s ease;
 }
 
 :deep(.profile-menu-row.gv-btn--chromeless:hover .profile-menu-icon) {
-  color: #0ea5e9 !important;
-  transform: scale(1.08);
+  color: var(--gv-primary) !important;
+  transform: scale(1.05);
 }
 
 .dark :deep(.profile-menu-row.gv-btn--chromeless:hover .profile-menu-icon) {
-  color: #38bdf8 !important;
+  color: var(--gv-primary-hover) !important;
 }
 
 :deep(.profile-menu-row.gv-btn--chromeless:focus-visible) {
   outline: none;
-  background-color: rgb(241 245 249) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--gv-primary) 9%,
+    var(--gv-surface-card)
+  ) !important;
   box-shadow:
-    inset 4px 0 0 0 #0ea5e9,
-    0 0 0 2px rgba(14, 165, 233, 0.35);
+    inset 3px 0 0 0 var(--gv-primary),
+    0 0 0 2px color-mix(in srgb, var(--gv-primary) 30%, transparent);
 }
 
 .dark :deep(.profile-menu-row.gv-btn--chromeless:focus-visible) {
-  background-color: rgb(51 65 85 / 0.35) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--gv-primary) 14%,
+    var(--gv-surface-card)
+  ) !important;
   box-shadow:
-    inset 4px 0 0 0 #38bdf8,
-    0 0 0 2px rgba(56, 189, 248, 0.35);
+    inset 3px 0 0 0 var(--gv-primary-hover),
+    0 0 0 2px color-mix(in srgb, var(--gv-primary-hover) 32%, transparent);
 }
 
 :deep(.profile-button.gv-btn--chromeless:focus-visible) {
   box-shadow:
-    0 0 0 2px #fff,
-    0 0 0 4px #0ea5e9;
+    0 0 0 2px var(--gv-surface-card),
+    0 0 0 4px var(--gv-primary);
 }
 
 .dark :deep(.profile-button.gv-btn--chromeless:focus-visible) {
   box-shadow:
-    0 0 0 2px #18181b,
-    0 0 0 4px #38bdf8;
+    0 0 0 2px var(--gv-surface),
+    0 0 0 4px var(--gv-primary-hover);
 }
 </style>

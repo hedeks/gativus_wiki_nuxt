@@ -1,6 +1,10 @@
 <!-- components/common/ExpandableFilters.vue -->
 <template>
-  <div ref="rootRef" class="expandable-filters">
+  <div
+    ref="rootRef"
+    class="expandable-filters"
+    :class="size === 'lg' ? 'expandable-filters--lg' : 'expandable-filters--md'"
+  >
     <div class="filters-row">
       <GvButton
         type="button"
@@ -13,7 +17,7 @@
         <span class="filters-icon-wrap">
           <UIcon
             name="i-heroicons-adjustments-horizontal"
-            class="w-4 h-4"
+            :class="iconSizeClass"
           />
         </span>
 
@@ -25,7 +29,8 @@
 
         <UIcon
           :name="isOpen ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
-          class="w-4 h-4 chevron"
+          class="chevron"
+          :class="iconSizeClass"
         />
       </GvButton>
     </div>
@@ -48,17 +53,24 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(
+const props = withDefaults(
   defineProps<{
     label?: string
     activeCount?: number
     hasActiveFilters?: boolean
+    /** Высота как у `BaseSearch`: md ≈ 36px (индексы), lg ≈ 44px (модалка) */
+    size?: 'md' | 'lg'
   }>(),
   {
     label: 'Filters',
     activeCount: 0,
     hasActiveFilters: false,
-  }
+    size: 'md',
+  },
+)
+
+const iconSizeClass = computed(() =>
+  props.size === 'lg' ? 'w-4 h-4' : 'w-[14px] h-[14px]',
 )
 
 const isOpen = ref(false)
@@ -166,16 +178,41 @@ onUnmounted(() => {
   display: contents;
 }
 
-/* chromeless в GvButton задаёт padding: 0 !important — дублируем отступы здесь с !important */
-:deep(.filters-trigger.gv-btn--chromeless) {
+.expandable-filters--md :deep(.filters-trigger.gv-btn--chromeless) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 36px;
+  min-height: 36px !important;
+  padding: 0 14px !important;
+  border-radius: var(--gv-radius-control, 12px);
+  background: var(--gv-surface-card);
+  border: 1px solid color-mix(in srgb, var(--gv-border-principal) 78%, var(--gv-primary) 22%);
+  color: color-mix(in srgb, var(--gv-text-secondary) 82%, var(--gv-primary) 18%);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease,
+    background 0.25s ease, transform 0.25s ease;
+  white-space: nowrap;
+  user-select: none;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--gv-surface) 85%, transparent) inset,
+    var(--gv-shadow-md);
+}
+
+.expandable-filters--lg :deep(.filters-trigger.gv-btn--chromeless) {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   box-sizing: border-box;
-  height: 42px;
-  min-height: 42px !important;
+  height: 44px;
+  min-height: 44px !important;
   padding: 0 18px !important;
-  border-radius: 12px;
+  border-radius: var(--gv-radius-control, 12px);
   background: var(--gv-surface-card);
   border: 1px solid color-mix(in srgb, var(--gv-border-principal) 78%, var(--gv-primary) 22%);
   color: color-mix(in srgb, var(--gv-text-secondary) 82%, var(--gv-primary) 18%);
@@ -193,7 +230,18 @@ onUnmounted(() => {
     var(--gv-shadow-md);
 }
 
-.filters-icon-wrap {
+.expandable-filters--md .filters-icon-wrap {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gv-primary);
+  background: color-mix(in srgb, var(--gv-primary) 12%, var(--gv-surface-card));
+}
+
+.expandable-filters--lg .filters-icon-wrap {
   width: 22px;
   height: 22px;
   border-radius: 6px;
@@ -204,7 +252,7 @@ onUnmounted(() => {
   background: color-mix(in srgb, var(--gv-primary) 12%, var(--gv-surface-card));
 }
 
-:deep(.filters-trigger.gv-btn--chromeless:hover) {
+.expandable-filters--md :deep(.filters-trigger.gv-btn--chromeless:hover) {
   border-color: color-mix(in srgb, var(--gv-border-principal) 52%, var(--gv-primary) 30%);
   color: var(--gv-primary-hover);
   transform: translateY(-1px);
@@ -213,7 +261,24 @@ onUnmounted(() => {
     var(--gv-shadow-lg);
 }
 
-:deep(.filters-trigger.gv-btn--chromeless.is-open) {
+.expandable-filters--lg :deep(.filters-trigger.gv-btn--chromeless:hover) {
+  border-color: color-mix(in srgb, var(--gv-border-principal) 52%, var(--gv-primary) 30%);
+  color: var(--gv-primary-hover);
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--gv-surface) 88%, transparent) inset,
+    var(--gv-shadow-lg);
+}
+
+.expandable-filters--md :deep(.filters-trigger.gv-btn--chromeless.is-open) {
+  border-color: var(--gv-primary);
+  color: var(--gv-primary);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--gv-primary) 22%, transparent),
+    0 14px 28px color-mix(in srgb, var(--gv-primary) 12%, rgba(0, 0, 0, 0.08));
+}
+
+.expandable-filters--lg :deep(.filters-trigger.gv-btn--chromeless.is-open) {
   border-color: var(--gv-primary);
   color: var(--gv-primary);
   box-shadow:
@@ -227,7 +292,13 @@ onUnmounted(() => {
     0 18px 40px rgba(0, 0, 0, 0.52);
 }
 
-:deep(.filters-trigger.gv-btn--chromeless.has-active) {
+.expandable-filters--md :deep(.filters-trigger.gv-btn--chromeless.has-active) {
+  border-color: var(--gv-primary);
+  background: color-mix(in srgb, var(--gv-primary) 9%, var(--gv-surface-card));
+  color: var(--gv-primary);
+}
+
+.expandable-filters--lg :deep(.filters-trigger.gv-btn--chromeless.has-active) {
   border-color: var(--gv-primary);
   background: color-mix(in srgb, var(--gv-primary) 9%, var(--gv-surface-card));
   color: var(--gv-primary);
@@ -237,7 +308,23 @@ onUnmounted(() => {
   font-weight: 700;
 }
 
-.filters-dot {
+.expandable-filters--md .filters-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--gv-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--gv-primary) 42%, transparent);
+}
+
+.expandable-filters--lg .filters-dot {
   display: inline-flex;
   align-items: center;
   justify-content: center;

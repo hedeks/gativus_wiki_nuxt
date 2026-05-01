@@ -99,6 +99,8 @@ export default defineEventHandler(async (event) => {
     title_ru: a.title_ru || null,
     title_zh: a.title_zh || null,
     excerpt: a.excerpt || null,
+    excerpt_ru: a.excerpt_ru || null,
+    excerpt_zh: a.excerpt_zh || null,
     html_content: a.html_content,
     raw_odt_path: a.raw_odt_path || null,
     presentation_path: a.presentation_path || null,

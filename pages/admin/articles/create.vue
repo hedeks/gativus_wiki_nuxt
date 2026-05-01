@@ -24,6 +24,11 @@ const sortOrder = ref(0)
 const syncSlug = ref(true)
 const syncSlugRu = ref(true)
 const syncSlugZh = ref(true)
+
+const excerptEn = ref('')
+const excerptRu = ref('')
+const excerptZh = ref('')
+
 const termId = ref<number | null>(route.query.term_id ? Number(route.query.term_id) : null)
 
 // Active Tab
@@ -159,6 +164,9 @@ async function save() {
         is_published: isPublished.value,
         sort_order: sortOrder.value,
         term_id: termId.value || undefined,
+        excerpt: excerptEn.value.trim(),
+        excerpt_ru: excerptRu.value.trim(),
+        excerpt_zh: excerptZh.value.trim(),
       },
     })
 
@@ -320,6 +328,10 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
                 </div>
                 <input v-model="articleSlug" class="meta-input meta-input--mono" placeholder="url-slug" />
               </div>
+              <div class="meta-group">
+                <label class="meta-label">Краткое описание (EN)</label>
+                <textarea v-model="excerptEn" class="meta-input meta-textarea" rows="4" placeholder="Пустое — из английского HTML" />
+              </div>
             </div>
           </template>
           
@@ -339,6 +351,10 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
                 </div>
                 <input v-model="articleSlugRu" class="meta-input meta-input--mono" placeholder="url-slug-ru" />
               </div>
+              <div class="meta-group">
+                <label class="meta-label">Краткое описание (RU)</label>
+                <textarea v-model="excerptRu" class="meta-input meta-textarea" rows="4" placeholder="Пустое — из русского HTML" />
+              </div>
             </div>
           </template>
           
@@ -357,6 +373,10 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
                   </button>
                 </div>
                 <input v-model="articleSlugZh" class="meta-input meta-input--mono" placeholder="url-slug-zh" />
+              </div>
+              <div class="meta-group">
+                <label class="meta-label">Краткое описание (ZH)</label>
+                <textarea v-model="excerptZh" class="meta-input meta-textarea" rows="4" placeholder="空则根据正文自动生成" />
               </div>
             </div>
           </template>
@@ -651,6 +671,12 @@ useHead({ title: 'Создание статьи — Gativus Admin' })
 .meta-input--mono {
   font-family: monospace;
   font-size: 12px;
+}
+
+.meta-textarea {
+  min-height: 5rem;
+  resize: vertical;
+  line-height: 1.45;
 }
 
 .meta-row {

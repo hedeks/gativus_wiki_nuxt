@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const body = await readBody(event)
 
-  const { title, title_ru, title_zh, slug_ru, slug_zh, html_content, html_content_ru, html_content_zh, book_id, category_id, is_published, sort_order, excerpt, presentation_path, presentation_path_ru, presentation_path_zh, term_id } = body
+  const { title, title_ru, title_zh, slug_ru, slug_zh, html_content, html_content_ru, html_content_zh, book_id, category_id, is_published, sort_order, excerpt, excerpt_ru, excerpt_zh, presentation_path, presentation_path_ru, presentation_path_zh, term_id } = body
 
   if (!title || !html_content) {
     throw createError({ statusCode: 400, statusMessage: 'title и html_content обязательны' })
@@ -32,10 +32,12 @@ export default defineEventHandler(async (event) => {
   const mergedMentions = mergeMentionCountMaps([rEn.mentionCountByTermId, rRu?.mentionCountByTermId, rZh?.mentionCountByTermId])
 
   const finalExcerpt = excerpt || generateExcerptFromHtml(processedHtml)
+  const finalExcerptRu = excerpt_ru || (processedHtmlRu ? generateExcerptFromHtml(processedHtmlRu) : null)
+  const finalExcerptZh = excerpt_zh || (processedHtmlZh ? generateExcerptFromHtml(processedHtmlZh) : null)
 
   await db.prepare(`
-    INSERT INTO articles (slug, slug_ru, slug_zh, title, title_ru, title_zh, html_content, html_content_ru, html_content_zh, book_id, category_id, sort_order, excerpt, created_by, is_published, presentation_path, presentation_path_ru, presentation_path_zh, is_term_article)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO articles (slug, slug_ru, slug_zh, title, title_ru, title_zh, html_content, html_content_ru, html_content_zh, book_id, category_id, sort_order, excerpt, excerpt_ru, excerpt_zh, created_by, is_published, presentation_path, presentation_path_ru, presentation_path_zh, is_term_article)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     slug,
     slug_ru || null,
@@ -50,6 +52,8 @@ export default defineEventHandler(async (event) => {
     category_id || null,
     sort_order || 0,
     finalExcerpt,
+    finalExcerptRu,
+    finalExcerptZh,
     auth.id,
     is_published !== false ? 1 : 0,
     presentation_path || null,

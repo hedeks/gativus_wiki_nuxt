@@ -37,6 +37,10 @@ const presentationPathZh = ref<string | null>(null)
 const isUploadingPresentation = ref(false)
 const presUploadLocale = ref<'en' | 'ru' | 'zh' | null>(null)
 
+const excerptEn = ref('')
+const excerptRu = ref('')
+const excerptZh = ref('')
+
 // Active Tab
 const activeTab = ref('en')
 
@@ -58,6 +62,9 @@ watch(fullArticle, (article: any) => {
     presentationPath.value = article.presentation_path || null
     presentationPathRu.value = article.presentation_path_ru || null
     presentationPathZh.value = article.presentation_path_zh || null
+    excerptEn.value = article.excerpt ?? ''
+    excerptRu.value = article.excerpt_ru ?? ''
+    excerptZh.value = article.excerpt_zh ?? ''
   }
 }, { immediate: true })
 
@@ -126,6 +133,9 @@ async function save() {
         presentation_path: presentationPath.value || undefined,
         presentation_path_ru: presentationPathRu.value || undefined,
         presentation_path_zh: presentationPathZh.value || undefined,
+        excerpt: excerptEn.value.trim(),
+        excerpt_ru: excerptRu.value.trim(),
+        excerpt_zh: excerptZh.value.trim(),
       },
     })
 
@@ -370,6 +380,10 @@ async function uploadImage(e: Event) {
                 </div>
                 <input v-model="articleSlug" class="meta-input meta-input--mono" placeholder="url-slug" />
               </div>
+              <div class="meta-group">
+                <label class="meta-label">Краткое описание (EN)</label>
+                <textarea v-model="excerptEn" class="meta-input meta-textarea" rows="4" placeholder="Анонс для списков, графа, SEO… пустое — автогенерация из текста статьи" />
+              </div>
             </div>
           </template>
           
@@ -388,6 +402,10 @@ async function uploadImage(e: Event) {
                 </div>
                 <input v-model="articleSlugRu" class="meta-input meta-input--mono" placeholder="url-slug-ru" />
               </div>
+              <div class="meta-group">
+                <label class="meta-label">Краткое описание (RU)</label>
+                <textarea v-model="excerptRu" class="meta-input meta-textarea" rows="4" placeholder="Пустое — автогенерация из русского HTML" />
+              </div>
             </div>
           </template>
           
@@ -405,6 +423,10 @@ async function uploadImage(e: Event) {
                   </button>
                 </div>
                 <input v-model="articleSlugZh" class="meta-input meta-input--mono" placeholder="url-slug-zh" />
+              </div>
+              <div class="meta-group">
+                <label class="meta-label">Краткое описание (ZH)</label>
+                <textarea v-model="excerptZh" class="meta-input meta-textarea" rows="4" placeholder="空则根据中文正文自动生成" />
               </div>
             </div>
           </template>
@@ -772,6 +794,11 @@ async function uploadImage(e: Event) {
   color: #e5e5e5;
 }
 .meta-input--mono { font-family: monospace; font-size: 12px; }
+.meta-textarea {
+  min-height: 5rem;
+  resize: vertical;
+  line-height: 1.45;
+}
 
 .meta-link {
   margin-top: 4px;

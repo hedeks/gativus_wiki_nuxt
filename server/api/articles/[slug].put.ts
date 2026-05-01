@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' })
   }
 
-  const { title, title_ru, title_zh, slug_ru, slug_zh, html_content, html_content_ru, html_content_zh, book_id, category_id, is_published, sort_order, excerpt, change_summary, presentation_path, presentation_path_ru, presentation_path_zh } = body
+  const { title, title_ru, title_zh, slug_ru, slug_zh, html_content, html_content_ru, html_content_zh, book_id, category_id, is_published, sort_order, excerpt, excerpt_ru, excerpt_zh, change_summary, presentation_path, presentation_path_ru, presentation_path_zh } = body
 
   // Handle slug change
   let newSlug = existing.slug
@@ -51,7 +51,9 @@ export default defineEventHandler(async (event) => {
     processedHtmlZh = linkTermsInHtml(html_content_zh, termsMap).html
   }
 
-  const finalExcerpt = excerpt || (processedHtml ? generateExcerptFromHtml(processedHtml) : undefined)
+  const finalExcerpt = excerpt || (processedHtml && html_content !== undefined ? generateExcerptFromHtml(processedHtml) : undefined)
+  const finalExcerptRu = excerpt_ru || (processedHtmlRu && html_content_ru !== undefined ? generateExcerptFromHtml(processedHtmlRu) : undefined)
+  const finalExcerptZh = excerpt_zh || (processedHtmlZh && html_content_zh !== undefined ? generateExcerptFromHtml(processedHtmlZh) : undefined)
 
   // Build update
   const updates: string[] = []
@@ -70,7 +72,9 @@ export default defineEventHandler(async (event) => {
   if (category_id !== undefined) { updates.push('category_id = ?'); params.push(category_id || null) }
   if (is_published !== undefined) { updates.push('is_published = ?'); params.push(is_published ? 1 : 0) }
   if (sort_order !== undefined) { updates.push('sort_order = ?'); params.push(sort_order) }
-  if (finalExcerpt !== undefined) { updates.push('excerpt = ?'); params.push(finalExcerpt) }
+  if (finalExcerpt !== undefined) { updates.push('excerpt = ?'); params.push(finalExcerpt || null) }
+  if (finalExcerptRu !== undefined) { updates.push('excerpt_ru = ?'); params.push(finalExcerptRu || null) }
+  if (finalExcerptZh !== undefined) { updates.push('excerpt_zh = ?'); params.push(finalExcerptZh || null) }
   if (presentation_path !== undefined) { updates.push('presentation_path = ?'); params.push(presentation_path) }
   if (presentation_path_ru !== undefined) { updates.push('presentation_path_ru = ?'); params.push(presentation_path_ru || null) }
   if (presentation_path_zh !== undefined) { updates.push('presentation_path_zh = ?'); params.push(presentation_path_zh || null) }

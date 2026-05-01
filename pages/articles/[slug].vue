@@ -7,6 +7,7 @@
     <div :class="[{ 'active': !hasPresentation || isTheory, 'inactive': hasPresentation && !isTheory }]" ref="lection"
       class="flex flex-col-reverse lg:grid lg:grid-cols-8 xl:grid-cols-8 gap-10 w-full lg:col-span-8 xl:col-span-8 view-transition">
       <div
+        ref="articleMainCardRef"
         class="w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col min-w-0 overflow-x-auto bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm">
         <!-- Article Header -->
         <div v-if="article" class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800">
@@ -28,14 +29,38 @@
             ].filter(Boolean) as any[]"
           />
 
+          <div
+            v-if="hasSearchQueryBanner"
+            class="gv-article-search-context-row mb-2 mt-1 flex items-start gap-2"
+          >
+            <p
+              class="min-w-0 flex-1 text-[11px] font-bold uppercase leading-snug tracking-[0.18em] text-red-900/75 dark:text-red-300/85"
+            >
+              {{ t.searchFrom }}: «{{ searchBannerQuote }}»
+            </p>
+            <button
+              type="button"
+              class="gv-article-search-dismiss gv-focusable shrink-0 rounded-md p-1 text-red-800/80 opacity-80 transition hover:bg-red-100/80 hover:opacity-100 dark:text-red-300/90 dark:hover:bg-red-950/50"
+              :aria-label="t.dismissSearchHighlight"
+              @click="clearSearchHighlightFromRoute"
+            >
+              <UIcon name="i-heroicons-x-mark-20-solid" class="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+
           <h1
             class="text-3xl lg:text-4xl mb-0 font-bold text-[#233a4d] dark:text-gray-100 uppercase tracking-widest leading-tight m-0 mb-0">
-            {{ article.title }}
+            <span v-if="articleTitleHighlightHtml !== null" v-html="articleTitleHighlightHtml" />
+            <template v-else>{{ article.title }}</template>
           </h1>
         </div>
         <!-- Article HTML Content -->
-        <div v-if="article?.html_content" class="parent w-full flex-col article-prose" v-html="article.html_content"
-          @click="handleArticleClick" />
+        <div
+          v-if="article?.html_content"
+          class="parent w-full flex-col article-prose"
+          v-html="articleBodyHighlightHtml"
+          @click="handleArticleClick"
+        />
         <div v-else class="text-gray-400 py-10 text-center">
           <p>{{ t.noContent }}</p>
         </div>
@@ -185,13 +210,17 @@ import { useLanguageStore } from '~/stores/language'
 
 const langStore = useLanguageStore()
 const route = useRoute()
+const router = useRouter()
 const slug = route.params.slug as string
+
+const articleMainCardRef = ref<HTMLElement | null>(null)
 
 const uiDict: Record<string, any> = {
   en: {
     library: 'LIBRARY',
     chapter: 'CHAPTER',
     articles: 'ARTICLES',
+    searchFrom: 'Search',
     noContent: 'Content not found',
     presentation: 'Go to Presentation',
     prevChapter: 'PREVIOUS CHAPTER',
@@ -204,12 +233,14 @@ const uiDict: Record<string, any> = {
     back: 'Back',
     zoom: 'Zoom',
     download: 'Download Original',
-    backToText: 'Back to Text'
+    backToText: 'Back to Text',
+    dismissSearchHighlight: 'Clear search highlights'
   },
   ru: {
     library: 'БИБЛИОТЕКА',
     chapter: 'ГЛАВА',
     articles: 'СТАТЬИ',
+    searchFrom: 'Поиск',
     noContent: 'Контент не найден',
     presentation: 'Перейти к презентации',
     prevChapter: 'ПРЕДЫДУЩАЯ ГЛАВА',
@@ -222,11 +253,123 @@ const uiDict: Record<string, any> = {
     back: 'Назад',
     zoom: 'Zoom',
     download: 'Скачать оригинал',
-    backToText: 'Вернуться к тексту'
+    backToText: 'Вернуться к тексту',
+    dismissSearchHighlight: 'Убрать подсветку поиска'
   }
 }
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+
+function escapeHtmlPlain(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** Регистронезависимое вхождение подстроки (в т.ч. внутри слова); `u` — корректнее для кириллицы и юникода. */
+function highlightNeedleRegex(needle: string): RegExp | null {
+  const n = needle.normalize('NFKC').trim()
+  if (!n)
+    return null
+  const pattern = escapeRegExp(n)
+  try {
+    return new RegExp(pattern, 'giu')
+  }
+  catch {
+    return new RegExp(pattern, 'gi')
+  }
+}
+
+/** Подсветка в plain-text заголовке (совпадение — любая подстрока, без границ слова). */
+function highlightPlainInTitle(text: string, needle: string): string {
+  const esc = escapeHtmlPlain(text)
+  const re = highlightNeedleRegex(needle)
+  if (!re)
+    return esc
+  return esc.replace(re, m => `<mark class="gv-article-search-hl">${m}</mark>`)
+}
+
+function maskProtectedHtmlRegions(html: string, stash: string[]): string {
+  return html.replace(
+    /<(script|style|textarea)(\s[^>]*)?>[\s\S]*?<\/\1>|<pre(\s[^>]*)?>[\s\S]*?<\/pre>/gi,
+    (full) => {
+      stash.push(full)
+      return `\x00BLK${stash.length - 1}\x00`
+    },
+  )
+}
+
+function unmaskProtectedHtmlRegions(html: string, stash: string[]): string {
+  return html.replace(/\x00BLK(\d+)\x00/g, (_, idx) => stash[Number(idx)] ?? '')
+}
+
+/** Подсветка в HTML статьи: только текст между тегами; подстрока может быть частью слова. */
+function highlightSearchInArticleHtml(html: string, needle: string): string {
+  const re = highlightNeedleRegex(needle)
+  if (!re || !html)
+    return html
+  const stash: string[] = []
+  const masked = maskProtectedHtmlRegions(html, stash)
+  const highlighted = masked.split(/(<[^>]+>)/).map((chunk) => {
+    if (!chunk || chunk.startsWith('<'))
+      return chunk
+    return chunk.replace(re, m => `<mark class="gv-article-search-hl">${m}</mark>`)
+  }).join('')
+  return unmaskProtectedHtmlRegions(highlighted, stash)
+}
+
+const searchQueryFromLink = computed(() => {
+  const sq = route.query.sq
+  const raw = Array.isArray(sq) ? sq[0] : sq
+  return typeof raw === 'string' ? raw.normalize('NFKC').trim() : ''
+})
+
+/** Подсветка по ссылке из поиска: сначала `hl`, иначе весь запрос `sq`. */
+const highlightNeedleFromRoute = computed((): string => {
+  const hlRaw = route.query.hl
+  const hl = typeof hlRaw === 'string'
+    ? hlRaw.normalize('NFKC').trim()
+    : Array.isArray(hlRaw) && typeof hlRaw[0] === 'string'
+      ? hlRaw[0].normalize('NFKC').trim()
+      : ''
+  if (hl)
+    return hl
+  return searchQueryFromLink.value
+})
+
+const hasSearchQueryBanner = computed(() => !!(route.query.sq || route.query.hl))
+
+const searchBannerQuote = computed(() => {
+  if (searchQueryFromLink.value)
+    return searchQueryFromLink.value
+  const hlRaw = route.query.hl
+  if (typeof hlRaw === 'string')
+    return hlRaw.normalize('NFKC').trim()
+  if (Array.isArray(hlRaw) && typeof hlRaw[0] === 'string')
+    return hlRaw[0].normalize('NFKC').trim()
+  return ''
+})
+
+function clearSearchHighlightFromRoute() {
+  const q = { ...route.query }
+  delete q.sq
+  delete q.hl
+  void router.replace({ query: q })
+}
+
+const articleTitleHighlightHtml = computed((): string | null => {
+  const needle = highlightNeedleFromRoute.value
+  if (!needle)
+    return null
+  const title = article.value?.title || ''
+  return highlightPlainInTitle(title, needle)
+})
 
 // Declared placeholders before await to avoid ReferenceError in template during suspension
 const articleData = ref<any | null>(null)
@@ -235,6 +378,59 @@ const error = ref<any>(null)
 
 const article = computed(() => articleData.value)
 const hasPresentation = computed(() => !!article.value?.presentation_path)
+
+const articleBodyHighlightHtml = computed(() => {
+  const raw = article.value?.html_content
+  if (!raw || typeof raw !== 'string')
+    return ''
+  const needle = highlightNeedleFromRoute.value
+  if (!needle)
+    return raw
+  return highlightSearchInArticleHtml(raw, needle)
+})
+
+let searchHlScrollTimer: ReturnType<typeof setTimeout> | null = null
+
+function scrollToFirstSearchHighlight() {
+  if (!import.meta.client)
+    return
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      const root = articleMainCardRef.value
+      const mark = root?.querySelector('.gv-article-search-hl')
+      mark?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+    })
+  })
+}
+
+watch(
+  () =>
+    [
+      highlightNeedleFromRoute.value,
+      slug,
+      article.value?.html_content ?? '',
+      articleTitleHighlightHtml.value,
+    ] as const,
+  ([needle]) => {
+    if (!import.meta.client) {
+      return
+    }
+    if (!needle) {
+      if (searchHlScrollTimer != null) {
+        clearTimeout(searchHlScrollTimer)
+        searchHlScrollTimer = null
+      }
+      return
+    }
+    if (searchHlScrollTimer != null)
+      clearTimeout(searchHlScrollTimer)
+    searchHlScrollTimer = setTimeout(() => {
+      scrollToFirstSearchHighlight()
+      searchHlScrollTimer = null
+    }, 180)
+  },
+  { flush: 'post' },
+)
 
 const refresh = async () => {
   pending.value = true
@@ -551,9 +747,18 @@ onMounted(() => {
   }, { passive: true })
   updateHeadingsAndObserve()
   window.addEventListener('keydown', handleKeydown)
+  if (highlightNeedleFromRoute.value) {
+    setTimeout(() => {
+      scrollToFirstSearchHighlight()
+    }, 260)
+  }
 })
 
 onUnmounted(() => {
+  if (searchHlScrollTimer != null) {
+    clearTimeout(searchHlScrollTimer)
+    searchHlScrollTimer = null
+  }
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', checkSize)
   if (scrollSpyRaf != null) {
@@ -698,5 +903,34 @@ onUnmounted(() => {
 .expand-pres-leave-from {
   max-height: 60vh;
   opacity: 1;
+}
+
+/* Подсветка из глобального поиска (?hl=), контент из v-html — только :deep */
+h1 :deep(.gv-article-search-hl) {
+  scroll-margin-top: calc(var(--header-height, 65px) + 12px);
+  background: color-mix(in srgb, #ef4444 26%, transparent);
+  color: inherit;
+  padding: 0 4px;
+  border-radius: 4px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.dark h1 :deep(.gv-article-search-hl) {
+  background: color-mix(in srgb, #f87171 22%, transparent);
+}
+
+.article-prose :deep(.gv-article-search-hl) {
+  scroll-margin-top: calc(var(--header-height, 65px) + 12px);
+  background: color-mix(in srgb, #ef4444 26%, transparent);
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.dark .article-prose :deep(.gv-article-search-hl) {
+  background: color-mix(in srgb, #f87171 22%, transparent);
 }
 </style>

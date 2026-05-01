@@ -20,8 +20,12 @@ export default defineEventHandler(async (event) => {
       t.aliases, t.definition, t.definition_ru, t.definition_zh,
       t.term_article_id, t.created_at, t.updated_at,
       t.created_by, t.image_url, t.video_url, t.presentation_path, t.presentation_path_ru, t.presentation_path_zh,
-      a.html_content as article_html,
-      a.excerpt as article_excerpt,
+      a.html_content as term_article_html_en,
+      a.html_content_ru as term_article_html_ru,
+      a.html_content_zh as term_article_html_zh,
+      a.excerpt as term_article_excerpt,
+      a.excerpt_ru as term_article_excerpt_ru,
+      a.excerpt_zh as term_article_excerpt_zh,
       a.category_id,
       a.presentation_path as article_presentation_path,
       a.presentation_path_ru as article_presentation_path_ru,
@@ -55,16 +59,49 @@ export default defineEventHandler(async (event) => {
   const effZh = term.presentation_path_zh || term.article_presentation_path_zh
   const resolvedPres = isRu ? (effRu || effEn) : isZh ? (effZh || effEn) : (effEn || effRu || effZh)
 
-  const { article_presentation_path, article_presentation_path_ru, article_presentation_path_zh, ...rest } = term
+  const {
+    article_presentation_path,
+    article_presentation_path_ru,
+    article_presentation_path_zh,
+    term_article_html_en,
+    term_article_html_ru,
+    term_article_html_zh,
+    term_article_excerpt,
+    term_article_excerpt_ru,
+    term_article_excerpt_zh,
+    ...rest
+  } = term
+
+  const article_excerpt =
+    term.term_article_id != null
+      ? String(
+        isRu
+          ? (term_article_excerpt_ru || term_article_excerpt || '')
+          : isZh
+            ? (term_article_excerpt_zh || term_article_excerpt || '')
+            : (term_article_excerpt || term_article_excerpt_ru || term_article_excerpt_zh || ''),
+      )
+      : undefined
+
+  const article_html = term.term_article_id
+    ? String(
+      isRu
+        ? (term_article_html_ru || term_article_html_en || '')
+        : isZh
+          ? (term_article_html_zh || term_article_html_en || '')
+          : (term_article_html_en || term_article_html_ru || term_article_html_zh || ''),
+      )
+    : undefined
 
   return {
     ...rest,
+    article_excerpt,
+    article_html,
     title: isRu ? (term.title_ru || term.title) : (isZh ? (term.title_zh || term.title) : term.title),
     definition: isRu ? (term.definition_ru || term.definition) : (isZh ? (term.definition_zh || term.definition) : term.definition),
     category_title: isRu ? (term.category_title_ru || term.category_title) : (isZh ? (term.category_title_zh || term.category_title) : term.category_title),
     aliases: term.aliases ? JSON.parse(term.aliases) : [],
     has_article: Boolean(term.term_article_id),
-    presentation_path: resolvedPres
+    presentation_path: resolvedPres,
   }
-}
-)
+})

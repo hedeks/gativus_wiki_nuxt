@@ -157,11 +157,13 @@ export default defineEventHandler(async (event) => {
       const termTitleZh = title_zh || (await db.prepare('SELECT title_zh FROM terms WHERE id = ?').get(existing.id) as any)?.title_zh
       const articleSlug = await ensureUniqueSlug(db, 'articles', `term-${newSlug}`)
       const excerpt = generateExcerpt(finalHtml)
+      const excerptRu = finalHtmlRu ? generateExcerpt(finalHtmlRu) : null
+      const excerptZh = finalHtmlZh ? generateExcerpt(finalHtmlZh) : null
 
       await db.prepare(`
-        INSERT INTO articles (slug, slug_ru, slug_zh, title, title_ru, title_zh, html_content, html_content_ru, html_content_zh, presentation_path, presentation_path_ru, presentation_path_zh, category_id, excerpt, created_by, is_published, is_term_article)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
-      `).run(articleSlug, finalSlugRu ? `term-${finalSlugRu}` : null, finalSlugZh ? `term-${finalSlugZh}` : null, termTitle, termTitleRu || null, termTitleZh || null, finalHtml, finalHtmlRu, finalHtmlZh, finalPresPath, finalPresPathRu, finalPresPathZh, category_id || null, excerpt, auth.id)
+        INSERT INTO articles (slug, slug_ru, slug_zh, title, title_ru, title_zh, html_content, html_content_ru, html_content_zh, presentation_path, presentation_path_ru, presentation_path_zh, category_id, excerpt, excerpt_ru, excerpt_zh, created_by, is_published, is_term_article)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
+      `).run(articleSlug, finalSlugRu ? `term-${finalSlugRu}` : null, finalSlugZh ? `term-${finalSlugZh}` : null, termTitle, termTitleRu || null, termTitleZh || null, finalHtml, finalHtmlRu, finalHtmlZh, finalPresPath, finalPresPathRu, finalPresPathZh, category_id || null, excerpt, excerptRu, excerptZh, auth.id)
 
       const inserted = await db.prepare('SELECT last_insert_rowid() as id').get() as any
       const newArticleId = inserted?.id

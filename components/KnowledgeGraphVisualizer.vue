@@ -1,8 +1,39 @@
 <template>
-  <div class="knowledge-graph-visualizer" :class="{ 'knowledge-graph-visualizer--frameless': frameless }">
+  <div
+    class="knowledge-graph-visualizer"
+    :class="{
+      'knowledge-graph-visualizer--frameless': frameless,
+      'knowledge-graph-visualizer--canvas-locked': canvasInteractionLocked,
+    }"
+  >
     <div ref="graphViewport" class="graph-viewport">
-      <div ref="graphContainer" class="graph-container" :class="{ 'graph-container--frameless': frameless }">
-        <svg ref="svgRef" class="graph-svg"></svg>
+      <div class="kg-graph-canvas-stack">
+        <div
+          ref="graphContainer"
+          class="graph-container"
+          :class="{ 'graph-container--frameless': frameless }"
+        >
+          <svg ref="svgRef" class="graph-svg"></svg>
+        </div>
+        <transition name="kg-init-overlay-fade">
+          <div
+            v-if="graphInitializingOverlay"
+            class="kg-graph-init-overlay"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <div class="kg-graph-init-card">
+              <p class="kg-graph-init-title">{{ t.initializing }}</p>
+              <div
+                class="kg-graph-init-bar"
+                role="progressbar"
+                :aria-valuetext="t.initializing"
+              >
+                <div class="kg-graph-init-bar-fill" />
+              </div>
+            </div>
+          </div>
+        </transition>
       </div>
 
       <!-- Слой UI вне .graph-container — иначе overflow:hidden обрезает backdrop-filter («стекло») -->
@@ -67,10 +98,12 @@
             <div class="custom-search-wrapper">
             <UIcon name="i-heroicons-magnifying-glass" class="search-icon" />
             <input
+              ref="searchInputRef"
               v-model="searchQuery"
               type="text"
               :placeholder="t.search"
               class="custom-search-input"
+              autocomplete="off"
               @input="handleSearch"
             >
             <GvButton
@@ -130,41 +163,7 @@
 
           <div class="control-divider control-divider--toolbar"></div>
 
-          <!-- Language Switcher -->
-          <div class="lang-switcher">
-            <GvButton
-              type="button"
-              unstyled
-              chromeless
-              class="lang-btn"
-              :class="{ active: langStore.currentLang === 'en' }"
-              @click="langStore.setLanguage('en')"
-            >
-              EN
-            </GvButton>
-            <div class="lang-sep"></div>
-            <GvButton
-              type="button"
-              unstyled
-              chromeless
-              class="lang-btn"
-              :class="{ active: langStore.currentLang === 'ru' }"
-              @click="langStore.setLanguage('ru')"
-            >
-              RU
-            </GvButton>
-            <div class="lang-sep"></div>
-            <GvButton
-              type="button"
-              unstyled
-              chromeless
-              class="lang-btn"
-              :class="{ active: langStore.currentLang === 'zh' }"
-              @click="langStore.setLanguage('zh')"
-            >
-              ZH
-            </GvButton>
-          </div>
+          <LanguageSwitcher compact class="lang-switcher-wrap" />
 
           <div class="control-divider control-divider--toolbar"></div>
 
@@ -252,8 +251,6 @@
         <div
           v-if="selectedNode && !nodePopupPanelClosed"
           class="graph-popup graph-popup-node"
-          :class="{ 'graph-popup--mobile': isMobileChrome }"
-          :style="nodePopupStyle"
           :aria-busy="selectedNode.type === 'term' && termPopupLoading"
           @mousedown.stop
           @wheel.stop
@@ -370,8 +367,6 @@
         <div
           v-if="selectedLink && !linkPopupPanelClosed"
           class="graph-popup link-popup graph-popup-link"
-          :class="{ 'graph-popup--mobile': isMobileChrome }"
-          :style="linkPopupStyle"
           @mousedown.stop
           @wheel.stop
           @mousewheel.stop
@@ -439,9 +434,15 @@
 </template>
 
 <script setup lang="ts">
+import { shallowRef } from 'vue'
 import * as d3 from 'd3'
 import { useMediaQuery } from '@vueuse/core'
 import { useLanguageStore } from '~/stores/language'
+import {
+  ANCHORED_POPUP_GAP_PX,
+  pickPopupRectFromPoint,
+  viewportScreenBox,
+} from '~/utils/anchoredPopupPlacement'
 
 const langStore = useLanguageStore()
 const graphViewport = ref<HTMLElement | null>(null)
@@ -453,7 +454,8 @@ const uiDict: Record<string, any> = {
     title: 'Gativus Knowledge Graph',
     subtitle: 'Ontology visualization: categories, articles, and terms',
     search: 'Search...',
-    loading: 'Loading graph...',
+    loading: 'Loading graph…',
+    initializing: 'Initializing…',
     empty: 'Graph is empty. Add categories and link them to articles.',
     filters: 'Filtering',
     all: 'All',
@@ -486,7 +488,8 @@ const uiDict: Record<string, any> = {
     title: 'Граф знаний Gativus',
     subtitle: 'Визуализация онтологии: категории, статьи и термины',
     search: 'Поиск...',
-    loading: 'Загрузка графа...',
+    loading: 'Загрузка графа…',
+    initializing: 'Инициализация…',
     empty: 'Граф пуст. Добавьте категории и свяжите их со статьями.',
     filters: 'Фильтрация',
     all: 'Все',
@@ -519,7 +522,8 @@ const uiDict: Record<string, any> = {
     title: 'Gativus 知识图谱',
     subtitle: '本体可视化：类别、文章和术语',
     search: '搜索...',
-    loading: '正在加载图谱...',
+    loading: '正在加载图谱…',
+    initializing: '初始化中…',
     empty: '图谱为空。添加类别并将它们链接到文章。',
     filters: '过滤',
     all: '全部',
@@ -580,6 +584,10 @@ const filterLabels = computed(() => ({
   term: t.value.term
 }))
 
+const emit = defineEmits<{
+  layoutReady: []
+}>()
+
 const props = withDefaults(
   defineProps<{
     graphData: any
@@ -587,9 +595,22 @@ const props = withDefaults(
     enableNavigation?: boolean
     /** Встроенная страница: без рамки/тени у области графа (слитно с фоном лейаута) */
     frameless?: boolean
+    /**
+     * Фаза после загрузки данных: оверлей и блок pointer-events только на канве и зум-кластере
+     * (панели graph-chrome остаются доступны).
+     */
+    graphInitializing?: boolean
   }>(),
-  { pending: false, frameless: false },
+  { pending: false, frameless: false, graphInitializing: false },
 )
+
+const graphInitializingOverlay = computed(
+  () => Boolean(props.graphInitializing && !props.pending),
+)
+
+const canvasInteractionLocked = computed(() => graphInitializingOverlay.value)
+
+let layoutEmitGeneration = 0
 
 watch(() => props.graphData, () => {
   nextTick(() => initGraph())
@@ -599,13 +620,73 @@ const selectedNode = ref<any>(null)
 const selectedLink = ref<any>(null)
 const nodePopupPanelClosed = ref(false)
 const linkPopupPanelClosed = ref(false)
+/** Якорь попапа в координатах .graph-viewport (от верхнего левого угла хоста) — точка курсора при клике */
+const nodePopupPointerHost = ref<{ x: number, y: number } | null>(null)
+const linkPopupPointerHost = ref<{ x: number, y: number } | null>(null)
+
+function clientToPointerHost(clientX: number, clientY: number): { x: number, y: number } | null {
+  const host = graphViewport.value
+  if (!host) return null
+  const hr = host.getBoundingClientRect()
+  return { x: clientX - hr.left, y: clientY - hr.top }
+}
+
 const termPopupDetail = ref<any>(null)
 const termPopupLoading = ref(false)
-const hoveredNode = ref<any>(null)
-const hoveredLink = ref<any>(null)
-const currentTransform = ref(d3.zoomIdentity)
-const simulationTick = ref(0) // Added for simulation reactivity
+/** Актуальная матрица зума для clamp попапов (сразу при каждом событии d3-zoom). */
+let graphLiveZoomTransform: d3.ZoomTransform = d3.zoomIdentity
+/** Vue-совместимо: синхронизация не чаще одного кадра — меньше нагрузки, чем ref на каждом RAW-событии. */
+const currentTransform = shallowRef(d3.zoomIdentity)
+let graphZoomVueSyncRaf = 0
+
+function scheduleVueZoomFromD3(transform: d3.ZoomTransform) {
+  graphLiveZoomTransform = transform
+  if (graphZoomVueSyncRaf !== 0) return
+  graphZoomVueSyncRaf = window.requestAnimationFrame(() => {
+    graphZoomVueSyncRaf = 0
+    currentTransform.value = graphLiveZoomTransform
+  })
+}
+
 const searchQuery = ref('')
+const searchInputRef = ref<HTMLInputElement | null>(null)
+
+/** Последний нормализованный запрос; при изменении строки цикл Enter сбрасывается */
+const searchNormalizedLast = ref('')
+
+/** Узлы, отсортированные как при поиске (иерархия); цикл по Enter идёт по этому массиву */
+const searchMatchCycle = shallowRef<any[]>([])
+const searchCycleIndex = ref(0)
+
+/** Зум к результату поиска после паузы в наборе, чтобы не дергать переход при каждой букве */
+const SEARCH_FOCUS_DEBOUNCE_MS = 340
+let searchFocusDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+function cancelPendingSearchFocusZoom() {
+  if (searchFocusDebounceTimer == null) return
+  clearTimeout(searchFocusDebounceTimer)
+  searchFocusDebounceTimer = null
+}
+
+function scheduleSearchFocusZoom() {
+  cancelPendingSearchFocusZoom()
+  searchFocusDebounceTimer = setTimeout(() => {
+    searchFocusDebounceTimer = null
+    flushSearchFocusZoom()
+  }, SEARCH_FOCUS_DEBOUNCE_MS)
+}
+
+function flushSearchFocusZoom() {
+  const query = effectiveSearchQuery(searchQuery.value)
+  if (!query)
+    return
+  const matches = searchMatchCycle.value
+  if (!matches.length)
+    return
+  const idx = Math.min(searchCycleIndex.value, matches.length - 1)
+  focusOnNode(matches[idx])
+}
+
 const activeFilters = ref({
   book: true,
   category: true,
@@ -677,42 +758,82 @@ const getLinkBaseWidth = (link: any) => {
   return 1
 }
 
+/** Радиус круга узла — единый источник для hitbox/collide */
+function nodeGlyphRadius(d: any): number {
+  if (d.type === 'book') return 14
+  if (d.type === 'category') return Math.max(8, 14 - (d.depth || 0) * 3)
+  if (d.type === 'article') return 8
+  return 6
+}
+
+/**
+ * Радиус для forceCollide: чуть больше глифа + оценка половины ширины подписи,
+ * чтобы подписи реже наезжали друг на друга без сильного «раздувания» графа.
+ */
+function nodeCollisionRadius(d: any): number {
+  const r = nodeGlyphRadius(d)
+  const len = String(d.title ?? '').length
+  const labelPad = Math.min(76, Math.max(12, len * 3.2))
+  return r + labelPad + 8
+}
+
+/** На сколько px шире видимую линию делаем невидимый hit-line (тонкий клубок без «ложных» попаданий). */
+function linkHitStrokeWidthPx(d: any): number {
+  return Math.max(getLinkBaseWidth(d) + 2, 3)
+}
+
+/** Zoom / focus tween easing. */
+const KG_BOUNCE_OUT = d3.easeBounceOut
+const KG_GRAPH_BOUNCE_MS = 520
+
+function graphPrefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 const updateHighlights = () => {
   if (!svgRef.value) return
 
-  const focusNode = hoveredNode.value || selectedNode.value
-  const focusLink = hoveredLink.value || selectedLink.value
+  const focusNode = selectedNode.value
+  const focusLink = selectedLink.value
   const neighbors = focusNode ? getNeighbors(focusNode) : null
   const linkEndpointIds = focusLink
     ? [normalizeLinkEndpointId(focusLink.source), normalizeLinkEndpointId(focusLink.target)]
     : null
 
-  // 1. Update Nodes
-  d3.selectAll('.node-group')
+  const layer = d3.select(svgRef.value)
+
+  // 1. Update Nodes — поджим только при выделении по клику
+  layer.selectAll('.node-group')
     .style('opacity', (n: any) => {
+      let v: number
       if (focusLink && linkEndpointIds) {
-        return linkEndpointIds.includes(n.id) ? 1 : 0.08
+        v = linkEndpointIds.includes(n.id) ? 1 : 0.08
       }
-      // If we have a focus node (hover or selected), show neighbors
-      if (focusNode) {
+      else if (focusNode) {
         const isNeighbor = neighbors?.includes(n.id)
-        return isNeighbor ? 1 : 0.05
+        v = isNeighbor ? 1 : 0.05
       }
-      // If no focus, the graph stays fully visible (even if searching, unless we found a unique node)
-      return 1
+      else {
+        v = 1
+      }
+      return String(v)
     })
 
-  // 2. Update Links
-  d3.selectAll('.visual-link')
+  // 2. Update Links — то же без hover-слоёв CSS
+  layer.selectAll('.visual-link')
     .style('opacity', (l: any) => {
+      let v: number
       if (focusLink) {
-        return isSameLink(l, focusLink) ? 1 : 0.05
+        v = isSameLink(l, focusLink) ? 1 : 0.05
       }
-      if (focusNode) {
+      else if (focusNode) {
         const isConnected = l.source.id === focusNode.id || l.target.id === focusNode.id
-        return isConnected ? 1 : 0.02
+        v = isConnected ? 1 : 0.02
       }
-      return 0.4
+      else {
+        v = 0.4
+      }
+      return String(v)
     })
     .attr('stroke-width', (l: any) => {
       const baseWidth = getLinkBaseWidth(l)
@@ -733,22 +854,18 @@ const designSystemEase = (t: number) => {
   return Math.pow(t, 2.5) * (1.5 - 0.5 * t) // Roughly approximates the feel
 }
 
-// Auto-reset highlights when selection is cleared, but DON'T clear search query
-watch(selectedNode, (newVal) => {
-  if (!newVal && !selectedLink.value) {
-    updateHighlights()
-  }
+// Поджим графа / рёбер только пока есть выделение по клику (или строка поиска → выбранный узел)
+watch([selectedNode, selectedLink], () => {
+  updateHighlights()
 })
 
 watch(() => langStore.currentLang, async () => {
+  cancelPendingSearchFocusZoom()
   selectedNode.value = null
   selectedLink.value = null
-  hoveredNode.value = null
-  hoveredLink.value = null
   isFilterMenuOpen.value = false
   await nextTick()
   initGraph()
-  updateHighlights()
 })
 
 const selectedNodePath = computed(() => {
@@ -791,64 +908,77 @@ watch([selectedNode, () => langStore.currentLang], async ([node]) => {
   }
 }, { immediate: true })
 
-const nodePopupStyle = computed(() => {
-  if (!selectedNode.value || isMobileChrome.value) return {}
-  const x = currentTransform.value.applyX(selectedNode.value.x)
-  const y = currentTransform.value.applyY(selectedNode.value.y)
-  return {
-    left: `${x + 15}px`,
-    top: `${y + 15}px`
-  }
-})
-
-const linkPopupStyle = computed(() => {
-  if (!selectedLink.value || isMobileChrome.value) return {}
-  const source = selectedLink.value.source
-  const target = selectedLink.value.target
-  const midX = (source.x + target.x) / 2
-  const midY = (source.y + target.y) / 2
-  const x = currentTransform.value.applyX(midX)
-  const y = currentTransform.value.applyY(midY)
-  return {
-    left: `${x}px`,
-    top: `${y}px`
-  }
-})
-
 /** Удерживаем попап в пересечении .graph-viewport с видимой областью окна (прокрутка страницы, dynamic toolbar). */
 let graphPopupClampRaf = 0
 
-/** Под узлом / связью → при нехватке места сверху → иначе снова снизу у якоря (как theTermPopover). */
-function pickPreferredPopupTopHost(
-  popup: HTMLElement,
+/**
+ * Позиция попапа в координатах хоста (.graph-viewport): квадранты от точки якоря, как у theTermPopover.
+ * Высота для pickPopupRectFromPoint ограничивается окном и зоной у точки — иначе высокий скелетон уносит карточку вверх.
+ */
+function graphPopupHostPosition(
+  el: HTMLElement,
   host: HTMLElement,
+  anchorXHost: number,
   anchorYHost: number,
-  offsetBelow: number,
-): number {
-  const pad = 8
+  gap: number,
+): { leftHost: number; topHost: number } {
   const hr = host.getBoundingClientRect()
-  const anchorClientY = hr.top + anchorYHost
-  const vv = typeof window !== 'undefined' ? window.visualViewport : null
-  const winTop = vv?.offsetTop ?? 0
-  const winH = vv?.height ?? window.innerHeight
-  const screenTop = winTop + pad
-  const screenBottom = winTop + winH - pad
+  const cx = hr.left + anchorXHost
+  const cy = hr.top + anchorYHost
+  const { screenLeft, screenRight, screenTop, screenBottom } = viewportScreenBox()
 
-  const topBelowHost = anchorYHost + offsetBelow
-  const belowTopClient = hr.top + topBelowHost
+  el.style.maxHeight = ''
+  el.style.overflowY = ''
+  void el.offsetHeight
 
-  popup.style.maxHeight = ''
-  popup.style.overflowY = ''
-  popup.style.top = `${topBelowHost}px`
-  void popup.offsetHeight
-  const h = popup.getBoundingClientRect().height
+  const w = el.getBoundingClientRect().width
+  const rawNaturalH = el.getBoundingClientRect().height
+  const viewportStrip = screenBottom - screenTop
+  const viewportCap = Math.max(160, Math.floor(viewportStrip - gap * 4))
+  const availBelow = Math.max(0, screenBottom - cy - gap * 2)
+  const availAbove = Math.max(0, cy - screenTop - gap * 2)
+  const adjacentCap = Math.max(availBelow, availAbove, 140)
+  const hPlacement = Math.min(rawNaturalH, viewportCap, adjacentCap)
 
-  const spaceBelow = screenBottom - belowTopClient
-  const spaceAbove = anchorClientY - pad - screenTop
+  let { left: leftClient, top: topClient } = pickPopupRectFromPoint(
+    cx,
+    cy,
+    w,
+    hPlacement,
+    gap,
+    screenLeft,
+    screenRight,
+    screenTop,
+    screenBottom,
+  )
 
-  if (h <= spaceBelow) return topBelowHost
-  if (h <= spaceAbove) return (anchorClientY - pad - h) - hr.top
-  return topBelowHost
+  let leftHost = leftClient - hr.left
+  let topHost = topClient - hr.top
+  el.style.left = `${leftHost}px`
+  el.style.top = `${topHost}px`
+  void el.offsetHeight
+
+  const r = el.getBoundingClientRect()
+  const hRefined = Math.min(r.height, viewportCap, adjacentCap)
+  ;({ left: leftClient, top: topClient } = pickPopupRectFromPoint(
+    cx,
+    cy,
+    w,
+    hRefined,
+    gap,
+    screenLeft,
+    screenRight,
+    screenTop,
+    screenBottom,
+  ))
+
+  leftHost = leftClient - hr.left
+  topHost = topClient - hr.top
+
+  el.style.removeProperty('left')
+  el.style.removeProperty('top')
+
+  return { leftHost, topHost }
 }
 
 function clampPopupInHost(popup: HTMLElement, host: HTMLElement, left: number, top: number) {
@@ -949,44 +1079,82 @@ function clampPopupInHost(popup: HTMLElement, host: HTMLElement, left: number, t
     apply()
     if (!moved) break
   }
+
+  /** Как у theTermPopover: верхняя граница по высоте окна и скролл внутри при очень высоком скелетоне / контенте. */
+  const viewportCapPx = Math.max(160, Math.floor(screenBottom - screenTop - 24))
+  r = popup.getBoundingClientRect()
+  if (r.height > viewportCapPx - 2) {
+    popup.style.maxHeight = `${viewportCapPx}px`
+    popup.style.overflowY = 'auto'
+    apply()
+    void popup.offsetHeight
+    r = popup.getBoundingClientRect()
+    if (r.bottom > screenBottom) {
+      t -= r.bottom - screenBottom
+      apply()
+    }
+    if (r.top < screenTop) {
+      t += screenTop - r.top
+      apply()
+    }
+  }
+}
+
+function graphPopupClampNeeded(): boolean {
+  return Boolean(
+    (selectedNode.value && !nodePopupPanelClosed.value)
+    || (selectedLink.value && !linkPopupPanelClosed.value),
+  )
 }
 
 function applyGraphPopupClamp() {
-  if (!process.client || isMobileChrome.value) return
+  if (!process.client) return
   const host = graphViewport.value
-  if (!host || !currentTransform.value) return
+  if (!host) return
 
   if (selectedNode.value && !nodePopupPanelClosed.value) {
     const el = document.querySelector('.graph-popup-node') as HTMLElement | null
     if (el) {
-      const nx = currentTransform.value.applyX(selectedNode.value.x)
-      const ny = currentTransform.value.applyY(selectedNode.value.y)
-      const off = 15
-      const left = nx + off
-      const topPref = pickPreferredPopupTopHost(el, host, ny, off)
-      clampPopupInHost(el, host, left, topPref)
+      let hx: number
+      let hy: number
+      if (nodePopupPointerHost.value) {
+        hx = nodePopupPointerHost.value.x
+        hy = nodePopupPointerHost.value.y
+      }
+      else {
+        hx = graphLiveZoomTransform.applyX(selectedNode.value.x)
+        hy = graphLiveZoomTransform.applyY(selectedNode.value.y)
+      }
+      const { leftHost, topHost } = graphPopupHostPosition(el, host, hx, hy, 15)
+      clampPopupInHost(el, host, leftHost, topHost)
     }
   }
 
   if (selectedLink.value && !linkPopupPanelClosed.value) {
     const el = document.querySelector('.graph-popup-link') as HTMLElement | null
     if (el) {
-      const s = selectedLink.value.source
-      const tN = selectedLink.value.target
-      const midX = (s.x + tN.x) / 2
-      const midY = (s.y + tN.y) / 2
-      const hx = currentTransform.value.applyX(midX)
-      const hy = currentTransform.value.applyY(midY)
-      const off = 8
-      const left = hx
-      const topPref = pickPreferredPopupTopHost(el, host, hy, off)
-      clampPopupInHost(el, host, left, topPref)
+      let hx: number
+      let hy: number
+      if (linkPopupPointerHost.value) {
+        hx = linkPopupPointerHost.value.x
+        hy = linkPopupPointerHost.value.y
+      }
+      else {
+        const s = selectedLink.value.source
+        const tN = selectedLink.value.target
+        const midX = (s.x + tN.x) / 2
+        const midY = (s.y + tN.y) / 2
+        hx = graphLiveZoomTransform.applyX(midX)
+        hy = graphLiveZoomTransform.applyY(midY)
+      }
+      const { leftHost, topHost } = graphPopupHostPosition(el, host, hx, hy, ANCHORED_POPUP_GAP_PX)
+      clampPopupInHost(el, host, leftHost, topHost)
     }
   }
 }
 
 function requestGraphPopupClamp() {
-  if (!process.client || isMobileChrome.value) return
+  if (!process.client) return
   if (graphPopupClampRaf) cancelAnimationFrame(graphPopupClampRaf)
   graphPopupClampRaf = requestAnimationFrame(() => {
     graphPopupClampRaf = 0
@@ -1029,27 +1197,29 @@ const toggleFullscreen = () => {
   }
 }
 
-const handleSearch = () => {
-  const query = searchQuery.value.trim().toLowerCase()
+function normalizeSearchQuery(raw: string) {
+  return raw.trim().toLowerCase()
+}
 
-  if (!query) {
-    selectedNode.value = null
-    zoomFit()
-    updateHighlights()
-    return
-  }
+/** Матчинг и зум только от этой длины (инициальных букв), чтобы не грузить фильтрацию узлов */
+const MIN_SEARCH_CHARS = 3
 
+function effectiveSearchQuery(raw: string) {
+  const q = normalizeSearchQuery(raw)
+  return q.length >= MIN_SEARCH_CHARS ? q : ''
+}
+
+function rebuildSearchMatchesSorted(query: string) {
   const matches = props.graphData?.nodes?.filter((n: any) =>
-    n.title.toLowerCase().includes(query) || (n.slug && n.slug.toLowerCase() === query),
+    String(n.title ?? '').toLowerCase().includes(query)
+    || (n.slug && String(n.slug).toLowerCase() === query),
   ) || []
 
-  // Одинаковые названия у разных типов: приоритет выше по иерархии (category → book → article → term),
-  // плюс точное совпадение slug / заголовка важнее частичного.
   const typeRank = (n: any) => ontologyLevels[n.type as keyof typeof ontologyLevels] ?? 99
   const slugExact = (n: any) => (n.slug && String(n.slug).toLowerCase() === query) ? 0 : 1
   const titleExact = (n: any) => (n.title && String(n.title).toLowerCase() === query) ? 0 : 1
 
-  matches.sort((a, b) => {
+  matches.sort((a: any, b: any) => {
     const dSlug = slugExact(a) - slugExact(b)
     if (dSlug !== 0) return dSlug
     const dTitle = titleExact(a) - titleExact(b)
@@ -1057,23 +1227,141 @@ const handleSearch = () => {
     return typeRank(a) - typeRank(b)
   })
 
+  return matches
+}
+
+const handleSearch = () => {
+  const query = effectiveSearchQuery(searchQuery.value)
+
+  if (!query) {
+    cancelPendingSearchFocusZoom()
+    searchNormalizedLast.value = ''
+    searchMatchCycle.value = []
+    searchCycleIndex.value = 0
+    selectedNode.value = null
+    selectedLink.value = null
+    zoomFit()
+    return
+  }
+
+  const matches = rebuildSearchMatchesSorted(query)
+  const queryChanged = query !== searchNormalizedLast.value
+  searchNormalizedLast.value = query
+  searchMatchCycle.value = matches
+
   if (matches.length >= 1) {
-    const best = matches[0]
-    if (selectedNode.value?.id !== best.id) {
-      focusOnNode(best)
-    } else {
-      updateHighlights()
-    }
-  } else {
-    updateHighlights()
+    if (queryChanged)
+      searchCycleIndex.value = 0
+    searchCycleIndex.value = Math.min(searchCycleIndex.value, matches.length - 1)
+    scheduleSearchFocusZoom()
+  }
+  else {
+    cancelPendingSearchFocusZoom()
   }
 }
 
+function cycleSearchToNextMatch() {
+  const query = effectiveSearchQuery(searchQuery.value)
+  const matches = searchMatchCycle.value
+  if (!query || !matches.length)
+    return
+
+  cancelPendingSearchFocusZoom()
+  searchCycleIndex.value = (searchCycleIndex.value + 1) % matches.length
+  const node = matches[searchCycleIndex.value]
+  focusOnNode(node)
+}
+
+function isForeignTextField(active: Element | null) {
+  if (!active || !(active instanceof HTMLElement)) return false
+  if (active === searchInputRef.value) return false
+  const tag = active.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+  return active.isContentEditable
+}
+
+/** Чтобы пробел/backspace по кнопкам не попадали в строку поиска */
+function isInteractiveGraphControl(active: Element | null): boolean {
+  if (!active || !(active instanceof HTMLElement)) return false
+  const tag = active.tagName
+  if (tag === 'BUTTON' || tag === 'SUMMARY') return true
+  if (tag === 'A' && active.hasAttribute('href')) return true
+  const role = active.getAttribute('role')
+  return (
+    role === 'button'
+    || role === 'switch'
+    || role === 'menuitem'
+    || role === 'tab'
+    || role === 'radio'
+    || role === 'checkbox'
+  )
+}
+
+function onGraphGlobalSearchKeydown(e: KeyboardEvent) {
+  const ae = document.activeElement
+  const aeEl = ae instanceof HTMLElement ? ae : null
+  const inPopup = Boolean(aeEl?.closest('.graph-popup'))
+  const inPopoverPanel = Boolean(aeEl?.closest('.custom-popover-panel'))
+  if (inPopup || inPopoverPanel) return
+
+  const inSearchInput = ae === searchInputRef.value
+  const mod = e.ctrlKey || e.altKey || e.metaKey
+
+  if (inSearchInput) {
+    if (e.key === 'Enter' && !mod && !e.shiftKey) {
+      e.preventDefault()
+      cycleSearchToNextMatch()
+    }
+    return
+  }
+
+  if (isInteractiveGraphControl(ae)) return
+  if (isForeignTextField(ae)) return
+
+  if (e.key === 'Enter' && !mod && !e.shiftKey) {
+    const q = effectiveSearchQuery(searchQuery.value)
+    if (q && searchMatchCycle.value.length > 0) {
+      e.preventDefault()
+      cycleSearchToNextMatch()
+    }
+    return
+  }
+
+  const typingKey = !mod && (
+    e.key === 'Backspace'
+    || (e.key.length === 1 && !e.isComposing)
+  )
+  if (!typingKey)
+    return
+
+  e.preventDefault()
+
+  const nextVal = e.key === 'Backspace'
+    ? searchQuery.value.slice(0, -1)
+    : searchQuery.value + e.key
+
+  searchQuery.value = nextVal
+
+  nextTick(() => {
+    handleSearch()
+    const el = searchInputRef.value
+    if (el) {
+      el.focus({ preventScroll: true })
+      const len = el.value.length
+      el.setSelectionRange(len, len)
+    }
+  })
+}
+
 const clearSearch = () => {
+  cancelPendingSearchFocusZoom()
   searchQuery.value = ''
+  searchNormalizedLast.value = ''
+  searchMatchCycle.value = []
+  searchCycleIndex.value = 0
   selectedNode.value = null
+  selectedLink.value = null
   zoomFit()
-  updateHighlights()
 }
 
 const focusOnNode = (nodeData: any) => {
@@ -1086,17 +1374,48 @@ const focusOnNode = (nodeData: any) => {
   if (!target) return
 
   nodePopupPanelClosed.value = false
+  selectedLink.value = null
   selectedNode.value = target
-  updateHighlights()
+  const host = graphViewport.value
+  const gc = graphContainer.value
+  if (host && gc) {
+    const hr = host.getBoundingClientRect()
+    const gr = gc.getBoundingClientRect()
+    nodePopupPointerHost.value = {
+      x: gr.left + gr.width / 2 - hr.left,
+      y: gr.top + gr.height / 2 - hr.top,
+    }
+  }
 
-  const transform = d3.zoomIdentity
+  const endTransform = d3.zoomIdentity
     .translate(width / 2, height / 2)
     .scale(1.5)
     .translate(-target.x, -target.y)
 
-  d3.select(svgRef.value).transition().duration(750)
-    .on('end', () => updateHighlights()) // Ensure final state is correct
-    .call(zoomHandler.transform, transform)
+  const svg = d3.select(svgRef.value) as unknown as d3.Selection<SVGElement, unknown, null, undefined>
+  const start = d3.zoomTransform(svgRef.value!)
+  svg.interrupt('kg-zoom-focus')
+
+  const zoomDur = graphPrefersReducedMotion() ? 220 : KG_GRAPH_BOUNCE_MS + 80
+  const zoomEase = graphPrefersReducedMotion() ? d3.easeCubicOut : KG_BOUNCE_OUT
+
+  svg.transition('kg-zoom-focus')
+    .duration(zoomDur)
+    .ease(zoomEase)
+    .tween('kg-zoom-interp', () => {
+      const ix = d3.interpolateNumber(start.x, endTransform.x)
+      const iy = d3.interpolateNumber(start.y, endTransform.y)
+      const ik = d3.interpolateNumber(start.k, endTransform.k)
+      return (t: number) => {
+        zoomHandler.transform(
+          svg,
+          d3.zoomIdentity.translate(ix(t), iy(t)).scale(ik(t)),
+        )
+      }
+    })
+    .on('end', () => {
+      zoomHandler.transform(svg, endTransform)
+    })
 }
 
 const relLabels = computed<Record<string, string>>(() => {
@@ -1227,19 +1546,17 @@ let zoomHandler: any = null
 
 const zoomIn = () => {
   if (!svgRef.value || !zoomHandler) return
-  d3.select(svgRef.value).transition().duration(350).call(zoomHandler.scaleBy, 1.5)
+  d3.select(svgRef.value).transition().duration(200).call(zoomHandler.scaleBy, 1.5)
 }
 
 const zoomOut = () => {
   if (!svgRef.value || !zoomHandler) return
-  d3.select(svgRef.value).transition().duration(350).call(zoomHandler.scaleBy, 0.7)
+  d3.select(svgRef.value).transition().duration(200).call(zoomHandler.scaleBy, 0.7)
 }
 
 const zoomFit = () => {
   if (!svgRef.value || !zoomHandler || !graphContainer.value) return
-  const width = graphContainer.value.clientWidth
-  const height = graphContainer.value.clientHeight
-  d3.select(svgRef.value).transition().duration(350)
+  d3.select(svgRef.value).transition().duration(200)
     .call(zoomHandler.transform, d3.zoomIdentity.translate(0, 0).scale(1))
 }
 
@@ -1284,7 +1601,45 @@ const getTypeLabel = (type: string) => {
 }
 
 const initGraph = () => {
-  if (!process.client || !props.graphData || !svgRef.value || !graphContainer.value) return
+  if (!process.client || !svgRef.value || !graphContainer.value)
+    return
+
+  if (graphZoomVueSyncRaf !== 0) {
+    cancelAnimationFrame(graphZoomVueSyncRaf)
+    graphZoomVueSyncRaf = 0
+  }
+
+  layoutEmitGeneration += 1
+  const layoutGen = layoutEmitGeneration
+
+  let emittedStable = false
+  let fallbackTimer: ReturnType<typeof setTimeout> | null = null
+
+  const emitLayoutStable = () => {
+    if (layoutGen !== layoutEmitGeneration || emittedStable)
+      return
+    emittedStable = true
+    if (fallbackTimer != null) {
+      clearTimeout(fallbackTimer)
+      fallbackTimer = null
+    }
+    emit('layoutReady')
+  }
+
+  if (simulation) {
+    simulation.stop()
+    simulation.on('tick', null)
+    simulation.on('end', null)
+    simulation = null
+  }
+
+  if (!props.graphData) {
+    nextTick(emitLayoutStable)
+    return
+  }
+
+  graphLiveZoomTransform = d3.zoomIdentity
+  currentTransform.value = d3.zoomIdentity
 
   const width = graphContainer.value.clientWidth
   const height = graphContainer.value.clientHeight
@@ -1296,9 +1651,6 @@ const initGraph = () => {
       if (event.target === svgRef.value) {
         selectedNode.value = null
         selectedLink.value = null
-        hoveredNode.value = null
-        hoveredLink.value = null
-        updateHighlights()
       }
     })
 
@@ -1330,8 +1682,9 @@ const initGraph = () => {
     .scaleExtent([0.1, 4])
     .on('zoom', (event: any) => {
       g.attr('transform', event.transform)
-      currentTransform.value = event.transform
-      requestGraphPopupClamp()
+      scheduleVueZoomFromD3(event.transform)
+      if (graphPopupClampNeeded())
+        requestGraphPopupClamp()
     })
 
   svg.call(zoomHandler)
@@ -1341,92 +1694,119 @@ const initGraph = () => {
 
   // Filter based on activeFilters
   const nodes = allNodes.filter((n: any) => activeFilters.value[n.type as keyof typeof activeFilters.value])
-  const nodeIds = new Set(nodes.map(n => n.id))
+  const nodeIds = new Set(nodes.map((n: any) => n.id))
   const links = allLinks.filter((l: any) => {
     const sourceId = typeof l.source === 'object' ? l.source.id : l.source
     const targetId = typeof l.target === 'object' ? l.target.id : l.target
     return nodeIds.has(sourceId) && nodeIds.has(targetId)
   })
 
-  // Hierarchy Y-axis mapping (Categories top, Terms bottom)
-  const getYPosition = (type: string) => {
-    if (type === 'category') return height * 0.2
-    if (type === 'book') return height * 0.4
-    if (type === 'article') return height * 0.6
-    if (type === 'term') return height * 0.8
-    return height / 2
+  // Горизонтальные кластеры слева направо (как в легенде): красные категории → синие книги → фиолетовые статьи → зелёные термины.
+  const CLUSTER_MARGIN_FRAC = 0.07
+  const marginPx = width * CLUSTER_MARGIN_FRAC
+  const innerW = Math.max(width - marginPx * 2, width * 0.5)
+
+  const laneIndexForType = (type: string) => {
+    if (type === 'category')
+      return 0
+    if (type === 'book')
+      return 1
+    if (type === 'article')
+      return 2
+    if (type === 'term')
+      return 3
+    return 1.5
+  }
+
+  const laneCenterX = (type: string) => {
+    const i = laneIndexForType(type)
+    return marginPx + (i + 0.5) * (innerW / 4)
+  }
+
+  for (const d of nodes) {
+    const cx = laneCenterX((d as any).type)
+    ;(d as any).x = cx + (Math.random() - 0.5) * innerW * 0.07
+    ;(d as any).y = height / 2 + (Math.random() - 0.5) * height * 0.38
   }
 
   simulation = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id((d: any) => (d as any).id).distance(100)) // Reduced from 200 for a tighter look
-    .force('charge', d3.forceManyBody().strength(-600)) // Scaled down from -1000 to prevent spreading too far
-    // Soft center to keep the graph in view
-    .force('center', d3.forceCenter(width / 2, height / 2))
-    // X-axis: Weak horizontal pull to allow wide natural spreading
-    .force('x', d3.forceX(width / 2).strength(0.03))
-    // Y-axis: Semantic clustering based on the Ontology Philosophy hierarchy
-    .force('y', d3.forceY((d: any) => getYPosition(d.type)).strength(0.15))
+    .velocityDecay(0.53)
+    .alphaDecay(0.175)
+    .alphaMin(0.028)
+    .force('link', d3.forceLink(links).id((d: any) => (d as any).id).distance(118))
+    .force('charge', d3.forceManyBody().strength(nodes.length > 130 ? -480 : -720))
+    .force(
+      'collide',
+      d3.forceCollide<any>()
+        .radius((d: any) => nodeCollisionRadius(d))
+        .strength(0.9),
+    )
+    .force('x', d3.forceX((d: any) => laneCenterX(d.type)).strength(0.22))
+    .force('y', d3.forceY(height / 2).strength(0.075))
 
-  const link = g.append('g')
-    .style('pointer-events', 'none')
-    .selectAll('line')
+  simulation.stop()
+  const warmupMax = Math.min(88, Math.max(24, Math.floor(nodes.length * 3 + links.length * 2)))
+  for (let wi = 0; wi < warmupMax; wi++) {
+    if (simulation.alpha() <= simulation.alphaMin())
+      break
+    simulation.tick()
+  }
+
+  const linkBundles = g.append('g')
+    .selectAll<SVGGElement, unknown>('g.kg-graph-link-bundle')
     .data(links)
-    .join('line')
-    .attr('class', 'visual-link')
-    .attr('stroke-opacity', 0.4)
-    .attr('stroke-width', (d: any) => getLinkBaseWidth(d))
-    .attr('stroke-dasharray', (d: any) => {
-      const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
-      const sLevel = typeLevels[d.source.type] ?? 99
-      const tLevel = typeLevels[d.target.type] ?? 99
-      const parent = sLevel <= tLevel ? d.source : d.target
+    .join(
+      (enter) => {
+        const grp = enter
+          .append('g')
+          .attr('class', 'kg-graph-link-bundle')
 
-      // If the parent is a category, it's a "virtual" dashed link
-      if (parent.type === 'category') return '4,4'
-      return 'none'
-    })
-    .attr('stroke', (d: any) => {
-      const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
-      const sLevel = typeLevels[d.source.type] ?? 99
-      const tLevel = typeLevels[d.target.type] ?? 99
+        grp
+          .append('line')
+        .attr('class', 'visual-link')
+        .style('pointer-events', 'none')
+        .attr('stroke-opacity', 0.4)
+        .attr('stroke-width', (d: any) => getLinkBaseWidth(d))
+        .attr('stroke-dasharray', (d: any) => {
+          const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
+          const sLevel = typeLevels[d.source.type] ?? 99
+          const tLevel = typeLevels[d.target.type] ?? 99
+          const parent = sLevel <= tLevel ? d.source : d.target
+          if (parent.type === 'category') return '4,4'
+          return 'none'
+        })
+        .attr('stroke', (d: any) => {
+          const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
+          const sLevel = typeLevels[d.source.type] ?? 99
+          const tLevel = typeLevels[d.target.type] ?? 99
+          const child = sLevel > tLevel ? d.source : d.target
+          const colors: Record<string, string> = {
+            book: '#0ea5e9',
+            article: '#6366f1',
+            category: '#ef4444',
+            term: '#10b981'
+          }
+          return colors[child.type] || '#94a3b8'
+        })
 
-      // Child (higher level) determines color. If same level, use source.
-      const child = sLevel > tLevel ? d.source : d.target
+      grp.append('line')
+        .attr('class', 'link-hit')
+        .attr('stroke', 'transparent')
+        .attr('stroke-width', (d: any) => linkHitStrokeWidthPx(d))
+        .style('pointer-events', 'auto')
+        .style('cursor', 'pointer')
+        .on('click', (event: any, d: any) => {
+          selectedNode.value = null
+          selectedLink.value = d
+          linkPopupPointerHost.value = clientToPointerHost(event.clientX, event.clientY)
+          linkPopupPanelClosed.value = false
+          event.stopPropagation()
+        })
 
-      const colors: Record<string, string> = {
-        book: '#0ea5e9',
-        article: '#6366f1',
-        category: '#ef4444',
-        term: '#10b981'
-      }
-
-      return colors[child.type] || '#94a3b8'
-    })
-
-  // Link Hit-zones (wider invisible lines for easier clicking) - ON TOP
-  const linkHitbox = g.append('g')
-    .selectAll('line')
-    .data(links)
-    .join('line')
-    .attr('stroke', 'transparent')
-    .attr('stroke-width', 15)
-    .attr('cursor', 'pointer')
-    .on('mouseover', (event: any, d: any) => {
-      hoveredLink.value = d
-      updateHighlights()
-    })
-    .on('mouseout', () => {
-      hoveredLink.value = null
-      updateHighlights()
-    })
-    .on('click', (event: any, d: any) => {
-      selectedNode.value = null
-      selectedLink.value = d
-      hoveredLink.value = null
-      linkPopupPanelClosed.value = false
-      updateHighlights()
-      event.stopPropagation()
-    })
+      return grp
+    },
+    update => update,
+  )
 
   const node = g.append('g')
     .selectAll('.node-group')
@@ -1437,49 +1817,14 @@ const initGraph = () => {
     .on('click', (event: any, d: any) => {
       selectedNode.value = d
       selectedLink.value = null
-      hoveredLink.value = null
+      nodePopupPointerHost.value = clientToPointerHost(event.clientX, event.clientY)
       nodePopupPanelClosed.value = false
-      updateHighlights()
       event.stopPropagation()
-    })
-    .on('mouseover', function (event: any, d: any) {
-      hoveredNode.value = d
-      updateHighlights()
-
-      d3.select(this).select('circle')
-        .attr('r', (n: any) => {
-          let base = 6
-          if (n.type === 'book') base = 14
-          else if (n.type === 'category') base = Math.max(8, 14 - (n.depth || 0) * 3)
-          else if (n.type === 'article') base = 8
-          return base * 1.25
-        })
-        .attr('stroke-width', 3)
-        .attr('stroke', '#6366f1')
-    })
-    .on('mouseleave', function () {
-      hoveredNode.value = null
-      updateHighlights()
-
-      d3.select(this).select('circle')
-        .attr('r', (n: any) => {
-          if (n.type === 'book') return 14
-          if (n.type === 'category') return Math.max(8, 14 - (n.depth || 0) * 3)
-          if (n.type === 'article') return 8
-          return 6
-        })
-        .attr('stroke-width', 2)
-        .attr('stroke', 'var(--node-stroke)')
     })
 
   // Node circles
   node.append('circle')
-    .attr('r', (d: any) => {
-      if (d.type === 'book') return 14
-      if (d.type === 'category') return Math.max(8, 14 - (d.depth || 0) * 3)
-      if (d.type === 'article') return 8
-      return 6
-    })
+    .attr('r', (d: any) => nodeGlyphRadius(d))
     .attr('fill', (d: any) => {
       if (d.type === 'book') return 'url(#grad-book)'
       if (d.type === 'category') return 'url(#grad-category)'
@@ -1492,32 +1837,26 @@ const initGraph = () => {
 
   // Node labels
   node.append('text')
+    .attr('class', 'kg-node-label')
     .attr('dy', (d: any) => {
       if (d.type === 'category') {
-        const r = Math.max(8, 14 - (d.depth || 0) * 3)
+        const r = nodeGlyphRadius(d)
         return -(r + 8)
       }
-      return 15
+      return 16
     })
     .attr('text-anchor', 'middle')
     .text((d: any) => d.title)
-    .attr('font-size', (d: any) => d.type === 'category' ? '12px' : '10px')
-    .attr('font-weight', (d: any) => d.type === 'category' ? '600' : '400')
-    .attr('fill', 'currentColor')
+    .attr('font-size', (d: any) => d.type === 'category' ? '12px' : '10.5px')
+    .attr('font-weight', (d: any) => d.type === 'category' ? '600' : '500')
+    .attr('fill', 'var(--gv-text-primary)')
     .style('pointer-events', 'none')
-    // Replaced slow CSS text-shadow with high-performance SVG halo (Fix for Firefox physics stuttering)
     .attr('stroke', 'var(--text-halo)')
     .attr('stroke-width', 3)
     .style('paint-order', 'stroke fill')
 
   simulation.on('tick', () => {
-    linkHitbox
-      .attr('x1', (d: any) => d.source.x)
-      .attr('y1', (d: any) => d.source.y)
-      .attr('x2', (d: any) => d.target.x)
-      .attr('y2', (d: any) => d.target.y)
-
-    link
+    linkBundles.selectAll<SVGLineElement, any>('line')
       .attr('x1', (d: any) => d.source.x)
       .attr('y1', (d: any) => d.source.y)
       .attr('x2', (d: any) => d.target.x)
@@ -1526,11 +1865,21 @@ const initGraph = () => {
     node
       .attr('transform', (d: any) => `translate(${d.x},${d.y})`)
 
-    // Позиции попапов: rAF + clamp (тот же путь, что и при zoom)
-    requestGraphPopupClamp()
+    if (graphPopupClampNeeded())
+      requestGraphPopupClamp()
   })
 
+  fallbackTimer = setTimeout(() => {
+    emitLayoutStable()
+  }, 1100)
+
+  simulation.on('end', emitLayoutStable)
+
+  if (simulation.alpha() <= simulation.alphaMin())
+    simulation.alpha(0.085)
+
   updateHighlights()
+  simulation.restart()
 }
 
 
@@ -1548,9 +1897,6 @@ const handleOutsideClick = (event: MouseEvent) => {
 
   selectedNode.value = null
   selectedLink.value = null
-  hoveredNode.value = null
-  hoveredLink.value = null
-  updateHighlights()
 }
 
 const handleWindowClick = (event: MouseEvent) => {
@@ -1577,6 +1923,7 @@ function onGraphPopupEscape(e: KeyboardEvent) {
 onMounted(async () => {
   window.addEventListener('click', handleWindowClick)
   window.addEventListener('keydown', onGraphPopupEscape)
+  window.addEventListener('keydown', onGraphGlobalSearchKeydown)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   await nextTick()
   initGraph()
@@ -1600,8 +1947,14 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  cancelPendingSearchFocusZoom()
+  if (graphZoomVueSyncRaf !== 0) {
+    cancelAnimationFrame(graphZoomVueSyncRaf)
+    graphZoomVueSyncRaf = 0
+  }
   window.removeEventListener('click', handleWindowClick)
   window.removeEventListener('keydown', onGraphPopupEscape)
+  window.removeEventListener('keydown', onGraphGlobalSearchKeydown)
   if (graphPopupClampRaf) {
     cancelAnimationFrame(graphPopupClampRaf)
     graphPopupClampRaf = 0
@@ -1626,8 +1979,9 @@ watch(activeFilters, () => {
 
 <style scoped>
 .knowledge-graph-visualizer {
-  --node-stroke: #ffffff;
-  --text-halo: rgba(255, 255, 255, 0.95);
+  /* Обводка узла и «ореол» подписи — из foundation-токенов (design_system §3) */
+  --node-stroke: color-mix(in srgb, var(--gv-border-principal) 78%, var(--gv-surface-card));
+  --text-halo: var(--gv-surface-card);
 
   width: 100%;
   height: 100%;
@@ -1660,8 +2014,8 @@ watch(activeFilters, () => {
 :deep(.dark) .knowledge-graph-visualizer,
 .dark .knowledge-graph-visualizer,
 :global(.dark) .knowledge-graph-visualizer {
-  --node-stroke: #1a1a1a;
-  --text-halo: rgba(26, 26, 26, 0.95);
+  --node-stroke: color-mix(in srgb, var(--gv-border-principal) 62%, var(--gv-surface-card));
+  --text-halo: var(--gv-surface-card);
 }
 
 
@@ -1675,6 +2029,20 @@ watch(activeFilters, () => {
   box-shadow: 0 0 1px 1px rgba(119, 119, 119, 0.1);
   overflow: hidden;
   overscroll-behavior: contain;
+}
+
+.kg-graph-canvas-stack {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--gv-radius-container);
+}
+
+.knowledge-graph-visualizer--frameless .kg-graph-canvas-stack {
+  border-radius: 0;
 }
 
 .dark .graph-container {
@@ -2291,6 +2659,111 @@ watch(activeFilters, () => {
   background: linear-gradient(135deg, #10b981, #047857);
 }
 
+/* Инициализация после загрузки данных: только канва (+ зум), панели graph-chrome остаются кликабельны */
+
+.knowledge-graph-visualizer--canvas-locked .graph-container {
+  pointer-events: none !important;
+}
+
+.knowledge-graph-visualizer--canvas-locked .kg-graph-ui-cluster {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.kg-graph-init-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 4vw, 1.85rem);
+  background: color-mix(in srgb, var(--gv-surface-card) 64%, transparent);
+  border: none;
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  pointer-events: auto;
+}
+
+.kg-graph-init-card {
+  width: min(300px, 86vw);
+  padding: 1.2rem 1.35rem 1.3rem;
+  border-radius: var(--gv-radius-container);
+  border: 1px solid var(--gv-border-principal);
+  box-shadow: var(--gv-shadow-md);
+  background: color-mix(in srgb, var(--gv-surface-card) 93%, transparent);
+}
+
+.dark .kg-graph-init-card {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.045),
+    0 14px 40px rgba(0, 0, 0, 0.42);
+}
+
+.kg-graph-init-title {
+  margin: 0 0 0.9rem;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gv-primary);
+  text-align: center;
+}
+
+.kg-graph-init-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gv-border-subtle) 92%, transparent);
+  overflow: hidden;
+}
+
+.kg-graph-init-bar-fill {
+  height: 100%;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--gv-primary) 45%, transparent),
+    var(--gv-primary),
+    color-mix(in srgb, var(--gv-primary) 45%, transparent),
+    transparent
+  );
+  animation: kg-graph-init-shimmer 1.38s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kg-graph-init-bar-fill {
+    animation: none;
+    width: 100%;
+    opacity: 0.28;
+  }
+
+  .kg-init-overlay-fade-enter-active,
+  .kg-init-overlay-fade-leave-active {
+    transition-duration: 0.12s;
+  }
+}
+
+.kg-init-overlay-fade-enter-active,
+.kg-init-overlay-fade-leave-active {
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.kg-init-overlay-fade-enter-from,
+.kg-init-overlay-fade-leave-to {
+  opacity: 0;
+}
+
+@keyframes kg-graph-init-shimmer {
+  0% {
+    transform: translateX(-115%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
 /* Base Overlays */
 .loading-overlay {
   position: absolute;
@@ -2322,81 +2795,17 @@ watch(activeFilters, () => {
   font-size: 14px;
 }
 
-/* Base SVG Styles (GPU Accelerated) */
-:deep(.node-group) {
-  /* transitions removed from the group level to avoid opacity lag */
+.graph-svg :deep(.node-group circle) {
+  stroke: var(--node-stroke);
+  stroke-width: 2px;
 }
 
-:deep(.visual-link) {
-  /* transitions removed for links focus to prevent stuttering */
+:deep(.kg-node-label) {
+  font-family: inherit;
 }
 
-:deep(.node-group circle) {
-  transition: r 0.25s cubic-bezier(0.705, 0.010, 0.000, 0.915),
-    stroke-width 0.25s cubic-bezier(0.705, 0.010, 0.000, 0.915),
-    stroke 0.25s cubic-bezier(0.705, 0.010, 0.000, 0.915);
-}
-
-/* Language Switcher */
-.lang-switcher {
-  display: flex;
-  align-items: center;
-  background: color-mix(in srgb, var(--gv-text-primary) 5%, transparent);
-  border-radius: 10px;
-  padding: 4px;
+.lang-switcher-wrap {
   margin: 0 4px;
-  gap: 2px;
-}
-
-.dark .lang-switcher {
-  background: color-mix(in srgb, var(--gv-surface-card) 45%, transparent);
-}
-
-:deep(.lang-btn) {
-  background: transparent;
-  border: none;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 8px 14px;
-  min-height: 34px;
-  min-width: 2.75rem;
-  border-radius: 8px;
-  cursor: pointer;
-  color: color-mix(in srgb, var(--gv-text-secondary) 88%, transparent);
-  transition: all 0.2s;
-}
-
-:deep(.lang-btn.gv-btn--chromeless) {
-  padding: 8px 14px !important;
-  min-height: 34px !important;
-  min-width: 2.75rem !important;
-}
-
-:deep(.lang-btn.active) {
-  background: var(--gv-surface-card);
-  color: var(--gv-primary);
-  box-shadow: var(--gv-shadow-sm);
-}
-
-.dark :deep(.lang-btn.active) {
-  background: color-mix(in srgb, var(--gv-surface-card) 95%, transparent);
-  color: var(--gv-primary);
-}
-
-:deep(.lang-btn .gv-btn__label) {
-  display: contents;
-}
-
-.lang-sep {
-  width: 1px;
-  height: 14px;
-  flex-shrink: 0;
-  background: color-mix(in srgb, var(--gv-border-principal) 85%, transparent);
-}
-
-.dark .lang-sep {
-  background: color-mix(in srgb, var(--gv-border-principal) 90%, transparent);
 }
 
 .graph-svg {
@@ -2430,26 +2839,7 @@ watch(activeFilters, () => {
   transition: background 0.3s ease,
     border-color 0.3s ease,
     box-shadow 0.3s ease;
-}
-
-.graph-popup--mobile {
-  position: fixed;
-  left: 12px !important;
-  right: 12px !important;
-  top: auto !important;
-  bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
-  width: auto !important;
-  max-width: none !important;
-  max-height: min(55vh, 480px);
-  overflow-x: hidden;
-  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  transform: none !important;
-  z-index: 200;
-}
-
-.graph-popup--mobile:hover {
-  transform: none !important;
 }
 
 .graph-popup__top {
@@ -2624,11 +3014,6 @@ watch(activeFilters, () => {
   overflow: hidden;
 }
 
-.graph-popup--mobile .graph-popup__definition {
-  -webkit-line-clamp: 8;
-  line-clamp: 8;
-}
-
 .graph-popup__footer {
   display: flex;
   align-items: center;
@@ -2678,7 +3063,7 @@ watch(activeFilters, () => {
   color: var(--gv-primary);
 }
 
-.graph-popup:hover:not(.graph-popup--mobile) {
+.graph-popup:hover {
   border-color: color-mix(in srgb, var(--gv-primary) 45%, var(--gv-border-principal));
   box-shadow: var(--gv-shadow-lg);
 }
@@ -2688,7 +3073,7 @@ watch(activeFilters, () => {
   border-color: var(--gv-border-principal);
 }
 
-.dark .graph-popup:hover:not(.graph-popup--mobile) {
+.dark .graph-popup:hover {
   border-color: color-mix(in srgb, var(--gv-primary) 50%, var(--gv-border-principal));
   box-shadow: var(--gv-shadow-lg);
 }
@@ -2697,10 +3082,6 @@ watch(activeFilters, () => {
   position: relative;
   padding-left: 20px !important;
   overflow: hidden;
-}
-
-.graph-popup--mobile.link-popup {
-  padding-left: 16px !important;
 }
 
 .link-popup:hover {
@@ -2837,6 +3218,7 @@ watch(activeFilters, () => {
   margin-bottom: 12px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -2974,9 +3356,14 @@ watch(activeFilters, () => {
     flex-direction: row;
   }
 
-  .graph-popup:not(.graph-popup--mobile) {
+  .graph-popup {
     width: min(240px, calc(100vw - 20px));
     padding: 12px;
+  }
+
+  .graph-popup__definition {
+    -webkit-line-clamp: 8;
+    line-clamp: 8;
   }
 
   .divider-hor {

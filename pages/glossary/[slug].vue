@@ -51,8 +51,14 @@
           class="mb-10 rounded-2xl overflow-hidden shadow-soft border dark:border-zinc-800">
           <img v-if="term.image_url" :src="term.image_url"
             class="w-full h-auto object-cover max-h-[500px] cursor-zoom-in" @click="handleMediaClick(term.image_url)" />
-          <video v-else-if="term.video_url" :src="term.video_url" class="w-full h-auto max-h-[500px]" controls
-            playsinline />
+          <video
+            v-else-if="term.video_url"
+            :src="term.video_url"
+            controls
+            playsinline
+            preload="metadata"
+            class="w-full h-auto max-h-[500px] bg-black"
+          />
         </div>
 
         <div v-if="contentHtml" class="parent w-full flex-col article-prose" v-html="contentHtml" @click="handleArticleClick" />

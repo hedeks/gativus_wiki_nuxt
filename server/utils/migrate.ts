@@ -141,6 +141,8 @@ export async function runMigrations(db: Database) {
       book_id        INTEGER REFERENCES books(id) ON DELETE SET NULL,
       sort_order     INTEGER DEFAULT 0,
       excerpt        TEXT,
+      excerpt_ru     TEXT,
+      excerpt_zh     TEXT,
       created_at     DATETIME DEFAULT (datetime('now')),
       updated_at     DATETIME DEFAULT (datetime('now')),
       created_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -211,6 +213,8 @@ export async function runMigrations(db: Database) {
         await ensureColumn('lang', 'TEXT')
         await ensureColumn('lang_ru', 'TEXT')
         await ensureColumn('lang_zh', 'TEXT')
+        await ensureColumn('excerpt_ru', 'TEXT')
+        await ensureColumn('excerpt_zh', 'TEXT')
       }
 
       if (table === 'books') {
@@ -298,8 +302,16 @@ export async function runMigrations(db: Database) {
   // ─── 16. Phase 5: Full-Text Search (FTS5) ───
   console.log('[migrate] Setting up FTS5 search indexing...')
 
+  await db.exec(`DROP TRIGGER IF EXISTS tr_articles_insert`)
+  await db.exec(`DROP TRIGGER IF EXISTS tr_articles_update`)
+  await db.exec(`DROP TRIGGER IF EXISTS tr_articles_delete`)
+  await db.exec(`DROP TRIGGER IF EXISTS tr_terms_insert`)
+  await db.exec(`DROP TRIGGER IF EXISTS tr_terms_update`)
+  await db.exec(`DROP TRIGGER IF EXISTS tr_terms_delete`)
+  await db.exec(`DROP TABLE IF EXISTS wiki_fts`)
+
   await db.exec(`
-    CREATE VIRTUAL TABLE IF NOT EXISTS wiki_fts USING fts5(
+    CREATE VIRTUAL TABLE wiki_fts USING fts5(
       id UNINDEXED,
       type UNINDEXED,
       title,
@@ -310,61 +322,86 @@ export async function runMigrations(db: Database) {
     )
   `)
 
-  // Create Triggers for Articles
   await db.exec(`
-    CREATE TRIGGER IF NOT EXISTS tr_articles_insert AFTER INSERT ON articles BEGIN
+    CREATE TRIGGER tr_articles_insert AFTER INSERT ON articles BEGIN
       INSERT INTO wiki_fts(id, type, title, content, slug, locale)
-      VALUES (new.id, 'article', new.title, new.html_content, new.slug, new.locale);
+      VALUES (
+        new.id,
+        'article',
+        COALESCE(new.title, '') || ' ' || COALESCE(new.title_ru, '') || ' ' || COALESCE(new.title_zh, ''),
+        COALESCE(new.html_content, '') || ' ' || COALESCE(new.html_content_ru, '') || ' ' || COALESCE(new.html_content_zh, ''),
+        new.slug,
+        new.locale
+      );
     END;
   `)
   await db.exec(`
-    CREATE TRIGGER IF NOT EXISTS tr_articles_update AFTER UPDATE ON articles BEGIN
+    CREATE TRIGGER tr_articles_update AFTER UPDATE ON articles BEGIN
       UPDATE wiki_fts SET
-        title = new.title,
-        content = new.html_content,
+        title = COALESCE(new.title, '') || ' ' || COALESCE(new.title_ru, '') || ' ' || COALESCE(new.title_zh, ''),
+        content = COALESCE(new.html_content, '') || ' ' || COALESCE(new.html_content_ru, '') || ' ' || COALESCE(new.html_content_zh, ''),
         slug = new.slug,
         locale = new.locale
       WHERE id = old.id AND type = 'article';
     END;
   `)
   await db.exec(`
-    CREATE TRIGGER IF NOT EXISTS tr_articles_delete AFTER DELETE ON articles BEGIN
+    CREATE TRIGGER tr_articles_delete AFTER DELETE ON articles BEGIN
       DELETE FROM wiki_fts WHERE id = old.id AND type = 'article';
     END;
   `)
 
-  // Create Triggers for Terms
   await db.exec(`
-    CREATE TRIGGER IF NOT EXISTS tr_terms_insert AFTER INSERT ON terms BEGIN
+    CREATE TRIGGER tr_terms_insert AFTER INSERT ON terms BEGIN
       INSERT INTO wiki_fts(id, type, title, content, slug, locale)
-      VALUES (new.id, 'term', new.title, new.definition, new.slug, 'en');
+      VALUES (
+        new.id,
+        'term',
+        COALESCE(new.title, '') || ' ' || COALESCE(new.title_ru, '') || ' ' || COALESCE(new.title_zh, ''),
+        COALESCE(new.definition, '') || ' ' || COALESCE(new.definition_ru, '') || ' ' || COALESCE(new.definition_zh, ''),
+        new.slug,
+        COALESCE(new.lang, 'en')
+      );
     END;
   `)
   await db.exec(`
-    CREATE TRIGGER IF NOT EXISTS tr_terms_update AFTER UPDATE ON terms BEGIN
+    CREATE TRIGGER tr_terms_update AFTER UPDATE ON terms BEGIN
       UPDATE wiki_fts SET
-        title = new.title,
-        content = new.definition,
-        slug = new.slug
+        title = COALESCE(new.title, '') || ' ' || COALESCE(new.title_ru, '') || ' ' || COALESCE(new.title_zh, ''),
+        content = COALESCE(new.definition, '') || ' ' || COALESCE(new.definition_ru, '') || ' ' || COALESCE(new.definition_zh, ''),
+        slug = new.slug,
+        locale = COALESCE(new.lang, 'en')
       WHERE id = old.id AND type = 'term';
     END;
   `)
   await db.exec(`
-    CREATE TRIGGER IF NOT EXISTS tr_terms_delete AFTER DELETE ON terms BEGIN
+    CREATE TRIGGER tr_terms_delete AFTER DELETE ON terms BEGIN
       DELETE FROM wiki_fts WHERE id = old.id AND type = 'term';
     END;
   `)
 
-  // Populate / Resync FTS on every startup to fix any gaps
   console.log('[migrate] Resyncing FTS5 index from live data...')
-  await db.exec(`DELETE FROM wiki_fts`)
   await db.exec(`
     INSERT INTO wiki_fts(id, type, title, content, slug, locale)
-    SELECT id, 'article', title, html_content, slug, locale FROM articles;
+    SELECT
+      id,
+      'article',
+      COALESCE(title, '') || ' ' || COALESCE(title_ru, '') || ' ' || COALESCE(title_zh, ''),
+      COALESCE(html_content, '') || ' ' || COALESCE(html_content_ru, '') || ' ' || COALESCE(html_content_zh, ''),
+      slug,
+      locale
+    FROM articles;
   `)
   await db.exec(`
     INSERT INTO wiki_fts(id, type, title, content, slug, locale)
-    SELECT id, 'term', title, definition, slug, 'en' FROM terms;
+    SELECT
+      id,
+      'term',
+      COALESCE(title, '') || ' ' || COALESCE(title_ru, '') || ' ' || COALESCE(title_zh, ''),
+      COALESCE(definition, '') || ' ' || COALESCE(definition_ru, '') || ' ' || COALESCE(definition_zh, ''),
+      slug,
+      COALESCE(lang, 'en')
+    FROM terms;
   `)
   console.log('[migrate] FTS5 resync complete ✓')
 

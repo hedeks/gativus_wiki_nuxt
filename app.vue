@@ -13,6 +13,9 @@
 </template>
 
 <script setup lang="ts">
+import './assets/css/article-prose.css'
+import './assets/css/admin-about-cards.css'
+
 import { runPendingScrollAfterPageLeave } from '~/utils/pendingRouteScroll'
 
 const pageTransition = {

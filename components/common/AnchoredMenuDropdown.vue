@@ -1,25 +1,33 @@
 <script setup lang="ts">
 /** Меню, привязанное к триггеру: панель в Teleport + fixed, чтобы не резалась overflow и корректно работало на тач-устройствах. */
+const props = withDefaults(
+  defineProps<{
+    /** Ширина панели (px); для узких меню (напр. языки). */
+    panelWidth?: number
+  }>(),
+  { panelWidth: 288 },
+)
+
 const open = ref(false)
 const anchorRef = ref<HTMLElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
 
-/** Ширина панели (px); синхронизировать с классом Tailwind на панели (w-72 = 288). */
-const PANEL_W = 288
 const MARGIN = 8
 
 const panelStyle = ref<Record<string, string>>({
   top: '0px',
   left: '0px',
   maxHeight: '320px',
+  width: '288px',
 })
 
 function measureAndPosition () {
   const el = anchorRef.value
   if (!el) return
+  const w = Math.min(props.panelWidth, window.innerWidth - MARGIN * 2)
   const r = el.getBoundingClientRect()
-  let left = r.right - PANEL_W
-  left = Math.min(Math.max(MARGIN, left), window.innerWidth - PANEL_W - MARGIN)
+  let left = r.right - w
+  left = Math.min(Math.max(MARGIN, left), window.innerWidth - w - MARGIN)
 
   let top = r.bottom + MARGIN
   let maxH = window.innerHeight - top - MARGIN
@@ -35,6 +43,7 @@ function measureAndPosition () {
     top: `${top}px`,
     left: `${left}px`,
     maxHeight: `${maxH}px`,
+    width: `${w}px`,
   }
 }
 
@@ -97,7 +106,7 @@ defineExpose({ open, toggle, close })
       <div
         v-if="open"
         ref="panelRef"
-        class="anchored-menu-panel fixed z-[300] w-72 max-w-[calc(100vw-16px)] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.12),0_1px_0_rgba(255,255,255,0.9)_inset] dark:border-zinc-600 dark:bg-zinc-900 dark:shadow-[0_20px_48px_rgba(0,0,0,0.45)]"
+        class="anchored-menu-panel fixed z-[300] max-w-[calc(100vw-16px)] overflow-y-auto"
         :style="panelStyle"
         role="menu"
         @click.stop
@@ -109,6 +118,15 @@ defineExpose({ open, toggle, close })
 </template>
 
 <style scoped>
+.anchored-menu-panel {
+  background: var(--gv-surface-card);
+  border: 1px solid color-mix(in srgb, var(--gv-border-principal) 82%, var(--gv-primary) 18%);
+  border-radius: var(--gv-radius-container);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--gv-surface) 85%, transparent) inset,
+    var(--gv-shadow-lg);
+}
+
 .anchored-menu-enter-active,
 .anchored-menu-leave-active {
   transition: opacity 0.15s ease, transform 0.15s ease;

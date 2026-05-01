@@ -38,7 +38,7 @@ export default defineNuxtConfig({
       "meta": [
         {
           "name": "viewport",
-          "content": "width=device-width, initial-scale=1"
+          "content": "width=device-width, initial-scale=1, maximum-scale=1",
         },
         {
           "charset": "utf-8"
@@ -46,7 +46,7 @@ export default defineNuxtConfig({
       ],
     }
   },
-  css: ['~/assets/css/article-prose.css', '~/assets/css/admin-about-cards.css'],
+  /* Глобальные стили подключаются в app.vue — иначе dev иногда отдаёт 503 на __nuxt_vite_node__/module//assets/… */
   modules: ['@nuxt/ui', '@pinia/nuxt', "@nuxt/content", "@nuxtjs/tailwindcss", 'nuxt-markdown-render', '@nuxtjs/color-mode'],
 
   colorMode: {

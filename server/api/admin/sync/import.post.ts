@@ -97,14 +97,14 @@ export default defineEventHandler(async (event) => {
     const bookId = a.book_slug ? idMap.book.get(a.book_slug) || null : null
 
     await db.prepare(`
-      INSERT INTO articles (slug, title, title_ru, title_zh, excerpt, html_content, raw_odt_path, presentation_path, presentation_path_ru, presentation_path_zh, category_id, book_id, is_published, is_term_article, sort_order, created_by, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
+      INSERT INTO articles (slug, title, title_ru, title_zh, excerpt, excerpt_ru, excerpt_zh, html_content, raw_odt_path, presentation_path, presentation_path_ru, presentation_path_zh, category_id, book_id, is_published, is_term_article, sort_order, created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
       ON CONFLICT(slug) DO UPDATE SET
-        title = excluded.title, title_ru = excluded.title_ru, title_zh = excluded.title_zh, excerpt = excluded.excerpt, html_content = excluded.html_content,
+        title = excluded.title, title_ru = excluded.title_ru, title_zh = excluded.title_zh, excerpt = excluded.excerpt, excerpt_ru = excluded.excerpt_ru, excerpt_zh = excluded.excerpt_zh, html_content = excluded.html_content,
         raw_odt_path = excluded.raw_odt_path, presentation_path = excluded.presentation_path, presentation_path_ru = excluded.presentation_path_ru, presentation_path_zh = excluded.presentation_path_zh, category_id = excluded.category_id,
         book_id = excluded.book_id, is_published = excluded.is_published, is_term_article = excluded.is_term_article, sort_order = excluded.sort_order,
         created_at = excluded.created_at, updated_at = excluded.updated_at
-    `).run(a.slug, a.title, a.title_ru || null, a.title_zh || null, a.excerpt || null, a.html_content || '', a.raw_odt_path || null, a.presentation_path || null, a.presentation_path_ru || null, a.presentation_path_zh || null, catId, bookId, a.is_published || 1, a.is_term_article || 0, a.sort_order || 0, auth.id, a.created_at || null, a.updated_at || null)
+    `).run(a.slug, a.title, a.title_ru || null, a.title_zh || null, a.excerpt || null, a.excerpt_ru || null, a.excerpt_zh || null, a.html_content || '', a.raw_odt_path || null, a.presentation_path || null, a.presentation_path_ru || null, a.presentation_path_zh || null, catId, bookId, a.is_published || 1, a.is_term_article || 0, a.sort_order || 0, auth.id, a.created_at || null, a.updated_at || null)
 
     const origRow = await db.prepare('SELECT id FROM articles WHERE slug = ?').get(a.slug) as any
     if (!origRow) continue

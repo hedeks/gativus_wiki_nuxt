@@ -56,6 +56,8 @@ export interface Article {
   book_id?: number
   sort_order: number
   excerpt?: string
+  excerpt_ru?: string
+  excerpt_zh?: string
   locale?: string
   created_at: string
   updated_at: string

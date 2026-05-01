@@ -4,7 +4,8 @@
  * Scans HTML content and wraps found term titles/aliases in wiki-term links.
  * - Skips content inside <a>, <code>, <pre>, <h1>-<h6> tags
  * - Линкует **все** вхождения каждой фразы в обрабатываемых текстовых сегментах (не одно на всю статью)
- * - Sorts terms by length (longest first) to avoid partial matches
+ * - For each start position picks the term match with the **longest** character span
+ *   (so «TRL» does not steal «TRLB» when both are in the glossary).
  * - Skips matches inside raw tags and inside any <a>…</a> (including non–wiki-term links)
  */
 
@@ -154,29 +155,13 @@ export function linkTermsInHtml(html: string, termsMap: Map<string, { id: number
   }
 
   const cleanHtml = stripWikiTermLinks(html)
-  const phrases = Array.from(termsMap.keys()).sort((a, b) => b.length - a.length)
+  const phrases = Array.from(termsMap.keys()).filter(Boolean).sort((a, b) => b.length - a.length)
   const parts = splitHtmlIntoSegments(cleanHtml)
   const mentionCountByTermId = new Map<number, number>()
 
   const linkedHtml = parts.map(part => {
     if (part.isTag) return part.content
-
-    let text = part.content
-    const range = 'a-zA-Z0-9_\\u0400-\\u04FF\\-'
-    const suffixRange = 'a-zA-Z0-9\\u0400-\\u04FF\\-'
-
-    for (const phrase of phrases) {
-      const { id, slug } = termsMap.get(phrase)!
-      const escaped = escapeRegex(phrase)
-      const regex = new RegExp(`(?<![${range}])(${escaped}[${suffixRange}]*)(?![${range}])`, 'gi')
-
-      text = text.replace(regex, (full, originalWord: string, off: number) => {
-        if (!canAutoLinkAt(text, off)) return full
-        mentionCountByTermId.set(id, (mentionCountByTermId.get(id) || 0) + 1)
-        return `<a class="wiki-term" data-term-slug="${slug}" href="/glossary/${slug}">${originalWord}</a>`
-      })
-    }
-    return text
+    return linkPlainTextSegment(part.content, phrases, termsMap, mentionCountByTermId)
   }).join('')
 
   return {
@@ -184,6 +169,81 @@ export function linkTermsInHtml(html: string, termsMap: Map<string, { id: number
     linkedTermIds: [...mentionCountByTermId.keys()],
     mentionCountByTermId,
   }
+}
+
+const WORD_BOUNDARY_BEFORE = new RegExp(`[a-zA-Z0-9_\\u0400-\\u04FF\\-]`)
+const WORD_BOUNDARY_AFTER = WORD_BOUNDARY_BEFORE
+
+/** Longest span wins; on equal span, longer phrase key wins (more specific alias). */
+function tryTermMatchAt(
+  text: string,
+  start: number,
+  phrase: string,
+  suffixRange: string,
+): { end: number, originalWord: string } | null {
+  if (!phrase) return null
+  if (start > 0 && WORD_BOUNDARY_BEFORE.test(text[start - 1]!)) return null
+  const escaped = escapeRegex(phrase)
+  const re = new RegExp(`^(${escaped}[${suffixRange}]*)`, 'i')
+  const m = text.slice(start).match(re)
+  if (!m?.[1]) return null
+  const originalWord = m[1]
+  const end = start + originalWord.length
+  if (end < text.length && WORD_BOUNDARY_AFTER.test(text[end]!)) return null
+  return { end, originalWord }
+}
+
+function linkPlainTextSegment(
+  segment: string,
+  phrases: string[],
+  termsMap: Map<string, { id: number, slug: string }>,
+  mentionCountByTermId: Map<number, number>,
+): string {
+  const suffixRange = 'a-zA-Z0-9\\u0400-\\u04FF\\-'
+  let i = 0
+  let out = ''
+
+  while (i < segment.length) {
+    if (segment[i] === '<' && /^<a\s[^>]*class="[^"]*wiki-term/i.test(segment.slice(i))) {
+      const close = segment.indexOf('</a>', i)
+      if (close !== -1) {
+        out += segment.slice(i, close + 4)
+        i = close + 4
+        continue
+      }
+    }
+
+    let best: { end: number, originalWord: string, id: number, slug: string, phraseLen: number } | null = null
+    for (const phrase of phrases) {
+      const meta = termsMap.get(phrase)
+      if (!meta) continue
+      const hit = tryTermMatchAt(segment, i, phrase, suffixRange)
+      if (!hit) continue
+      if (!best
+        || hit.end > best.end
+        || (hit.end === best.end && phrase.length > best.phraseLen)) {
+        best = {
+          end: hit.end,
+          originalWord: hit.originalWord,
+          id: meta.id,
+          slug: meta.slug,
+          phraseLen: phrase.length,
+        }
+      }
+    }
+
+    if (best) {
+      mentionCountByTermId.set(best.id, (mentionCountByTermId.get(best.id) || 0) + 1)
+      out += `<a class="wiki-term" data-term-slug="${best.slug}" href="/glossary/${best.slug}">${best.originalWord}</a>`
+      i = best.end
+    }
+    else {
+      out += segment[i]
+      i += 1
+    }
+  }
+
+  return out
 }
 
 export function mergeMentionCountMaps(maps: Array<Map<number, number> | undefined | null>): Map<number, number> {

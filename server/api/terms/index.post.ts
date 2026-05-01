@@ -56,11 +56,13 @@ export default defineEventHandler(async (event) => {
 
     const articleSlug = await ensureUniqueSlug(db, 'articles', `term-${slug}`)
     const excerpt = generateExcerpt(finalHtml)
+    const excerptRu = finalHtmlRu ? generateExcerpt(finalHtmlRu) : null
+    const excerptZh = finalHtmlZh ? generateExcerpt(finalHtmlZh) : null
 
     await db.prepare(`
-      INSERT INTO articles (slug, slug_ru, slug_zh, title, title_ru, title_zh, html_content, html_content_ru, html_content_zh, presentation_path, presentation_path_ru, presentation_path_zh, category_id, excerpt, created_by, is_published, is_term_article)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
-    `).run(articleSlug, finalSlugRu ? `term-${finalSlugRu}` : null, finalSlugZh ? `term-${finalSlugZh}` : null, title, title_ru || null, title_zh || null, finalHtml, finalHtmlRu, finalHtmlZh, presentation_path || null, presentation_path_ru || null, presentation_path_zh || null, category_id || null, excerpt, auth.id)
+      INSERT INTO articles (slug, slug_ru, slug_zh, title, title_ru, title_zh, html_content, html_content_ru, html_content_zh, presentation_path, presentation_path_ru, presentation_path_zh, category_id, excerpt, excerpt_ru, excerpt_zh, created_by, is_published, is_term_article)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
+    `).run(articleSlug, finalSlugRu ? `term-${finalSlugRu}` : null, finalSlugZh ? `term-${finalSlugZh}` : null, title, title_ru || null, title_zh || null, finalHtml, finalHtmlRu, finalHtmlZh, presentation_path || null, presentation_path_ru || null, presentation_path_zh || null, category_id || null, excerpt, excerptRu, excerptZh, auth.id)
 
     const inserted = await db.prepare('SELECT last_insert_rowid() as id').get() as any
     termArticleId = inserted?.id
