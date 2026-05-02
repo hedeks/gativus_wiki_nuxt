@@ -87,8 +87,8 @@
             </GvButton>
           </div>
           <div class="topbar-title-wrap min-w-0 flex-1">
-            <p class="topbar-eyebrow">Админ</p>
-            <h1 class="topbar-title">Панель управления</h1>
+            <p class="topbar-eyebrow">{{ pageEyebrow }}</p>
+            <h1 class="topbar-title">{{ pageTitle }}</h1>
           </div>
           <div class="topbar-actions flex shrink-0 items-center gap-2 sm:gap-3">
             <GvButton
@@ -96,21 +96,10 @@
               variant="outline"
               color="gray"
               size="sm"
-              class="topbar-site-link hidden sm:inline-flex"
+              class="topbar-site-link"
             >
               <UIcon name="i-heroicons-arrow-top-right-on-square" class="h-4 w-4" />
-              <span>На сайт</span>
-            </GvButton>
-            <GvButton
-              to="/"
-              variant="outline"
-              color="gray"
-              size="sm"
-              square
-              class="topbar-site-link sm:hidden"
-              aria-label="На сайт"
-            >
-              <UIcon name="i-heroicons-arrow-top-right-on-square" class="h-5 w-5" />
+              <span class="hidden sm:inline">На сайт</span>
             </GvButton>
             <theThemeChanger />
           </div>
@@ -152,14 +141,30 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', icon: 'i-heroicons-squares-2x2', to: '/admin' },
-  { label: 'Импорт ODT', icon: 'i-heroicons-arrow-up-tray', to: '/admin/import' },
+  { label: 'Лендинг', icon: 'i-heroicons-computer-desktop', to: '/admin/landing' },
   { label: 'Книги', icon: 'i-heroicons-book-open', to: '/admin/books' },
   { label: 'Статьи', icon: 'i-heroicons-document-text', to: '/admin/articles' },
+  { label: 'Импорт ODT', icon: 'i-heroicons-arrow-up-tray', to: '/admin/import' },
+  { label: 'Импорт ODM', icon: 'i-heroicons-document-duplicate', to: '/admin/import-odm' },
   { label: 'Глоссарий', icon: 'i-heroicons-document-magnifying-glass', to: '/admin/glossary' },
   { label: 'Категории', icon: 'i-heroicons-folder', to: '/admin/categories' },
   { label: 'Пользователи', icon: 'i-heroicons-users', to: '/admin/users' },
   { label: 'Синхронизация', icon: 'i-heroicons-cloud', to: '/admin/sync' },
 ]
+
+const pageTitle = computed(() => {
+  if (route.path === '/admin') return 'Панель управления'
+  const item = navItems.find(it => it.to !== '/admin' && route.path.startsWith(it.to))
+  return item ? item.label : 'Панель управления'
+})
+
+const pageEyebrow = computed(() => {
+  if (route.path.startsWith('/admin/landing')) return 'CMS · Лендинг'
+  if (route.path.startsWith('/admin/books')) return 'Library · Книги'
+  if (route.path.startsWith('/admin/articles')) return 'Knowledge · Статьи'
+  if (route.path.startsWith('/admin/glossary')) return 'Ontology · Глоссарий'
+  return 'Admin'
+})
 
 function handleLogout() {
   store.logout()
@@ -483,6 +488,13 @@ function handleLogout() {
 
 .dark .topbar-title {
   color: #f4f4f5;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.05);
+}
+
+.topbar-site-link {
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .topbar-actions {

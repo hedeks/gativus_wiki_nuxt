@@ -1,5 +1,7 @@
 <script setup lang="ts">
 /** Меню, привязанное к триггеру: панель в Teleport + fixed, чтобы не резалась overflow и корректно работало на тач-устройствах. */
+defineOptions({ inheritAttrs: false })
+
 const props = withDefaults(
   defineProps<{
     /** Ширина панели (px); для узких меню (напр. языки). */
@@ -98,7 +100,7 @@ defineExpose({ open, toggle, close })
 </script>
 
 <template>
-  <div ref="anchorRef" class="inline-flex shrink-0">
+  <div ref="anchorRef" class="inline-flex shrink-0" v-bind="$attrs">
     <slot name="trigger" :toggle="toggle" :close="close" :is-open="open" />
   </div>
   <Teleport to="body">

@@ -1361,8 +1361,12 @@ const clearSearch = () => {
   searchCycleIndex.value = 0
   selectedNode.value = null
   selectedLink.value = null
+  queuedFocusNode = null
   zoomFit()
 }
+
+const isZooming = ref(false)
+let queuedFocusNode: any = null
 
 const focusOnNode = (nodeData: any) => {
   if (!svgRef.value || !zoomHandler || !graphContainer.value) return
@@ -1373,9 +1377,20 @@ const focusOnNode = (nodeData: any) => {
   const target = simulation.nodes().find((n: any) => n.id === nodeData.id)
   if (!target) return
 
-  nodePopupPanelClosed.value = false
+  if (isZooming.value) {
+    // If currently flying, queue this target for later instead of interrupting
+    queuedFocusNode = target
+    return
+  }
+
+  isZooming.value = true
+  queuedFocusNode = null
+
+  nodePopupPanelClosed.value = true // Hide popup during animation
   selectedLink.value = null
   selectedNode.value = target
+
+  // ... [host pointer logic remains the same]
   const host = graphViewport.value
   const gc = graphContainer.value
   if (host && gc) {
@@ -1387,13 +1402,14 @@ const focusOnNode = (nodeData: any) => {
     }
   }
 
+  const currentScale = d3.zoomTransform(svgRef.value).k
+
   const endTransform = d3.zoomIdentity
     .translate(width / 2, height / 2)
-    .scale(1.5)
+    .scale(currentScale)
     .translate(-target.x, -target.y)
 
   const svg = d3.select(svgRef.value) as unknown as d3.Selection<SVGElement, unknown, null, undefined>
-  const start = d3.zoomTransform(svgRef.value!)
   svg.interrupt('kg-zoom-focus')
 
   const zoomDur = graphPrefersReducedMotion() ? 220 : KG_GRAPH_BOUNCE_MS + 80
@@ -1402,19 +1418,19 @@ const focusOnNode = (nodeData: any) => {
   svg.transition('kg-zoom-focus')
     .duration(zoomDur)
     .ease(zoomEase)
-    .tween('kg-zoom-interp', () => {
-      const ix = d3.interpolateNumber(start.x, endTransform.x)
-      const iy = d3.interpolateNumber(start.y, endTransform.y)
-      const ik = d3.interpolateNumber(start.k, endTransform.k)
-      return (t: number) => {
-        zoomHandler.transform(
-          svg,
-          d3.zoomIdentity.translate(ix(t), iy(t)).scale(ik(t)),
-        )
-      }
-    })
+    .call(zoomHandler.transform, endTransform)
     .on('end', () => {
-      zoomHandler.transform(svg, endTransform)
+      isZooming.value = false
+      if (queuedFocusNode) {
+        // Immediately start flying to the queued node
+        focusOnNode(queuedFocusNode)
+      } else {
+        // Only show popup when we have reached the final destination
+        nodePopupPanelClosed.value = false
+        nextTick(() => {
+          if (graphPopupClampNeeded()) requestGraphPopupClamp()
+        })
+      }
     })
 }
 
@@ -1675,6 +1691,8 @@ const initGraph = () => {
   createGradient('grad-term', '#10b981', '#047857')      // Emerald
 
   const g = svg.append('g')
+    .style('will-change', 'transform')
+    .style('transform-origin', '0 0')
 
   // Zoom behavior
   zoomHandler = d3.zoom<SVGElement, unknown>()
@@ -2084,14 +2102,12 @@ watch(activeFilters, () => {
   border-radius: var(--gv-radius-container);
   border: 1px solid var(--gv-border-principal);
   box-shadow: var(--gv-shadow-sm);
-  background: color-mix(in srgb, var(--gv-surface) 62%, transparent);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-  backdrop-filter: blur(14px) saturate(160%);
+  background: color-mix(in srgb, var(--gv-surface) 95%, transparent);
 }
 
 .dark .kg-glass-surface {
   border-color: var(--gv-border-principal);
-  background: color-mix(in srgb, var(--gv-surface) 48%, transparent);
+  background: color-mix(in srgb, var(--gv-surface) 92%, transparent);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 28px rgba(0, 0, 0, 0.35);
 }
 

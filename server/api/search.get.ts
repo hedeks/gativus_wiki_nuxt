@@ -28,37 +28,50 @@ function appendArticleSearchQuery(basePath: string, searchQuery: string, highlig
   return url
 }
 
-/** Если FTS не нашёл или упал — быстрый LIKE по всем локализованным заголовкам. */
-async function runTitleLikeFallback(db: any, needle: string, typeList: ('article' | 'term')[]): Promise<any[]> {
+async function runTitleLikeFallback(db: any, needle: string, typeList: ('article' | 'term')[], locale: string): Promise<any[]> {
   const esc = escapeSqlLikePattern(needle)
   const pattern = `%${esc}%`
   const out: any[] = []
 
   if (typeList.includes('article')) {
     const rows = (await db.prepare(`
-      SELECT id, 'article' AS type, title, slug, locale,
-             title AS snippet,
+      SELECT id, 'article' AS type,
+             CASE 
+               WHEN ? = 'ru' AND COALESCE(title_ru, '') != '' THEN title_ru
+               WHEN ? = 'zh' AND COALESCE(title_zh, '') != '' THEN title_zh
+               ELSE title
+             END AS title,
+             slug, locale,
              100 AS rank
       FROM articles
-      WHERE COALESCE(title, '') LIKE ? ESCAPE '\\'
-         OR COALESCE(title_ru, '') LIKE ? ESCAPE '\\'
-         OR COALESCE(title_zh, '') LIKE ? ESCAPE '\\'
+      WHERE (
+        (? = 'ru' AND COALESCE(title_ru, '') LIKE ? ESCAPE '\\') OR
+        (? = 'zh' AND COALESCE(title_zh, '') LIKE ? ESCAPE '\\') OR
+        (? = 'en' AND COALESCE(title, '') LIKE ? ESCAPE '\\')
+      )
       LIMIT 15
-    `).all(pattern, pattern, pattern)) as any[]
+    `).all(locale, locale, locale, pattern, locale, pattern, locale, pattern)) as any[]
     out.push(...(rows || []))
   }
 
   if (typeList.includes('term')) {
     const rows = (await db.prepare(`
-      SELECT id, 'term' AS type, title, slug, COALESCE(lang, 'en') AS locale,
-             title AS snippet,
+      SELECT id, 'term' AS type,
+             CASE 
+               WHEN ? = 'ru' AND COALESCE(title_ru, '') != '' THEN title_ru
+               WHEN ? = 'zh' AND COALESCE(title_zh, '') != '' THEN title_zh
+               ELSE title
+             END AS title,
+             slug, COALESCE(lang, 'en') AS locale,
              100 AS rank
       FROM terms
-      WHERE COALESCE(title, '') LIKE ? ESCAPE '\\'
-         OR COALESCE(title_ru, '') LIKE ? ESCAPE '\\'
-         OR COALESCE(title_zh, '') LIKE ? ESCAPE '\\'
+      WHERE (
+        (? = 'ru' AND COALESCE(title_ru, '') LIKE ? ESCAPE '\\') OR
+        (? = 'zh' AND COALESCE(title_zh, '') LIKE ? ESCAPE '\\') OR
+        (? = 'en' AND COALESCE(title, '') LIKE ? ESCAPE '\\')
+      )
       LIMIT 15
-    `).all(pattern, pattern, pattern)) as any[]
+    `).all(locale, locale, locale, pattern, locale, pattern, locale, pattern)) as any[]
     out.push(...(rows || []))
   }
 
@@ -94,7 +107,11 @@ export default defineEventHandler(async (event) => {
       SELECT
         wiki_fts.id AS id,
         wiki_fts.type AS type,
-        COALESCE(a.title, t.title) AS title,
+        CASE
+          WHEN ? = 'ru' THEN COALESCE(NULLIF(a.title_ru, ''), NULLIF(t.title_ru, ''), a.title, t.title)
+          WHEN ? = 'zh' THEN COALESCE(NULLIF(a.title_zh, ''), NULLIF(t.title_zh, ''), a.title, t.title)
+          ELSE COALESCE(a.title, t.title)
+        END AS title,
         CASE wiki_fts.type
           WHEN 'article' THEN COALESCE(a.slug, wiki_fts.slug)
           WHEN 'term' THEN COALESCE(t.slug, wiki_fts.slug)
@@ -108,9 +125,14 @@ export default defineEventHandler(async (event) => {
       LEFT JOIN terms t ON wiki_fts.type = 'term' AND wiki_fts.id = t.id
       WHERE wiki_fts MATCH ?
         AND wiki_fts.type IN (${typePlaceholders})
+        AND (
+          (? = 'ru' AND COALESCE(a.title_ru, t.title_ru, '') != '') OR
+          (? = 'zh' AND COALESCE(a.title_zh, t.title_zh, '') != '') OR
+          (? = 'en' AND COALESCE(a.title, t.title, '') != '')
+        )
       ORDER BY wiki_fts.rank
       LIMIT 15
-    `).all(ftsMatch, ...typeList)) as any[]
+    `).all(locale, locale, ftsMatch, ...typeList, locale, locale, locale)) as any[]
   }
   catch (err) {
     console.error('[search] FTS query failed:', err)
@@ -119,7 +141,7 @@ export default defineEventHandler(async (event) => {
 
   if (!results.length) {
     try {
-      results = await runTitleLikeFallback(db, qRaw, typeList)
+      results = await runTitleLikeFallback(db, qRaw, typeList, locale)
     }
     catch (err) {
       console.error('[search] LIKE fallback failed:', err)

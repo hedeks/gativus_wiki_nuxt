@@ -327,9 +327,6 @@ async function uploadImage(e: Event) {
     <!-- Top Bar -->
     <div class="editor-topbar">
       <div class="editor-topbar-left">
-        <NuxtLink to="/admin/articles" class="back-btn">
-          <UIcon name="i-heroicons-arrow-left" />
-        </NuxtLink>
         <h1 class="editor-title">{{ title || 'Без названия' }}</h1>
         <span class="entity-badge">UNIVERSAL ENTITY</span>
         <div v-if="fullArticle?.is_term_article" class="term-ref-badge">

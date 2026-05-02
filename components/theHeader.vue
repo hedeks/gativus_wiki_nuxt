@@ -68,7 +68,6 @@ const links = computed<NavLink[]>(() => [
   { label: t.value.articles, icon: 'i-heroicons-document-text', to: '/articles' },
   { label: t.value.glossary, icon: 'i-heroicons-document-magnifying-glass', to: '/glossary' },
   { label: t.value.kg, icon: 'i-heroicons-share', to: '/knowledge-graph' },
-  { label: t.value.about, icon: 'i-heroicons-information-circle', to: '/about' },
 ])
 
 function isNavActive(to: string): boolean {
@@ -112,7 +111,7 @@ onUnmounted(() => {
     <div class="gv-header__inner">
       <div class="gv-header__left">
         <theSiteLogo />
-        <TheSearch class="gv-header__search gv-header__search--desktop" />
+        <TheSearch class="gv-header__search gv-header__search--desktop gv-header__search--auto-compact" />
       </div>
 
       <!-- Desktop nav: без UHorizontalNavigation — токены --gv-* -->
@@ -281,7 +280,20 @@ onUnmounted(() => {
 
 @media (min-width: 1024px) {
   .gv-header__search--desktop {
-    max-width: none;
+    flex: initial;
+    justify-self: start;
+  }
+}
+
+/* Схлопывание поиска в иконку раньше, если навигация длинная */
+@media (max-width: 1550px) {
+  .gv-header__search--auto-compact :deep(.gv-search__trigger-label),
+  .gv-header__search--auto-compact :deep(.gv-search__kbd--hint) {
+    display: none !important;
+  }
+  .gv-header__search--auto-compact :deep(.gv-search__trigger) {
+    padding-inline: 12px !important;
+    min-width: 44px;
   }
 }
 

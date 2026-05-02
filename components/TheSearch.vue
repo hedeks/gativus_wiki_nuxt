@@ -273,14 +273,26 @@ function onCmdKOpenSearch(e: KeyboardEvent) {
   }
 }
 
+function syncShortcutHotkeyListener(enabled: boolean) {
+  if (!import.meta.client)
+    return
+  window.removeEventListener('keydown', onCmdKOpenSearch)
+  if (enabled)
+    window.addEventListener('keydown', onCmdKOpenSearch)
+}
+
+watch(
+  () => props.shortcutHotkey,
+  v => syncShortcutHotkeyListener(v),
+)
+
 onMounted(() => {
   if (typeof navigator !== 'undefined') {
     const p = navigator.platform || ''
     const ua = navigator.userAgent || ''
     isMac.value = /Mac|iPhone|iPod|iPad/i.test(p) || /Mac OS/i.test(ua)
   }
-  if (import.meta.client && props.shortcutHotkey)
-    window.addEventListener('keydown', onCmdKOpenSearch)
+  syncShortcutHotkeyListener(props.shortcutHotkey)
 })
 
 async function goToResult(url: string) {
@@ -294,8 +306,7 @@ onUnmounted(() => {
     return
   document.body.style.overflow = ''
   window.removeEventListener('keydown', onResultsKeydown)
-  if (props.shortcutHotkey)
-    window.removeEventListener('keydown', onCmdKOpenSearch)
+  syncShortcutHotkeyListener(false)
 })
 
 function isArticleHitActive(idx: number): boolean {
@@ -326,6 +337,7 @@ function onHitPointerArticle(idx: number) {
         name="i-heroicons-magnifying-glass"
         class="gv-search__trigger-icon shrink-0"
         aria-hidden="true"
+        dynamic
       />
       <span class="gv-search__trigger-label">{{ t.triggerLabel }}</span>
       <kbd class="gv-search__kbd gv-search__kbd--hint hidden lg:inline-flex" aria-hidden="true">
@@ -337,7 +349,7 @@ function onHitPointerArticle(idx: number) {
       <transition name="gv-search-fade">
         <div
           v-if="isOpen"
-          class="gv-search__overlay"
+          class="gv-search__overlay gv-glass"
           aria-hidden="true"
           @click.self="closeModal"
         />
@@ -350,6 +362,7 @@ function onHitPointerArticle(idx: number) {
         >
           <div
             class="gv-search__dialog"
+            :data-accent="filterMode"
             role="dialog"
             aria-modal="true"
             :aria-label="t.placeholder"
@@ -428,6 +441,7 @@ function onHitPointerArticle(idx: number) {
                 >
                   <div class="gv-search__group-head gv-card-header gv-search__group-head--article">
                     <h3 class="gv-search__group-title">
+                      <UIcon name="i-heroicons-document-text" class="gv-search__group-head-icon" dynamic style="color: var(--gv-hit-article, #6366f1);" />
                       {{ t.articles }}
                     </h3>
                   </div>
@@ -443,7 +457,7 @@ function onHitPointerArticle(idx: number) {
                         @click="goToResult(res.url)"
                       >
                         <span class="gv-search__hit-icon gv-search__hit-icon--article" aria-hidden="true">
-                          <UIcon name="i-heroicons-document-text" class="gv-search__hit-icon-svg" />
+                          <UIcon name="i-heroicons-document-text" class="gv-search__hit-icon-svg" dynamic style="color: var(--gv-hit-article, #6366f1);" />
                         </span>
                         <span class="gv-search__hit-body">
                           <span class="gv-search__hit-title-row">
@@ -470,6 +484,7 @@ function onHitPointerArticle(idx: number) {
                 >
                   <div class="gv-search__group-head gv-card-header gv-search__group-head--term">
                     <h3 class="gv-search__group-title">
+                      <UIcon name="i-heroicons-document-magnifying-glass" class="gv-search__group-head-icon" dynamic style="color: var(--gv-hit-term, #10b981);" />
                       {{ t.terms }}
                     </h3>
                   </div>
@@ -483,7 +498,7 @@ function onHitPointerArticle(idx: number) {
                         @click="goToResult(res.url)"
                       >
                         <span class="gv-search__hit-icon gv-search__hit-icon--term" aria-hidden="true">
-                          <UIcon name="i-heroicons-document-magnifying-glass" class="gv-search__hit-icon-svg" />
+                          <UIcon name="i-heroicons-document-magnifying-glass" class="gv-search__hit-icon-svg" dynamic style="color: var(--gv-hit-term, #10b981);" />
                         </span>
                         <span class="gv-search__hit-body">
                           <span class="gv-search__hit-title gv-search__hit-title--term">{{ res.title }}</span>
@@ -538,7 +553,7 @@ function onHitPointerArticle(idx: number) {
 
 <style scoped>
 /* ─── Ontology accents (design_system §5) ─── */
-.gv-search {
+.gv-search, .gv-search__shell, .gv-search__overlay {
   --gv-hit-article: #6366f1;
   --gv-hit-article-muted: color-mix(in srgb, #6366f1 75%, var(--gv-text-secondary));
   --gv-hit-term: #10b981;
@@ -565,12 +580,13 @@ function onHitPointerArticle(idx: number) {
   display: none;
 }
 
-.gv-search--compact-trigger :deep(.gv-search__trigger.gv-btn--chromeless) {
+:deep(.gv-search__trigger.gv-btn--chromeless) {
   position: relative;
-  min-width: 42px;
+  min-width: 44px;
   justify-content: center;
-  padding-inline: 10px !important;
+  padding-inline: 12px !important;
   gap: 0;
+  border-radius: var(--gv-radius-control) !important;
 }
 
 .gv-search__filters :deep(.expandable-filters) {
@@ -599,7 +615,8 @@ function onHitPointerArticle(idx: number) {
 
 :deep(.gv-search__trigger.gv-btn--chromeless:hover) .gv-search__trigger-icon,
 :deep(.gv-search__trigger.gv-btn--chromeless:focus-visible) .gv-search__trigger-icon {
-  color: var(--gv-primary);
+  color: var(--gv-primary, #0ea5e9);
+  transform: scale(1.1);
 }
 
 .gv-search__trigger-label {
@@ -628,31 +645,30 @@ function onHitPointerArticle(idx: number) {
 :deep(.gv-search__trigger.gv-btn--chromeless:hover) .gv-search__trigger-label,
 :deep(.gv-search__trigger.gv-btn--chromeless:focus-visible) .gv-search__trigger-label {
   color: var(--gv-text-primary);
+  letter-spacing: 0.14em;
 }
 
 :deep(.gv-search__trigger.gv-btn--chromeless) {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   box-sizing: border-box;
   min-height: 40px;
   min-width: 0;
-  padding: 8px 14px !important;
-  border-radius: 999px;
+  padding: 8px 16px !important;
+  border-radius: var(--gv-radius-control);
   cursor: pointer;
-  transition:
-    border-color 0.25s ease,
-    box-shadow 0.25s ease,
-    background 0.25s ease;
-  background: color-mix(in srgb, var(--gv-surface-card) 92%, var(--gv-surface-header));
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--gv-surface-card);
   border: 1px solid var(--gv-border-principal);
   box-shadow: var(--gv-shadow-sm);
 }
 
 :deep(.gv-search__trigger.gv-btn--chromeless:hover) {
-  border-color: color-mix(in srgb, var(--gv-primary) 28%, var(--gv-border-principal));
+  border-color: var(--gv-primary);
   background: var(--gv-surface-card);
   box-shadow: var(--gv-shadow-md);
+  transform: translateY(-1px);
 }
 
 :deep(.gv-search__trigger.gv-btn--chromeless:focus-visible) {
@@ -701,9 +717,7 @@ function onHitPointerArticle(idx: number) {
   position: fixed;
   inset: 0;
   z-index: 120;
-  background: color-mix(in srgb, var(--gv-text-primary) 34%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--gv-text-primary) 24%, transparent);
 }
 
 .gv-search-panel-enter-active,
@@ -745,18 +759,32 @@ function onHitPointerArticle(idx: number) {
 
 .gv-search__dialog {
   pointer-events: auto;
-  width: min(100%, calc(100vw - 32px));
-  max-width: 36rem;
+  width: min(100%, calc(100vw - 24px));
+  max-width: 38rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
   min-height: 0;
-  padding: 1rem;
+  padding: 1.25rem;
   border-radius: var(--gv-radius-container);
   background: var(--gv-surface-card);
   border: 1px solid var(--gv-border-principal);
   box-shadow: var(--gv-shadow-lg);
   overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* ─── Ontology local accents (design_system §5) ─── */
+.gv-search__dialog[data-accent="article"] {
+  --gv-primary: #6366f1;
+  --gv-primary-hover: #4f46e5;
+  border-color: color-mix(in srgb, #6366f1 24%, var(--gv-border-principal));
+}
+
+.gv-search__dialog[data-accent="term"] {
+  --gv-primary: #10b981;
+  --gv-primary-hover: #059669;
+  border-color: color-mix(in srgb, #10b981 24%, var(--gv-border-principal));
 }
 
 .dark .gv-search__dialog {
@@ -764,6 +792,18 @@ function onHitPointerArticle(idx: number) {
   box-shadow:
     var(--gv-shadow-lg),
     0 0 0 1px color-mix(in srgb, var(--gv-primary) 12%, transparent);
+}
+
+.dark .gv-search__dialog[data-accent="article"] {
+  --gv-primary: #818cf8;
+  --gv-primary-hover: #a5b4fc;
+  border-color: color-mix(in srgb, #818cf8 32%, var(--gv-border-principal));
+}
+
+.dark .gv-search__dialog[data-accent="term"] {
+  --gv-primary: #34d399;
+  --gv-primary-hover: #6ee7b7;
+  border-color: color-mix(in srgb, #34d399 32%, var(--gv-border-principal));
 }
 
 .gv-search__toolbar {
@@ -834,12 +874,27 @@ function onHitPointerArticle(idx: number) {
   border-left: 3px solid var(--gv-hit-term);
 }
 
+.gv-search__group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gv-search__group-head-icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  opacity: 0.7;
+}
+
 .gv-search__group-title {
   margin: 0;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
 }
 
 /* Шапка секции: глобальный gv-card-header + цвет заголовка по онтологии */
@@ -852,23 +907,41 @@ function onHitPointerArticle(idx: number) {
 }
 
 .gv-search__group-body {
-  padding: 12px 14px 14px;
+  padding: 12px;
+}
+
+.gv-search__group--article.gv-surface-card {
+  border: 1px solid color-mix(in srgb, var(--gv-hit-article) 25%, var(--gv-border-principal));
+  border-left-width: 4px;
+}
+
+.gv-search__group-head--article {
+  background: color-mix(in srgb, var(--gv-hit-article) 8%, var(--gv-surface-header));
+}
+
+.gv-search__group--term.gv-surface-card {
+  border: 1px solid color-mix(in srgb, var(--gv-hit-term) 25%, var(--gv-border-principal));
+  border-left-width: 4px;
+}
+
+.gv-search__group-head--term {
+  background: color-mix(in srgb, var(--gv-hit-term) 8%, var(--gv-surface-header));
 }
 
 .gv-search__group-body--article {
-  background: color-mix(in srgb, var(--gv-hit-article) 7%, var(--gv-surface-card));
+  background: color-mix(in srgb, var(--gv-hit-article) 4%, var(--gv-surface-card));
 }
 
 .gv-search__group-body--term {
-  background: color-mix(in srgb, var(--gv-hit-term) 7%, var(--gv-surface-card));
+  background: color-mix(in srgb, var(--gv-hit-term) 4%, var(--gv-surface-card));
 }
 
 .dark .gv-search__group-body--article {
-  background: color-mix(in srgb, var(--gv-hit-article) 12%, var(--gv-surface-header));
+  background: color-mix(in srgb, var(--gv-hit-article) 8%, var(--gv-surface-header));
 }
 
 .dark .gv-search__group-body--term {
-  background: color-mix(in srgb, var(--gv-hit-term) 12%, var(--gv-surface-header));
+  background: color-mix(in srgb, var(--gv-hit-term) 8%, var(--gv-surface-header));
 }
 
 .gv-search__list {
@@ -899,41 +972,43 @@ function onHitPointerArticle(idx: number) {
 }
 
 .gv-search__group--article .gv-search__hit--article {
-  background: color-mix(in srgb, var(--gv-hit-article) 18%, var(--gv-surface-card));
-  border: 1px solid color-mix(in srgb, var(--gv-hit-article) 32%, var(--gv-border-principal));
+  background: var(--gv-surface-card);
+  border: 1px solid color-mix(in srgb, var(--gv-hit-article) 12%, var(--gv-border-principal));
 }
 
 .dark .gv-search__group--article .gv-search__hit--article {
-  background: color-mix(in srgb, var(--gv-hit-article) 22%, var(--gv-surface-header));
-  border-color: color-mix(in srgb, var(--gv-hit-article) 40%, var(--gv-border-principal));
+  background: color-mix(in srgb, var(--gv-hit-article) 10%, var(--gv-surface-header));
 }
 
 .gv-search__group--term .gv-search__hit--term {
-  background: color-mix(in srgb, var(--gv-hit-term) 18%, var(--gv-surface-card));
-  border: 1px solid color-mix(in srgb, var(--gv-hit-term) 32%, var(--gv-border-principal));
+  background: var(--gv-surface-card);
+  border: 1px solid color-mix(in srgb, var(--gv-hit-term) 12%, var(--gv-border-principal));
 }
 
 .dark .gv-search__group--term .gv-search__hit--term {
-  background: color-mix(in srgb, var(--gv-hit-term) 22%, var(--gv-surface-header));
-  border-color: color-mix(in srgb, var(--gv-hit-term) 40%, var(--gv-border-principal));
+  background: color-mix(in srgb, var(--gv-hit-term) 10%, var(--gv-surface-header));
 }
 
 .gv-search__group--article .gv-search__hit--article:hover {
-  background: color-mix(in srgb, var(--gv-hit-article) 26%, var(--gv-surface-card));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gv-hit-article) 38%, transparent);
+  background: color-mix(in srgb, var(--gv-hit-article) 10%, var(--gv-surface-card));
+  border-color: color-mix(in srgb, var(--gv-hit-article) 45%, var(--gv-border-principal));
+  transform: translateX(4px);
+  box-shadow: var(--gv-shadow-sm);
 }
 
 .dark .gv-search__group--article .gv-search__hit--article:hover {
-  background: color-mix(in srgb, var(--gv-hit-article) 30%, var(--gv-surface-header));
+  background: color-mix(in srgb, var(--gv-hit-article) 15%, var(--gv-surface-header));
 }
 
 .gv-search__group--term .gv-search__hit--term:hover {
-  background: color-mix(in srgb, var(--gv-hit-term) 26%, var(--gv-surface-card));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gv-hit-term) 38%, transparent);
+  background: color-mix(in srgb, var(--gv-hit-term) 10%, var(--gv-surface-card));
+  border-color: color-mix(in srgb, var(--gv-hit-term) 45%, var(--gv-border-principal));
+  transform: translateX(4px);
+  box-shadow: var(--gv-shadow-sm);
 }
 
 .dark .gv-search__group--term .gv-search__hit--term:hover {
-  background: color-mix(in srgb, var(--gv-hit-term) 30%, var(--gv-surface-header));
+  background: color-mix(in srgb, var(--gv-hit-term) 15%, var(--gv-surface-header));
 }
 
 .gv-search__group--article .gv-search__hit--article.gv-search__hit--active {

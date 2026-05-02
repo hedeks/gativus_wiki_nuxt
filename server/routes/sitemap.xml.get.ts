@@ -20,7 +20,6 @@ export default defineEventHandler(async (event) => {
   // Static pages
   const staticPages = [
     '',
-    '/about',
     '/books',
     '/articles',
     '/glossary',

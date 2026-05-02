@@ -5,6 +5,7 @@
  */
 
 import type { Database } from 'db0'
+import { seedLandingBlocksIfEmpty, backfillMissingCanonicalLandingBlocks } from './seedLanding'
 
 export async function runMigrations(db: Database) {
   console.log('[migrate] Running database migrations...')
@@ -287,6 +288,71 @@ export async function runMigrations(db: Database) {
     )
   `)
 
+  // ─── Landing page blocks (CMS) ───
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS landing_blocks (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      sort_order       INTEGER NOT NULL DEFAULT 0,
+      is_published     INTEGER NOT NULL DEFAULT 1,
+      block_type       TEXT NOT NULL,
+      anchor_id        TEXT UNIQUE,
+      neuron_label_en  TEXT,
+      neuron_label_ru  TEXT,
+      neuron_label_zh  TEXT,
+      kicker_en        TEXT,
+      kicker_ru        TEXT,
+      kicker_zh        TEXT,
+      title_en         TEXT,
+      title_ru         TEXT,
+      title_zh         TEXT,
+      subtitle_en      TEXT,
+      subtitle_ru      TEXT,
+      subtitle_zh      TEXT,
+      body_en          TEXT,
+      body_ru          TEXT,
+      body_zh          TEXT,
+      footnote_en      TEXT,
+      footnote_ru      TEXT,
+      footnote_zh      TEXT,
+      image_path       TEXT,
+      payload_json     TEXT NOT NULL DEFAULT '{}',
+      updated_at       DATETIME DEFAULT (datetime('now'))
+    )
+  `)
+
+  // ─── ODM master-document assembly (мастер .odm + отдельные .odt по слотам) ───
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS odm_projects (
+      id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+      book_id               INTEGER REFERENCES books(id) ON DELETE SET NULL,
+      category_id           INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+      master_storage_path   TEXT NOT NULL,
+      master_original_name  TEXT NOT NULL,
+      split_level           TEXT NOT NULL DEFAULT 'none',
+      created_at            DATETIME DEFAULT (datetime('now')),
+      updated_at            DATETIME DEFAULT (datetime('now')),
+      created_by            INTEGER REFERENCES users(id) ON DELETE SET NULL
+    )
+  `)
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS odm_project_parts (
+      id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id              INTEGER NOT NULL REFERENCES odm_projects(id) ON DELETE CASCADE,
+      sort_order              INTEGER NOT NULL,
+      master_href             TEXT NOT NULL,
+      display_title           TEXT NOT NULL,
+      odt_storage_path        TEXT,
+      odt_original_name       TEXT,
+      numbering_state_in_json  TEXT,
+      numbering_state_out_json TEXT,
+      imported_article_ids    TEXT,
+      status                  TEXT NOT NULL DEFAULT 'pending',
+      updated_at              DATETIME DEFAULT (datetime('now')),
+      UNIQUE(project_id, sort_order)
+    )
+  `)
+  await db.exec(`CREATE INDEX IF NOT EXISTS idx_odm_parts_project ON odm_project_parts(project_id)`)
+
   // ─── 13. Indexes ───
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_terms_slug ON terms(slug)`)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)`)
@@ -515,6 +581,13 @@ export async function runMigrations(db: Database) {
     `)
   } catch (e) {
     console.log('[migrate] Article unification skipped or failed:', e)
+  }
+
+  try {
+    await seedLandingBlocksIfEmpty(db)
+    await backfillMissingCanonicalLandingBlocks(db)
+  } catch (e) {
+    console.warn('[migrate] landing_blocks seed skipped:', e)
   }
 
   console.log('[migrate] All migrations completed ✓')

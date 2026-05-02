@@ -32,10 +32,10 @@ function chooseLang (code: typeof langs[number]['code'], close: () => void) {
 </script>
 
 <template>
-  <AnchoredMenuDropdown
-    class="gv-lang-select"
-    :panel-width="panelWidthPx"
-  >
+  <div class="gv-lang-select">
+    <AnchoredMenuDropdown
+      :panel-width="panelWidthPx"
+    >
     <template #trigger="{ toggle, isOpen }">
       <button
         type="button"
@@ -74,7 +74,8 @@ function chooseLang (code: typeof langs[number]['code'], close: () => void) {
         </li>
       </ul>
     </template>
-  </AnchoredMenuDropdown>
+    </AnchoredMenuDropdown>
+  </div>
 </template>
 
 <style scoped>

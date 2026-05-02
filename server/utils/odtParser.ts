@@ -14,17 +14,28 @@ import { slugify } from './slugify'
 
 // ─── Types ───
 
-export interface ParsedOdt {
-  fullHtml: string
-  articles: ParsedArticleResult[]
-  images: { originalPath: string; savedPath: string }[]
-}
-
 export interface ParsedArticleResult {
   title: string
   slug: string
   html: string
   excerpt: string
+}
+
+/** Состояние нумерации списков ODT между главами ODM (сохраняется по слотам). */
+export interface NumberingState {
+  listCounters: Record<string, number[]>
+}
+
+export interface ParseOdtOptions {
+  subDir?: string
+  numberingState?: NumberingState
+}
+
+export interface ParsedOdt {
+  fullHtml: string
+  articles: ParsedArticleResult[]
+  images: { originalPath: string; savedPath: string }[]
+  numberingState?: NumberingState
 }
 
 interface StyleInfo {
@@ -44,14 +55,45 @@ interface StyleInfo {
 
 // ─── Main Entry Point ───
 
+interface ListLevelDef {
+  type: 'bullet' | 'number'
+  numFormat: string
+  prefix: string
+  suffix: string
+}
+
+interface ConvertCtx {
+  styles: Map<string, StyleInfo>
+  listStyles: Map<string, ListLevelDef[]>
+  numbering: NumberingState
+  imageMap: Map<string, string>
+}
+
+export function cloneNumberingState(state: NumberingState): NumberingState {
+  const listCounters: Record<string, number[]> = {}
+  for (const k of Object.keys(state.listCounters))
+    listCounters[k] = [...state.listCounters[k]]
+  return { listCounters }
+}
+
 /**
  * Parse an ODT file buffer and convert to HTML.
  * Extracts images to `server/storage/uploads/<subDir>/`.
+ * Второй аргумент: строка `subDir` или `{ subDir, numberingState }`.
  */
 export async function parseOdtBuffer(
   buffer: Buffer,
-  subDir: string = 'articles'
+  optionsOrSubDir?: ParseOdtOptions | string,
 ): Promise<ParsedOdt> {
+  let subDir = 'articles'
+  let initialNumbering: NumberingState | undefined
+  if (typeof optionsOrSubDir === 'string')
+    subDir = optionsOrSubDir
+  else if (optionsOrSubDir) {
+    subDir = optionsOrSubDir.subDir ?? 'articles'
+    initialNumbering = optionsOrSubDir.numberingState
+  }
+
   const zip = new AdmZip(buffer)
   const entries = zip.getEntries()
 
@@ -69,13 +111,17 @@ export async function parseOdtBuffer(
 
   // 3. Parse styles (content.xml + styles.xml)
   const styles = parseAutomaticStyles(doc as any)
-  
+  let listStyles = parseListStyles(doc as any)
+
   const stylesEntry = zip.getEntry('styles.xml')
   if (stylesEntry) {
     const stylesXml = stylesEntry.getData().toString('utf-8')
     const stylesDoc = new DOMParser().parseFromString(stylesXml, 'text/xml') as any
     const commonStyles = parseAutomaticStyles(stylesDoc)
-    // Merge common styles: automatic styles take precedence
+    const commonListStyles = parseListStyles(stylesDoc)
+    commonListStyles.forEach((val, key) => {
+      if (!listStyles.has(key)) listStyles.set(key, val)
+    })
     commonStyles.forEach((val, key) => {
       if (!styles.has(key)) styles.set(key, val)
     })
@@ -89,14 +135,19 @@ export async function parseOdtBuffer(
     throw new Error('ODT file does not contain office:text element')
   }
 
-  // 5. Convert XML nodes to HTML
+  const numbering: NumberingState = initialNumbering
+    ? cloneNumberingState(initialNumbering)
+    : { listCounters: {} }
+
   const imageMap = new Map(images.map(img => [img.originalPath, img.savedPath]))
-  const fullHtml = convertChildren(textNode, styles, imageMap)
+  const ctx: ConvertCtx = { styles, listStyles, numbering, imageMap }
+  const fullHtml = convertChildren(textNode, ctx)
 
   return {
     fullHtml,
-    articles: [], // Will be populated by splitIntoArticles
+    articles: [],
     images,
+    numberingState: cloneNumberingState(numbering),
   }
 }
 
@@ -184,29 +235,300 @@ function parseAutomaticStyles(doc: any): Map<string, StyleInfo> {
   return styles
 }
 
+function parseListStyles(doc: any): Map<string, ListLevelDef[]> {
+  const map = new Map<string, ListLevelDef[]>()
+
+  // 1. Regular list styles
+  const nodes = doc.getElementsByTagName('text:list-style')
+  for (let i = 0; i < nodes.length; i++) {
+    const sn = nodes[i]
+    const styleName = sn.getAttribute('style:name')
+    if (!styleName) continue
+    const levels: ListLevelDef[] = []
+    const levelNodes = sn.childNodes
+    for (let j = 0; j < levelNodes.length; j++) {
+      const ln = levelNodes[j]
+      if (ln.nodeType !== 1) continue
+      const tag = ln.nodeName || ''
+      if (tag === 'text:list-level-style-number') {
+        const lvl = parseInt(ln.getAttribute('text:level') || '1', 10)
+        const numFormat = ln.getAttribute('style:num-format') || '1'
+        const prefix =
+          ln.getAttribute('style:num-prefix')
+          || ln.getAttribute('fo:num-prefix')
+          || ''
+        const suffix =
+          ln.getAttribute('style:num-suffix')
+          || ln.getAttribute('fo:num-suffix')
+          || ''
+        const idx = Math.max(0, lvl - 1)
+        while (levels.length <= idx)
+          levels.push({ type: 'bullet', numFormat: '•', prefix: '', suffix: '' })
+        levels[idx] = { type: 'number', numFormat, prefix, suffix }
+      }
+      else if (tag === 'text:list-level-style-bullet') {
+        const lvl = parseInt(ln.getAttribute('text:level') || '1', 10)
+        const bulletChar = ln.getAttribute('text:bullet-char') || '•'
+        const idx = Math.max(0, lvl - 1)
+        while (levels.length <= idx)
+          levels.push({ type: 'bullet', numFormat: '•', prefix: '', suffix: '' })
+        levels[idx] = { type: 'bullet', numFormat: bulletChar, prefix: '', suffix: '' }
+      }
+    }
+    if (levels.length) map.set(styleName, levels)
+  }
+
+  // 2. Outline style (headings numbering)
+  const outlineNodes = doc.getElementsByTagName('text:outline-style')
+  for (let i = 0; i < outlineNodes.length; i++) {
+    const sn = outlineNodes[i]
+    const levels: ListLevelDef[] = []
+    const levelNodes = sn.childNodes
+    for (let j = 0; j < levelNodes.length; j++) {
+      const ln = levelNodes[j]
+      if (ln.nodeType !== 1) continue
+      const tag = ln.nodeName || ''
+      if (tag === 'text:outline-level-style') {
+        const lvl = parseInt(ln.getAttribute('text:level') || '1', 10)
+        const numFormat = ln.getAttribute('style:num-format') || ''
+        const prefix =
+          ln.getAttribute('style:num-prefix') || ln.getAttribute('fo:num-prefix') || ''
+        const suffix =
+          ln.getAttribute('style:num-suffix') || ln.getAttribute('fo:num-suffix') || ''
+        
+        const idx = Math.max(0, lvl - 1)
+        while (levels.length <= idx)
+          levels.push({ type: 'bullet', numFormat: '', prefix: '', suffix: '' }) // Empty fallback
+        
+        if (numFormat) {
+          levels[idx] = { type: 'number', numFormat, prefix, suffix }
+        }
+      }
+    }
+    if (levels.length) map.set('__outline__', levels)
+  }
+
+  return map
+}
+
+function ensureListDepth(arr: number[], depthIdx: number) {
+  while (arr.length <= depthIdx) arr.push(0)
+}
+
+function bumpCounter(state: NumberingState, key: string, depth: number) {
+  if (!state.listCounters[key]) state.listCounters[key] = []
+  const arr = state.listCounters[key]
+  const idx = depth - 1
+  ensureListDepth(arr, idx)
+  arr[idx] = (arr[idx] || 0) + 1
+  for (let j = idx + 1; j < arr.length; j++) arr[j] = 0
+}
+
+function formatOneCounter(fmt: string, n: number): string {
+  const f = fmt.trim()
+  if (f === '1' || f === 'decimal') return String(n)
+  if (f === 'a') return alphaSeq(n, false)
+  if (f === 'A') return alphaSeq(n, true)
+  if (f === 'i') return toRomanLower(n)
+  if (f === 'I') return toRomanUpper(n)
+  return String(n)
+}
+
+function alphaSeq(n: number, upper: boolean): string {
+  let s = ''
+  let x = n
+  while (x > 0) {
+    const r = (x - 1) % 26
+    s = String.fromCharCode((upper ? 65 : 97) + r) + s
+    x = Math.floor((x - 1) / 26)
+  }
+  return s || (upper ? 'A' : 'a')
+}
+
+const ROMAN_PAIRS = [
+  ['M', 1000], ['CM', 900], ['D', 500], ['CD', 400],
+  ['C', 100], ['XC', 90], ['L', 50], ['XL', 40],
+  ['X', 10], ['IX', 9], ['V', 5], ['IV', 4], ['I', 1],
+] as const
+
+function toRomanUpper(num: number): string {
+  let n = Math.max(1, Math.min(num, 3999))
+  let res = ''
+  for (const [sym, v] of ROMAN_PAIRS) {
+    while (n >= v) {
+      res += sym
+      n -= v
+    }
+  }
+  return res
+}
+
+function toRomanLower(num: number): string {
+  return toRomanUpper(num).toLowerCase()
+}
+
+function formatListMarker(
+  styleName: string,
+  depth: number,
+  levels: ListLevelDef[] | undefined,
+  counters: number[],
+): string {
+  if (!levels?.length) return ''
+  let out = ''
+  for (let d = 0; d < depth; d++) {
+    const def = levels[d]
+    if (!def) continue
+    const n = counters[d] ?? 0
+    if (def.type === 'bullet')
+      out += def.numFormat || '•'
+    else
+      out += def.prefix + formatOneCounter(def.numFormat, n) + def.suffix
+  }
+  return out
+}
+
+function listLegacyOrdered(styleName: string): boolean {
+  const s = styleName.toLowerCase()
+  return s.includes('number') || s.includes('ordered') || /L\d+/.test(styleName)
+}
+
+function convertTextList(listEl: any, ctx: ConvertCtx, depth: number): string {
+  const styleName = listEl.getAttribute('text:style-name') || ''
+  const key = styleName || '_default'
+  const defLevels = ctx.listStyles.get(styleName)
+  const isOrdered = defLevels
+    ? defLevels.some(l => l.type === 'number')
+    : listLegacyOrdered(styleName)
+
+  const children = listEl.childNodes
+  let itemsHtml = ''
+  if (!children) return ''
+
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]
+    if (child.nodeType !== 1) continue
+    if ((child.nodeName || '') !== 'text:list-item') continue
+
+    if (isOrdered)
+      bumpCounter(ctx.numbering, key, depth)
+
+    const arr = ctx.numbering.listCounters[key] || []
+    const marker = isOrdered ? formatListMarker(styleName, depth, defLevels, arr) : ''
+
+    const body = convertListItemBody(child, ctx, depth)
+    const markHtml = marker ? `<span class="odt-li-marker">${escapeHtml(marker)}</span>` : ''
+    itemsHtml += `<li>${markHtml}${body}</li>\n`
+  }
+
+  const tag = isOrdered ? 'ol' : 'ul'
+  const cls = isOrdered ? 'odt-list odt-list--numbered' : 'odt-list odt-list--bullet'
+  return `<${tag} class="${cls}" style="list-style:none;padding-left:0;margin:0.5em 0">${itemsHtml}</${tag}>\n`
+}
+
+function convertListItemBody(itemEl: any, ctx: ConvertCtx, depth: number): string {
+  let html = ''
+  const children = itemEl.childNodes
+  if (!children) return html
+  for (let i = 0; i < children.length; i++) {
+    const c = children[i]
+    if (c.nodeType !== 1) continue
+    const tag = c.nodeName || ''
+    if (tag === 'text:list')
+      html += convertTextList(c, ctx, depth + 1)
+    else
+      html += convertNode(c, ctx)
+  }
+  return html
+}
+
+function isPreformattedStyle(styleName: string | null, styles: Map<string, StyleInfo>): boolean {
+  if (!styleName) return false
+  const low = styleName.toLowerCase()
+  if (
+    low.includes('preformatted')
+    || low.includes('sourcecode')
+    || low.includes('source_code')
+    || low.includes('teletype')
+    || low.includes('code')
+  )
+    return true
+  const info = styles.get(styleName)
+  if (info?.fontName && /mono|courier|consolas|liberation mono/i.test(info.fontName)) return true
+  if (info?.parentStyleName) return isPreformattedStyle(info.parentStyleName, styles)
+  return false
+}
+
+function extractPlainText(node: any, ctx: ConvertCtx): string {
+  if (!node) return ''
+  if (node.nodeType === 3) return node.textContent || ''
+  if (node.nodeType !== 1) return ''
+  const tag = node.nodeName || ''
+  if (tag === 'text:line-break') return '\n'
+  if (tag === 'text:tab') return '\t'
+  if (tag === 'text:s') {
+    const count = parseInt(node.getAttribute('text:c') || '1', 10)
+    return ' '.repeat(Math.min(count, 40))
+  }
+  let s = ''
+  const kids = node.childNodes
+  if (!kids) return ''
+  for (let i = 0; i < kids.length; i++)
+    s += extractPlainText(kids[i], ctx)
+  return s
+}
+
+function convertParagraphPlain(node: any, ctx: ConvertCtx): string {
+  const raw = extractPlainText(node, ctx)
+  if (!raw.trim()) return ''
+  return `<p>${escapeHtml(raw)}</p>\n`
+}
+
 // ─── XML → HTML Conversion ───
 
 function convertChildren(
   node: any,
-  styles: Map<string, StyleInfo>,
-  imageMap: Map<string, string>
+  ctx: ConvertCtx,
 ): string {
   let html = ''
   const children = node.childNodes
   if (!children) return html
 
-  for (let i = 0; i < children.length; i++) {
-    html += convertNode(children[i], styles, imageMap)
+  let preBuffer: string[] = []
+
+  const flushPre = () => {
+    if (preBuffer.length > 0) {
+      const text = preBuffer.join('\n')
+      html += `<pre class="odt-code-block"><code>${escapeHtml(text)}</code></pre>\n`
+      preBuffer = []
+    }
   }
+
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]
+    if (child.nodeType === 1 && (child.nodeName || '') === 'text:p') {
+      const styleName = child.getAttribute('text:style-name')
+      if (isPreformattedStyle(styleName, ctx.styles)) {
+        preBuffer.push(extractPlainText(child, ctx))
+        continue
+      }
+    }
+    
+    flushPre()
+    html += convertNode(child, ctx)
+  }
+
+  flushPre()
 
   return html
 }
 
 function convertNode(
   node: any,
-  styles: Map<string, StyleInfo>,
-  imageMap: Map<string, string>
+  ctx: ConvertCtx,
 ): string {
+  const styles = ctx.styles
+  const imageMap = ctx.imageMap
+
   // Text node
   if (node.nodeType === 3) {
     return escapeHtml(node.textContent || '')
@@ -215,7 +537,6 @@ function convertNode(
   // Element node
   if (node.nodeType !== 1) return ''
 
-  const tagName = node.localName || node.nodeName?.split(':').pop() || ''
   const nsPrefix = node.prefix || node.nodeName?.split(':')[0] || ''
   const fullTag = node.nodeName || ''
 
@@ -225,18 +546,45 @@ function convertNode(
       const level = parseInt(node.getAttribute('text:outline-level') || '1', 10)
       // Shift down by 1: h1→h2, h2→h3, etc. (h1 is reserved for the article title)
       const clampedLevel = Math.min(Math.max(level + 1, 2), 6)
-      const content = convertChildren(node, styles, imageMap)
+      const content = convertChildren(node, ctx)
       if (!content.trim()) return ''
-      
+
+      let marker = ''
+      const outlineDef = ctx.listStyles.get('__outline__')
+      if (outlineDef && outlineDef.length > 0) {
+        // Outline lists usually display all levels combined, e.g. "1.2.3."
+        // We check if this outline level has a numbering format
+        const def = outlineDef[level - 1]
+        if (def && def.type === 'number') {
+          bumpCounter(ctx.numbering, '__outline__', level)
+          const arr = ctx.numbering.listCounters['__outline__'] || []
+          
+          // Determine how many levels to display based on style:num-display-levels
+          // OpenDocument defaults to displaying all levels up to current, but some use num-display-levels.
+          // For simplicity, we just use formatListMarker which combines them,
+          // but we might need to modify formatListMarker if we want strict num-display-levels support.
+          // In most ODTs, formatListMarker is exactly what we want for headings (e.g. 1.1.)
+          marker = formatListMarker('__outline__', level, outlineDef, arr)
+          if (marker) {
+            marker = `<span class="odt-heading-marker">${escapeHtml(marker)}</span> `
+          }
+        }
+      }
+
       // Generate stable ID from content
       const id = slugify(stripHtml(content))
-      return `<h${clampedLevel} id="${id}">${content}</h${clampedLevel}>\n`
+      return `<h${clampedLevel} id="${id}">${marker}${content}</h${clampedLevel}>\n`
     }
 
     // ─── Paragraphs ───
     case 'text:p': {
       const styleName = node.getAttribute('text:style-name')
-      const content = convertChildren(node, styles, imageMap)
+      // Grouping happens in convertChildren. This is a fallback.
+      if (isPreformattedStyle(styleName, styles)) {
+        return `<pre class="odt-code-block"><code>${escapeHtml(extractPlainText(node, ctx))}</code></pre>\n`
+      }
+
+      const content = convertChildren(node, ctx)
       // Don't emit empty paragraphs
       if (!content.trim()) return ''
 
@@ -244,14 +592,14 @@ function convertNode(
       if (isQuoteStyle(styleName, styles)) {
         return `<blockquote>${content}</blockquote>\n`
       }
-      
+
       return `<p>${content}</p>\n`
     }
 
     // ─── Text spans (bold, italic, etc.) ───
     case 'text:span': {
       const styleName = node.getAttribute('text:style-name')
-      const content = convertChildren(node, styles, imageMap)
+      const content = convertChildren(node, ctx)
       if (!content) return ''
 
       const style = styleName ? styles.get(styleName) : null
@@ -261,44 +609,29 @@ function convertNode(
       if (style?.italic) result = `<em>${result}</em>`
       if (style?.underline) result = `<u>${result}</u>`
       if (style?.strikethrough) result = `<s>${result}</s>`
+      if (isPreformattedStyle(styleName, styles)) result = `<code>${result}</code>`
 
       return result
     }
 
-    // ─── Lists ───
+    // ─── Lists (нумерация из styles.xml + продолжение между главами ODM) ───
     case 'text:list': {
-      const content = convertChildren(node, styles, imageMap)
-      // Determine if ordered or unordered based on list style
-      // Default to unordered; ODT list-style-name could indicate numbered
-      const listStyleName = node.getAttribute('text:style-name') || ''
-      const isOrdered = listStyleName.toLowerCase().includes('number') ||
-                         listStyleName.toLowerCase().includes('ordered') ||
-                         listStyleName.match(/L\d+/) // Common ODT auto-naming
-
-      // Check for xml:id which often indicates continuation numbering
-      return isOrdered
-        ? `<ol>${content}</ol>\n`
-        : `<ul>${content}</ul>\n`
-    }
-
-    case 'text:list-item': {
-      const content = convertChildren(node, styles, imageMap)
-      return `<li>${content}</li>\n`
+      return convertTextList(node, ctx, 1)
     }
 
     // ─── Tables ───
     case 'table:table': {
-      const content = convertChildren(node, styles, imageMap)
+      const content = convertChildren(node, ctx)
       return `<table>${content}</table>\n`
     }
 
     case 'table:table-header-rows': {
-      const content = convertChildren(node, styles, imageMap)
+      const content = convertChildren(node, ctx)
       return `<thead>${content}</thead>\n`
     }
 
     case 'table:table-row': {
-      const content = convertChildren(node, styles, imageMap)
+      const content = convertChildren(node, ctx)
       return `<tr>${content}</tr>\n`
     }
 
@@ -309,7 +642,7 @@ function convertNode(
       if (colspan && parseInt(colspan) > 1) attrs += ` colspan="${colspan}"`
       if (rowspan && parseInt(rowspan) > 1) attrs += ` rowspan="${rowspan}"`
 
-      const content = convertChildren(node, styles, imageMap)
+      const content = convertChildren(node, ctx)
       return `<td${attrs}>${content}</td>\n`
     }
 
@@ -344,20 +677,20 @@ function convertNode(
       // 2. Check for Text Box
       const textBox = node.getElementsByTagName('draw:text-box')[0]
       if (textBox) {
-        const content = convertChildren(textBox, styles, imageMap)
+        const content = convertChildren(textBox, ctx)
         return `<div class="odt-textbox">${content}</div>\n`
       }
 
       // 3. Check for Drawing Primitives (SVG conversion)
       const width = node.getAttribute('svg:width') || '100%'
       const height = node.getAttribute('svg:height') || 'auto'
-      const drawSvg = renderSingleDrawNode(node, styles, imageMap)
+      const drawSvg = renderSingleDrawNode(node, ctx)
       
       if (drawSvg) {
         const style = `width: ${convertUnit(width)}; height: ${convertUnit(height)}; display: block;`
         return `<svg style="${style}" class="odt-svg">${drawSvg}</svg>\n`
       }
-      return convertChildren(node, styles, imageMap)
+      return convertChildren(node, ctx)
     }
 
     // ─── Top-level Drawing Elements ───
@@ -372,13 +705,13 @@ function convertNode(
     case 'draw:g': {
       const width = node.getAttribute('svg:width') || '100%'
       const height = node.getAttribute('svg:height') || 'auto'
-      const drawSvg = renderSingleDrawNode(node, styles, imageMap)
+      const drawSvg = renderSingleDrawNode(node, ctx)
       
       if (drawSvg) {
         const style = `width: ${convertUnit(width)}; height: ${convertUnit(height)}; display: block;`
         return `<svg style="${style}" class="odt-svg">${drawSvg}</svg>\n`
       }
-      return convertChildren(node, styles, imageMap)
+      return convertChildren(node, ctx)
     }
 
     // ─── Line breaks ───
@@ -395,6 +728,28 @@ function convertNode(
       return '&nbsp;'.repeat(count)
     }
 
+    // ─── Inline Chapter / Sequence Counters ───
+    case 'text:chapter': {
+      const display = node.getAttribute('text:display') || 'number'
+      if (display === 'number' || display === 'number-and-name') {
+        const level = parseInt(node.getAttribute('text:outline-level') || '1', 10)
+        const outlineDef = ctx.listStyles.get('__outline__')
+        if (outlineDef && outlineDef.length > 0) {
+          const arr = ctx.numbering.listCounters['__outline__'] || []
+          const marker = formatListMarker('__outline__', level, outlineDef, arr)
+          return `<span class="odt-chapter-inline">${escapeHtml(marker)}</span>`
+        }
+      }
+      return convertChildren(node, ctx)
+    }
+
+    case 'text:sequence': {
+      // Sequence fields (like Figure 1, Table 2) usually contain their evaluated text value as children.
+      // We can just return the children, or if we want to dynamically index them:
+      // For now, returning the evaluated children is usually enough since LibreOffice pre-computes it in the XML.
+      return `<span class="odt-sequence-inline">${convertChildren(node, ctx)}</span>`
+    }
+
     // ─── Bookmarks (anchors) ───
     case 'text:bookmark':
     case 'text:bookmark-start': {
@@ -408,7 +763,7 @@ function convertNode(
     // ─── Links ───
     case 'text:a': {
       const href = node.getAttribute('xlink:href') || '#'
-      const content = convertChildren(node, styles, imageMap)
+      const content = convertChildren(node, ctx)
       return `<a href="${href}">${content}</a>`
     }
 
@@ -416,7 +771,7 @@ function convertNode(
     case 'text:note': {
       const noteBody = node.getElementsByTagName('text:note-body')[0]
       if (noteBody) {
-        const content = convertChildren(noteBody, styles, imageMap)
+        const content = convertChildren(noteBody, ctx)
         return `<aside class="odt-note">${content}</aside>`
       }
       return ''
@@ -428,15 +783,23 @@ function convertNode(
 
     // ─── Sections ───
     case 'text:section': {
-      return convertChildren(node, styles, imageMap)
+      return convertChildren(node, ctx)
     }
+
+    case 'text:ruby': {
+      const base = node.getElementsByTagName('text:ruby-base')[0]
+      return base ? convertChildren(base, ctx) : ''
+    }
+
+    case 'office:event-listeners':
+      return ''
 
     // ─── Default: recurse into children ───
     default:
       if (nsPrefix === 'draw' || nsPrefix === 'dr3d' || nsPrefix === 'office') {
         console.log(`[ODT-DEBUG] Unhandled tag: ${fullTag}`)
       }
-      return convertChildren(node, styles, imageMap)
+      return convertChildren(node, ctx)
   }
 }
 
@@ -551,12 +914,11 @@ export function extractFirstHeading(html: string): string | null {
 
 function renderSingleDrawNode(
   node: any,
-  styles: Map<string, StyleInfo>,
-  imageMap: Map<string, string>
+  ctx: ConvertCtx,
 ): string {
   const fullTag = node.nodeName || ''
   const styleName = node.getAttribute('draw:style-name')
-  const style = styleName ? styles.get(styleName) : null
+  const style = styleName ? ctx.styles.get(styleName) : null
   const styleAttr = getSvgStyle(style)
 
   switch (fullTag) {
@@ -566,7 +928,7 @@ function renderSingleDrawNode(
       const w = convertUnit(node.getAttribute('svg:width') || '0')
       const h = convertUnit(node.getAttribute('svg:height') || '0')
       const rect = `<rect x="${x}" y="${y}" width="${w}" height="${h}" ${styleAttr} />\n`
-      const text = renderTextInsideShape(node, x, y, w, h, styles, imageMap)
+      const text = renderTextInsideShape(node, x, y, w, h, ctx)
       return rect + text
     }
     case 'draw:ellipse': {
@@ -577,7 +939,7 @@ function renderSingleDrawNode(
       const cx = `calc(${x} + (${w} / 2))`
       const cy = `calc(${y} + (${h} / 2))`
       const ellipse = `<ellipse cx="${cx}" cy="${cy}" rx="calc(${w} / 2)" ry="calc(${h} / 2)" ${styleAttr} />\n`
-      const text = renderTextInsideShape(node, x, y, w, h, styles, imageMap)
+      const text = renderTextInsideShape(node, x, y, w, h, ctx)
       return ellipse + text
     }
     case 'draw:line': {
@@ -622,11 +984,11 @@ function renderSingleDrawNode(
         shapeHtml = `<rect x="${x}" y="${y}" width="${w}" height="${h}" ${styleAttr} />\n`
       }
       
-      const text = renderTextInsideShape(node, x, y, w, h, styles, imageMap)
+      const text = renderTextInsideShape(node, x, y, w, h, ctx)
       return shapeHtml + text
     }
     case 'draw:g': {
-      const groupInfo = renderDrawChildren(node, styles, imageMap)
+      const groupInfo = renderDrawChildren(node, ctx)
       return groupInfo.hasContent ? `<g>${groupInfo.svg}</g>\n` : ''
     }
     default:
@@ -643,10 +1005,9 @@ function renderTextInsideShape(
   y: string,
   w: string,
   h: string,
-  styles: Map<string, StyleInfo>,
-  imageMap: Map<string, string>
+  ctx: ConvertCtx,
 ): string {
-  const content = convertChildren(node, styles, imageMap).trim()
+  const content = convertChildren(node, ctx).trim()
   if (!content) return ''
 
   // Wrap in a div with centered text for better appearance
@@ -679,8 +1040,7 @@ function renderTextInsideShape(
  */
 function renderDrawChildren(
   parent: any,
-  styles: Map<string, StyleInfo>,
-  imageMap: Map<string, string>
+  ctx: ConvertCtx,
 ): { svg: string; hasContent: boolean } {
   let svg = ''
   let hasContent = false
@@ -693,12 +1053,12 @@ function renderDrawChildren(
 
     const fullTag = node.nodeName || ''
     const styleName = node.getAttribute('draw:style-name')
-    const style = styleName ? styles.get(styleName) : null
+    const style = styleName ? ctx.styles.get(styleName) : null
     const styleAttr = getSvgStyle(style)
 
     switch (fullTag) {
       case 'draw:g': {
-        const groupInfo = renderDrawChildren(node, styles, imageMap)
+        const groupInfo = renderDrawChildren(node, ctx)
         if (groupInfo.hasContent) {
           svg += `<g>${groupInfo.svg}</g>\n`
           hasContent = true

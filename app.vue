@@ -152,7 +152,9 @@ a:hover {
   flex-direction: column;
   width: 100%;
   min-height: 100dvh;
-  background: var(--gv-canvas-gradient);
+  background: 
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--gv-primary) 1.5%, transparent) 0%, transparent 40%),
+    var(--gv-canvas-gradient);
 }
 
 .gv-page {
@@ -204,10 +206,13 @@ a:hover {
 }
 
 .gv-surface-card {
-  border: 1px solid var(--gv-border-principal);
+  border: 1px solid var(--gv-border-subtle);
   border-radius: var(--gv-radius-container);
-  background: var(--gv-surface-card);
+  background: 
+    radial-gradient(circle at top right, color-mix(in srgb, var(--gv-primary) 5%, transparent) 0%, transparent 50%),
+    linear-gradient(165deg, var(--gv-surface-card) 0%, color-mix(in srgb, var(--gv-surface-card) 98%, var(--gv-primary)) 100%);
   box-shadow: var(--gv-shadow-sm);
+  overflow: hidden; /* Ensure headers/content respect corners */
 }
 
 .gv-card-header {

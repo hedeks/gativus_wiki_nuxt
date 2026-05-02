@@ -377,6 +377,7 @@
   overflow-x: auto;
   margin: 1em 0;
   border: 1px solid #e5e7eb;
+  white-space: pre-wrap; /* Make sure long code lines wrap nicely */
 }
 
 .dark .article-prose pre {
@@ -455,6 +456,33 @@
 .dark .article-prose .odt-note {
   color: #888;
   border-left-color: #333;
+}
+
+/* Inline counters & markers */
+.article-prose .odt-heading-marker {
+  color: var(--gv-primary, #0ea5e9);
+  margin-right: 0.25em;
+  font-weight: 800;
+  opacity: 0.85;
+}
+
+.dark .article-prose .odt-heading-marker {
+  color: var(--gv-primary, #38bdf8);
+}
+
+.article-prose .odt-chapter-inline,
+.article-prose .odt-sequence-inline {
+  font-weight: 600;
+  color: var(--gv-primary, #0ea5e9);
+  background: color-mix(in srgb, var(--gv-primary, #0ea5e9) 10%, transparent);
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+.dark .article-prose .odt-chapter-inline,
+.dark .article-prose .odt-sequence-inline {
+  color: var(--gv-primary, #38bdf8);
+  background: color-mix(in srgb, var(--gv-primary, #38bdf8) 15%, transparent);
 }
 
 /* ─── First paragraph after heading — no top margin ─── */
