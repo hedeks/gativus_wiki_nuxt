@@ -246,5 +246,5 @@ watch([page, searchQuery, activeCategory], () => {
   )
 })
 
-useHead({ title: () => `${t.value.heroTitle} — Gativus` })
+useMainNavSeo('articles')
 </script>

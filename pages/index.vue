@@ -103,12 +103,7 @@ onMounted(() => {
   reducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 })
 
-useSeoMeta({
-  ogImage: '/favicon.ico',
-  description: () => t.value.metaDesc,
-  ogDescription: () => t.value.metaDesc,
-  title: () => t.value.metaTitle,
-})
+useMainNavSeo('home')
 
 useHead({
   htmlAttrs: { lang: () => langStore.currentLang },

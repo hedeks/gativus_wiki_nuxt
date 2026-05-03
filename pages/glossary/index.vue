@@ -147,8 +147,6 @@ const langStore = useLanguageStore()
 
 const uiDict: Record<string, any> = {
   en: {
-    metaTitle: 'Glossary — Gativus',
-    metaDesc: 'Gativus system terms and definitions.',
     heroTitle: 'GLOSSARY',
     heroDesc: 'Systematized body of Gativus knowledge.',
     searchPlaceholder: 'Search by term or definition...',
@@ -165,8 +163,6 @@ const uiDict: Record<string, any> = {
     hasArticle: 'Article',
   },
   ru: {
-    metaTitle: 'Глоссарий — Gativus',
-    metaDesc: 'Термины и определения систем Gativus.',
     heroTitle: 'ГЛОССАРИЙ',
     heroDesc: 'Систематизированный свод знаний Gativus.',
     searchPlaceholder: 'Поиск по термину или определению...',
@@ -306,8 +302,5 @@ watch(() => langStore.currentLang, () => {
   refreshCategories()
 })
 
-useSeoMeta({
-  title: () => t.value.metaTitle,
-  description: () => t.value.metaDesc,
-})
+useMainNavSeo('glossary')
 </script>

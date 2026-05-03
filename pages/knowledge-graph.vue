@@ -24,17 +24,7 @@ definePageMeta({
 
 const langStore = useLanguageStore()
 
-const uiDict: Record<string, { pageTitle: string }> = {
-  en: { pageTitle: 'Knowledge graph' },
-  ru: { pageTitle: 'Граф знаний' },
-  zh: { pageTitle: '知识图谱' },
-}
-
-const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
-
-useHead({
-  title: () => `${t.value.pageTitle} — Gativus`,
-})
+useMainNavSeo('knowledge-graph')
 
 /** Плавное «нахождение» на экране: не короче таймаута и не короче окончания force simulation в визуализаторе */
 const INIT_DWELL_MS = 760

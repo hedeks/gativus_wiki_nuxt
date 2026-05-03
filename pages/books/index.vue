@@ -241,8 +241,5 @@ watch([page, searchQuery, activeCategory], () => {
   )
 })
 
-useSeoMeta({
-  title: () => `${t.value.heroTitle} — Gativus`,
-  description: () => t.value.heroDesc,
-})
+useMainNavSeo('library')
 </script>
