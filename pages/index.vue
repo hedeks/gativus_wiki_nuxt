@@ -105,8 +105,10 @@ onMounted(() => {
 
 useMainNavSeo('home')
 
+const documentHtmlLang = computed(() => langStore.currentLang)
+
 useHead({
-  htmlAttrs: { lang: () => langStore.currentLang },
+  htmlAttrs: { lang: documentHtmlLang },
   link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
 })
 

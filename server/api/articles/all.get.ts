@@ -5,6 +5,8 @@
  * Returns ALL articles for client-side filtering.
  */
 
+import { isEditorOrAbove } from '~/server/utils/requireRole'
+
 export default defineEventHandler(async (event) => {
     const db = useDatabase()
     const query = getQuery(event)
@@ -12,7 +14,7 @@ export default defineEventHandler(async (event) => {
     const lang = (query.lang as string) || (query.locale as string) || 'ru'
   
     const auth = event.context.auth
-    const isEditor = auth && (auth.role === 'editor' || auth.role === 'admin')
+    const isEditor = auth && isEditorOrAbove(auth.role)
   
     const conditions: string[] = []
     const params: any[] = []

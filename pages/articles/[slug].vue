@@ -214,7 +214,7 @@ import { wrapArticleTables } from '~/utils/wrapArticleTables'
 const langStore = useLanguageStore()
 const route = useRoute()
 const router = useRouter()
-const slug = route.params.slug as string
+const slug = computed(() => String(route.params.slug ?? ''))
 
 const articleMainCardRef = ref<HTMLElement | null>(null)
 
@@ -420,7 +420,7 @@ watch(
   () =>
     [
       highlightNeedleFromRoute.value,
-      slug,
+      slug.value,
       article.value?.html_content ?? '',
       articleTitleHighlightHtml.value,
     ] as const,
@@ -448,7 +448,7 @@ watch(
 const refresh = async () => {
   pending.value = true
   try {
-    const res = await $fetch<any>(`/api/articles/${slug}`, {
+    const res = await $fetch<any>(`/api/articles/${slug.value}`, {
       params: { lang: langStore.currentLang }
     })
     articleData.value = res
@@ -460,7 +460,7 @@ const refresh = async () => {
 }
 
 // Initial Fetch
-const initialData = await $fetch<any>(`/api/articles/${slug}`, {
+const initialData = await $fetch<any>(`/api/articles/${slug.value}`, {
   params: { lang: langStore.currentLang },
 }).catch((e) => {
   error.value = e
@@ -489,11 +489,17 @@ if (
 articleData.value = initialData
 pending.value = false
 
+const seoTitle = computed(() =>
+  article.value?.title ? `${article.value.title} — Gativus` : 'Gativus',
+)
+const seoOgTitle = computed(() => article.value?.title ?? '')
+const seoDescription = computed(() => article.value?.excerpt || '')
+
 useSeoMeta({
-  title: () => article.value?.title ? `${article.value.title} — Gativus` : 'Gativus',
-  ogTitle: () => article.value?.title,
-  description: () => article.value?.excerpt || '',
-  ogDescription: () => article.value?.excerpt || '',
+  title: seoTitle,
+  ogTitle: seoOgTitle,
+  description: seoDescription,
+  ogDescription: seoDescription,
   ogImage: '/favicon.ico',
 })
 

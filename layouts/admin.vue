@@ -36,7 +36,7 @@
           </div>
           <div class="sidebar-user-info">
             <span class="sidebar-user-name">{{ store.userInfo?.login || 'Unknown' }}</span>
-            <span class="sidebar-user-role">{{ store.userInfo?.role || 'editor' }}</span>
+            <span class="sidebar-user-role">{{ sidebarRoleLabel }}</span>
           </div>
         </div>
         <GvButton type="button" chromeless variant="ghost" color="gray" class="sidebar-logout" @click="handleLogout">
@@ -119,6 +119,14 @@
 const route = useRoute()
 const store = userStore()
 const sidebarOpen = ref(false)
+
+const sidebarRoleLabel = computed(() => {
+  const r = store.userInfo?.role
+  if (r === 'admin') return 'Админ'
+  if (r === 'editor') return 'Редактор'
+  if (r === 'user') return 'Пользователь'
+  return 'editor'
+})
 
 const { pushRoute, goBack, canGoBack } = useAdminHistory()
 

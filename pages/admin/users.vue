@@ -28,6 +28,7 @@ const createRole = ref<'user' | 'editor' | 'admin'>('user')
 
 const createSubmitting = ref(false)
 const savingRoleId = ref<number | null>(null)
+const deletingUserId = ref<number | null>(null)
 
 const roleDraft = ref<Record<number, AdminUserPublic['role']>>({})
 
@@ -107,6 +108,36 @@ async function patchRole(user: AdminUserPublic) {
     savingRoleId.value = null
   }
 }
+
+async function deleteUser(user: AdminUserPublic) {
+  if (!isAdmin.value)
+    return
+  if (user.id === store.userInfo?.id) {
+    toast.add({ title: 'Нельзя удалить свою учётную запись', color: 'red' })
+    return
+  }
+  const ok = typeof window !== 'undefined'
+    && window.confirm(`Удалить пользователя «${user.login}» безвозвратно?`)
+  if (!ok)
+    return
+  deletingUserId.value = user.id
+  try {
+    await $fetch(`/api/admin/users/${user.id}`, {
+      method: 'DELETE',
+      headers: store.getAuthHeader(),
+    })
+    toast.add({ title: 'Пользователь удалён', color: 'green' })
+    await refresh()
+  } catch (e: any) {
+    toast.add({
+      title: 'Ошибка',
+      description: e?.data?.statusMessage || e?.message || 'Не удалось удалить',
+      color: 'red',
+    })
+  } finally {
+    deletingUserId.value = null
+  }
+}
 </script>
 
 <template>
@@ -119,6 +150,9 @@ async function patchRole(user: AdminUserPublic) {
           <h1 class="hero-title gv-hero-gradient uppercase">Пользователи</h1>
           <p class="hero-lead">
             {{ isAdmin ? 'Все учётные записи и роли' : 'Только роль «Пользователь»' }}
+          </p>
+          <p v-if="isAdmin" class="hero-lead text-sm mt-1 opacity-90 max-w-xl">
+            Администратор может удалять пользователей (кроме себя и единственного оставшегося админа).
           </p>
         </div>
       </div>
@@ -211,7 +245,7 @@ async function patchRole(user: AdminUserPublic) {
               <th>Роль</th>
               <th>Создан</th>
               <th>Визит</th>
-              <th v-if="isAdmin" class="col-save" />
+              <th v-if="isAdmin" class="col-save">Действия</th>
             </tr>
           </thead>
           <tbody>
@@ -237,17 +271,30 @@ async function patchRole(user: AdminUserPublic) {
               <td class="td-muted">{{ formatDt(u.created_at) }}</td>
               <td class="td-muted">{{ formatDt(u.last_visited) }}</td>
               <td v-if="isAdmin" class="col-save">
-                <GvButton
-                  v-if="roleDraft[u.id] !== u.role"
-                  size="xs"
-                  color="sky"
-                  variant="soft"
-                  :loading="savingRoleId === u.id"
-                  icon="i-heroicons-check"
-                  @click="patchRole(u)"
-                >
-                  Сохранить
-                </GvButton>
+                <div class="flex flex-wrap items-center gap-2 justify-end">
+                  <GvButton
+                    v-if="roleDraft[u.id] !== u.role"
+                    size="xs"
+                    color="sky"
+                    variant="soft"
+                    :loading="savingRoleId === u.id"
+                    icon="i-heroicons-check"
+                    @click="patchRole(u)"
+                  >
+                    Сохранить
+                  </GvButton>
+                  <GvButton
+                    v-if="u.id !== store.userInfo?.id"
+                    size="xs"
+                    color="red"
+                    variant="soft"
+                    icon="i-heroicons-trash"
+                    :loading="deletingUserId === u.id"
+                    @click="deleteUser(u)"
+                  >
+                    Удалить
+                  </GvButton>
+                </div>
               </td>
             </tr>
           </tbody>

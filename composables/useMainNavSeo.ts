@@ -91,11 +91,13 @@ export function useMainNavSeo(key: MainNavSeoKey) {
     const lang: Lang = raw === 'ru' ? 'ru' : raw === 'zh' ? 'zh' : 'en'
     return PACK[lang][key]
   })
+  const seoTitle = computed(() => `Gativus — ${strings.value.page}`)
+  const seoDescription = computed(() => strings.value.description)
   useSeoMeta({
-    title: () => `Gativus — ${strings.value.page}`,
-    ogTitle: () => `Gativus — ${strings.value.page}`,
-    description: () => strings.value.description,
-    ogDescription: () => strings.value.description,
+    title: seoTitle,
+    ogTitle: seoTitle,
+    description: seoDescription,
+    ogDescription: seoDescription,
     ogImage: '/favicon.ico',
   })
 }

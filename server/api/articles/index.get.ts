@@ -4,6 +4,8 @@
  * Public endpoint (unpublished articles hidden unless editor+).
  */
 
+import { isEditorOrAbove } from '~/server/utils/requireRole'
+
 export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const query = getQuery(event)
@@ -21,7 +23,7 @@ export default defineEventHandler(async (event) => {
 
   // Check if user is editor+
   const auth = event.context.auth
-  const isEditor = auth && (auth.role === 'editor' || auth.role === 'admin')
+  const isEditor = auth && isEditorOrAbove(auth.role)
 
   // Build WHERE clause
   const conditions: string[] = []

@@ -5,11 +5,12 @@
  */
 
 import { slugify, ensureUniqueSlug } from '../../utils/slugify'
+import { isEditorOrAbove } from '~/server/utils/requireRole'
 
 export default defineEventHandler(async (event) => {
   // Check auth
   const auth = event.context.auth
-  if (!auth || (auth.role !== 'editor' && auth.role !== 'admin')) {
+  if (!auth || !isEditorOrAbove(auth.role)) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 

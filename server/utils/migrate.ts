@@ -49,6 +49,13 @@ export async function runMigrations(db: Database) {
     )
   `)
 
+  // ─── 3b. Legacy: роль super_admin снята → приводим к admin
+  try {
+    await db.exec(`UPDATE users SET role = 'admin' WHERE role = 'super_admin'`)
+  } catch (e) {
+    console.warn('[migrate] super_admin → admin cleanup skipped:', e)
+  }
+
   // ─── 4. Categories (self-referencing tree) ───
   await db.exec(`
     CREATE TABLE IF NOT EXISTS categories (

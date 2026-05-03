@@ -3,6 +3,8 @@
  * Get a single article by slug. Public.
  */
 
+import { isEditorOrAbove } from '~/server/utils/requireRole'
+
 export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const slug = getRouterParam(event, 'slug')
@@ -39,7 +41,7 @@ export default defineEventHandler(async (event) => {
 
   // Non-editors can't see unpublished
   const auth = event.context.auth
-  const isEditor = auth && (auth.role === 'editor' || auth.role === 'admin')
+  const isEditor = auth && isEditorOrAbove(auth.role)
   if (!article.is_published && !isEditor) {
     throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' })
   }

@@ -3,17 +3,20 @@
  * Use inside API handlers to enforce role-based access.
  *
  * Usage:
- *   const user = requireRole(event, 'editor')  // editor or admin
- *   const admin = requireRole(event, 'admin')  // admin only
+ *   requireRole(event, 'editor')  // editor или admin
+ *   requireRole(event, 'admin')   // только admin
  */
 
 import type { H3Event } from 'h3'
+
+/** Роли из JWT / `users.role` */
+export type AuthRole = 'user' | 'editor' | 'admin'
 
 interface AuthContext {
   id: number
   login: string
   email: string
-  role: 'editor' | 'admin'
+  role: AuthRole
   uuid: string
 }
 
@@ -28,6 +31,14 @@ export function requireAuth(event: H3Event): AuthContext {
   return auth
 }
 
+export function isEditorOrAbove(role: string | undefined | null): boolean {
+  return role === 'editor' || role === 'admin'
+}
+
+export function isAdminOrAbove(role: string | undefined | null): boolean {
+  return role === 'admin'
+}
+
 export function requireRole(event: H3Event, role: 'editor' | 'admin'): AuthContext {
   const auth = requireAuth(event)
 
@@ -38,6 +49,6 @@ export function requireRole(event: H3Event, role: 'editor' | 'admin'): AuthConte
     })
   }
 
-  // 'editor' check: both 'editor' and 'admin' pass
+  // `editor`: и editor, и admin
   return auth
 }
