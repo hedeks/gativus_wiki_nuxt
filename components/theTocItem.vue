@@ -55,10 +55,11 @@ const isActive = computed(() => {
 
 const handleClick = () => {
   if (props.level === 0 && props.link.children && props.link.children.length > 0) {
-    emit('toggle', props.link.id);
-  } else {
-    emit('scroll', props.link.id);
+    emit('scroll', props.link.id)
+    emit('toggle', props.link.id)
+    return
   }
+  emit('scroll', props.link.id)
 }
 
 const paddingClass = computed(() => {

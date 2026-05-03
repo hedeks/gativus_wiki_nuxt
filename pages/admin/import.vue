@@ -34,6 +34,7 @@ const categories = computed(() => {
 
 const selectedBookId = ref<number | null>(null)
 const selectedCategoryId = ref<number | null>(null)
+const odtFileInputRef = ref<HTMLInputElement | null>(null)
 
 const localeOptions = [
   { label: 'English', value: 'en' },
@@ -86,7 +87,19 @@ function removeFile() {
 
 // Preview
 async function runPreview() {
-  if (!selectedFile.value) return
+  if (!selectedFile.value) {
+    toast.add({ title: 'Выберите файл', description: 'Сначала укажите .odt для предпросмотра.', color: 'amber' })
+    return
+  }
+  const fname = selectedFile.value.name.toLowerCase()
+  if (!fname.endsWith('.odt')) {
+    toast.add({
+      title: 'Preview только для .odt',
+      description: 'Файлы .odm открываются на странице «Импорт ODM».',
+      color: 'amber',
+    })
+    return
+  }
   isPreviewLoading.value = true
   previewArticles.value = []
 
@@ -116,6 +129,15 @@ async function runPreview() {
 // Import
 async function runImport() {
   if (!selectedFile.value) return
+  const fname = selectedFile.value.name.toLowerCase()
+  if (!fname.endsWith('.odt')) {
+    toast.add({
+      title: 'Нужен файл .odt',
+      description: 'Для .odm откройте раздел «Импорт ODM».',
+      color: 'amber',
+    })
+    return
+  }
   isImportLoading.value = true
 
   try {
@@ -182,11 +204,23 @@ function formatFileSize(bytes: number): string {
             <UIcon name="i-heroicons-arrow-up-tray" class="drop-zone-icon" />
             <p class="drop-zone-text">Перетащите файл .odt сюда</p>
             <p class="drop-zone-hint">или</p>
-            <label class="drop-zone-btn">
-              <input type="file" accept=".odt,.odm" class="sr-only" @change="onFileSelect" />
-              <UIcon name="i-heroicons-folder-open" />
-              <span>Выбрать файл</span>
-            </label>
+            <input
+              ref="odtFileInputRef"
+              type="file"
+              accept=".odt,.odm"
+              class="sr-only"
+              @change="onFileSelect"
+            >
+            <GvButton
+              type="button"
+              variant="outline"
+              color="sky"
+              size="md"
+              icon="i-heroicons-folder-open"
+              @click="odtFileInputRef?.click()"
+            >
+              Выбрать файл
+            </GvButton>
           </div>
         </div>
 
@@ -219,30 +253,30 @@ function formatFileSize(bytes: number): string {
           <div class="option-row">
             <GvButton
               type="button"
-              unstyled
-              chromeless
-              class="option-btn"
-              :class="{ 'option-btn--active': splitLevel === 'none' }"
+              size="sm"
+              class="option-row-btn"
+              :variant="splitLevel === 'none' ? 'solid' : 'outline'"
+              :color="splitLevel === 'none' ? 'sky' : 'gray'"
               @click="splitLevel = 'none'"
             >
               Без разбивки
             </GvButton>
             <GvButton
               type="button"
-              unstyled
-              chromeless
-              class="option-btn"
-              :class="{ 'option-btn--active': splitLevel === 'h1' }"
+              size="sm"
+              class="option-row-btn"
+              :variant="splitLevel === 'h1' ? 'solid' : 'outline'"
+              :color="splitLevel === 'h1' ? 'sky' : 'gray'"
               @click="splitLevel = 'h1'"
             >
               Главам (H1)
             </GvButton>
             <GvButton
               type="button"
-              unstyled
-              chromeless
-              class="option-btn"
-              :class="{ 'option-btn--active': splitLevel === 'h2' }"
+              size="sm"
+              class="option-row-btn"
+              :variant="splitLevel === 'h2' ? 'solid' : 'outline'"
+              :color="splitLevel === 'h2' ? 'sky' : 'gray'"
               @click="splitLevel = 'h2'"
             >
               Разделам (H2)
@@ -257,10 +291,10 @@ function formatFileSize(bytes: number): string {
               v-for="opt in localeOptions"
               :key="opt.value"
               type="button"
-              unstyled
-              chromeless
-              class="option-btn"
-              :class="{ 'option-btn--active': locale === opt.value }"
+              size="sm"
+              class="option-row-btn"
+              :variant="locale === opt.value ? 'solid' : 'outline'"
+              :color="locale === opt.value ? 'sky' : 'gray'"
               @click="locale = opt.value"
             >
               {{ opt.label }}
@@ -293,9 +327,9 @@ function formatFileSize(bytes: number): string {
       <div class="import-actions">
         <GvButton
           type="button"
-          unstyled
-          chromeless
-          class="action-btn action-btn--preview"
+          variant="outline"
+          color="sky"
+          size="lg"
           icon="i-heroicons-eye"
           :loading="isPreviewLoading"
           @click="runPreview"
@@ -304,12 +338,11 @@ function formatFileSize(bytes: number): string {
         </GvButton>
         <GvButton
           type="button"
-          unstyled
-          chromeless
-          class="action-btn action-btn--import"
+          color="sky"
+          size="lg"
           icon="i-heroicons-arrow-down-tray"
           :loading="isImportLoading"
-          :disabled="previewArticles.length === 0"
+          :disabled="!selectedFile || isImportLoading"
           @click="runImport"
         >
           Импортировать
@@ -364,9 +397,9 @@ function formatFileSize(bytes: number): string {
         <div class="result-actions">
           <GvButton
             type="button"
-            unstyled
-            chromeless
-            class="action-btn action-btn--preview"
+            variant="outline"
+            color="gray"
+            size="lg"
             icon="i-heroicons-arrow-up-tray"
             @click="removeFile"
           >
@@ -374,9 +407,8 @@ function formatFileSize(bytes: number): string {
           </GvButton>
           <GvButton
             to="/admin/articles"
-            unstyled
-            chromeless
-            class="action-btn action-btn--import"
+            color="sky"
+            size="lg"
             icon="i-heroicons-list-bullet"
           >
             К списку статей
@@ -478,26 +510,6 @@ function formatFileSize(bytes: number): string {
   font-size: 13px;
   color: #999;
   margin: 0;
-}
-
-.drop-zone-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: 10px;
-  background: var(--gv-primary);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s;
-}
-
-.drop-zone-btn:hover {
-  background: var(--gv-primary-hover);
-  transform: translateY(-1px);
 }
 
 /* ─── File Card ─── */
@@ -621,42 +633,9 @@ function formatFileSize(bytes: number): string {
   gap: 8px;
 }
 
-:deep(.option-btn) {
+.option-row-btn {
   flex: 1;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: none;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  color: #555;
-  transition: all 0.2s;
-}
-
-:deep(.option-btn:hover) {
-  border-color: #c5c7cb;
-}
-
-:deep(.option-btn--active) {
-  background: #6366f1;
-  border-color: #6366f1;
-  color: #fff;
-}
-
-.dark :deep(.option-btn) {
-  border-color: #333;
-  color: #aaa;
-}
-
-.dark :deep(.option-btn--active) {
-  background: #6366f1;
-  border-color: #6366f1;
-  color: #fff;
-}
-
-:deep(.option-btn .gv-btn__label) {
-  display: contents;
+  min-width: 0;
 }
 
 .option-select {
@@ -684,60 +663,11 @@ function formatFileSize(bytes: number): string {
 }
 
 @media (max-width: 640px) {
-  .import-actions :deep(.action-btn) {
-    width: 100%;
+  .import-actions :deep(.gv-btn) {
+    flex: 1;
+    justify-content: center;
+    min-width: min(100%, 200px);
   }
-}
-
-:deep(.action-btn .gv-btn__label) {
-  display: contents;
-}
-
-:deep(.action-btn) {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s;
-  text-decoration: none;
-}
-
-:deep(.action-btn:disabled) {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-:deep(.action-btn--preview) {
-  background: #f3f4f6;
-  color: #555;
-}
-
-:deep(.action-btn--preview:hover:not(:disabled)) {
-  background: #e5e7eb;
-}
-
-.dark :deep(.action-btn--preview) {
-  background: #252528;
-  color: #aaa;
-}
-
-.dark :deep(.action-btn--preview:hover:not(:disabled)) {
-  background: #333;
-}
-
-:deep(.action-btn--import) {
-  background: var(--gv-primary);
-  color: #fff;
-}
-
-:deep(.action-btn--import:hover:not(:disabled)) {
-  background: var(--gv-primary-hover);
-  transform: translateY(-1px);
 }
 
 /* ─── Preview ─── */
@@ -958,7 +888,11 @@ function formatFileSize(bytes: number): string {
     flex-direction: column;
   }
 
-  :deep(.action-btn) {
+  .result-actions {
+    flex-direction: column;
+  }
+
+  .result-actions :deep(.gv-btn) {
     justify-content: center;
   }
 }

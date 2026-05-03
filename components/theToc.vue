@@ -1,8 +1,9 @@
 <template>
     <div :class="[
         'flex flex-col z-30 transition-all duration-500 overflow-x-hidden',
-        'lg:sticky lg:top-[--header-height] lg:bg-transparent lg:border-none lg:shadow-none lg:p-0 lg:h-fit lg:w-full',
-        'fixed top-[calc(var(--header-height)+0.75rem)] right-4 w-[240px] max-w-[85vw] sm:w-[320px] bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-gray-100 dark:border-gray-800 rounded-xl shadow-lg py-3 pl-3 pr-5 lg:static lg:z-auto lg:max-w-none'
+        'lg:sticky lg:top-[--header-height] lg:h-fit lg:w-full lg:p-0 lg:z-auto lg:max-w-none lg:static lg:border-none lg:shadow-none lg:bg-transparent',
+        'fixed top-[calc(var(--header-height)+0.75rem)] right-4 w-[240px] max-w-[85vw] sm:w-[320px]',
+        'max-lg:bg-white/80 max-lg:dark:bg-zinc-900/80 max-lg:backdrop-blur-md max-lg:border max-lg:border-gray-100 max-lg:dark:border-gray-800 max-lg:rounded-xl max-lg:shadow-lg max-lg:py-3 max-lg:pl-3 max-lg:pr-5'
     ]" class="toc-container">
         <!-- Overlay для мобилок -->
         <div v-if="!isDesktop && isMobileOpen"
@@ -10,7 +11,7 @@
             style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);" @click="isMobileOpen = false">
         </div>
 
-        <div class="flex items-center justify-between cursor-pointer select-none px-3 py-1 lg:sticky lg:top-0 lg:z-20 lg:bg-white/50 lg:dark:bg-zinc-900/50 lg:backdrop-blur-md"
+        <div class="flex items-center justify-between cursor-pointer select-none px-3 py-1 lg:sticky lg:top-0 lg:z-20 lg:bg-transparent lg:backdrop-blur-none"
             @click="toggleMobile">
             <p class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase transition-all duration-500 mr-4 flex-shrink-0"
                 style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);">
@@ -131,9 +132,8 @@ const checkSize = () => {
 };
 
 onMounted(() => {
-    checkSize();
-    window.addEventListener('resize', checkSize);
-    console.log(props.links);
+  checkSize();
+  window.addEventListener('resize', checkSize);
 });
 
 onUnmounted(() => {

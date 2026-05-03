@@ -8,9 +8,9 @@
       class="flex flex-col-reverse lg:grid lg:grid-cols-8 xl:grid-cols-8 gap-10 w-full lg:col-span-8 xl:col-span-8 view-transition">
       <div
         ref="articleMainCardRef"
-        class="w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col min-w-0 overflow-x-auto bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm">
+        class="w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col min-w-0 overflow-x-hidden bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm">
         <!-- Article Header -->
-        <div v-if="article" class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800">
+        <div v-if="article" class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800 min-w-0">
           <!-- Dynamic Breadcrumbs -->
           <TheBreadcrumbs
             v-if="article"
@@ -23,7 +23,7 @@
                 : null,
               { 
                 label: article.book_id 
-                  ? `${t.chapter} ${article.sort_order}` 
+                  ? `${t.chapter} ${article.chapter_number ?? article.sort_order}` 
                   : article.title 
               }
             ].filter(Boolean) as any[]"
@@ -49,7 +49,7 @@
           </div>
 
           <h1
-            class="text-3xl lg:text-4xl mb-0 font-bold text-[#233a4d] dark:text-gray-100 uppercase tracking-widest leading-tight m-0 mb-0">
+            class="gv-article-title text-3xl lg:text-4xl mb-0 font-bold text-[#233a4d] dark:text-gray-100 uppercase tracking-widest leading-snug m-0 mb-0 min-w-0 break-words hyphens-auto">
             <span v-if="articleTitleHighlightHtml !== null" v-html="articleTitleHighlightHtml" />
             <template v-else>{{ article.title }}</template>
           </h1>
@@ -100,8 +100,9 @@
         <div v-if="article.book_id && (article.prev || article.next)"
           class="mt-12 pt-8 border-t border-gray-100 dark:border-zinc-800 flex flex-col sm:flex-row gap-4 not-prose">
           <NuxtLink v-if="article.prev" :to="`/articles/${article.prev.slug}`" class="nav-card nav-card--prev">
-            <div class="nav-card-label uppercase">{{ t.prevChapter }} {{ article.prev.sort_order != null ?
-              `№${article.prev.sort_order}` :
+            <div class="nav-card-label uppercase">{{ t.prevChapter }} {{ displayChapterNo(article.prev) !=
+              null ?
+              `№${displayChapterNo(article.prev)}` :
               '' }}</div>
             <div class="nav-card-title">{{ article.prev.title }}</div>
           </NuxtLink>
@@ -109,8 +110,9 @@
 
           <NuxtLink v-if="article.next" :to="`/articles/${article.next.slug}`"
             class="nav-card nav-card--next text-right">
-            <div class="nav-card-label uppercase">{{ t.nextChapter }} {{ article.next.sort_order != null ?
-              `№${article.next.sort_order}` :
+            <div class="nav-card-label uppercase">{{ t.nextChapter }} {{ displayChapterNo(article.next) !=
+              null ?
+              `№${displayChapterNo(article.next)}` :
               '' }}</div>
             <div class="nav-card-title">{{ article.next.title }}</div>
           </NuxtLink>
@@ -161,7 +163,7 @@
         <Transition name="expand-pres">
           <div v-show="isDesktop || isPresSidebarOpen" class="flex flex-col gap-4 mt-4 lg:mt-2">
             <div class="flex flex-col gap-2 p-1">
-              <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">{{ article?.title }}</h3>
+              <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100 leading-snug min-w-0 break-words hyphens-auto">{{ article?.title }}</h3>
 
               <div class="mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800 flex flex-col gap-3">
                 <div
@@ -207,6 +209,7 @@
 <script setup lang="ts">
 import { onUnmounted, ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useLanguageStore } from '~/stores/language'
+import { wrapArticleTables } from '~/utils/wrapArticleTables'
 
 const langStore = useLanguageStore()
 const route = useRoute()
@@ -379,14 +382,24 @@ const error = ref<any>(null)
 const article = computed(() => articleData.value)
 const hasPresentation = computed(() => !!article.value?.presentation_path)
 
+/** Номер главы для подписей (совпадает с порядком в оглавлении книги), не сырое поле sort_order. */
+function displayChapterNo(nav: { chapter_number?: number | null; sort_order?: number | null } | null | undefined): number | null {
+  if (!nav)
+    return null
+  if (nav.chapter_number != null && Number.isFinite(Number(nav.chapter_number)))
+    return Number(nav.chapter_number)
+  if (nav.sort_order != null && Number.isFinite(Number(nav.sort_order)))
+    return Number(nav.sort_order)
+  return null
+}
+
 const articleBodyHighlightHtml = computed(() => {
   const raw = article.value?.html_content
   if (!raw || typeof raw !== 'string')
     return ''
   const needle = highlightNeedleFromRoute.value
-  if (!needle)
-    return raw
-  return highlightSearchInArticleHtml(raw, needle)
+  const body = needle ? highlightSearchInArticleHtml(raw, needle) : raw
+  return wrapArticleTables(body)
 })
 
 let searchHlScrollTimer: ReturnType<typeof setTimeout> | null = null
@@ -526,18 +539,44 @@ const generateId = (text: string) => {
   return slug || Math.random().toString(36).substring(2, 7) || 'id'
 }
 
+function stripInnerHtmlTags(html: string): string {
+  return html.replace(/<[^>]+>/g, '')
+}
+
+/** Маркер нумерации ODT — slug/id на сервере считаются по тексту без него */
+function stripOdtHeadingMarkers(html: string): string {
+  return html.replace(/<span[^>]*\bodt-heading-marker\b[^>]*>[\s\S]*?<\/span>/gi, '').trim()
+}
+
+function extractHeadingIdFromAttrs(attrPart: string): string | undefined {
+  const m = attrPart.match(/\bid\s*=\s*(["'])([^"']*)\1/i)
+  const raw = m?.[2]?.trim()
+  return raw && raw.length > 0 ? raw : undefined
+}
+
+/** Текст заголовка без маркера — как для autoslug при отсутствии id в DOM */
+function headingPlainTextForSlug(el: HTMLElement): string {
+  const clone = el.cloneNode(true) as HTMLElement
+  clone.querySelectorAll('.odt-heading-marker').forEach(n => n.remove())
+  return (clone.textContent || '').trim()
+}
+
 const tocLinks = computed<TocLink[]>(() => {
   const html = article.value?.html_content || ''
-  const regex = /<h([2-5])[^>]*?(?:id="([^"]*)")?[^>]*>(.*?)<\/h\1>/gi
+  /** [\s\S] — допускаем переносы строк внутри заголовка; id ищем в атрибутах в любом порядке */
+  const regex = /<h([2-5])([^>]*)>([\s\S]*?)<\/h\1>/gi
   const flat: { id: string; text: string; depth: number }[] = []
   let match: RegExpExecArray | null
 
   while ((match = regex.exec(html)) !== null) {
-    const depth = parseInt(match[1])
-    const text = match[3].replace(/<[^>]*>/g, '').trim()
+    const depth = Number.parseInt(match[1], 10)
+    const innerRaw = match[3]
+    const innerNoMarker = stripOdtHeadingMarkers(innerRaw)
+    const text = stripInnerHtmlTags(innerNoMarker).trim()
     if (!text) continue
 
-    const id = (match[2]?.trim() || generateId(text)).trim()
+    const fromAttr = extractHeadingIdFromAttrs(match[2] || '')
+    const id = (fromAttr ?? generateId(text)).trim()
 
     flat.push({ id, text, depth })
   }
@@ -698,7 +737,7 @@ const updateHeadingsAndObserve = () => {
         const h = heading as HTMLElement
         if (h.id) h.id = h.id.trim()
         if (!h.id) {
-          h.id = generateId(heading.textContent || '')
+          h.id = generateId(headingPlainTextForSlug(h))
         }
       })
 
@@ -840,6 +879,9 @@ onUnmounted(() => {
   font-weight: 600;
   color: #333;
   line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .dark .nav-card-title {

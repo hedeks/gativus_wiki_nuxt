@@ -5,7 +5,7 @@
  */
 
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
-import { buildTermsMap, linkTermsInHtml, mergeMentionCountMaps, replaceArticleTermMentions } from '~/server/utils/termLinker'
+import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
@@ -48,11 +48,6 @@ export default defineEventHandler(async (event) => {
     const finalHtml = rMain?.html ?? ''
     const finalHtmlRu = rRu?.html ?? null
     const finalHtmlZh = rZh?.html ?? null
-    const mergedMentions = mergeMentionCountMaps([
-      rMain?.mentionCountByTermId,
-      rRu?.mentionCountByTermId,
-      rZh?.mentionCountByTermId,
-    ])
 
     const articleSlug = await ensureUniqueSlug(db, 'articles', `term-${slug}`)
     const excerpt = generateExcerpt(finalHtml)
@@ -73,9 +68,7 @@ export default defineEventHandler(async (event) => {
       VALUES (?, ?, 1, 'Initial version (term article)', ?)
     `).run(termArticleId, finalHtml, auth.id)
 
-    if (mergedMentions.size > 0) {
-      replaceArticleTermMentions(db, termArticleId, mergedMentions)
-    }
+    syncArticleTermsFromArticleRow(db, termArticleId, termsMap)
   }
 
   await db.prepare(`

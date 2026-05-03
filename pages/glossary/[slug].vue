@@ -17,7 +17,7 @@
       class="flex flex-col-reverse lg:grid lg:grid-cols-8 xl:grid-cols-8 gap-10 w-full lg:col-span-8 xl:col-span-8 view-transition"
     >
       <div
-        class="w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col min-w-0 overflow-x-auto bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm"
+        class="w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col min-w-0 overflow-x-hidden bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm"
       >
 
         <!-- Header Section -->
@@ -229,6 +229,7 @@
 <script setup lang="ts">
 import { onUnmounted, ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useLanguageStore } from '~/stores/language'
+import { wrapArticleTables } from '~/utils/wrapArticleTables'
 
 const langStore = useLanguageStore()
 const route = useRoute()
@@ -299,7 +300,10 @@ const term = computed(() => termData.value)
 const isTheory = ref(true)
 const activeID = ref('')
 const hasPresentation = computed(() => !!term.value?.presentation_path)
-const contentHtml = computed(() => term.value?.article_html || term.value?.definition || '')
+const contentHtml = computed(() => {
+  const raw = term.value?.article_html || term.value?.definition || ''
+  return typeof raw === 'string' ? wrapArticleTables(raw) : ''
+})
 
 const refresh = async () => {
   pending.value = true
@@ -381,17 +385,39 @@ const generateId = (text: string) => {
   return s || Math.random().toString(36).substring(2, 7)
 }
 
+function stripInnerHtmlTags(html: string): string {
+  return html.replace(/<[^>]+>/g, '')
+}
+
+function stripOdtHeadingMarkers(html: string): string {
+  return html.replace(/<span[^>]*\bodt-heading-marker\b[^>]*>[\s\S]*?<\/span>/gi, '').trim()
+}
+
+function extractHeadingIdFromAttrs(attrPart: string): string | undefined {
+  const m = attrPart.match(/\bid\s*=\s*(["'])([^"']*)\1/i)
+  const raw = m?.[2]?.trim()
+  return raw && raw.length > 0 ? raw : undefined
+}
+
+function headingPlainTextForSlug(el: HTMLElement): string {
+  const clone = el.cloneNode(true) as HTMLElement
+  clone.querySelectorAll('.odt-heading-marker').forEach(n => n.remove())
+  return (clone.textContent || '').trim()
+}
+
 const tocLinks = computed<TocLink[]>(() => {
   const html = term.value?.article_html || ''
-  const regex = /<h([2-5])[^>]*?(?:id="([^"]*)")?[^>]*>(.*?)<\/h\1>/gi
+  const regex = /<h([2-5])([^>]*)>([\s\S]*?)<\/h\1>/gi
   const flat: { id: string; text: string; depth: number }[] = []
   let match: RegExpExecArray | null
 
   while ((match = regex.exec(html)) !== null) {
-    const depth = parseInt(match[1])
-    const text = match[3].replace(/<[^>]*>/g, '').trim()
+    const depth = Number.parseInt(match[1], 10)
+    const innerNoMarker = stripOdtHeadingMarkers(match[3])
+    const text = stripInnerHtmlTags(innerNoMarker).trim()
     if (!text) continue
-    const id = (match[2]?.trim() || generateId(text)).trim()
+    const fromAttr = extractHeadingIdFromAttrs(match[2] || '')
+    const id = (fromAttr ?? generateId(text)).trim()
     flat.push({ id, text, depth })
   }
 
@@ -481,7 +507,7 @@ const updateHeadingsAndObserve = () => {
       headings.forEach((h) => {
         const el = h as HTMLElement
         if (el.id) el.id = el.id.trim()
-        if (!el.id) el.id = generateId(h.textContent || '')
+        if (!el.id) el.id = generateId(headingPlainTextForSlug(el))
       })
       headingElements.value = Array.from(headings).filter(el => el.id !== '')
       scheduleScrollSpy()

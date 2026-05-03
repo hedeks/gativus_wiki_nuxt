@@ -367,13 +367,37 @@ function toRomanLower(num: number): string {
   return toRomanUpper(num).toLowerCase()
 }
 
+type ListMarkerMode = 'cumulative' | 'current-level' | 'tiered'
+
+/**
+ * cumulative — все уровни до текущего (как в LibreOffice).
+ * current-level — только метка текущего уровня.
+ * tiered — уровни 1–2: цепочка «1», «1.1»…; с 3-го уровня — только последний сегмент («а)», без «1.1.а)»).
+ */
 function formatListMarker(
   styleName: string,
   depth: number,
   levels: ListLevelDef[] | undefined,
   counters: number[],
+  mode: ListMarkerMode = 'cumulative',
 ): string {
   if (!levels?.length) return ''
+
+  const leafOnly
+    = mode === 'current-level'
+    || (mode === 'tiered' && depth >= 3)
+
+  if (leafOnly) {
+    const d = depth - 1
+    if (d < 0) return ''
+    const def = levels[d]
+    if (!def) return ''
+    const n = counters[d] ?? 0
+    if (def.type === 'bullet')
+      return def.numFormat || '•'
+    return def.prefix + formatOneCounter(def.numFormat, n) + def.suffix
+  }
+
   let out = ''
   for (let d = 0; d < depth; d++) {
     const def = levels[d]
@@ -413,7 +437,7 @@ function convertTextList(listEl: any, ctx: ConvertCtx, depth: number): string {
       bumpCounter(ctx.numbering, key, depth)
 
     const arr = ctx.numbering.listCounters[key] || []
-    const marker = isOrdered ? formatListMarker(styleName, depth, defLevels, arr) : ''
+    const marker = isOrdered ? formatListMarker(styleName, depth, defLevels, arr, 'tiered') : ''
 
     const body = convertListItemBody(child, ctx, depth)
     const markHtml = marker ? `<span class="odt-li-marker">${escapeHtml(marker)}</span>` : ''
@@ -558,13 +582,8 @@ function convertNode(
         if (def && def.type === 'number') {
           bumpCounter(ctx.numbering, '__outline__', level)
           const arr = ctx.numbering.listCounters['__outline__'] || []
-          
-          // Determine how many levels to display based on style:num-display-levels
-          // OpenDocument defaults to displaying all levels up to current, but some use num-display-levels.
-          // For simplicity, we just use formatListMarker which combines them,
-          // but we might need to modify formatListMarker if we want strict num-display-levels support.
-          // In most ODTs, formatListMarker is exactly what we want for headings (e.g. 1.1.)
-          marker = formatListMarker('__outline__', level, outlineDef, arr)
+          // Уровни 1–2: «1», «1.1»; с 3-го — только последний фрагмент («а)»).
+          marker = formatListMarker('__outline__', level, outlineDef, arr, 'tiered')
           if (marker) {
             marker = `<span class="odt-heading-marker">${escapeHtml(marker)}</span> `
           }
@@ -736,7 +755,7 @@ function convertNode(
         const outlineDef = ctx.listStyles.get('__outline__')
         if (outlineDef && outlineDef.length > 0) {
           const arr = ctx.numbering.listCounters['__outline__'] || []
-          const marker = formatListMarker('__outline__', level, outlineDef, arr)
+          const marker = formatListMarker('__outline__', level, outlineDef, arr, 'tiered')
           return `<span class="odt-chapter-inline">${escapeHtml(marker)}</span>`
         }
       }

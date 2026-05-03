@@ -5,7 +5,7 @@
  */
 
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
-import { buildTermsMap, linkTermsInHtml, mergeMentionCountMaps, replaceArticleTermMentions } from '~/server/utils/termLinker'
+import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
@@ -29,7 +29,6 @@ export default defineEventHandler(async (event) => {
   const rZh = html_content_zh ? linkTermsInHtml(html_content_zh, termsMap) : null
   const processedHtmlRu = rRu?.html ?? null
   const processedHtmlZh = rZh?.html ?? null
-  const mergedMentions = mergeMentionCountMaps([rEn.mentionCountByTermId, rRu?.mentionCountByTermId, rZh?.mentionCountByTermId])
 
   const finalExcerpt = excerpt || generateExcerptFromHtml(processedHtml)
   const finalExcerptRu = excerpt_ru || (processedHtmlRu ? generateExcerptFromHtml(processedHtmlRu) : null)
@@ -76,10 +75,8 @@ export default defineEventHandler(async (event) => {
     VALUES (?, ?, 1, ?, ?)
   `).run(articleId, processedHtml, 'Initial version', auth.id)
 
-  // ─── Phase 4: Sync Knowledge Graph ───
-  if (mergedMentions.size > 0) {
-    replaceArticleTermMentions(db, articleId, mergedMentions)
-  }
+  // ─── Phase 4: Sync Knowledge Graph (как PUT — по сохранённому HTML всех локалей) ───
+  syncArticleTermsFromArticleRow(db, articleId, termsMap)
 
   return {
     id: articleId,

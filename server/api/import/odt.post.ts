@@ -10,6 +10,7 @@
 
 import { parseOdtBuffer, splitIntoArticles, extractFirstHeading, generateExcerpt } from '~/server/utils/odtParser'
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
+import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 import { writeFileSync, mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
 
@@ -73,12 +74,15 @@ export default defineEventHandler(async (event) => {
       maxSortOrder = maxResult?.max_sort || 0
     }
 
-    // 5. Save each article to DB
+    // 5. Save each article to DB (линковка терминов + синхронизация графа article_terms)
     const importedArticles: { slug: string; title: string; id: number }[] = []
+    const termsMap = await buildTermsMap(db)
 
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i]
       const slug = await ensureUniqueSlug(db, 'articles', article.slug)
+      const processedHtml = linkTermsInHtml(article.html, termsMap).html
+      const excerpt = generateExcerpt(processedHtml)
 
       await db.prepare(`
         INSERT INTO articles (slug, title, html_content, raw_odt_path, book_id, category_id, sort_order, excerpt, created_by, is_published)
@@ -86,12 +90,12 @@ export default defineEventHandler(async (event) => {
       `).run(
         slug,
         article.title,
-        article.html,
+        processedHtml,
         odtPath,
         bookId,
         categoryId,
         maxSortOrder + i + 1,
-        article.excerpt,
+        excerpt,
         auth.id
       )
 
@@ -102,7 +106,9 @@ export default defineEventHandler(async (event) => {
       await db.prepare(`
         INSERT INTO article_revisions (article_id, html_content, revision_num, change_summary, created_by)
         VALUES (?, ?, 1, ?, ?)
-      `).run(articleId, article.html, 'Импорт из ODT', auth.id)
+      `).run(articleId, processedHtml, 'Импорт из ODT', auth.id)
+
+      syncArticleTermsFromArticleRow(db, articleId, termsMap)
 
       importedArticles.push({ slug, title: article.title, id: articleId })
     }

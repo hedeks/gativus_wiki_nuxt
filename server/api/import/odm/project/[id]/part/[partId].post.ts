@@ -9,6 +9,7 @@ import type { NumberingState } from '~/server/utils/odtParser'
 import { parseOdtBuffer, splitIntoArticles, extractFirstHeading, generateExcerpt, cloneNumberingState } from '~/server/utils/odtParser'
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
 import { requireRole } from '~/server/utils/requireRole'
+import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 function parseNumberingJson(raw: string | null): NumberingState | undefined {
   if (!raw) return undefined
@@ -115,11 +116,19 @@ export default defineEventHandler(async (event) => {
       maxSortOrder = maxResult?.max_sort ?? 0
     }
 
+    /**
+     * sort_order задаёт только порядок сортировки (в т.ч. продолжение после уже существующих глав).
+     * Человекочитаемый «номер главы» на странице статьи — поле chapter_number из API (позиция в оглавлении).
+     */
     const importedIds: number[] = []
+    const termsMap = await buildTermsMap(db)
 
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i]
       const slug = await ensureUniqueSlug(db, 'articles', article.slug)
+      const articleSortOrder = maxSortOrder + sortOrder * 100 + i + 1
+      const processedHtml = linkTermsInHtml(article.html, termsMap).html
+      const excerpt = generateExcerpt(processedHtml)
 
       await db.prepare(`
         INSERT INTO articles (slug, title, html_content, raw_odt_path, book_id, category_id, sort_order, excerpt, created_by, is_published)
@@ -127,12 +136,12 @@ export default defineEventHandler(async (event) => {
       `).run(
         slug,
         article.title,
-        article.html,
+        processedHtml,
         odtPath,
         bookId,
         categoryId,
-        maxSortOrder + sortOrder * 100 + i + 1,
-        article.excerpt,
+        articleSortOrder,
+        excerpt,
         auth.id,
       )
 
@@ -143,7 +152,9 @@ export default defineEventHandler(async (event) => {
       await db.prepare(`
         INSERT INTO article_revisions (article_id, html_content, revision_num, change_summary, created_by)
         VALUES (?, ?, 1, ?, ?)
-      `).run(articleId, article.html, 'Импорт ODM (слой книги)', auth.id)
+      `).run(articleId, processedHtml, 'Импорт ODM (слой книги)', auth.id)
+
+      syncArticleTermsFromArticleRow(db, articleId, termsMap)
     }
 
     const outState = parsed.numberingState ? cloneNumberingState(parsed.numberingState) : { listCounters: {} }

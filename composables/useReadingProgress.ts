@@ -20,6 +20,8 @@ export type ArticleForProgress = {
   slug: string
   title: string
   sort_order?: number | null
+  /** Позиция в книге (как «Глава N» на странице статьи); иначе берём sort_order. */
+  chapter_number?: number | null
 }
 
 export function useReadingProgress() {
@@ -55,7 +57,7 @@ export function useReadingProgress() {
       bookTitle: article.book_title || '',
       articleSlug: article.slug,
       articleTitle: article.title,
-      sortOrder: article.sort_order ?? null,
+      sortOrder: article.chapter_number ?? article.sort_order ?? null,
       updatedAt: new Date().toISOString(),
     }
     progress.value = next

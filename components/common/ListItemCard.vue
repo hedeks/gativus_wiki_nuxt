@@ -31,7 +31,7 @@
         <span v-if="index !== undefined" class="card-index">{{ index }}</span>
       </div>
 
-      <h3 class="card-title line-clamp-1">{{ title }}</h3>
+      <h3 class="card-title">{{ title }}</h3>
 
       <p v-if="description" class="card-description line-clamp-2">
         {{ description }}
@@ -86,7 +86,7 @@ withDefaults(
   --accent-arrow-bg-dark: rgba(14, 165, 233, 0.12);
 
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 14px 18px;
   border: 1px solid color-mix(in srgb, var(--accent) 12%, var(--gv-border-principal));
@@ -167,6 +167,7 @@ withDefaults(
   width: 36px;
   height: 36px;
   margin-left: 6px;
+  margin-top: 2px;
   border-radius: 9px;
   background: var(--accent-soft);
   display: flex;
@@ -293,6 +294,9 @@ withDefaults(
   margin: 0;
   line-height: 1.4;
   transition: color 0.2s ease;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .dark .card-title {
@@ -317,6 +321,7 @@ withDefaults(
 
 .card-arrow {
   flex-shrink: 0;
+  align-self: center;
   width: 26px;
   height: 26px;
   border-radius: 9999px;

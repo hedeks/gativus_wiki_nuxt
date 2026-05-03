@@ -17,6 +17,7 @@ const selectedFile = ref<File | null>(null)
 const isImportLoading = ref(false)
 const importResult = ref<any>(null)
 const lastDump = ref<any>(null)
+const syncJsonInputRef = ref<HTMLInputElement | null>(null)
 
 // Preview State
 const previewGraphData = ref<any>({ nodes: [], links: [] })
@@ -81,18 +82,25 @@ function buildGraphPreview(dump: any) {
       links.push({ source, target, type })
     }
   }
-  const isRu = langStore.currentLang === 'ru'
-  
+
+  const lang = langStore.currentLang
+  function loc(en?: string | null, ru?: string | null, zh?: string | null): string {
+    const e = en?.trim() || ''
+    if (lang === 'zh') return (zh && zh.trim()) || (ru && ru.trim()) || e
+    if (lang === 'ru') return (ru && ru.trim()) || e
+    return e
+  }
+
   dump.categories?.forEach((c: any) => {
-    const title = isRu ? (c.title_ru || c.title) : c.title
-    const description = isRu ? (c.description_ru || c.description) : c.description
+    const title = loc(c.title, c.title_ru, c.title_zh)
+    const description = loc(c.description, c.description_ru, c.description_zh)
     nodes.push({ id: `cat-${c.slug}`, title, description, icon: c.icon, type: 'category', slug: c.slug })
     if (c.parent_slug) addLink(`cat-${c.slug}`, `cat-${c.parent_slug}`, 'parent')
   })
   
   dump.books?.forEach((b: any) => {
-    const title = isRu ? (b.title_ru || b.title) : b.title
-    const description = isRu ? (b.description_ru || b.description) : b.description
+    const title = loc(b.title, b.title_ru, b.title_zh)
+    const description = loc(b.description, b.description_ru, b.description_zh)
     nodes.push({ id: `book-${b.slug}`, title, description, type: 'book', slug: b.slug })
     b.category_slugs?.forEach((cs: string) => addLink(`book-${b.slug}`, `cat-${cs}`, 'category'))
   })
@@ -103,8 +111,8 @@ function buildGraphPreview(dump: any) {
   dump.articles?.forEach((a: any) => {
     // Only standard articles become actual nodes in the visual graph
     if (a.is_term_article !== 1) {
-      const title = isRu ? (a.title_ru || a.title) : (a.title || '')
-      const description = a.excerpt
+      const title = loc(a.title, a.title_ru, a.title_zh)
+      const description = loc(a.excerpt, a.excerpt_ru, a.excerpt_zh)
       nodes.push({ id: `art-${a.slug}`, title, description, type: 'article', slug: a.slug })
       
       if (a.category_slug) addLink(`art-${a.slug}`, `cat-${a.category_slug}`, 'category')
@@ -118,8 +126,8 @@ function buildGraphPreview(dump: any) {
   
   // 4. Terms
   dump.terms?.forEach((t: any) => {
-    const title = isRu ? (t.title_ru || t.title) : t.title
-    const description = isRu ? (t.definition_ru || t.definition) : t.definition
+    const title = loc(t.title, t.title_ru, t.title_zh)
+    const description = loc(t.definition, t.definition_ru, t.definition_zh)
     nodes.push({ id: `term-${t.slug}`, title, description, type: 'term', slug: t.slug })
     if (t.term_article_slug) {
       termArticleToTermSlug.set(t.term_article_slug, t.slug)
@@ -255,13 +263,12 @@ async function runImport() {
           </div>
           <GvButton
             type="button"
-            unstyled
-            chromeless
-            class="action-btn action-btn--export"
+            color="sky"
+            size="lg"
             icon="i-heroicons-arrow-down-tray"
             @click="exportGraph"
           >
-            Сгенерировать Дамп
+            Сгенерировать дамп
           </GvButton>
         </div>
       </div>
@@ -290,11 +297,23 @@ async function runImport() {
             <UIcon name="i-heroicons-cloud-arrow-up" class="drop-zone-icon" />
             <p class="drop-zone-text">Перетащите резервную копию базы (.json) сюда</p>
             <p class="drop-zone-hint">для импорта</p>
-            <label class="drop-zone-btn">
-              <input type="file" accept=".json" class="sr-only" @change="onFileSelect" />
-              <UIcon name="i-heroicons-folder-open" />
-              <span>Выбрать файл JSON</span>
-            </label>
+            <input
+              ref="syncJsonInputRef"
+              type="file"
+              accept=".json"
+              class="sr-only"
+              @change="onFileSelect"
+            >
+            <GvButton
+              type="button"
+              variant="outline"
+              color="gray"
+              size="md"
+              icon="i-heroicons-folder-open"
+              @click="syncJsonInputRef?.click()"
+            >
+              Выбрать файл JSON
+            </GvButton>
           </div>
         </div>
 
@@ -339,14 +358,14 @@ async function runImport() {
       <div class="import-actions">
         <GvButton
           type="button"
-          unstyled
-          chromeless
-          class="action-btn action-btn--import"
+          color="sky"
+          size="lg"
           icon="i-heroicons-arrow-up-tray"
           :loading="isImportLoading"
+          :disabled="!selectedFile"
           @click="runImport"
         >
-          Загрузить Дамп
+          Загрузить дамп
         </GvButton>
       </div>
     </div>
@@ -364,9 +383,9 @@ async function runImport() {
         <div class="result-actions">
           <GvButton
             type="button"
-            unstyled
-            chromeless
-            class="action-btn action-btn--secondary"
+            variant="outline"
+            color="gray"
+            size="md"
             icon="i-heroicons-arrow-path"
             @click="removeFile"
           >
@@ -539,34 +558,6 @@ async function runImport() {
   margin: 0;
 }
 
-.drop-zone-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: 10px;
-  background: #f3f4f6;
-  color: #333;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s;
-}
-
-.dark .drop-zone-btn {
-  background: #252528;
-  color: #ddd;
-}
-
-.drop-zone-btn:hover {
-  background: #e5e7eb;
-}
-
-.dark .drop-zone-btn:hover {
-  background: #333;
-}
-
 /* ─── File Card ─── */
 .file-card {
   background: #fff;
@@ -726,68 +717,15 @@ async function runImport() {
 /* ─── Actions ─── */
 .import-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
-:deep(.action-btn .gv-btn__label) {
-  display: contents;
-}
-
-:deep(.action-btn) {
+.result-actions {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s;
-  text-decoration: none;
-}
-
-:deep(.action-btn:disabled) {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-:deep(.action-btn--export) {
-  background: var(--gv-primary);
-  color: #fff;
-}
-
-:deep(.action-btn--export:hover) {
-  background: var(--gv-primary-hover);
-  transform: translateY(-1px);
-}
-
-:deep(.action-btn--import) {
-  background: var(--gv-primary);
-  color: #fff;
-}
-
-:deep(.action-btn--import:hover:not(:disabled)) {
-  background: var(--gv-primary-hover);
-  transform: translateY(-1px);
-}
-
-:deep(.action-btn--secondary) {
-  background: #f3f4f6;
-  color: #555;
-}
-
-:deep(.action-btn--secondary:hover:not(:disabled)) {
-  background: #e5e7eb;
-}
-
-.dark :deep(.action-btn--secondary) {
-  background: #252528;
-  color: #aaa;
-}
-
-.dark :deep(.action-btn--secondary:hover:not(:disabled)) {
-  background: #333;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
 }
 
 /* ─── Result ─── */
@@ -859,8 +797,8 @@ async function runImport() {
     height: 320px;
   }
 
-  .import-actions :deep(.action-btn),
-  .result-actions :deep(.action-btn) {
+  .import-actions :deep(.gv-btn),
+  .result-actions :deep(.gv-btn) {
     width: 100%;
     justify-content: center;
   }

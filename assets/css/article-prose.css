@@ -14,12 +14,24 @@
   min-width: 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  /* Горизонтальный скролл только у .article-table-scroll вокруг таблиц */
+  overflow-x: visible;
+
+  /* Таблицы (шапка + зебра) и нумерация ODT — в тон шапке */
+  --article-table-header-bg: #1a365d;
+  --article-table-header-fg: #ffffff;
+  --article-table-border: #cfd8e3;
+  --article-table-row-alt: #ebf1f7;
+  --article-table-row-base: #ffffff;
 }
 
 .dark .article-prose {
   color: #e0e0e8;
+  --article-table-header-bg: #1e3a5f;
+  --article-table-header-fg: #f1f5f9;
+  --article-table-border: #334155;
+  --article-table-row-alt: #1e293b;
+  --article-table-row-base: #0f172a;
 }
 
 /* ─── Headings ─── */
@@ -192,33 +204,43 @@
 }
 
 /* ─── Tables ─── */
-.article-prose table {
-  margin: 2em auto;
-  border-collapse: collapse;
-  font-size: 0.9em;
+/* Шапка: тёмно-синий фон и белый текст. Зебра в теле: голубовато-серый / белый.
+   Если <thead> нет (частый вывод из ODT) — первая строка tbody (или первая tr) = шапка.
+   Прокрутка по X только у обёртки .article-table-scroll (см. utils/wrapArticleTables), не у всего текста статьи. */
+.article-prose .article-table-scroll {
+  display: block;
   width: 100%;
   max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  margin: 2em auto;
+  box-sizing: border-box;
+}
+
+.article-prose .article-table-scroll table {
+  margin: 0 auto;
+  border-collapse: collapse;
+  /* на 2px меньше основного текста статьи */
+  font-size: calc(1em - 2px);
   display: table;
   table-layout: auto;
-}
-
-.article-prose thead {
-  background: #f8fafc;
-}
-
-.dark .article-prose thead {
-  background: #1e1e21;
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
 }
 
 .article-prose th,
 .article-prose td {
   padding: 10px 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--article-table-border, #cfd8e3);
   text-align: center;
   vertical-align: middle;
   word-break: break-word;
   overflow-wrap: anywhere;
   hyphens: auto;
+  min-width: 2.5em;
 }
 
 .article-prose td p {
@@ -227,28 +249,57 @@
   text-align: center;
 }
 
-.dark .article-prose th,
-.dark .article-prose td {
-  border-color: #2a2a2e;
+/* Явный thead */
+.article-prose thead th,
+.article-prose thead td {
+  background: var(--article-table-header-bg) !important;
+  color: var(--article-table-header-fg) !important;
+  font-weight: 700;
 }
 
-.article-prose th {
-  font-weight: 600;
-  color: #1a1a2e;
-  background: #f1f5f9;
+.article-prose thead {
+  background: var(--article-table-header-bg);
 }
 
-.dark .article-prose th {
-  color: #e0e0e8;
-  background: #252528;
+/* Зебра под шапкой: 1-я строка tbody — голубой фон, 2-я — белая, … */
+.article-prose tbody tr:nth-child(odd) {
+  background: var(--article-table-row-alt);
 }
 
-.article-prose tr:nth-child(even) {
-  background: #f8fafc;
+.article-prose tbody tr:nth-child(even) {
+  background: var(--article-table-row-base);
 }
 
-.dark .article-prose tr:nth-child(even) {
-  background: #1a1a1d;
+/* Нет thead: первая строка визуально шапка */
+.article-prose table:not(:has(thead)) tbody tr:first-child th,
+.article-prose table:not(:has(thead)) tbody tr:first-child td {
+  background: var(--article-table-header-bg) !important;
+  color: var(--article-table-header-fg) !important;
+  font-weight: 700;
+}
+
+.article-prose table:not(:has(thead)) tbody tr:nth-child(even):not(:first-child) {
+  background: var(--article-table-row-alt);
+}
+
+.article-prose table:not(:has(thead)) tbody tr:nth-child(odd):not(:first-child) {
+  background: var(--article-table-row-base);
+}
+
+/* Редкий случай: <table><tr> без tbody */
+.article-prose table:not(:has(thead)):not(:has(tbody)) > tr:first-child th,
+.article-prose table:not(:has(thead)):not(:has(tbody)) > tr:first-child td {
+  background: var(--article-table-header-bg) !important;
+  color: var(--article-table-header-fg) !important;
+  font-weight: 700;
+}
+
+.article-prose table:not(:has(thead)):not(:has(tbody)) > tr:nth-child(even):not(:first-child) {
+  background: var(--article-table-row-alt);
+}
+
+.article-prose table:not(:has(thead)):not(:has(tbody)) > tr:nth-child(odd):not(:first-child) {
+  background: var(--article-table-row-base);
 }
 
 /* ─── Images ─── */
@@ -458,31 +509,31 @@
   border-left-color: #333;
 }
 
-/* Inline counters & markers */
-.article-prose .odt-heading-marker {
-  color: var(--gv-primary, #0ea5e9);
+/* Inline counters & markers: у заголовков — тот же цвет, что и у H2–H6; в списках — как текст абзаца */
+.article-prose h1 .odt-heading-marker,
+.article-prose h2 .odt-heading-marker,
+.article-prose h3 .odt-heading-marker,
+.article-prose h4 .odt-heading-marker,
+.article-prose h5 .odt-heading-marker,
+.article-prose h6 .odt-heading-marker {
+  color: inherit;
   margin-right: 0.25em;
   font-weight: 800;
-  opacity: 0.85;
 }
 
-.dark .article-prose .odt-heading-marker {
-  color: var(--gv-primary, #38bdf8);
+.article-prose li .odt-li-marker {
+  color: inherit;
+  margin-right: 0.25em;
+  font-weight: 800;
 }
 
 .article-prose .odt-chapter-inline,
 .article-prose .odt-sequence-inline {
-  font-weight: 600;
-  color: var(--gv-primary, #0ea5e9);
-  background: color-mix(in srgb, var(--gv-primary, #0ea5e9) 10%, transparent);
+  font-weight: 700;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 12%, transparent);
   padding: 0 4px;
   border-radius: 4px;
-}
-
-.dark .article-prose .odt-chapter-inline,
-.dark .article-prose .odt-sequence-inline {
-  color: var(--gv-primary, #38bdf8);
-  background: color-mix(in srgb, var(--gv-primary, #38bdf8) 15%, transparent);
 }
 
 /* ─── First paragraph after heading — no top margin ─── */

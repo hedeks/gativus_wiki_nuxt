@@ -557,6 +557,9 @@ onUnmounted(() => {
   color: var(--gv-text-primary);
   line-height: 1.4;
   margin-bottom: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .popover-media {

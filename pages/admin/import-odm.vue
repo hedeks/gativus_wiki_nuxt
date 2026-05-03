@@ -38,6 +38,7 @@ const newBookForm = reactive({
 })
 
 const masterFile = ref<File | null>(null)
+const masterFileInputRef = ref<HTMLInputElement | null>(null)
 const projectId = ref<number | null>(null)
 const projectBookId = ref<number | null>(null)
 const parts = ref<any[]>([])
@@ -173,6 +174,21 @@ async function createProject() {
     })
   }
   loadingMaster.value = false
+}
+
+function triggerPartUpload(partId: number) {
+  const el = document.getElementById(`part-input-${partId}`)
+  if (el) (el as HTMLInputElement).click()
+}
+
+async function handlePartFileChange(partId: number, event: Event) {
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length) return
+  
+  await uploadPart(partId, input.files)
+  
+  // Clear the input so the same file can be selected again if needed
+  input.value = ''
 }
 
 async function uploadPart(partId: number, fileList: FileList | null) {
@@ -484,13 +500,23 @@ function slotRowStatus(part: any) {
                 {{ masterFile ? masterFile.name : 'Перетащите мастер .odm файл' }}
               </p>
               <p class="text-xs opacity-50 mb-4">Файл задает последовательность и названия глав</p>
-              <label class="cursor-pointer">
-                <input type="file" accept=".odm" class="sr-only" @change="onMasterSelect">
-                <span class="gv-button gv-button--outline gv-button--gray gv-button--sm">
-                  <UIcon name="i-heroicons-folder-open" class="mr-2" />
-                  Выбрать файл
-                </span>
-              </label>
+              <input
+                ref="masterFileInputRef"
+                type="file"
+                accept=".odm"
+                class="sr-only"
+                @change="onMasterSelect"
+              >
+              <GvButton
+                type="button"
+                variant="outline"
+                color="gray"
+                size="sm"
+                icon="i-heroicons-folder-open"
+                @click="masterFileInputRef?.click()"
+              >
+                Выбрать файл
+              </GvButton>
             </div>
           </div>
 
@@ -558,14 +584,18 @@ function slotRowStatus(part: any) {
               </td>
               <td>
                 <template v-if="p.status !== 'imported'">
-                  <label class="inline-block">
-                    <input type="file" accept=".odt" class="sr-only" :disabled="uploadingPartId === p.id"
-                      @change="uploadPart(p.id, ($event.target as HTMLInputElement).files)">
-                    <GvButton chromeless variant="outline" color="gray" size="xs" :loading="uploadingPartId === p.id"
-                      icon="i-heroicons-arrow-up-tray">
-                      Загрузить .odt
-                    </GvButton>
-                  </label>
+                  <GvButton
+                    variant="outline"
+                    color="gray"
+                    size="xs"
+                    :loading="uploadingPartId === p.id"
+                    icon="i-heroicons-arrow-up-tray"
+                    @click="triggerPartUpload(p.id)"
+                  >
+                    Загрузить .odt
+                  </GvButton>
+                  <input :id="`part-input-${p.id}`" type="file" accept=".odt" class="hidden"
+                    @change="handlePartFileChange(p.id, $event)">
                 </template>
                 <span v-else class="text-[10px] font-bold opacity-40 truncate max-w-[120px] inline-block">
                   {{ p.odt_original_name }}

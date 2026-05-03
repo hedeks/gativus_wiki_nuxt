@@ -1,6 +1,6 @@
 /**
  * GET /api/admin/sync/export
- * Exports the entire knowledge graph structure to JSON.
+ * Экспорт структуры вики в JSON (версия дампа см. поле `version`).
  */
 
 export default defineEventHandler(async (event) => {
@@ -50,10 +50,13 @@ export default defineEventHandler(async (event) => {
   const categories = categoriesRaw.map(c => ({
     slug: c.slug,
     slug_ru: c.slug_ru || null,
+    slug_zh: c.slug_zh || null,
     title: c.title,
     title_ru: c.title_ru || null,
+    title_zh: c.title_zh || null,
     description: c.description || null,
     description_ru: c.description_ru || null,
+    description_zh: c.description_zh || null,
     icon: c.icon || null,
     parent_slug: c.parent_id ? categoryIdToSlug.get(c.parent_id) : null,
     sort_order: c.sort_order,
@@ -77,11 +80,14 @@ export default defineEventHandler(async (event) => {
   const terms = termsRaw.map(t => ({
     slug: t.slug,
     slug_ru: t.slug_ru || null,
+    slug_zh: t.slug_zh || null,
     title: t.title,
     title_ru: t.title_ru || null,
+    title_zh: t.title_zh || null,
     aliases: t.aliases || null,
     definition: t.definition,
     definition_ru: t.definition_ru || null,
+    definition_zh: t.definition_zh || null,
     image_url: t.image_url || null,
     video_url: t.video_url || null,
     presentation_path: t.presentation_path || null,
@@ -95,6 +101,8 @@ export default defineEventHandler(async (event) => {
   // Articles - unified model
   const articles = articlesRaw.map(a => ({
     slug: a.slug,
+    slug_ru: a.slug_ru || null,
+    slug_zh: a.slug_zh || null,
     title: a.title,
     title_ru: a.title_ru || null,
     title_zh: a.title_zh || null,
@@ -102,6 +110,8 @@ export default defineEventHandler(async (event) => {
     excerpt_ru: a.excerpt_ru || null,
     excerpt_zh: a.excerpt_zh || null,
     html_content: a.html_content,
+    html_content_ru: a.html_content_ru || null,
+    html_content_zh: a.html_content_zh || null,
     raw_odt_path: a.raw_odt_path || null,
     presentation_path: a.presentation_path || null,
     presentation_path_ru: a.presentation_path_ru || null,
@@ -111,13 +121,15 @@ export default defineEventHandler(async (event) => {
     is_published: a.is_published,
     is_term_article: a.is_term_article,
     sort_order: a.sort_order,
+    locale: a.locale || null,
+    origin_id: a.origin_id ?? null,
     created_at: a.created_at || null,
     updated_at: a.updated_at || null,
   }))
 
   // Format the output
   const dump = {
-    version: "1.2",
+    version: '1.3',
     timestamp: new Date().toISOString(),
     categories,
     books,

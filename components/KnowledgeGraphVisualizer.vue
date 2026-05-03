@@ -2897,6 +2897,7 @@ watch(activeFilters, () => {
 
 .graph-popup__category {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   font-size: 11px;
@@ -2916,6 +2917,10 @@ watch(activeFilters, () => {
   font-weight: 700;
   color: var(--gv-text-primary);
   line-height: 1.35;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .graph-popup__title-text--loading-preview {
@@ -3142,6 +3147,8 @@ watch(activeFilters, () => {
 .h-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  flex: 1;
 }
 
 .h-label {
@@ -3156,7 +3163,10 @@ watch(activeFilters, () => {
 .h-name {
   font-size: 14px;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .hierarchy-separator {
@@ -3361,11 +3371,12 @@ watch(activeFilters, () => {
   }
 
   .graph-stats-panel {
-    bottom: 64px;
-    left: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    left: max(10px, env(safe-area-inset-left, 0px));
     right: auto;
-    max-width: min(280px, calc(100% - 88px));
+    max-width: min(280px, calc(100vw - 20px));
     padding: 10px 12px;
+    margin: 0;
   }
 
   .custom-zoom-controls {

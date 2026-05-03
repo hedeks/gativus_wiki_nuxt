@@ -89,23 +89,37 @@ export default defineEventHandler(async (event) => {
     return {
       slug: row.slug,
       sort_order: row.sort_order,
+      chapter_number: row.chapter_number != null ? Number(row.chapter_number) : null,
       title: String(isRu ? (tr || t) : isZh ? (tz || t) : (t || tr || tz || '')),
     }
   }
+
+  const chapterRankSql = `
+    (SELECT COUNT(*) FROM articles b
+     WHERE b.book_id = articles.book_id
+     AND (b.sort_order < articles.sort_order OR (b.sort_order = articles.sort_order AND b.id <= articles.id)))`
+
+  let chapter_number: number | null = null
 
   // Get prev/next articles in the same book
   let prevArticle = null
   let nextArticle = null
 
   if (article.book_id) {
+    const rankRow = await db.prepare(`
+      SELECT COUNT(*) as n FROM articles
+      WHERE book_id = ? AND (sort_order < ? OR (sort_order = ? AND id <= ?))
+    `).get(article.book_id, article.sort_order, article.sort_order, article.id) as { n: number } | undefined
+    chapter_number = rankRow?.n != null ? Number(rankRow.n) : null
+
     prevArticle = await db.prepare(`
-      SELECT slug, title, title_ru, title_zh, sort_order FROM articles
+      SELECT slug, title, title_ru, title_zh, sort_order, ${chapterRankSql} AS chapter_number FROM articles
       WHERE book_id = ? AND sort_order < ? AND is_published = 1
       ORDER BY sort_order DESC LIMIT 1
     `).get(article.book_id, article.sort_order) as any
 
     nextArticle = await db.prepare(`
-      SELECT slug, title, title_ru, title_zh, sort_order FROM articles
+      SELECT slug, title, title_ru, title_zh, sort_order, ${chapterRankSql} AS chapter_number FROM articles
       WHERE book_id = ? AND sort_order > ? AND is_published = 1
       ORDER BY sort_order ASC LIMIT 1
     `).get(article.book_id, article.sort_order) as any
@@ -118,6 +132,7 @@ export default defineEventHandler(async (event) => {
     ...article,
     locale: 'global',
     is_published: Boolean(article.is_published),
+    chapter_number,
     prev: prevArticle || null,
     next: nextArticle || null,
   }
