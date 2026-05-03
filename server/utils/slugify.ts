@@ -75,3 +75,28 @@ export async function ensureUniqueSlug(
     slug = `${baseSlug}-${counter}`
   }
 }
+
+/**
+ * Уникальный slug для статьи с учётом колонок slug, slug_ru, slug_zh (любая из них занята — конфликт).
+ */
+export async function ensureUniqueArticleAnySlug(
+  db: any,
+  baseSlug: string,
+  excludeId?: number,
+): Promise<string> {
+  let slug = baseSlug
+  let counter = 1
+  while (true) {
+    let query = `SELECT id FROM articles WHERE slug = ? OR slug_ru = ? OR slug_zh = ?`
+    const params: any[] = [slug, slug, slug]
+    if (excludeId) {
+      query += ' AND id != ?'
+      params.push(excludeId)
+    }
+    const existing = await db.prepare(query).get(...params)
+    if (!existing)
+      return slug
+    counter++
+    slug = `${baseSlug}-${counter}`
+  }
+}

@@ -5,7 +5,7 @@
       isActive ? 'selectedToc text-black dark:text-white' : 'text-gray-900 dark:text-gray-200',
       paddingClass
     ]" style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);" @click="handleClick">
-      <span v-if="level > 0" class="mr-1 opacity-50">{{ levelMarker }}</span><span>{{ link.text }}</span>
+      <span>{{ link.text }}</span>
     </div>
 
     <Transition name="expand">
@@ -69,13 +69,6 @@ const paddingClass = computed(() => {
     case 2: return 'pl-10 lg:text-[12px] text-[9px] border-l-2 border-transparent';
     default: return `pl-14 lg:text-[11px] text-[9px] border-l-2 border-transparent`;
   }
-});
-
-const levelMarker = computed(() => {
-  if (props.level === 1) return '';
-  if (props.level === 2) return '•';
-  if (props.level >= 3) return '—';
-  return '';
 });
 </script>
 

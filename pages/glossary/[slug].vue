@@ -413,12 +413,13 @@ const tocLinks = computed<TocLink[]>(() => {
 
   while ((match = regex.exec(html)) !== null) {
     const depth = Number.parseInt(match[1], 10)
-    const innerNoMarker = stripOdtHeadingMarkers(match[3])
-    const text = stripInnerHtmlTags(innerNoMarker).trim()
-    if (!text) continue
+    const innerRaw = match[3]
+    const textDisplay = stripInnerHtmlTags(innerRaw).trim()
+    const textForSlug = stripInnerHtmlTags(stripOdtHeadingMarkers(innerRaw)).trim()
+    if (!textDisplay) continue
     const fromAttr = extractHeadingIdFromAttrs(match[2] || '')
-    const id = (fromAttr ?? generateId(text)).trim()
-    flat.push({ id, text, depth })
+    const id = (fromAttr ?? generateId(textForSlug || textDisplay)).trim()
+    flat.push({ id, text: textDisplay, depth })
   }
 
   const buildTree = (items: typeof flat): TocLink[] => {

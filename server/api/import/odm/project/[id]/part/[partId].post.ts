@@ -5,9 +5,10 @@
 
 import { mkdirSync, existsSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import type { NumberingState } from '~/server/utils/odtParser'
+import type { NumberingState, OdtContentLocale } from '~/server/utils/odtParser'
 import { parseOdtBuffer, splitIntoArticles, extractFirstHeading, generateExcerpt, cloneNumberingState } from '~/server/utils/odtParser'
-import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
+import { defaultOdmChapterTitle } from '~/server/utils/odmParser'
+import { slugify, ensureUniqueArticleAnySlug } from '~/server/utils/slugify'
 import { requireRole } from '~/server/utils/requireRole'
 import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
@@ -31,7 +32,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Некорректные параметры' })
 
   const row = await db.prepare(`
-    SELECT p.*, pr.book_id, pr.category_id, pr.split_level
+    SELECT p.*, pr.book_id, pr.category_id, pr.split_level, pr.content_locale
     FROM odm_project_parts p
     JOIN odm_projects pr ON p.project_id = pr.id
     WHERE p.id = ? AND p.project_id = ?
@@ -72,13 +73,23 @@ export default defineEventHandler(async (event) => {
   writeFileSync(odtPath, buf)
 
   try {
+    const rawLc = String(row.content_locale ?? 'ru').toLowerCase()
+    const contentLocale: OdtContentLocale = rawLc === 'en' || rawLc === 'zh' ? rawLc : 'ru'
+
     const parsed = await parseOdtBuffer(buf, {
       subDir: 'articles',
       numberingState,
+      contentLocale,
     })
 
     const splitLevel = String(row.split_level || 'none')
-    const displayTitle = String(row.display_title || '').trim() || `Глава ${sortOrder}`
+    const titleEn = String(row.display_title || '').trim() || defaultOdmChapterTitle(sortOrder, contentLocale)
+    const titleRuRaw = row.display_title_ru != null ? String(row.display_title_ru).trim() : ''
+    const titleZhRaw = row.display_title_zh != null ? String(row.display_title_zh).trim() : ''
+    const titleRu = titleRuRaw || null
+    const titleZh = titleZhRaw || null
+
+    const displayTitle = titleEn
 
     let articles: ReturnType<typeof splitIntoArticles> | Array<{ title: string; slug: string; html: string; excerpt: string }>
 
@@ -106,6 +117,8 @@ export default defineEventHandler(async (event) => {
     }
 
     const bookId = row.book_id != null ? Number(row.book_id) : null
+    if (!bookId)
+      throw new Error('Проект ODM не привязан к книге — импорт слота невозможен')
     const categoryId = row.category_id != null ? Number(row.category_id) : null
 
     let maxSortOrder = 0
@@ -125,17 +138,35 @@ export default defineEventHandler(async (event) => {
 
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i]
-      const slug = await ensureUniqueSlug(db, 'articles', article.slug)
+      const isFirst = i === 0
+      const insTitle = isFirst ? displayTitle : article.title
+      const insTitleRu = isFirst ? titleRu : null
+      const insTitleZh = isFirst ? titleZh : null
+
+      const basePrimary = slugify(isFirst ? displayTitle : article.title)
+      const slug = await ensureUniqueArticleAnySlug(db, basePrimary)
+
+      let slugRu: string | null = null
+      let slugZh: string | null = null
+      if (isFirst && insTitleRu)
+        slugRu = await ensureUniqueArticleAnySlug(db, slugify(insTitleRu))
+      if (isFirst && insTitleZh)
+        slugZh = await ensureUniqueArticleAnySlug(db, slugify(insTitleZh))
+
       const articleSortOrder = maxSortOrder + sortOrder * 100 + i + 1
       const processedHtml = linkTermsInHtml(article.html, termsMap).html
       const excerpt = generateExcerpt(processedHtml)
 
       await db.prepare(`
-        INSERT INTO articles (slug, title, html_content, raw_odt_path, book_id, category_id, sort_order, excerpt, created_by, is_published)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        INSERT INTO articles (slug, slug_ru, slug_zh, title, title_ru, title_zh, html_content, raw_odt_path, book_id, category_id, sort_order, excerpt, created_by, is_published)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
       `).run(
         slug,
-        article.title,
+        slugRu,
+        slugZh,
+        insTitle,
+        insTitleRu,
+        insTitleZh,
         processedHtml,
         odtPath,
         bookId,

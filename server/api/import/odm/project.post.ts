@@ -5,7 +5,7 @@
 
 import { mkdirSync, existsSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import { parseOdmOutline } from '~/server/utils/odmParser'
+import { parseOdmOutline, type OdmContentLocale } from '~/server/utils/odmParser'
 import { requireRole } from '~/server/utils/requireRole'
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
 
@@ -31,6 +31,9 @@ export default defineEventHandler(async (event) => {
   let bookId: number | null = options.book_id != null && options.book_id !== '' ? Number(options.book_id) : null
   let categoryId: number | null = options.category_id != null && options.category_id !== '' ? Number(options.category_id) : null
   const splitLevel = ['none', 'h1', 'h2'].includes(options.split_level) ? options.split_level : 'none'
+
+  const rawLc = String(options.content_locale ?? options.locale ?? 'ru').toLowerCase()
+  const contentLocale: OdmContentLocale = rawLc === 'en' || rawLc === 'zh' ? rawLc : 'ru'
 
   const createBook = options.create_book as
     | {
@@ -80,8 +83,15 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  if (bookId == null || !Number.isFinite(Number(bookId))) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Импорт ODM только для книги: выберите существующую книгу или создайте новую.',
+    })
+  }
+
   const buf = Buffer.from(fileField.data.buffer, fileField.data.byteOffset, fileField.data.byteLength)
-  const slots = parseOdmOutline(buf)
+  const slots = parseOdmOutline(buf, { contentLocale })
 
   const dir = join(process.cwd(), 'server', 'storage', 'odm')
   if (!existsSync(dir))
@@ -92,23 +102,23 @@ export default defineEventHandler(async (event) => {
   writeFileSync(masterPath, buf)
 
   await db.prepare(`
-    INSERT INTO odm_projects (book_id, category_id, master_storage_path, master_original_name, split_level, created_by)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(bookId, categoryId, masterPath, originalName, splitLevel, auth.id)
+    INSERT INTO odm_projects (book_id, category_id, master_storage_path, master_original_name, split_level, content_locale, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(bookId, categoryId, masterPath, originalName, splitLevel, contentLocale, auth.id)
 
   const ins = await db.prepare(`SELECT last_insert_rowid() as id`).get() as { id: number }
   const projectId = Number(ins.id)
 
   const insertPart = db.prepare(`
-    INSERT INTO odm_project_parts (project_id, sort_order, master_href, display_title, status)
-    VALUES (?, ?, ?, ?, 'pending')
+    INSERT INTO odm_project_parts (project_id, sort_order, master_href, display_title, display_title_ru, display_title_zh, status)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending')
   `)
 
   for (const s of slots)
-    await insertPart.run(projectId, s.sortOrder, s.masterHref, s.displayTitle)
+    await insertPart.run(projectId, s.sortOrder, s.masterHref, s.displayTitle, null, null)
 
   const parts = await db.prepare(`
-    SELECT id, sort_order, master_href, display_title, status, odt_original_name, imported_article_ids
+    SELECT id, sort_order, master_href, display_title, display_title_ru, display_title_zh, status, odt_original_name, imported_article_ids
     FROM odm_project_parts WHERE project_id = ? ORDER BY sort_order
   `).all(projectId)
 
@@ -117,6 +127,7 @@ export default defineEventHandler(async (event) => {
     slots: slots.length,
     parts,
     split_level: splitLevel,
+    content_locale: contentLocale,
     book_id: bookId,
   }
 })

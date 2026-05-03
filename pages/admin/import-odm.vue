@@ -23,6 +23,7 @@ const bookMode = ref<BookMode>('existing')
 const selectedBookId = ref<number | null>(null)
 const selectedCategoryId = ref<number | null>(null)
 const splitLevel = ref<'none' | 'h1' | 'h2'>('none')
+const odmContentLocale = ref<'ru' | 'en' | 'zh'>('ru')
 
 const newBookForm = reactive({
   title: '',
@@ -49,6 +50,71 @@ const publishing = ref(false)
 const publishConfirmOpen = ref(false)
 
 const publishStats = reactive({ draft: 0, live: 0 })
+
+/** Локальные правки названий слота до сохранения на сервер */
+const titleDrafts = ref<Record<number, { display_title?: string; display_title_ru?: string; display_title_zh?: string }>>({})
+const savingTitlesPartId = ref<number | null>(null)
+
+watch(books, (list) => {
+  if (bookMode.value === 'existing' && selectedBookId.value == null && list.length > 0)
+    selectedBookId.value = Number(list[0].id)
+}, { immediate: true })
+
+function partTitleField(p: any, key: 'display_title' | 'display_title_ru' | 'display_title_zh'): string {
+  const d = titleDrafts.value[p.id]?.[key]
+  if (d !== undefined)
+    return d
+  const raw = p[key]
+  return raw == null ? '' : String(raw)
+}
+
+function setTitleDraft(partId: number, key: 'display_title' | 'display_title_ru' | 'display_title_zh', val: string) {
+  titleDrafts.value = {
+    ...titleDrafts.value,
+    [partId]: { ...titleDrafts.value[partId], [key]: val },
+  }
+}
+
+async function saveSlotTitles(partId: number) {
+  const p = parts.value.find((x: any) => x.id === partId)
+  if (!p || p.status !== 'pending' || !projectId.value)
+    return
+  const d = titleDrafts.value[partId] || {}
+  const display_title = (d.display_title ?? p.display_title)?.trim()
+  if (!display_title) {
+    toast.add({
+      title: 'Укажите заголовок EN',
+      description: 'Он задаёт title статьи и основной slug для ссылки.',
+      color: 'red',
+    })
+    return
+  }
+  savingTitlesPartId.value = partId
+  try {
+    await $fetch(`/api/import/odm/project/${projectId.value}/part/${partId}`, {
+      method: 'PATCH',
+      headers: store.getAuthHeader(),
+      body: {
+        display_title,
+        display_title_ru: (d.display_title_ru ?? p.display_title_ru ?? '').trim() || null,
+        display_title_zh: (d.display_title_zh ?? p.display_title_zh ?? '').trim() || null,
+      },
+    })
+    const next = { ...titleDrafts.value }
+    delete next[partId]
+    titleDrafts.value = next
+    await refreshProject()
+    toast.add({ title: 'Названия слота сохранены', color: 'green' })
+  }
+  catch (e: any) {
+    toast.add({
+      title: 'Не удалось сохранить',
+      description: e?.data?.statusMessage || e?.message,
+      color: 'red',
+    })
+  }
+  savingTitlesPartId.value = null
+}
 
 async function refreshProject() {
   if (!projectId.value) return
@@ -95,6 +161,7 @@ function handleMasterFile(file: File | null) {
   parts.value = []
   publishStats.draft = 0
   publishStats.live = 0
+  titleDrafts.value = {}
 }
 
 function onMasterSelect(e: Event) {
@@ -120,6 +187,14 @@ function onDrop(e: DragEvent) {
 
 async function createProject() {
   if (!masterFile.value) return
+  if (bookMode.value === 'existing' && (selectedBookId.value == null || selectedBookId.value === '')) {
+    toast.add({
+      title: 'Выберите книгу',
+      description: 'Импорт ODM доступен только в составе книги.',
+      color: 'red',
+    })
+    return
+  }
   if (bookMode.value === 'new' && !newBookForm.title.trim()) {
     toast.add({ title: 'Укажите название книги (EN)', color: 'red' })
     return
@@ -129,6 +204,7 @@ async function createProject() {
   try {
     const options: Record<string, any> = {
       split_level: splitLevel.value,
+      content_locale: odmContentLocale.value,
     }
     if (bookMode.value === 'existing') {
       options.book_id = selectedBookId.value
@@ -257,6 +333,7 @@ function resetFlow() {
   parts.value = []
   publishStats.draft = 0
   publishStats.live = 0
+  titleDrafts.value = {}
 }
 
 function slotRowStatus(part: any) {
@@ -380,9 +457,8 @@ function slotRowStatus(part: any) {
 
         <!-- Mode Specific Forms -->
         <div v-if="bookMode === 'existing'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <UFormGroup label="Целевая книга" help="Статьи будут привязаны к этой книге">
-            <select v-model="selectedBookId" class="gv-admin-filter-select w-full min-h-[44px]" :disabled="!!projectId">
-              <option :value="null">— Без книги —</option>
+          <UFormGroup label="Целевая книга *" help="Импорт ODM только в книгу — слоты станут её главами">
+            <select v-model="selectedBookId" class="gv-admin-filter-select w-full min-h-[44px]" :disabled="!!projectId" required>
               <option v-for="book in books" :key="book.id" :value="book.id">{{ book.title }}</option>
             </select>
           </UFormGroup>
@@ -475,6 +551,26 @@ function slotRowStatus(part: any) {
         </div>
 
         <!-- Global Settings -->
+        <UFormGroup label="Язык подписей глав" help="Нумерация в тексте (Глава / Chapter / 第N章) и имена слотов по умолчанию">
+          <div class="flex flex-wrap gap-2">
+            <GvButton
+              v-for="opt in ([
+                { label: 'RU · Глава', value: 'ru' as const },
+                { label: 'EN · Chapter', value: 'en' as const },
+                { label: 'ZH · 章', value: 'zh' as const },
+              ])"
+              :key="opt.value"
+              :variant="odmContentLocale === opt.value ? 'solid' : 'outline'"
+              :color="odmContentLocale === opt.value ? 'sky' : 'gray'"
+              size="xs"
+              :disabled="!!projectId"
+              @click="odmContentLocale = opt.value"
+            >
+              {{ opt.label }}
+            </GvButton>
+          </div>
+        </UFormGroup>
+
         <UFormGroup label="Режим разборки ODT" help="Разрезать ли главы на отдельные статьи">
           <div class="flex gap-2">
             <GvButton
@@ -521,8 +617,15 @@ function slotRowStatus(part: any) {
           </div>
 
           <div class="flex justify-center pt-8">
-            <GvButton color="sky" size="lg" icon="i-heroicons-play" :loading="loadingMaster" :disabled="!masterFile"
-              class="px-12 rounded-2xl" @click="createProject">
+            <GvButton
+              color="sky"
+              size="lg"
+              icon="i-heroicons-play"
+              :loading="loadingMaster"
+              :disabled="!masterFile || (bookMode === 'existing' && selectedBookId == null)"
+              class="px-12 rounded-2xl"
+              @click="createProject"
+            >
               Создать проект и слоты
             </GvButton>
           </div>
@@ -552,14 +655,15 @@ function slotRowStatus(part: any) {
         <span class="ml-auto text-xs opacity-50 font-bold">{{ importedCount }}/{{ totalSlots }}</span>
       </header>
       <div class="card-body card-body--flush overflow-x-auto">
-        <div class="p-4 text-xs opacity-60 bg-black/5 dark:bg-white/5 italic">
-          Загружайте главы (.odt) по порядку. Система автоматически свяжет их со слотами мастер-файла.
+        <div class="p-4 text-xs opacity-80 bg-black/5 dark:bg-white/5 space-y-1.5 leading-relaxed">
+          <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Загружайте главы (.odt) по порядку.</p>
+          <p class="opacity-90">Перед загрузкой можно задать три заголовка: <strong>EN</strong> — поле <code class="rounded bg-black/10 px-1 py-0.5 text-[11px] dark:bg-white/15">title</code> и будущая ссылка <code class="rounded bg-black/10 px-1 py-0.5 text-[11px] dark:bg-white/15">/articles/…</code>; <strong>RU</strong> и <strong>ZH</strong> — по желанию.</p>
         </div>
-        <table class="admin-table min-w-[800px]">
+        <table class="admin-table min-w-[1040px]">
           <thead>
             <tr>
               <th class="w-12">#</th>
-              <th>Название главы</th>
+              <th class="min-w-[320px]">Заголовки статьи</th>
               <th class="hidden lg:table-cell">HREF</th>
               <th>Статус</th>
               <th>Публикация</th>
@@ -569,7 +673,61 @@ function slotRowStatus(part: any) {
           <tbody>
             <tr v-for="p in parts" :key="p.id">
               <td class="tabular-nums font-bold opacity-30 text-xs text-center">{{ p.sort_order }}</td>
-              <td class="text-sm font-bold">{{ p.display_title }}</td>
+              <td class="align-top py-2">
+                <template v-if="p.status === 'imported'">
+                  <div class="text-sm font-bold">{{ p.display_title }}</div>
+                  <div v-if="p.display_title_ru || p.display_title_zh" class="text-[11px] opacity-70 mt-1 space-y-0.5">
+                    <div v-if="p.display_title_ru">RU: {{ p.display_title_ru }}</div>
+                    <div v-if="p.display_title_zh">ZH: {{ p.display_title_zh }}</div>
+                  </div>
+                </template>
+                <div v-else class="flex flex-col gap-3 min-w-[280px] py-1">
+                  <UFormGroup
+                    label="Заголовок EN"
+                    help="Поле title; по нему строится основной slug и ссылка /articles/…"
+                    class="[&_.text-sm]:text-[10px]"
+                  >
+                    <UInput
+                      size="xs"
+                      :model-value="partTitleField(p, 'display_title')"
+                      @update:model-value="setTitleDraft(p.id, 'display_title', $event)"
+                    />
+                  </UFormGroup>
+                  <UFormGroup
+                    label="Заголовок RU"
+                    help="Необязательно · title_ru"
+                    class="[&_.text-sm]:text-[10px]"
+                  >
+                    <UInput
+                      size="xs"
+                      :model-value="partTitleField(p, 'display_title_ru')"
+                      @update:model-value="setTitleDraft(p.id, 'display_title_ru', $event)"
+                    />
+                  </UFormGroup>
+                  <UFormGroup
+                    label="Заголовок ZH"
+                    help="Необязательно · title_zh"
+                    class="[&_.text-sm]:text-[10px]"
+                  >
+                    <UInput
+                      size="xs"
+                      :model-value="partTitleField(p, 'display_title_zh')"
+                      @update:model-value="setTitleDraft(p.id, 'display_title_zh', $event)"
+                    />
+                  </UFormGroup>
+                  <GvButton
+                    variant="soft"
+                    color="sky"
+                    size="xs"
+                    class="self-start"
+                    :loading="savingTitlesPartId === p.id"
+                    icon="i-heroicons-check"
+                    @click="saveSlotTitles(p.id)"
+                  >
+                    Сохранить названия
+                  </GvButton>
+                </div>
+              </td>
               <td class="hidden lg:table-cell text-[10px] font-mono opacity-50">{{ p.master_href }}</td>
               <td>
                 <span class="gv-status-pill" :data-status="p.status">

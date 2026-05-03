@@ -6,6 +6,23 @@
 import AdmZip from 'adm-zip'
 import { DOMParser } from '@xmldom/xmldom'
 
+export type OdmContentLocale = 'ru' | 'en' | 'zh'
+
+export function defaultOdmChapterTitle(order: number, locale: OdmContentLocale = 'ru'): string {
+  switch (locale) {
+    case 'en':
+      return `Chapter ${order}`
+    case 'zh':
+      return `第${order}章`
+    case 'ru':
+    default:
+      return `Глава ${order}`
+  }
+}
+
+export interface ParseOdmOutlineOptions {
+  contentLocale?: OdmContentLocale
+}
 export interface OdmChapterSlot {
   /** Порядок в мастер-документе (1-based). */
   sortOrder: number
@@ -37,7 +54,8 @@ function basenameHint(href: string): string {
 /**
  * Разбор мастер-документа ODM: секции с text:section-source xlink:href.
  */
-export function parseOdmOutline(buffer: Buffer): OdmChapterSlot[] {
+export function parseOdmOutline(buffer: Buffer, options?: ParseOdmOutlineOptions): OdmChapterSlot[] {
+  const locale: OdmContentLocale = options?.contentLocale ?? 'ru'
   const zip = new AdmZip(buffer)
   const entry = zip.getEntry('content.xml')
   if (!entry)
@@ -69,7 +87,7 @@ export function parseOdmOutline(buffer: Buffer): OdmChapterSlot[] {
         if (href) {
           order++
           const hint = basenameHint(href)
-          const displayTitle = sectionTitle || hint || `Глава ${order}`
+          const displayTitle = sectionTitle || hint || defaultOdmChapterTitle(order, locale)
           slots.push({
             sortOrder: order,
             masterHref: normHref(href),

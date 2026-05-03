@@ -1,10 +1,10 @@
 <template>
-  <div class="left-view-selector flex flex-col lg:sticky h-fit">
+  <div class="left-view-selector flex flex-col lg:sticky h-fit min-w-0 w-full max-w-full">
     <p class="lv-label lg:text-sm text-[10px] tracking-widest font-bold uppercase mb-2">
       {{ pack.text }}
     </p>
     <span
-      class="selector-row border-l-2 lg:border-l-0 lg:border-r-2 border-transparent px-3 py-2 text-sm cursor-pointer transition-all duration-300 rounded-none lv-row"
+      class="selector-row border-l-2 lg:border-l-0 lg:border-r-2 border-transparent px-3 py-2 text-sm cursor-pointer transition-all duration-300 rounded-none lv-row min-w-0 max-w-full break-words [overflow-wrap:anywhere]"
       :class="{ selectedToc: props.isTheory }"
       @click="$emit('changeView', 'lection')"
     >
@@ -15,7 +15,7 @@
         {{ pack.presentation }}
       </p>
       <span
-        class="selector-row border-l-2 lg:border-r-2 lg:border-l-0 border-transparent px-3 py-2 text-sm cursor-pointer transition-all duration-300 rounded-none lv-row"
+        class="selector-row border-l-2 lg:border-r-2 lg:border-l-0 border-transparent px-3 py-2 text-sm cursor-pointer transition-all duration-300 rounded-none lv-row min-w-0 max-w-full break-words [overflow-wrap:anywhere]"
         :class="{ selectedToc: !props.isTheory }"
         @click="$emit('changeView', 'quiz')"
       >

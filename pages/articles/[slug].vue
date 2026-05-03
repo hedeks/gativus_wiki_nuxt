@@ -461,22 +461,33 @@ const refresh = async () => {
 
 // Initial Fetch
 const initialData = await $fetch<any>(`/api/articles/${slug}`, {
-  params: { lang: langStore.currentLang }
-}).catch(e => {
+  params: { lang: langStore.currentLang },
+}).catch((e) => {
   error.value = e
   return null
 })
 
-articleData.value = initialData
-pending.value = false
-
-if (error.value && !articleData.value) {
+if (error.value && !initialData) {
   throw createError({
     statusCode: error.value.statusCode || 404,
     statusMessage: 'Статья не найдена',
     fatal: true,
   })
 }
+
+/** Канонический URL — основной slug (англ. / articles.slug), даже если открыли slug_ru или slug_zh */
+if (
+  initialData?.slug
+  && String(route.params.slug) !== String(initialData.slug)
+) {
+  await navigateTo(
+    { path: `/articles/${initialData.slug}`, query: { ...route.query } },
+    { replace: true, redirectCode: 301 },
+  )
+}
+
+articleData.value = initialData
+pending.value = false
 
 useSeoMeta({
   title: () => article.value?.title ? `${article.value.title} — Gativus` : 'Gativus',
@@ -571,14 +582,15 @@ const tocLinks = computed<TocLink[]>(() => {
   while ((match = regex.exec(html)) !== null) {
     const depth = Number.parseInt(match[1], 10)
     const innerRaw = match[3]
-    const innerNoMarker = stripOdtHeadingMarkers(innerRaw)
-    const text = stripInnerHtmlTags(innerNoMarker).trim()
-    if (!text) continue
+    /** В оглавлении — как на странице: с префиксом `.odt-heading-marker`. Якорь — без маркера, как в парсере. */
+    const textDisplay = stripInnerHtmlTags(innerRaw).trim()
+    const textForSlug = stripInnerHtmlTags(stripOdtHeadingMarkers(innerRaw)).trim()
+    if (!textDisplay) continue
 
     const fromAttr = extractHeadingIdFromAttrs(match[2] || '')
-    const id = (fromAttr ?? generateId(text)).trim()
+    const id = (fromAttr ?? generateId(textForSlug || textDisplay)).trim()
 
-    flat.push({ id, text, depth })
+    flat.push({ id, text: textDisplay, depth })
   }
 
   // Build tree structure compatible with theToc component

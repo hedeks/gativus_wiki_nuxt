@@ -329,6 +329,7 @@ export async function runMigrations(db: Database) {
       master_storage_path   TEXT NOT NULL,
       master_original_name  TEXT NOT NULL,
       split_level           TEXT NOT NULL DEFAULT 'none',
+      content_locale        TEXT NOT NULL DEFAULT 'ru',
       created_at            DATETIME DEFAULT (datetime('now')),
       updated_at            DATETIME DEFAULT (datetime('now')),
       created_by            INTEGER REFERENCES users(id) ON DELETE SET NULL
@@ -341,6 +342,8 @@ export async function runMigrations(db: Database) {
       sort_order              INTEGER NOT NULL,
       master_href             TEXT NOT NULL,
       display_title           TEXT NOT NULL,
+      display_title_ru        TEXT,
+      display_title_zh        TEXT,
       odt_storage_path        TEXT,
       odt_original_name       TEXT,
       numbering_state_in_json  TEXT,
@@ -352,6 +355,34 @@ export async function runMigrations(db: Database) {
     )
   `)
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_odm_parts_project ON odm_project_parts(project_id)`)
+
+  try {
+    const odmProjCols = await db.prepare('PRAGMA table_info(odm_projects)').all() as { name: string }[]
+    const odmNames = odmProjCols.map(c => c.name)
+    if (!odmNames.includes('content_locale')) {
+      await db.exec(`ALTER TABLE odm_projects ADD COLUMN content_locale TEXT NOT NULL DEFAULT 'ru'`)
+      console.log('[migrate] Added content_locale to odm_projects')
+    }
+  }
+  catch (e) {
+    console.warn('[migrate] odm_projects content_locale check failed:', e)
+  }
+
+  try {
+    const odmPartCols = await db.prepare('PRAGMA table_info(odm_project_parts)').all() as { name: string }[]
+    const odmPartNames = odmPartCols.map(c => c.name)
+    if (!odmPartNames.includes('display_title_ru')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN display_title_ru TEXT')
+      console.log('[migrate] Added display_title_ru to odm_project_parts')
+    }
+    if (!odmPartNames.includes('display_title_zh')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN display_title_zh TEXT')
+      console.log('[migrate] Added display_title_zh to odm_project_parts')
+    }
+  }
+  catch (e) {
+    console.warn('[migrate] odm_project_parts localized titles check failed:', e)
+  }
 
   // ─── 13. Indexes ───
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_terms_slug ON terms(slug)`)

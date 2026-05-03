@@ -26,9 +26,13 @@ export interface NumberingState {
   listCounters: Record<string, number[]>
 }
 
+export type OdtContentLocale = 'ru' | 'en' | 'zh'
+
 export interface ParseOdtOptions {
   subDir?: string
   numberingState?: NumberingState
+  /** Язык подписи глав в нумерации заголовков (первый уровень: Глава / Chapter / 第N章). Пусто — как в файле ODT. */
+  contentLocale?: OdtContentLocale
 }
 
 export interface ParsedOdt {
@@ -67,6 +71,7 @@ interface ConvertCtx {
   listStyles: Map<string, ListLevelDef[]>
   numbering: NumberingState
   imageMap: Map<string, string>
+  contentLocale?: OdtContentLocale
 }
 
 export function cloneNumberingState(state: NumberingState): NumberingState {
@@ -87,11 +92,13 @@ export async function parseOdtBuffer(
 ): Promise<ParsedOdt> {
   let subDir = 'articles'
   let initialNumbering: NumberingState | undefined
+  let contentLocale: OdtContentLocale | undefined
   if (typeof optionsOrSubDir === 'string')
     subDir = optionsOrSubDir
   else if (optionsOrSubDir) {
     subDir = optionsOrSubDir.subDir ?? 'articles'
     initialNumbering = optionsOrSubDir.numberingState
+    contentLocale = optionsOrSubDir.contentLocale
   }
 
   const zip = new AdmZip(buffer)
@@ -140,7 +147,7 @@ export async function parseOdtBuffer(
     : { listCounters: {} }
 
   const imageMap = new Map(images.map(img => [img.originalPath, img.savedPath]))
-  const ctx: ConvertCtx = { styles, listStyles, numbering, imageMap }
+  const ctx: ConvertCtx = { styles, listStyles, numbering, imageMap, contentLocale }
   const fullHtml = convertChildren(textNode, ctx)
 
   return {
@@ -373,6 +380,7 @@ type ListMarkerMode = 'cumulative' | 'current-level' | 'tiered'
  * cumulative — все уровни до текущего (как в LibreOffice).
  * current-level — только метка текущего уровня.
  * tiered — уровни 1–2: цепочка «1», «1.1»…; с 3-го уровня — только последний сегмент («а)», без «1.1.а)»).
+ * Для заголовков: слово уровня 1 («Глава» / Chapter) только у outline depth 1; у 1.1, 1.2… префикс первого уровня не повторяется.
  */
 function formatListMarker(
   styleName: string,
@@ -380,12 +388,31 @@ function formatListMarker(
   levels: ListLevelDef[] | undefined,
   counters: number[],
   mode: ListMarkerMode = 'cumulative',
+  outlineContentLocale?: OdtContentLocale,
 ): string {
   if (!levels?.length) return ''
 
   const leafOnly
     = mode === 'current-level'
     || (mode === 'tiered' && depth >= 3)
+
+  const applyOutlineTier1Locale = (d: number, def: ListLevelDef, n: number) => {
+    let prefix = def.prefix
+    let suffix = def.suffix
+    if (styleName !== '__outline__' || mode !== 'tiered')
+      return { prefix, suffix }
+    if (depth > 1 && d === 0)
+      prefix = ''
+    else if (depth === 1 && d === 0 && outlineContentLocale && outlineContentLocale !== 'ru') {
+      if (outlineContentLocale === 'en')
+        prefix = 'Chapter '
+      else if (outlineContentLocale === 'zh') {
+        prefix = '第'
+        suffix = '章'
+      }
+    }
+    return { prefix, suffix }
+  }
 
   if (leafOnly) {
     const d = depth - 1
@@ -395,7 +422,8 @@ function formatListMarker(
     const n = counters[d] ?? 0
     if (def.type === 'bullet')
       return def.numFormat || '•'
-    return def.prefix + formatOneCounter(def.numFormat, n) + def.suffix
+    const { prefix, suffix } = applyOutlineTier1Locale(d, def, n)
+    return prefix + formatOneCounter(def.numFormat, n) + suffix
   }
 
   let out = ''
@@ -405,8 +433,10 @@ function formatListMarker(
     const n = counters[d] ?? 0
     if (def.type === 'bullet')
       out += def.numFormat || '•'
-    else
-      out += def.prefix + formatOneCounter(def.numFormat, n) + def.suffix
+    else {
+      const { prefix, suffix } = applyOutlineTier1Locale(d, def, n)
+      out += prefix + formatOneCounter(def.numFormat, n) + suffix
+    }
   }
   return out
 }
@@ -583,7 +613,7 @@ function convertNode(
           bumpCounter(ctx.numbering, '__outline__', level)
           const arr = ctx.numbering.listCounters['__outline__'] || []
           // Уровни 1–2: «1», «1.1»; с 3-го — только последний фрагмент («а)»).
-          marker = formatListMarker('__outline__', level, outlineDef, arr, 'tiered')
+          marker = formatListMarker('__outline__', level, outlineDef, arr, 'tiered', ctx.contentLocale)
           if (marker) {
             marker = `<span class="odt-heading-marker">${escapeHtml(marker)}</span> `
           }
@@ -755,7 +785,7 @@ function convertNode(
         const outlineDef = ctx.listStyles.get('__outline__')
         if (outlineDef && outlineDef.length > 0) {
           const arr = ctx.numbering.listCounters['__outline__'] || []
-          const marker = formatListMarker('__outline__', level, outlineDef, arr, 'tiered')
+          const marker = formatListMarker('__outline__', level, outlineDef, arr, 'tiered', ctx.contentLocale)
           return `<span class="odt-chapter-inline">${escapeHtml(marker)}</span>`
         }
       }
