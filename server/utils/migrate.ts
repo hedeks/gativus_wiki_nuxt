@@ -351,6 +351,7 @@ export async function runMigrations(db: Database) {
       display_title           TEXT NOT NULL,
       display_title_ru        TEXT,
       display_title_zh        TEXT,
+      is_enabled              INTEGER NOT NULL DEFAULT 1,
       odt_storage_path        TEXT,
       odt_original_name       TEXT,
       numbering_state_in_json  TEXT,
@@ -386,9 +387,25 @@ export async function runMigrations(db: Database) {
       await db.exec('ALTER TABLE odm_project_parts ADD COLUMN display_title_zh TEXT')
       console.log('[migrate] Added display_title_zh to odm_project_parts')
     }
+    if (!odmPartNames.includes('is_enabled')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN is_enabled INTEGER NOT NULL DEFAULT 1')
+      console.log('[migrate] Added is_enabled to odm_project_parts')
+    }
   }
   catch (e) {
     console.warn('[migrate] odm_project_parts localized titles check failed:', e)
+  }
+
+  try {
+    const odmProjCols2 = await db.prepare('PRAGMA table_info(odm_projects)').all() as { name: string }[]
+    const odmNames2 = odmProjCols2.map(c => c.name)
+    if (!odmNames2.includes('book_created_with_project')) {
+      await db.exec(`ALTER TABLE odm_projects ADD COLUMN book_created_with_project INTEGER NOT NULL DEFAULT 0`)
+      console.log('[migrate] Added book_created_with_project to odm_projects')
+    }
+  }
+  catch (e) {
+    console.warn('[migrate] odm_projects book_created_with_project check failed:', e)
   }
 
   // ─── 13. Indexes ───

@@ -10,6 +10,7 @@ import { parseOdtBuffer, splitIntoArticles, extractFirstHeading, generateExcerpt
 import { defaultOdmChapterTitle } from '~/server/utils/odmParser'
 import { slugify, ensureUniqueArticleAnySlug } from '~/server/utils/slugify'
 import { requireRole } from '~/server/utils/requireRole'
+import { cascadeResetOdmSlotsFrom } from '~/server/utils/odmSlotReset'
 import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 function parseNumberingJson(raw: string | null): NumberingState | undefined {
@@ -31,20 +32,104 @@ export default defineEventHandler(async (event) => {
   if (!Number.isFinite(projectId) || !Number.isFinite(partId))
     throw createError({ statusCode: 400, statusMessage: 'Некорректные параметры' })
 
-  const row = await db.prepare(`
+  const loadPartRow = () => db.prepare(`
     SELECT p.*, pr.book_id, pr.category_id, pr.split_level, pr.content_locale
     FROM odm_project_parts p
     JOIN odm_projects pr ON p.project_id = pr.id
     WHERE p.id = ? AND p.project_id = ?
   `).get(partId, projectId) as Record<string, unknown> | undefined
 
+  let row = await loadPartRow()
+
   if (!row)
     throw createError({ statusCode: 404, statusMessage: 'Слот не найден' })
 
-  if (String(row.status) === 'imported')
-    throw createError({ statusCode: 409, statusMessage: 'Этот слот уже импортирован' })
+  if (Number(row.is_enabled ?? 1) !== 1) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Этот слот исключён из импорта. Включите его перед загрузкой .odt.',
+    })
+  }
 
   const formData = await readMultipartFormData(event)
+
+  if (String(row.status) === 'imported') {
+    const so = Number(row.sort_order)
+    const { resetSlotCount } = await cascadeResetOdmSlotsFrom(db, projectId, so)
+    if (resetSlotCount === 0) {
+      throw createError({
+        statusCode: 409,
+        statusMessage: 'Этот слот уже импортирован',
+      })
+    }
+    row = await loadPartRow()
+    if (!row)
+      throw createError({ statusCode: 404, statusMessage: 'Слот не найден' })
+  }
+
+  if (String(row.status) === 'error') {
+    await db.prepare(`
+      UPDATE odm_project_parts SET status = 'pending', updated_at = datetime('now') WHERE id = ?
+    `).run(partId)
+    row = await loadPartRow()
+    if (!row)
+      throw createError({ statusCode: 404, statusMessage: 'Слот не найден' })
+  }
+
+  const titlesField = formData?.find(f => f.name === 'titles')
+  if (titlesField?.data) {
+    try {
+      const t = JSON.parse(titlesField.data.toString('utf-8')) as {
+        display_title?: string
+        display_title_ru?: string | null
+        display_title_zh?: string | null
+      }
+      const curRu = row.display_title_ru != null ? String(row.display_title_ru).trim() : ''
+      const curZh = row.display_title_zh != null ? String(row.display_title_zh).trim() : ''
+      const nextEn = t.display_title !== undefined
+        ? String(t.display_title).trim()
+        : String(row.display_title || '').trim()
+      const nextRu = t.display_title_ru !== undefined
+        ? (t.display_title_ru == null || String(t.display_title_ru).trim() === ''
+            ? null
+            : String(t.display_title_ru).trim())
+        : (curRu === '' ? null : curRu)
+      const nextZh = t.display_title_zh !== undefined
+        ? (t.display_title_zh == null || String(t.display_title_zh).trim() === ''
+            ? null
+            : String(t.display_title_zh).trim())
+        : (curZh === '' ? null : curZh)
+      if (!nextEn) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Заголовок EN не может быть пустым',
+        })
+      }
+      await db.prepare(`
+        UPDATE odm_project_parts SET
+          display_title = ?,
+          display_title_ru = ?,
+          display_title_zh = ?,
+          updated_at = datetime('now')
+        WHERE id = ?
+      `).run(nextEn, nextRu, nextZh, partId)
+      row = await loadPartRow()
+      if (!row)
+        throw createError({ statusCode: 404, statusMessage: 'Слот не найден' })
+    }
+    catch (e) {
+      if (e && typeof e === 'object' && 'statusCode' in e)
+        throw e
+    }
+  }
+
+  if (String(row.status) !== 'pending') {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Слот в состоянии «${row.status}». Для новой загрузки нужен статус «ожидание».`,
+    })
+  }
+
   const fileField = formData?.find(f => f.name === 'file')
   if (!fileField?.data)
     throw createError({ statusCode: 400, statusMessage: 'Файл .odt не передан' })

@@ -45,6 +45,7 @@ const projectBookId = ref<number | null>(null)
 const parts = ref<any[]>([])
 const loadingMaster = ref(false)
 const uploadingPartId = ref<number | null>(null)
+const clearingPartId = ref<number | null>(null)
 const isDragging = ref(false)
 const publishing = ref(false)
 const publishConfirmOpen = ref(false)
@@ -142,12 +143,35 @@ async function refreshProject() {
   }
 }
 
-const importedCount = computed(() => parts.value.filter(p => p.status === 'imported').length)
-const totalSlots = computed(() => parts.value.length)
+const enabledParts = computed(() => parts.value.filter((p: any) => Number(p.is_enabled ?? 1) === 1))
+const importedCount = computed(() => enabledParts.value.filter((p: any) => p.status === 'imported').length)
+const totalSlots = computed(() => enabledParts.value.length)
 const allSlotsImported = computed(() => totalSlots.value > 0 && importedCount.value === totalSlots.value)
 
 const canPublish = computed(() => allSlotsImported.value && publishStats.draft > 0)
 const allPublished = computed(() => allSlotsImported.value && publishStats.draft === 0 && publishStats.live > 0)
+
+async function togglePartEnabled(partId: number) {
+  const p = parts.value.find((x: any) => x.id === partId)
+  if (!p || p.status !== 'pending' || !projectId.value) return
+  try {
+    await $fetch(`/api/import/odm/project/${projectId.value}/part/${partId}`, {
+      method: 'PATCH',
+      headers: store.getAuthHeader(),
+      body: {
+        is_enabled: Number(p.is_enabled ?? 1) !== 1,
+      },
+    })
+    await refreshProject()
+  }
+  catch (e: any) {
+    toast.add({
+      title: 'Не удалось изменить выбор главы',
+      description: e?.data?.statusMessage || e?.message,
+      color: 'red',
+    })
+  }
+}
 
 function handleMasterFile(file: File | null) {
   if (!file) return
@@ -274,18 +298,49 @@ async function uploadPart(partId: number, fileList: FileList | null) {
     toast.add({ title: 'Для слота нужен .odt', color: 'red' })
     return
   }
+  const p = parts.value.find((x: any) => x.id === partId)
+  if (!p) return
+  if (Number(p.is_enabled ?? 1) !== 1) {
+    toast.add({
+      title: 'Слот исключён из импорта',
+      description: 'Включите слот, если хотите загрузить для него .odt.',
+      color: 'red',
+    })
+    return
+  }
+  const d = titleDrafts.value[partId] || {}
+  const display_title = String(d.display_title ?? p.display_title ?? '').trim()
+  if (!display_title) {
+    toast.add({
+      title: 'Укажите заголовок EN',
+      description: 'Он задаёт title статьи и основной slug.',
+      color: 'red',
+    })
+    return
+  }
+  const display_title_ru = String(d.display_title_ru ?? p.display_title_ru ?? '').trim() || null
+  const display_title_zh = String(d.display_title_zh ?? p.display_title_zh ?? '').trim() || null
+
   uploadingPartId.value = partId
   try {
     const fd = new FormData()
     fd.append('file', file)
-    await $fetch(`/api/import/odm/project/${projectId.value}/part/${partId}`, {
+    fd.append('titles', JSON.stringify({
+      display_title,
+      display_title_ru,
+      display_title_zh,
+    }))
+    const res = await $fetch<{ imported: number }>(`/api/import/odm/project/${projectId.value}/part/${partId}`, {
       method: 'POST',
       body: fd,
       headers: store.getAuthHeader(),
     })
+    const next = { ...titleDrafts.value }
+    delete next[partId]
+    titleDrafts.value = next
     toast.add({
-      title: 'Глава в черновиках',
-      description: 'Статья импортирована как черновик. Опубликуйте сбором, когда будете готовы.',
+      title: p.status === 'imported' ? 'Глава заменена (черновик)' : 'Глава в черновиках',
+      description: `${res.imported} статей. На публичном графе знаний рёбра по терминам появятся после публикации сборки.`,
       color: 'primary',
     })
     await refreshProject()
@@ -326,7 +381,60 @@ async function publishProject() {
   publishing.value = false
 }
 
-function resetFlow() {
+async function clearSlotImport(partId: number) {
+  if (!projectId.value) return
+  if (!confirm('Сбросить импорт этого слота и всех следующих? Черновики статей из этих слотов будут удалены из базы.'))
+    return
+  clearingPartId.value = partId
+  try {
+    await $fetch(`/api/import/odm/project/${projectId.value}/part/${partId}/import`, {
+      method: 'DELETE',
+      headers: store.getAuthHeader(),
+    })
+    toast.add({ title: 'Импорт слотов сброшен', color: 'green' })
+    await refreshProject()
+  }
+  catch (e: any) {
+    toast.add({
+      title: 'Не удалось сбросить',
+      description: e?.data?.statusMessage || e?.message,
+      color: 'red',
+    })
+  }
+  clearingPartId.value = null
+}
+
+async function resetFlow() {
+  if (projectId.value) {
+    const hasWork
+      = importedCount.value > 0
+        || publishStats.draft > 0
+        || publishStats.live > 0
+        || parts.value.some((x: any) => x.status === 'pending')
+    if (hasWork) {
+      const ok = confirm(
+        'Удалить текущий проект ODM? Все черновики статей из этого импорта будут удалены. '
+        + 'Если книга была создана только для этого проекта и в ней не останется статей — она тоже будет удалена. '
+        + 'Если в проекте есть опубликованные статьи, удаление будет отклонено — сначала снимите их с публикации.',
+      )
+      if (!ok) return
+    }
+    try {
+      await $fetch(`/api/import/odm/project/${projectId.value}`, {
+        method: 'DELETE',
+        headers: store.getAuthHeader(),
+      })
+      toast.add({ title: 'Проект удалён', color: 'green' })
+    }
+    catch (e: any) {
+      toast.add({
+        title: 'Не удалось удалить проект',
+        description: e?.data?.statusMessage || e?.message,
+        color: 'red',
+      })
+      return
+    }
+  }
   masterFile.value = null
   projectId.value = null
   projectBookId.value = null
@@ -639,7 +747,7 @@ function slotRowStatus(part: any) {
               </div>
               <div>
                 <p class="text-lg font-black uppercase tracking-tight">Проект #{{ projectId }}</p>
-                <p class="text-sm opacity-60">Слотов: {{ totalSlots }} · Импортировано: {{ importedCount }}</p>
+                <p class="text-sm opacity-60">Включено слотов: {{ totalSlots }} · Импортировано: {{ importedCount }}</p>
               </div>
             </div>
             <GvButton variant="outline" color="gray" size="sm" @click="resetFlow">Новый проект</GvButton>
@@ -657,12 +765,16 @@ function slotRowStatus(part: any) {
       <div class="card-body card-body--flush overflow-x-auto">
         <div class="p-4 text-xs opacity-80 bg-black/5 dark:bg-white/5 space-y-1.5 leading-relaxed">
           <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Загружайте главы (.odt) по порядку.</p>
-          <p class="opacity-90">Перед загрузкой можно задать три заголовка: <strong>EN</strong> — поле <code class="rounded bg-black/10 px-1 py-0.5 text-[11px] dark:bg-white/15">title</code> и будущая ссылка <code class="rounded bg-black/10 px-1 py-0.5 text-[11px] dark:bg-white/15">/articles/…</code>; <strong>RU</strong> и <strong>ZH</strong> — по желанию.</p>
+          <p class="opacity-90">Поле <strong>EN</strong> задаёт <code class="rounded bg-black/10 px-1 py-0.5 text-[11px] dark:bg-white/15">title</code> и основной slug <code class="rounded bg-black/10 px-1 py-0.5 text-[11px] dark:bg-white/15">/articles/…</code>; <strong>RU</strong> и <strong>ZH</strong> — по желанию. Отдельно нажимать «Сохранить» не обязательно: заголовки уходят на сервер вместе с .odt.</p>
+          <p class="text-[11px] opacity-85 pt-1 border-t border-black/10 dark:border-white/10">
+            Граф знаний на сайте («упоминания» по якорям <code class="rounded bg-black/10 px-1 dark:bg-white/15">wiki-term</code>): рёбра появляются только для <strong>опубликованных</strong> статей — после «Опубликовать сборку». В черновиках термины уже подсвечиваются в тексте.
+          </p>
         </div>
         <table class="admin-table min-w-[1040px]">
           <thead>
             <tr>
               <th class="w-12">#</th>
+              <th class="w-[130px]">Импорт</th>
               <th class="min-w-[320px]">Заголовки статьи</th>
               <th class="hidden lg:table-cell">HREF</th>
               <th>Статус</th>
@@ -674,14 +786,30 @@ function slotRowStatus(part: any) {
             <tr v-for="p in parts" :key="p.id">
               <td class="tabular-nums font-bold opacity-30 text-xs text-center">{{ p.sort_order }}</td>
               <td class="align-top py-2">
-                <template v-if="p.status === 'imported'">
-                  <div class="text-sm font-bold">{{ p.display_title }}</div>
-                  <div v-if="p.display_title_ru || p.display_title_zh" class="text-[11px] opacity-70 mt-1 space-y-0.5">
-                    <div v-if="p.display_title_ru">RU: {{ p.display_title_ru }}</div>
-                    <div v-if="p.display_title_zh">ZH: {{ p.display_title_zh }}</div>
-                  </div>
-                </template>
-                <div v-else class="flex flex-col gap-3 min-w-[280px] py-1">
+                <div class="flex flex-col items-start gap-2">
+                  <GvButton
+                    v-if="p.status === 'pending'"
+                    variant="outline"
+                    :color="Number(p.is_enabled ?? 1) === 1 ? 'sky' : 'gray'"
+                    size="xs"
+                    icon="i-heroicons-adjustments-horizontal"
+                    @click="togglePartEnabled(p.id)"
+                  >
+                    {{ Number(p.is_enabled ?? 1) === 1 ? 'Включена' : 'Исключена' }}
+                  </GvButton>
+                  <span v-else class="text-[10px] opacity-60">
+                    {{ Number(p.is_enabled ?? 1) === 1 ? 'Включена' : 'Исключена' }}
+                  </span>
+                  <p v-if="Number(p.is_enabled ?? 1) !== 1" class="text-[10px] opacity-50 leading-snug">
+                    Слот пропускается при публикации и не требует загрузки .odt.
+                  </p>
+                </div>
+              </td>
+              <td class="align-top py-2">
+                <p v-if="p.status === 'imported'" class="text-[10px] opacity-70 mb-2 leading-snug">
+                  При «Заменить .odt» этой главы заново создаются черновики для этой и всех следующих уже импортированных слотов (нумерация списков сохраняется).
+                </p>
+                <div class="flex flex-col gap-3 min-w-[280px] py-1" :class="{ 'opacity-50': Number(p.is_enabled ?? 1) !== 1 }">
                   <UFormGroup
                     label="Заголовок EN"
                     help="Поле title; по нему строится основной slug и ссылка /articles/…"
@@ -690,6 +818,7 @@ function slotRowStatus(part: any) {
                     <UInput
                       size="xs"
                       :model-value="partTitleField(p, 'display_title')"
+                      :disabled="Number(p.is_enabled ?? 1) !== 1"
                       @update:model-value="setTitleDraft(p.id, 'display_title', $event)"
                     />
                   </UFormGroup>
@@ -701,6 +830,7 @@ function slotRowStatus(part: any) {
                     <UInput
                       size="xs"
                       :model-value="partTitleField(p, 'display_title_ru')"
+                      :disabled="Number(p.is_enabled ?? 1) !== 1"
                       @update:model-value="setTitleDraft(p.id, 'display_title_ru', $event)"
                     />
                   </UFormGroup>
@@ -712,19 +842,22 @@ function slotRowStatus(part: any) {
                     <UInput
                       size="xs"
                       :model-value="partTitleField(p, 'display_title_zh')"
+                      :disabled="Number(p.is_enabled ?? 1) !== 1"
                       @update:model-value="setTitleDraft(p.id, 'display_title_zh', $event)"
                     />
                   </UFormGroup>
                   <GvButton
+                    v-if="p.status === 'pending'"
                     variant="soft"
-                    color="sky"
+                    color="gray"
                     size="xs"
                     class="self-start"
                     :loading="savingTitlesPartId === p.id"
+                    :disabled="Number(p.is_enabled ?? 1) !== 1"
                     icon="i-heroicons-check"
                     @click="saveSlotTitles(p.id)"
                   >
-                    Сохранить названия
+                    Только названия (без .odt)
                   </GvButton>
                 </div>
               </td>
@@ -741,23 +874,40 @@ function slotRowStatus(part: any) {
                 <span v-else class="text-[10px] opacity-30">—</span>
               </td>
               <td>
-                <template v-if="p.status !== 'imported'">
+                <div class="flex flex-col gap-2 items-start">
                   <GvButton
                     variant="outline"
                     color="gray"
                     size="xs"
                     :loading="uploadingPartId === p.id"
+                    :disabled="Number(p.is_enabled ?? 1) !== 1"
                     icon="i-heroicons-arrow-up-tray"
                     @click="triggerPartUpload(p.id)"
                   >
-                    Загрузить .odt
+                    {{ p.status === 'imported' ? 'Заменить .odt' : 'Загрузить .odt' }}
                   </GvButton>
-                  <input :id="`part-input-${p.id}`" type="file" accept=".odt" class="hidden"
-                    @change="handlePartFileChange(p.id, $event)">
-                </template>
-                <span v-else class="text-[10px] font-bold opacity-40 truncate max-w-[120px] inline-block">
-                  {{ p.odt_original_name }}
-                </span>
+                  <input
+                    :id="`part-input-${p.id}`"
+                    type="file"
+                    accept=".odt"
+                    class="hidden"
+                    @change="handlePartFileChange(p.id, $event)"
+                  >
+                  <GvButton
+                    v-if="p.status === 'imported'"
+                    variant="ghost"
+                    color="gray"
+                    size="xs"
+                    icon="i-heroicons-arrow-uturn-left"
+                    :loading="clearingPartId === p.id"
+                    @click="clearSlotImport(p.id)"
+                  >
+                    Сбросить слот…
+                  </GvButton>
+                  <span v-if="p.status === 'imported' && p.odt_original_name" class="text-[10px] font-bold opacity-40 truncate max-w-[180px]">
+                    {{ p.odt_original_name }}
+                  </span>
+                </div>
               </td>
             </tr>
           </tbody>

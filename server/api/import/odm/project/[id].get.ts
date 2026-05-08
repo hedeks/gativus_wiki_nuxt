@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Проект не найден' })
 
   const parts = await db.prepare(`
-    SELECT id, sort_order, master_href, display_title, display_title_ru, display_title_zh, status, odt_original_name,
+    SELECT id, sort_order, master_href, display_title, display_title_ru, display_title_zh, is_enabled, status, odt_original_name,
            numbering_state_in_json, numbering_state_out_json, imported_article_ids
     FROM odm_project_parts WHERE project_id = ? ORDER BY sort_order
   `).all(id) as Record<string, unknown>[]
@@ -65,6 +65,8 @@ export default defineEventHandler(async (event) => {
   let draft_article_count = 0
   let live_article_count = 0
   for (const p of parts) {
+    if (Number(p.is_enabled ?? 1) !== 1)
+      continue
     const ids = parseImportedIds(p.imported_article_ids as string | null)
     if (ids.length === 0)
       continue

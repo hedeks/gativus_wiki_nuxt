@@ -31,14 +31,22 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Проект не найден' })
 
   const parts = await db.prepare(`
-    SELECT id, status, imported_article_ids FROM odm_project_parts
+    SELECT id, status, is_enabled, imported_article_ids FROM odm_project_parts
     WHERE project_id = ? ORDER BY sort_order
-  `).all(projectId) as { id: number; status: string; imported_article_ids: string | null }[]
+  `).all(projectId) as { id: number; status: string; is_enabled: number; imported_article_ids: string | null }[]
 
   if (parts.length === 0)
     throw createError({ statusCode: 400, statusMessage: 'В проекте нет слотов' })
 
-  const notImported = parts.filter(p => p.status !== 'imported')
+  const enabledParts = parts.filter(p => Number(p.is_enabled ?? 1) === 1)
+  if (enabledParts.length === 0) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Нет включённых слотов для публикации',
+    })
+  }
+
+  const notImported = enabledParts.filter(p => p.status !== 'imported')
   if (notImported.length > 0) {
     throw createError({
       statusCode: 400,
@@ -47,7 +55,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const allIds = new Set<number>()
-  for (const p of parts) {
+  for (const p of enabledParts) {
     for (const id of parseImportedIds(p.imported_article_ids))
       allIds.add(id)
   }

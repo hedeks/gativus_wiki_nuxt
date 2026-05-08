@@ -96,10 +96,32 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const localizeChapterRow = (row: any) => {
+    if (!row) return null
+    const slugOut
+      = isZh && row.slug_zh
+        ? row.slug_zh
+        : isRu && row.slug_ru
+          ? row.slug_ru
+          : row.slug
+    return {
+      slug: String(slugOut || row.slug),
+      chapter_number: row.chapter_number != null ? Number(row.chapter_number) : null,
+      title: String(
+        isRu ? (row.title_ru || row.title) : isZh ? (row.title_zh || row.title) : (row.title || row.title_ru || row.title_zh || ''),
+      ),
+    }
+  }
+
   const chapterRankSql = `
     (SELECT COUNT(*) FROM articles b
      WHERE b.book_id = articles.book_id
      AND (b.sort_order < articles.sort_order OR (b.sort_order = articles.sort_order AND b.id <= articles.id)))`
+
+  const chapterRankSqlAliased = `
+    (SELECT COUNT(*) FROM articles b
+     WHERE b.book_id = a.book_id
+     AND (b.sort_order < a.sort_order OR (b.sort_order = a.sort_order AND b.id <= a.id)))`
 
   let chapter_number: number | null = null
 
@@ -130,6 +152,25 @@ export default defineEventHandler(async (event) => {
     nextArticle = localizeNavTitle(nextArticle)
   }
 
+  let book_chapters: { slug: string; title: string; chapter_number: number }[] | null = null
+  if (article.book_id) {
+    const chapterRows = await db.prepare(`
+      SELECT a.slug, a.slug_ru, a.slug_zh, a.title, a.title_ru, a.title_zh, a.sort_order, a.id,
+        (${chapterRankSqlAliased}) AS chapter_number
+      FROM articles a
+      WHERE a.book_id = ? AND (a.is_published = 1 OR a.id = ?)
+      ORDER BY a.sort_order ASC, a.id ASC
+    `).all(article.book_id, article.id) as any[]
+    book_chapters = (chapterRows || [])
+      .map(localizeChapterRow)
+      .filter((x): x is { slug: string; title: string; chapter_number: number } => x != null && !!x.slug)
+      .map(x => ({
+        slug: x.slug,
+        title: x.title,
+        chapter_number: x.chapter_number != null && Number.isFinite(x.chapter_number) ? x.chapter_number : 0,
+      }))
+  }
+
   return {
     ...article,
     locale: 'global',
@@ -137,5 +178,6 @@ export default defineEventHandler(async (event) => {
     chapter_number,
     prev: prevArticle || null,
     next: nextArticle || null,
+    book_chapters,
   }
 })

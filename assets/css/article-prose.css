@@ -59,7 +59,7 @@
   .article-prose h4,
   .article-prose h5,
   .article-prose h6 {
-    scroll-margin-top: calc(var(--header-height, 65px) + 4.25rem);
+    scroll-margin-top: calc(var(--header-height, 65px) + 3rem);
   }
 }
 
@@ -233,12 +233,12 @@
 
 .article-prose th,
 .article-prose td {
-  padding: 10px 16px;
+  padding: 10px 12px 10px 14px;
   border: 1px solid var(--article-table-border, #cfd8e3);
-  text-align: center;
-  vertical-align: middle;
-  word-break: break-word;
-  overflow-wrap: anywhere;
+  text-align: left;
+  vertical-align: top;
+  word-break: normal;
+  overflow-wrap: break-word;
   hyphens: auto;
   min-width: 2.5em;
 }
@@ -246,7 +246,7 @@
 .article-prose td p {
   text-indent: 0 !important;
   margin: 0;
-  text-align: center;
+  text-align: left;
 }
 
 /* Явный thead */
@@ -406,40 +406,57 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* ─── Code ─── */
-.article-prose code {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.85em;
-  background: #f1f5f9;
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: #be185d;
-}
-
-.dark .article-prose code {
-  background: #252528;
-  color: #f472b6;
-}
-
+/* ─── Code: ненавязчивый моно-блок по центру колонки ─── */
 .article-prose pre {
-  background: #f1f5f9;
-  padding: 16px;
-  border-radius: 8px;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 1.25em auto;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 14px 18px;
+  background: color-mix(in srgb, var(--article-table-row-alt, #ebf1f7) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--article-table-border, #cfd8e3) 80%, transparent);
+  border-radius: 10px;
   overflow-x: auto;
-  margin: 1em 0;
-  border: 1px solid #e5e7eb;
-  white-space: pre-wrap; /* Make sure long code lines wrap nicely */
+  font-family: ui-monospace, 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  line-height: 1.45;
+  color: #334155;
+  white-space: pre;
+  word-break: normal;
+  box-shadow: 0 1px 0 color-mix(in srgb, #000 4%, transparent);
 }
 
 .dark .article-prose pre {
-  background: #1a1a1d;
-  border-color: #2a2a2e;
+  background: color-mix(in srgb, #1e293b 55%, #0f172a);
+  border-color: #334155;
+  color: #e2e8f0;
+  box-shadow: none;
 }
 
 .article-prose pre code {
   background: none;
   padding: 0;
   color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.article-prose code {
+  font-family: ui-monospace, 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
+  font-size: 0.87em;
+  background: color-mix(in srgb, var(--article-table-border, #cfd8e3) 35%, transparent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #475569;
+  border: 1px solid color-mix(in srgb, var(--article-table-border, #cfd8e3) 50%, transparent);
+}
+
+.dark .article-prose code {
+  background: color-mix(in srgb, #334155 40%, #0f172a);
+  color: #cbd5e1;
+  border-color: #475569;
 }
 
 /* ─── Blockquotes ─── */

@@ -1,14 +1,27 @@
 <template>
   <div
     class="flex flex-col p-3 lg:p-10 flex-wrap-reverse lg:grid lg:grid-cols-10 lg:flex-nowrap gap-10 prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert w-full prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold">
-    <theLeftQuizSelector @changeView="changeView" :is-theory="isTheory" :title="article?.title"
-      :quizTitle="article?.title" :hasPresentation="hasPresentation"
-      class="lg:col-span-2 xl:col-span-2 lg:sticky top-[--header-height] xl:justify-self-end xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]" />
+    <theLeftQuizSelector
+      @changeView="changeView"
+      :is-theory="isTheory"
+      :title="article?.title"
+      :quiz-title="article?.title"
+      :has-presentation="hasPresentation"
+      :book-title="article?.book_id ? article?.book_title : null"
+      :book-slug="article?.book_slug ?? null"
+      :book-chapters="article?.book_chapters ?? null"
+      :current-article-slug="slug"
+      class="hidden lg:flex lg:col-span-2 xl:col-span-2 lg:sticky top-[--header-height] xl:justify-self-end xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]"
+    />
     <div :class="[{ 'active': !hasPresentation || isTheory, 'inactive': hasPresentation && !isTheory }]" ref="lection"
       class="flex flex-col-reverse lg:grid lg:grid-cols-8 xl:grid-cols-8 gap-10 w-full lg:col-span-8 xl:col-span-8 view-transition">
       <div
         ref="articleMainCardRef"
-        class="w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col min-w-0 overflow-x-hidden bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm">
+        :class="[
+          'w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col min-w-0 overflow-x-hidden bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm',
+          tocLinks.length ? 'max-lg:mt-[3rem]' : '',
+        ]"
+      >
         <!-- Article Header -->
         <div v-if="article" class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800 min-w-0">
           <!-- Dynamic Breadcrumbs -->
@@ -119,16 +132,32 @@
           <div v-else class="flex-1" />
         </div>
       </div>
-      <theToc :activeID="activeID" @updateActiveID="handleTocClick" v-if="tocLinks.length"
+      <theToc
+        v-if="tocLinks.length"
+        :activeID="activeID"
+        :has-presentation="hasPresentation"
+        :is-theory="isTheory"
+        :chapters="article?.book_chapters ?? null"
+        :current-article-slug="slug"
+        :chapters-title="article?.book_title ? `${article.book_title}: ${t.chapters}` : t.chapters"
+        :text-title="t.text"
+        :presentation-title="t.presentation"
+        @updateActiveID="handleTocClick"
+        @changeView="changeView"
         class="lg:w-auto lg:col-span-2 xl:col-span-2 xl:justify-self-start xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]"
-        :title="t.toc" :links="tocLinks" />
+        :title="t.toc"
+        :links="tocLinks"
+      />
     </div>
     <div v-if="hasPresentation" :class="[{ 'active': !isTheory }, { 'inactive': isTheory }]"
       class="lg:grid lg:grid-cols-8 xl:grid-cols-8 gap-10 w-full lg:col-span-8 xl:col-span-8 view-transition">
 
       <!-- Main Presentation Column -->
       <div
-        class="w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 h-[calc(100dvh_-_var(--header-height)_-_5rem)] flex flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+        :class="[
+          'w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 h-[calc(100dvh_-_var(--header-height)_-_5rem)] flex flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden',
+          'max-lg:mt-[2.75rem]',
+        ]">
         <thePresentationView :presentationPath="article?.presentation_path" :articleTitle="article?.title" />
       </div>
 
@@ -136,12 +165,14 @@
       <aside :class="[
         'flex flex-col z-30 transition-all duration-500 overflow-x-hidden',
         'lg:sticky lg:top-[--header-height] lg:bg-transparent lg:border-none lg:shadow-none lg:p-0 lg:h-fit lg:w-full lg:col-span-2 xl:col-span-2',
-        'fixed top-[calc(var(--header-height)+0.75rem)] right-4 w-[240px] max-w-[85vw] sm:w-[320px] bg-transparent dark:bg-transparent border-0 shadow-none backdrop-blur-none py-3 pl-3 pr-5 lg:static lg:z-auto lg:max-w-none'
+        'fixed inset-x-0 top-[var(--header-height)] w-full max-w-none',
+        'max-lg:bg-white/80 max-lg:dark:bg-zinc-900/80 max-lg:backdrop-blur-md max-lg:border-b max-lg:border-gray-100 max-lg:dark:border-zinc-800 max-lg:shadow-lg max-lg:py-1 max-lg:px-3',
+        'lg:static lg:z-auto lg:max-w-none'
       ]" class="presentation-sidebar">
 
         <!-- Mobile Toggle (Matching TOC Style) -->
         <div
-          class="flex items-center justify-between cursor-pointer select-none px-3 py-1 lg:sticky lg:top-0 lg:z-20 lg:bg-transparent lg:dark:bg-transparent"
+          class="flex items-center justify-between cursor-pointer select-none px-2 py-0.5 lg:sticky lg:top-0 lg:z-20 lg:bg-transparent lg:dark:bg-transparent"
           @click="isPresSidebarOpen = !isPresSidebarOpen">
           <p
             class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase transition-all duration-500 mr-4 flex-shrink-0">
@@ -161,41 +192,46 @@
         </div>
 
         <Transition name="expand-pres">
-          <div v-show="isDesktop || isPresSidebarOpen" class="flex flex-col gap-4 mt-4 lg:mt-2">
-            <div class="flex flex-col gap-2 p-1">
-              <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100 leading-snug min-w-0 break-words hyphens-auto">{{ article?.title }}</h3>
+          <div v-show="isDesktop || isPresSidebarOpen" class="flex flex-col gap-4 mt-1 lg:mt-2">
+            <div class="flex flex-col gap-2 px-1 pb-1">
+              <GvButton
+                variant="outline"
+                color="gray"
+                size="xs"
+                icon="i-heroicons-document-text"
+                class="justify-start"
+                @click="changeView('lection')"
+              >
+                {{ t.backToText }}
+              </GvButton>
 
-              <div class="mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800 flex flex-col gap-3">
-                <div
-                  class="flex items-center gap-2 text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest">
-                  <UIcon name="i-heroicons-computer-desktop" class="w-4 h-4" />
-                  {{ t.controls }}
+              <h3 class="text-[10px] font-bold tracking-widest uppercase text-gray-500 dark:text-gray-400 mt-1">
+                {{ t.controls }}
+              </h3>
+
+              <div class="flex flex-col gap-1">
+                <div class="flex items-center justify-between border-l-2 border-transparent py-1 pl-3 pr-2 text-[10px] text-gray-900 dark:text-gray-200">
+                  <span>{{ t.next }}</span>
+                  <span class="font-semibold text-sky-700 dark:text-sky-300">SPACE / →</span>
                 </div>
-                <div class="grid grid-cols-1 gap-3 text-[11px]">
-                  <div class="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/50 p-2 rounded-lg">
-                    <span class="text-gray-500 uppercase font-bold text-[9px]">{{ t.next }}</span>
-                    <span
-                      class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">SPACE
-                      / →</span>
-                  </div>
-                  <div class="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/50 p-2 rounded-lg">
-                    <span class="text-gray-500 uppercase font-bold text-[9px]">{{ t.back }}</span>
-                    <span
-                      class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">←</span>
-                  </div>
-                  <div class="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/50 p-2 rounded-lg">
-                    <span class="text-gray-500 uppercase font-bold text-[9px]">{{ t.zoom }}</span>
-                    <span
-                      class="px-2 py-0.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-sky-600 dark:text-sky-400 font-black">Wheel
-                      / ±</span>
-                  </div>
+                <div class="flex items-center justify-between border-l-2 border-transparent py-1 pl-3 pr-2 text-[10px] text-gray-900 dark:text-gray-200">
+                  <span>{{ t.back }}</span>
+                  <span class="font-semibold text-sky-700 dark:text-sky-300">←</span>
+                </div>
+                <div class="flex items-center justify-between border-l-2 border-transparent py-1 pl-3 pr-2 text-[10px] text-gray-900 dark:text-gray-200">
+                  <span>{{ t.zoom }}</span>
+                  <span class="font-semibold text-sky-700 dark:text-sky-300">Wheel / ±</span>
                 </div>
               </div>
 
-              <a v-if="article?.presentation_path" :href="`/api/uploads/${article.presentation_path}`" download
-                class="mt-4 flex items-center justify-center gap-2 py-3 px-4 bg-black dark:bg-white text-white dark:text-black hover:bg-sky-600 dark:hover:bg-sky-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-xl active:scale-95">
-                <UIcon name="i-heroicons-arrow-down-tray" class="w-4 h-4" />
-                {{ t.download }}
+              <a
+                v-if="article?.presentation_path"
+                :href="`/api/uploads/${article.presentation_path}`"
+                download
+                class="mt-1 flex items-center gap-2 border-l-2 border-transparent py-1 pl-3 pr-2 text-[10px] text-gray-900 transition hover:text-sky-700 dark:text-gray-200 dark:hover:text-sky-300"
+              >
+                <UIcon name="i-heroicons-arrow-down-tray" class="h-3.5 w-3.5" />
+                <span>{{ t.download }}</span>
               </a>
             </div>
           </div>
@@ -229,6 +265,8 @@ const uiDict: Record<string, any> = {
     prevChapter: 'PREVIOUS CHAPTER',
     nextChapter: 'NEXT CHAPTER',
     toc: 'Contents',
+    chapters: 'Chapters',
+    text: 'Text',
     info: 'Info',
     mobileControls: 'Keys & PDF',
     controls: 'Controls',
@@ -249,6 +287,8 @@ const uiDict: Record<string, any> = {
     prevChapter: 'ПРЕДЫДУЩАЯ ГЛАВА',
     nextChapter: 'СЛЕДУЮЩАЯ ГЛАВА',
     toc: 'Содержание',
+    chapters: 'Главы',
+    text: 'Текст',
     info: 'Инфо',
     mobileControls: 'Клавиши и PDF',
     controls: 'Управление',

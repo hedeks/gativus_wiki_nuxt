@@ -35,6 +35,12 @@ export default defineEventHandler(async (event) => {
   const rawLc = String(options.content_locale ?? options.locale ?? 'ru').toLowerCase()
   const contentLocale: OdmContentLocale = rawLc === 'en' || rawLc === 'zh' ? rawLc : 'ru'
 
+  const usedCreateBook = Boolean(
+    options.create_book
+    && typeof options.create_book === 'object'
+    && String((options.create_book as { title?: string }).title || '').trim(),
+  )
+
   const createBook = options.create_book as
     | {
         title?: string
@@ -102,23 +108,23 @@ export default defineEventHandler(async (event) => {
   writeFileSync(masterPath, buf)
 
   await db.prepare(`
-    INSERT INTO odm_projects (book_id, category_id, master_storage_path, master_original_name, split_level, content_locale, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(bookId, categoryId, masterPath, originalName, splitLevel, contentLocale, auth.id)
+    INSERT INTO odm_projects (book_id, category_id, master_storage_path, master_original_name, split_level, content_locale, created_by, book_created_with_project)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(bookId, categoryId, masterPath, originalName, splitLevel, contentLocale, auth.id, usedCreateBook ? 1 : 0)
 
   const ins = await db.prepare(`SELECT last_insert_rowid() as id`).get() as { id: number }
   const projectId = Number(ins.id)
 
   const insertPart = db.prepare(`
-    INSERT INTO odm_project_parts (project_id, sort_order, master_href, display_title, display_title_ru, display_title_zh, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending')
+    INSERT INTO odm_project_parts (project_id, sort_order, master_href, display_title, display_title_ru, display_title_zh, is_enabled, status)
+    VALUES (?, ?, ?, ?, ?, ?, 1, 'pending')
   `)
 
   for (const s of slots)
     await insertPart.run(projectId, s.sortOrder, s.masterHref, s.displayTitle, null, null)
 
   const parts = await db.prepare(`
-    SELECT id, sort_order, master_href, display_title, display_title_ru, display_title_zh, status, odt_original_name, imported_article_ids
+    SELECT id, sort_order, master_href, display_title, display_title_ru, display_title_zh, is_enabled, status, odt_original_name, imported_article_ids
     FROM odm_project_parts WHERE project_id = ? ORDER BY sort_order
   `).all(projectId)
 

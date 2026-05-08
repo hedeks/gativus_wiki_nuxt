@@ -17,10 +17,11 @@ export default defineEventHandler(async (event) => {
     display_title?: string
     display_title_ru?: string | null
     display_title_zh?: string | null
+    is_enabled?: boolean
   }
 
   const row = await db.prepare(`
-    SELECT id, project_id, status, display_title, display_title_ru, display_title_zh
+    SELECT id, project_id, status, display_title, display_title_ru, display_title_zh, is_enabled
     FROM odm_project_parts WHERE id = ? AND project_id = ?
   `).get(partId, projectId) as {
     id: number
@@ -29,6 +30,7 @@ export default defineEventHandler(async (event) => {
     display_title: string
     display_title_ru: string | null
     display_title_zh: string | null
+    is_enabled: number
   } | undefined
 
   if (!row)
@@ -48,6 +50,7 @@ export default defineEventHandler(async (event) => {
         ? null
         : String(body.display_title_zh).trim())
     : row.display_title_zh
+  const nextEnabled = body.is_enabled !== undefined ? (body.is_enabled ? 1 : 0) : Number(row.is_enabled || 0)
 
   if (!nextEn)
     throw createError({ statusCode: 400, statusMessage: 'Заголовок EN не может быть пустым' })
@@ -57,12 +60,13 @@ export default defineEventHandler(async (event) => {
       display_title = ?,
       display_title_ru = ?,
       display_title_zh = ?,
+      is_enabled = ?,
       updated_at = datetime('now')
     WHERE id = ?
-  `).run(nextEn, nextRu, nextZh, partId)
+  `).run(nextEn, nextRu, nextZh, nextEnabled, partId)
 
   const updated = await db.prepare(`
-    SELECT id, sort_order, master_href, display_title, display_title_ru, display_title_zh, status, odt_original_name, imported_article_ids
+    SELECT id, sort_order, master_href, display_title, display_title_ru, display_title_zh, is_enabled, status, odt_original_name, imported_article_ids
     FROM odm_project_parts WHERE id = ?
   `).get(partId)
 
