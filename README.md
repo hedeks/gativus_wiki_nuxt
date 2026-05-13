@@ -43,4 +43,4 @@ The physical device engineered for storage, execution, and protection of neural 
 
 ---
 
-📧 gativusmedia@outlook.com
+📧 info@gativus.com
