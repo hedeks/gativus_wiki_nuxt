@@ -29,9 +29,9 @@ const links = [{
                 Официальная база знаний проекта Gativus.
             </p>
             <div class="footer-links">
-                <a href="mailto:gativusmedia@outlook.com" class="footer-link">
+                <a href="mailto:info@gativus.com" class="footer-link">
                     <UIcon name="i-heroicons-envelope" class="footer-link-icon" />
-                    gativusmedia@outlook.com
+                    info@gativus.com
                 </a>
             </div>
             <span class="footer-copy">© {{ new Date().getFullYear() }} Gativus Project</span>

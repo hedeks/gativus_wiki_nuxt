@@ -117,7 +117,7 @@ function buildPayloads() {
       { label_en: 'Articles', label_ru: 'Статьи', href: '/articles', icon: 'i-heroicons-document-text', color: 'sky', variant: 'solid' },
       { label_en: 'Glossary', label_ru: 'Глоссарий', href: '/glossary', icon: 'i-heroicons-bookmark-square', color: 'gray', variant: 'outline' },
       { label_en: 'Network topology specification', label_ru: 'Спецификация топологии сети', href: '/knowledge-graph', icon: 'i-heroicons-share', color: 'gray', variant: 'outline' },
-      { label_en: 'gativusmedia@outlook.com', label_ru: 'gativusmedia@outlook.com', href: 'mailto:gativusmedia@outlook.com', icon: 'i-heroicons-envelope', color: 'gray', variant: 'outline' },
+      { label_en: 'info@gativus.com', label_ru: 'info@gativus.com', href: 'mailto:info@gativus.com', icon: 'i-heroicons-envelope', color: 'gray', variant: 'outline' },
     ],
   })
 

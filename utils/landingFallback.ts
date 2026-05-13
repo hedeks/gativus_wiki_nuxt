@@ -90,7 +90,7 @@ export function buildFallbackLandingBlocks(lang: string): LandingBlockResolved[]
       { label_en: t.ctaArticles, href: '/articles', icon: 'i-heroicons-document-text', color: 'sky', variant: 'solid' },
       { label_en: t.ctaGlossary, href: '/glossary', icon: 'i-heroicons-bookmark-square', color: 'gray', variant: 'outline' },
       { label_en: t.wikiGraph, href: '/knowledge-graph', icon: 'i-heroicons-share', color: 'gray', variant: 'outline' },
-      { label_en: 'gativusmedia@outlook.com', href: 'mailto:gativusmedia@outlook.com', icon: 'i-heroicons-envelope', color: 'gray', variant: 'outline' },
+      { label_en: 'info@gativus.com', href: 'mailto:info@gativus.com', icon: 'i-heroicons-envelope', color: 'gray', variant: 'outline' },
     ],
   }
 
