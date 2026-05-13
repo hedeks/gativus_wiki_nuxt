@@ -109,6 +109,46 @@ async function patchRole(user: AdminUserPublic) {
   }
 }
 
+// Multi-select
+const selectedIds = ref(new Set<number>())
+
+const selectableUsers = computed(() =>
+  (payload.value?.users || []).filter((u: AdminUserPublic) => u.id !== store.userInfo?.id)
+)
+
+const allSelected = computed(() =>
+  selectableUsers.value.length > 0 && selectableUsers.value.every((u: AdminUserPublic) => selectedIds.value.has(u.id))
+)
+
+function toggleSelect(id: number) {
+  if (selectedIds.value.has(id)) selectedIds.value.delete(id)
+  else selectedIds.value.add(id)
+}
+
+function toggleAll() {
+  if (allSelected.value) selectedIds.value = new Set()
+  else selectedIds.value = new Set(selectableUsers.value.map((u: AdminUserPublic) => u.id))
+}
+
+const isBulkDeleting = ref(false)
+
+async function bulkDelete() {
+  if (!selectedIds.value.size) return
+  isBulkDeleting.value = true
+  const ids = Array.from(selectedIds.value)
+  let ok = 0, fail = 0
+  for (const id of ids) {
+    try {
+      await $fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: store.getAuthHeader() })
+      ok++
+    } catch { fail++ }
+  }
+  selectedIds.value = new Set()
+  isBulkDeleting.value = false
+  toast.add({ title: fail ? `Удалено: ${ok}, ошибок: ${fail}` : `Удалено ${ok} пользователей`, color: fail ? 'orange' : 'green' })
+  await refresh()
+}
+
 async function deleteUser(user: AdminUserPublic) {
   if (!isAdmin.value)
     return
@@ -236,9 +276,17 @@ async function deleteUser(user: AdminUserPublic) {
           <h2 class="card-header-title">Учётные записи</h2>
         </header>
         <div class="card-body card-body--flush overflow-x-auto">
+          <div v-if="isAdmin && selectedIds.size > 0" class="bulk-bar">
+            <span class="bulk-bar-info">Выбрано: <strong>{{ selectedIds.size }}</strong></span>
+            <GvButton color="gray" variant="ghost" size="sm" @click="selectedIds = new Set()">Снять выбор</GvButton>
+            <GvButton color="red" variant="solid" size="sm" icon="i-heroicons-trash" :loading="isBulkDeleting" @click="bulkDelete">Удалить выбранных</GvButton>
+          </div>
           <table class="users-table min-w-[720px]">
           <thead>
             <tr>
+              <th v-if="isAdmin" class="th-check">
+                <input type="checkbox" :checked="allSelected" @change="toggleAll" class="gv-checkbox" />
+              </th>
               <th>ID</th>
               <th>Логин</th>
               <th>Email</th>
@@ -249,7 +297,16 @@ async function deleteUser(user: AdminUserPublic) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="u in payload.users" :key="u.id">
+            <tr v-for="u in payload.users" :key="u.id" :class="{ 'row--selected': selectedIds.has(u.id) }">
+              <td v-if="isAdmin" class="td-check">
+                <input
+                  v-if="u.id !== store.userInfo?.id"
+                  type="checkbox"
+                  :checked="selectedIds.has(u.id)"
+                  @change="toggleSelect(u.id)"
+                  class="gv-checkbox"
+                />
+              </td>
               <td class="td-num">{{ u.id }}</td>
               <td>{{ u.login }}</td>
               <td class="td-email">{{ u.email }}</td>
@@ -306,6 +363,50 @@ async function deleteUser(user: AdminUserPublic) {
 </template>
 
 <style scoped>
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  font-size: 13px;
+}
+
+.dark .bulk-bar {
+  background: #450a0a;
+  border-color: #7f1d1d;
+}
+
+.bulk-bar-info {
+  flex: 1;
+  color: #991b1b;
+}
+
+.dark .bulk-bar-info {
+  color: #f87171;
+}
+
+.th-check, .td-check {
+  width: 40px;
+  padding: 12px 8px 12px 14px !important;
+}
+
+.gv-checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #ef4444;
+}
+
+.row--selected td {
+  background: #fff5f5 !important;
+}
+
+.dark .row--selected td {
+  background: #2d1515 !important;
+}
+
 .scope-note-inner {
   align-items: flex-start;
 }

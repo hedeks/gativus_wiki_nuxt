@@ -69,9 +69,17 @@
           <h2 class="card-header-title">Список книг</h2>
         </header>
         <div class="card-body card-body--flush overflow-x-auto">
+          <div v-if="selectedIds.size > 0" class="bulk-bar">
+            <span class="bulk-bar-info">Выбрано: <strong>{{ selectedIds.size }}</strong></span>
+            <GvButton color="gray" variant="ghost" size="sm" @click="selectedIds = new Set()">Снять выбор</GvButton>
+            <GvButton color="red" variant="solid" size="sm" icon="i-heroicons-trash" :loading="isBulkDeleting" @click="bulkDelete">Удалить выбранные</GvButton>
+          </div>
           <table class="admin-table">
         <thead>
           <tr>
+            <th class="th-check">
+              <input type="checkbox" :checked="allSelected" @change="toggleAll" class="gv-checkbox" />
+            </th>
             <th>ID</th>
             <th>Обложка</th>
             <th>Заголовок</th>
@@ -81,7 +89,10 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="book in filteredBooks" :key="book.id">
+          <tr v-for="book in filteredBooks" :key="book.id" :class="{ 'row--selected': selectedIds.has(book.id) }">
+            <td class="td-check">
+              <input type="checkbox" :checked="selectedIds.has(book.id)" @change="toggleSelect(book.id)" class="gv-checkbox" />
+            </td>
             <td class="text-xs text-gray-500">#{{ book.id }}</td>
             <td>
               <div class="book-cover-preview">
@@ -116,7 +127,7 @@
             </td>
           </tr>
           <tr v-if="filteredBooks.length === 0">
-            <td colspan="7" class="empty-row">Книги не найдены.</td>
+            <td colspan="8" class="empty-row">Книги не найдены.</td>
           </tr>
         </tbody>
       </table>
@@ -128,11 +139,20 @@
     <UModal v-model="deleteModalOpen">
       <div class="p-6">
         <h3 class="text-lg font-bold mb-4">Удалить книгу?</h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">
-          Вы уверены, что хотите удалить книгу <b>{{ bookToDelete?.title }}</b>? 
-          Статьи останутся в базе, но перестанут быть привязаны к этой книге.
+        <p class="text-gray-600 dark:text-gray-400 mb-4">
+          Вы уверены, что хотите удалить книгу <b>{{ bookToDelete?.title }}</b>?
         </p>
-        <div class="flex justify-end gap-3">
+        <label class="delete-articles-checkbox">
+          <input type="checkbox" v-model="deleteArticlesToo" class="mr-2" />
+          <span>Удалить все статьи книги (<b>{{ bookToDelete?.count_en || 0 }}</b> шт.)</span>
+        </label>
+        <p v-if="!deleteArticlesToo" class="text-xs text-gray-400 mt-2">
+          Статьи останутся в базе без привязки к книге.
+        </p>
+        <p v-else class="text-xs text-red-500 mt-2">
+          Статьи и их история изменений будут удалены безвозвратно.
+        </p>
+        <div class="flex justify-end gap-3 mt-6">
           <GvButton color="gray" variant="ghost" @click="deleteModalOpen = false">Отмена</GvButton>
           <GvButton color="red" :loading="deleting" @click="handleDelete">Удалить</GvButton>
         </div>
@@ -174,9 +194,47 @@ const filteredBooks = computed(() => {
   })
 })
 
+// Multi-select
+const selectedIds = ref(new Set<number>())
+
+const allSelected = computed(() =>
+  filteredBooks.value.length > 0 && filteredBooks.value.every((b: any) => selectedIds.value.has(b.id))
+)
+
+function toggleSelect(id: number) {
+  if (selectedIds.value.has(id)) selectedIds.value.delete(id)
+  else selectedIds.value.add(id)
+}
+
+function toggleAll() {
+  if (allSelected.value) selectedIds.value = new Set()
+  else selectedIds.value = new Set(filteredBooks.value.map((b: any) => b.id))
+}
+
+const isBulkDeleting = ref(false)
+const toast = useToast()
+
+async function bulkDelete() {
+  if (!selectedIds.value.size) return
+  isBulkDeleting.value = true
+  const targets = filteredBooks.value.filter((b: any) => selectedIds.value.has(b.id))
+  let ok = 0, fail = 0
+  for (const b of targets) {
+    try {
+      await $fetch(`/api/books/${b.slug}`, { method: 'DELETE', headers: store.getAuthHeader() })
+      ok++
+    } catch { fail++ }
+  }
+  selectedIds.value = new Set()
+  isBulkDeleting.value = false
+  toast.add({ title: fail ? `Удалено: ${ok}, ошибок: ${fail}` : `Удалено ${ok} книг`, color: fail ? 'orange' : 'green' })
+  await refresh()
+}
+
 const deleteModalOpen = ref(false)
 const bookToDelete = ref<any>(null)
 const deleting = ref(false)
+const deleteArticlesToo = ref(false)
 
 function getCategoryTitle(id: number) {
   const source = categoriesList.value
@@ -187,6 +245,7 @@ function getCategoryTitle(id: number) {
 
 function confirmDelete(book: any) {
   bookToDelete.value = book
+  deleteArticlesToo.value = false
   deleteModalOpen.value = true
 }
 
@@ -194,9 +253,10 @@ async function handleDelete() {
   if (!bookToDelete.value) return
   deleting.value = true
   try {
-    await $fetch(`/api/books/${bookToDelete.value.slug}`, { 
+    await $fetch(`/api/books/${bookToDelete.value.slug}`, {
       method: 'DELETE',
-      headers: store.getAuthHeader()
+      headers: store.getAuthHeader(),
+      query: deleteArticlesToo.value ? { delete_articles: 'true' } : undefined,
     })
     deleteModalOpen.value = false
     await refresh()
@@ -210,6 +270,50 @@ async function handleDelete() {
 </script>
 
 <style scoped>
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  font-size: 13px;
+}
+
+.dark .bulk-bar {
+  background: #450a0a;
+  border-color: #7f1d1d;
+}
+
+.bulk-bar-info {
+  flex: 1;
+  color: #991b1b;
+}
+
+.dark .bulk-bar-info {
+  color: #f87171;
+}
+
+.th-check, .td-check {
+  width: 40px;
+  padding: 14px 8px 14px 20px !important;
+}
+
+.gv-checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #ef4444;
+}
+
+.row--selected td {
+  background: #fff5f5 !important;
+}
+
+.dark .row--selected td {
+  background: #2d1515 !important;
+}
+
 .admin-table {
   width: 100%;
   border-collapse: collapse;
@@ -350,6 +454,25 @@ async function handleDelete() {
   text-align: center;
   color: #9ca3af;
   font-size: 14px;
+}
+
+.delete-articles-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 14px;
+  cursor: pointer;
+  color: #374151;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.dark .delete-articles-checkbox {
+  color: #d1d5db;
+  background: #450a0a;
+  border-color: #7f1d1d;
 }
 
 .animate-spin {

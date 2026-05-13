@@ -95,9 +95,18 @@
           <span>Терминов нет — создайте первый</span>
         </div>
 
-        <table v-else class="admin-table min-w-[760px]">
+        <template v-if="filteredTerms.length > 0">
+        <div v-if="selectedIds.size > 0" class="bulk-bar">
+          <span class="bulk-bar-info">Выбрано: <strong>{{ selectedIds.size }}</strong></span>
+          <GvButton color="gray" variant="ghost" size="sm" @click="selectedIds = new Set()">Снять выбор</GvButton>
+          <GvButton color="red" variant="solid" size="sm" icon="i-heroicons-trash" :loading="isBulkDeleting" @click="bulkDelete">Удалить выбранные</GvButton>
+        </div>
+        <table class="admin-table min-w-[760px]">
         <thead>
           <tr>
+            <th class="th-check">
+              <input type="checkbox" :checked="allSelected" @change="toggleAll" class="gv-checkbox" />
+            </th>
             <th>Термин</th>
             <th>Определение</th>
             <th>Категория</th>
@@ -107,7 +116,10 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="term in filteredTerms" :key="term.slug" class="term-row">
+          <tr v-for="term in filteredTerms" :key="term.slug" class="term-row" :class="{ 'row--selected': selectedIds.has(term.id) }">
+            <td class="td-check">
+              <input type="checkbox" :checked="selectedIds.has(term.id)" @change="toggleSelect(term.id)" class="gv-checkbox" />
+            </td>
             <td>
               <div class="term-name-cell">
                 <NuxtLink :to="`/glossary/${term.slug}`" class="term-name" target="_blank">
@@ -189,6 +201,7 @@
           </tr>
         </tbody>
       </table>
+        </template>
 
       <div v-if="data && !pending" class="card-after-table table-footer-inner">
         Всего: <strong class="tabular-nums">{{ data.total }}</strong> терминов
@@ -288,6 +301,43 @@ async function repairLinkerHtml () {
   }
 }
 
+// Multi-select
+const selectedIds = ref(new Set<number>())
+
+const allSelected = computed(() =>
+  filteredTerms.value.length > 0 && filteredTerms.value.every((t: any) => selectedIds.value.has(t.id))
+)
+
+function toggleSelect(id: number) {
+  if (selectedIds.value.has(id)) selectedIds.value.delete(id)
+  else selectedIds.value.add(id)
+}
+
+function toggleAll() {
+  if (allSelected.value) selectedIds.value = new Set()
+  else selectedIds.value = new Set(filteredTerms.value.map((t: any) => t.id))
+}
+
+const isBulkDeleting = ref(false)
+const toast = useToast()
+
+async function bulkDelete() {
+  if (!selectedIds.value.size) return
+  isBulkDeleting.value = true
+  const targets = filteredTerms.value.filter((t: any) => selectedIds.value.has(t.id))
+  let ok = 0, fail = 0
+  for (const t of targets) {
+    try {
+      await $fetch(`/api/terms/${t.slug}`, { method: 'DELETE' as any, headers: store.getAuthHeader() })
+      ok++
+    } catch { fail++ }
+  }
+  selectedIds.value = new Set()
+  isBulkDeleting.value = false
+  toast.add({ title: fail ? `Удалено: ${ok}, ошибок: ${fail}` : `Удалено ${ok} терминов`, color: fail ? 'orange' : 'green' })
+  await refresh()
+}
+
 // Delete
 const showDeleteModal = ref(false)
 const termToDelete = ref<any>(null)
@@ -318,6 +368,50 @@ async function doDelete() {
 </script>
 
 <style scoped>
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  font-size: 13px;
+}
+
+.dark .bulk-bar {
+  background: #450a0a;
+  border-color: #7f1d1d;
+}
+
+.bulk-bar-info {
+  flex: 1;
+  color: #991b1b;
+}
+
+.dark .bulk-bar-info {
+  color: #f87171;
+}
+
+.th-check, .td-check {
+  width: 40px;
+  padding: 14px 8px 14px 20px !important;
+}
+
+.gv-checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #ef4444;
+}
+
+.row--selected td {
+  background: #fff5f5 !important;
+}
+
+.dark .row--selected td {
+  background: #2d1515 !important;
+}
+
 .article-edit-link,
 .article-add-link {
   display: inline-flex;

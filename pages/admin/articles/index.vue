@@ -40,7 +40,48 @@ const books = computed(() => (booksData.value || []) as any[])
 const activeFilterCount = computed(() => (filterBookId.value ? 1 : 0))
 watch(debouncedQuery, () => {
   currentPage.value = 1
+  selectedIds.value = new Set()
 })
+watch(currentPage, () => { selectedIds.value = new Set() })
+
+// Multi-select
+const selectedIds = ref(new Set<number>())
+
+const allSelected = computed(() =>
+  articles.value.length > 0 && articles.value.every((a: any) => selectedIds.value.has(a.id))
+)
+
+function toggleSelect(id: number) {
+  if (selectedIds.value.has(id)) selectedIds.value.delete(id)
+  else selectedIds.value.add(id)
+}
+
+function toggleAll() {
+  if (allSelected.value) {
+    selectedIds.value = new Set()
+  } else {
+    selectedIds.value = new Set(articles.value.map((a: any) => a.id))
+  }
+}
+
+const isBulkDeleting = ref(false)
+
+async function bulkDelete() {
+  if (!selectedIds.value.size) return
+  isBulkDeleting.value = true
+  const targets = articles.value.filter((a: any) => selectedIds.value.has(a.id))
+  let ok = 0, fail = 0
+  for (const a of targets) {
+    try {
+      await $fetch(`/api/articles/${a.slug}`, { method: 'DELETE', headers: store.getAuthHeader() })
+      ok++
+    } catch { fail++ }
+  }
+  selectedIds.value = new Set()
+  isBulkDeleting.value = false
+  toast.add({ title: fail ? `Удалено: ${ok}, ошибок: ${fail}` : `Удалено ${ok} статей`, color: fail ? 'orange' : 'green' })
+  refresh()
+}
 
 // Delete
 const deleteSlug = ref<string | null>(null)
@@ -135,9 +176,17 @@ function formatDate(dateStr: string): string {
         <h2 class="card-header-title">Список статей</h2>
       </header>
       <div class="card-body card-body--flush overflow-x-auto">
+        <div v-if="selectedIds.size > 0" class="bulk-bar">
+          <span class="bulk-bar-info">Выбрано: <strong>{{ selectedIds.size }}</strong></span>
+          <GvButton color="gray" variant="ghost" size="sm" @click="selectedIds = new Set()">Снять выбор</GvButton>
+          <GvButton color="red" variant="solid" size="sm" icon="i-heroicons-trash" :loading="isBulkDeleting" @click="bulkDelete">Удалить выбранные</GvButton>
+        </div>
         <table class="admin-table min-w-[760px]">
         <thead>
           <tr>
+            <th class="th-check">
+              <input type="checkbox" :checked="allSelected" @change="toggleAll" class="gv-checkbox" />
+            </th>
             <th>Название</th>
             <th>Книга</th>
             <th>Модель</th>
@@ -147,7 +196,10 @@ function formatDate(dateStr: string): string {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="article in articles" :key="article.id" class="table-row">
+          <tr v-for="article in articles" :key="article.id" class="table-row" :class="{ 'row--selected': selectedIds.has(article.id) }">
+            <td class="td-check">
+              <input type="checkbox" :checked="selectedIds.has(article.id)" @change="toggleSelect(article.id)" class="gv-checkbox" />
+            </td>
             <td>
               <div class="article-cell">
                 <NuxtLink :to="`/admin/articles/${article.id}/edit`" class="article-link">
@@ -211,7 +263,7 @@ function formatDate(dateStr: string): string {
             </td>
           </tr>
           <tr v-if="articles.length === 0">
-            <td colspan="6" class="empty-row">
+            <td colspan="7" class="empty-row">
               <div class="empty-state">
                 <UIcon name="i-heroicons-document-text" class="empty-icon" />
                 <span>Статей пока нет</span>
@@ -272,6 +324,51 @@ function formatDate(dateStr: string): string {
 </template>
 
 <style scoped>
+/* Bulk select */
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  font-size: 13px;
+}
+
+.dark .bulk-bar {
+  background: #450a0a;
+  border-color: #7f1d1d;
+}
+
+.bulk-bar-info {
+  flex: 1;
+  color: #991b1b;
+}
+
+.dark .bulk-bar-info {
+  color: #f87171;
+}
+
+.th-check, .td-check {
+  width: 40px;
+  padding: 14px 8px 14px 20px !important;
+}
+
+.gv-checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #ef4444;
+}
+
+.row--selected td {
+  background: #fff5f5 !important;
+}
+
+.dark .row--selected td {
+  background: #2d1515 !important;
+}
+
 /* Table & modals — shell uses shared admin-about-cards.css */
 .filter-select {
   padding: 10px 14px;
