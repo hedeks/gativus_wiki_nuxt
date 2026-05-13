@@ -75,7 +75,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const merged = mergeMentionCountMaps(maps)
-    replaceArticleTermMentions(db, article.id, merged)
+    await replaceArticleTermMentions(db, article.id, merged)
     relationshipRows += merged.size
   }
 

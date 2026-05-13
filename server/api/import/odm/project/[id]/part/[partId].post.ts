@@ -270,7 +270,7 @@ export default defineEventHandler(async (event) => {
         VALUES (?, ?, 1, ?, ?)
       `).run(articleId, processedHtml, 'Импорт ODM (слой книги)', auth.id)
 
-      syncArticleTermsFromArticleRow(db, articleId, termsMap)
+      await syncArticleTermsFromArticleRow(db, articleId, termsMap)
     }
 
     const outState = parsed.numberingState ? cloneNumberingState(parsed.numberingState) : { listCounters: {} }

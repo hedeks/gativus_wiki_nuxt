@@ -49,7 +49,7 @@
                             :key="`${ch.slug}-${ch.chapter_number}`"
                             :to="`/articles/${ch.slug}`"
                             class="toc-extra-row toc-extra-row--chapter"
-                            :class="{ 'toc-row-active': isCurrentChapter(ch.slug) }"
+                            :class="{ 'toc-row-active': isCurrentChapter(ch) }"
                         >
                             <span class="tabular-nums opacity-50 mr-1">{{ ch.chapter_number }}.</span>
                             <span class="min-w-0 truncate">{{ ch.title }}</span>
@@ -64,7 +64,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 
-type ChapterNav = { slug: string; title: string; chapter_number: number }
+type ChapterNav = { slug: string; slug_canonical?: string; title: string; chapter_number: number }
 
 const props = withDefaults(defineProps<{
     links: any;
@@ -110,9 +110,12 @@ const hasChapterControls = computed(() => Array.isArray(props.chapters) && props
 
 const isPresentationActive = computed(() => props.hasPresentation && !props.isTheory)
 
-function isCurrentChapter(chSlug: string) {
-    const cur = props.currentArticleSlug || ''
-    return cur !== '' && chSlug === cur
+function isCurrentChapter(ch: ChapterNav) {
+    const cur = (props.currentArticleSlug || '').trim()
+    if (!cur) return false
+    if (ch.slug === cur) return true
+    if (ch.slug_canonical && ch.slug_canonical === cur) return true
+    return false
 }
 
 function switchToPresentation() {

@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
            excerpt, excerpt_ru, excerpt_zh,
            sort_order, is_published, created_at, updated_at
     FROM articles
-    WHERE book_id = ?
+    WHERE book_id = ? AND is_published = 1
     ORDER BY sort_order ASC
   `).all(book.id) as any[]
 

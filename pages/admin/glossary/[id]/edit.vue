@@ -211,6 +211,38 @@
         <input v-model="form.change_summary" class="field-input" placeholder="Что изменено..." />
       </div>
 
+      <!-- Popup Preview -->
+      <div class="field">
+        <div class="field-label" style="justify-content: space-between;">
+          <span>Preview попапа</span>
+          <button type="button" class="preview-toggle-btn" @click="showPopupPreview = !showPopupPreview">
+            {{ showPopupPreview ? 'Скрыть' : 'Показать' }}
+          </button>
+        </div>
+        <Transition name="popup-preview-fade">
+          <div v-if="showPopupPreview" class="popup-preview-wrap">
+            <div class="popup-preview-label">Так выглядит попап при наведении на термин в статье:</div>
+            <div class="popup-preview-card">
+              <div v-if="form.category_id" class="pp-category">
+                {{ categories?.find(c => c.id === form.category_id)?.title_ru || categories?.find(c => c.id === form.category_id)?.title || '' }}
+              </div>
+              <div class="pp-title">{{ form.title || '(нет названия)' }}</div>
+              <div v-if="form.image_url" class="pp-media">
+                <img :src="form.image_url" class="pp-media-img" alt="" />
+              </div>
+              <div v-if="form.aliases.length" class="pp-aliases">
+                <span v-for="alias in form.aliases.slice(0, 3)" :key="alias" class="pp-alias-chip">{{ alias }}</span>
+              </div>
+              <p v-if="form.definition" class="pp-definition">{{ form.definition }}</p>
+              <p v-else class="pp-definition pp-definition--empty">(нет определения)</p>
+              <div class="pp-footer">
+                <span class="pp-link">Открыть статью →</span>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </div>
+
       <div class="form-actions">
         <GvButton to="/admin/glossary" color="gray" variant="soft" size="lg">Отмена</GvButton>
         <GvButton :to="`/glossary/${term.slug}`" target="_blank" color="gray" variant="ghost" size="lg" icon="i-heroicons-eye">Просмотр</GvButton>
@@ -317,6 +349,7 @@ const odtUploading = ref(false)
 const error = ref('')
 const success = ref(false)
 const confirmDeleteArticle = ref(false)
+const showPopupPreview = ref(false)
 
 // 2. Pure functions
 function addAlias() {
@@ -588,5 +621,133 @@ async function handleSubmit() {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* ─── Popup preview ─── */
+.preview-toggle-btn {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0ea5e9;
+  background: none;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.preview-toggle-btn:hover { background: #f0f9ff; }
+.dark .preview-toggle-btn { border-color: #0c4a6e; color: #38bdf8; }
+.dark .preview-toggle-btn:hover { background: #082f49; }
+
+.popup-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.popup-preview-label {
+  font-size: 11px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.popup-preview-card {
+  background: color-mix(in srgb, #fff 94%, transparent);
+  backdrop-filter: blur(14px);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 320px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+.dark .popup-preview-card {
+  background: color-mix(in srgb, #1e1e21 92%, transparent);
+  border-color: #2a2a2e;
+}
+
+.pp-category {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #64748b;
+}
+.dark .pp-category { color: #94a3b8; }
+
+.pp-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.dark .pp-title { color: #e2e8f0; }
+
+.pp-media {
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+.pp-media-img { width: 100%; height: 100%; object-fit: cover; }
+
+.pp-aliases {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pp-alias-chip {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+}
+.dark .pp-alias-chip { background: #27272a; border-color: #3f3f46; color: #94a3b8; }
+
+.pp-definition {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #64748b;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dark .pp-definition { color: #94a3b8; }
+.pp-definition--empty { color: #cbd5e1; font-style: italic; }
+
+.pp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+}
+.dark .pp-footer { border-top-color: #2a2a2e; }
+
+.pp-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.popup-preview-fade-enter-active,
+.popup-preview-fade-leave-active {
+  transition: all 0.2s ease;
+}
+.popup-preview-fade-enter-from,
+.popup-preview-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 </style>

@@ -279,18 +279,18 @@ export function countWikiTermMentionsInHtml(html: string | null | undefined, slu
   return counts
 }
 
-export function replaceArticleTermMentions(db: any, articleId: number, counts: Map<number, number>) {
-  db.prepare('DELETE FROM article_terms WHERE article_id = ?').run(articleId)
+export async function replaceArticleTermMentions(db: any, articleId: number, counts: Map<number, number>) {
+  await db.prepare('DELETE FROM article_terms WHERE article_id = ?').run(articleId)
   if (counts.size === 0) return
   const stmt = db.prepare('INSERT INTO article_terms (article_id, term_id, mention_count) VALUES (?, ?, ?)')
   for (const [termId, n] of counts) {
-    if (n > 0) stmt.run(articleId, termId, n)
+    if (n > 0) await stmt.run(articleId, termId, n)
   }
 }
 
 /** Пересобрать article_terms по трём полям HTML статьи (после сохранения в БД). */
-export function syncArticleTermsFromArticleRow(db: any, articleId: number, termsMap: Map<string, { id: number, slug: string }>) {
-  const row = db.prepare('SELECT html_content, html_content_ru, html_content_zh FROM articles WHERE id = ?').get(articleId) as any
+export async function syncArticleTermsFromArticleRow(db: any, articleId: number, termsMap: Map<string, { id: number, slug: string }>) {
+  const row = await db.prepare('SELECT html_content, html_content_ru, html_content_zh FROM articles WHERE id = ?').get(articleId) as any
   if (!row) return
   const slugToId = buildSlugToIdMap(termsMap)
   const merged = mergeMentionCountMaps([
@@ -298,7 +298,7 @@ export function syncArticleTermsFromArticleRow(db: any, articleId: number, terms
     countWikiTermMentionsInHtml(row.html_content_ru, slugToId),
     countWikiTermMentionsInHtml(row.html_content_zh, slugToId),
   ])
-  replaceArticleTermMentions(db, articleId, merged)
+  await replaceArticleTermMentions(db, articleId, merged)
 }
 
 interface Segment {

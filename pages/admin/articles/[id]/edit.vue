@@ -78,8 +78,35 @@ const categories = computed(() => (Array.isArray(categoriesData.value) ? categor
 
 // Save
 const isSaving = ref(false)
-const showPreview = ref(false)
+const viewMode = ref<'code' | 'split' | 'preview'>('code')
+const showPreview = computed(() => viewMode.value === 'preview')
 const showTermModal = ref(false)
+
+const viewModeIcons: Record<string, string> = {
+  code: 'i-heroicons-code-bracket',
+  split: 'i-heroicons-squares-2x2',
+  preview: 'i-heroicons-eye',
+}
+const viewModeLabels: Record<string, string> = {
+  code: 'Код',
+  split: 'Сплит',
+  preview: 'Preview',
+}
+const nextViewMode: Record<string, 'code' | 'split' | 'preview'> = {
+  code: 'split',
+  split: 'preview',
+  preview: 'code',
+}
+
+function cycleViewMode() {
+  viewMode.value = nextViewMode[viewMode.value]
+}
+
+const activeHtmlContent = computed(() => {
+  if (activeTab.value === 'ru') return htmlContentRu.value
+  if (activeTab.value === 'zh') return htmlContentZh.value
+  return htmlContent.value
+})
 
 function insertTerm(term: any) {
   const el = textareaRef.value
@@ -338,9 +365,9 @@ async function uploadImage(e: Event) {
         </div>
       </div>
       <div class="editor-topbar-right">
-        <button class="toggle-preview" @click="showPreview = !showPreview">
-          <UIcon :name="showPreview ? 'i-heroicons-code-bracket' : 'i-heroicons-eye'" />
-          <span>{{ showPreview ? 'Код' : 'Preview' }}</span>
+        <button class="toggle-preview" @click="cycleViewMode" :title="`Следующий режим: ${viewModeLabels[nextViewMode[viewMode]]}`">
+          <UIcon :name="viewModeIcons[viewMode]" />
+          <span>{{ viewModeLabels[viewMode] }}</span>
         </button>
         <NuxtLink v-if="slug" :to="`/admin/articles/${articleId}/history`" class="history-btn">
           <UIcon name="i-heroicons-clock" />
@@ -548,46 +575,40 @@ async function uploadImage(e: Event) {
           </div>
         </div>
 
-        <div class="editor-main">
-          <textarea
-            v-if="!showPreview && activeTab === 'en'"
-            ref="textareaRef"
-            v-model="htmlContent"
-            class="html-editor"
-            placeholder="HTML-контент статьи (EN)..."
-            spellcheck="false"
-          />
-          <textarea
-            v-else-if="!showPreview && activeTab === 'ru'"
-            ref="textareaRef"
-            v-model="htmlContentRu"
-            class="html-editor"
-            placeholder="HTML-контент статьи (RU)..."
-            spellcheck="false"
-          />
-          <textarea
-            v-else-if="!showPreview && activeTab === 'zh'"
-            ref="textareaRef"
-            v-model="htmlContentZh"
-            class="html-editor"
-            placeholder="HTML-контент статьи (ZH)..."
-            spellcheck="false"
-          />
-          
+        <div class="editor-main" :class="{ 'editor-main--split': viewMode === 'split' }">
+          <!-- Code side: shown in 'code' and 'split' modes -->
+          <template v-if="viewMode !== 'preview'">
+            <textarea
+              v-if="activeTab === 'en'"
+              ref="textareaRef"
+              v-model="htmlContent"
+              class="html-editor"
+              placeholder="HTML-контент статьи (EN)..."
+              spellcheck="false"
+            />
+            <textarea
+              v-else-if="activeTab === 'ru'"
+              ref="textareaRef"
+              v-model="htmlContentRu"
+              class="html-editor"
+              placeholder="HTML-контент статьи (RU)..."
+              spellcheck="false"
+            />
+            <textarea
+              v-else-if="activeTab === 'zh'"
+              ref="textareaRef"
+              v-model="htmlContentZh"
+              class="html-editor"
+              placeholder="HTML-контент статьи (ZH)..."
+              spellcheck="false"
+            />
+          </template>
+
+          <!-- Preview side: shown in 'preview' and 'split' modes -->
           <div
-            v-else-if="showPreview && activeTab === 'en'"
+            v-if="viewMode !== 'code'"
             class="preview-pane article-prose"
-            v-html="htmlContent"
-          />
-          <div
-            v-else-if="showPreview && activeTab === 'ru'"
-            class="preview-pane article-prose"
-            v-html="htmlContentRu"
-          />
-          <div
-            v-else-if="showPreview && activeTab === 'zh'"
-            class="preview-pane article-prose"
-            v-html="htmlContentZh"
+            v-html="activeHtmlContent"
           />
         </div>
       </div>
@@ -892,6 +913,23 @@ async function uploadImage(e: Event) {
   flex: 1;
   overflow: hidden;
   display: flex;
+}
+
+.editor-main--split {
+  gap: 0;
+}
+
+.editor-main--split .html-editor {
+  width: 50%;
+  border-right: 1px solid #e5e7eb;
+}
+
+.dark .editor-main--split .html-editor {
+  border-right-color: #2a2a2e;
+}
+
+.editor-main--split .preview-pane {
+  width: 50%;
 }
 
 .html-editor {

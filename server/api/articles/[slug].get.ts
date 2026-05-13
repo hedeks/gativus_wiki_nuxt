@@ -106,6 +106,7 @@ export default defineEventHandler(async (event) => {
           : row.slug
     return {
       slug: String(slugOut || row.slug),
+      slug_canonical: String(row.slug),
       chapter_number: row.chapter_number != null ? Number(row.chapter_number) : null,
       title: String(
         isRu ? (row.title_ru || row.title) : isZh ? (row.title_zh || row.title) : (row.title || row.title_ru || row.title_zh || ''),
@@ -152,7 +153,7 @@ export default defineEventHandler(async (event) => {
     nextArticle = localizeNavTitle(nextArticle)
   }
 
-  let book_chapters: { slug: string; title: string; chapter_number: number }[] | null = null
+  let book_chapters: { slug: string; slug_canonical: string; title: string; chapter_number: number }[] | null = null
   if (article.book_id) {
     const chapterRows = await db.prepare(`
       SELECT a.slug, a.slug_ru, a.slug_zh, a.title, a.title_ru, a.title_zh, a.sort_order, a.id,
@@ -163,9 +164,10 @@ export default defineEventHandler(async (event) => {
     `).all(article.book_id, article.id) as any[]
     book_chapters = (chapterRows || [])
       .map(localizeChapterRow)
-      .filter((x): x is { slug: string; title: string; chapter_number: number } => x != null && !!x.slug)
+      .filter((x): x is { slug: string; slug_canonical: string; title: string; chapter_number: number } => x != null && !!x.slug)
       .map(x => ({
         slug: x.slug,
+        slug_canonical: x.slug_canonical,
         title: x.title,
         chapter_number: x.chapter_number != null && Number.isFinite(x.chapter_number) ? x.chapter_number : 0,
       }))

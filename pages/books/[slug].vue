@@ -52,8 +52,6 @@
                 </span>
               </div>
 
-              <p class="gv-hero-subtitle book-hero-tagline">{{ t.heroTagline }}</p>
-
               <p class="book-description">
                 {{
                   book.description
@@ -147,7 +145,6 @@ const uiDict: Record<string, any> = {
     toc: 'Contents',
     tocBadge: 'TOC',
     noChapters: 'Chapters for this book have not been published in this language yet.',
-    heroTagline: 'Architecture and fundamentals',
     fallbackDescription:
       'There is no detailed description yet. Browse the table of contents below for key materials.',
   },
@@ -161,7 +158,6 @@ const uiDict: Record<string, any> = {
     toc: 'Оглавление',
     tocBadge: 'ОГЛ',
     noChapters: 'Главы этой книги ещё не опубликованы на этом языке.',
-    heroTagline: 'Архитектура и фундаментальные принципы',
     fallbackDescription:
       'В этой книге пока нет подробного описания. Изучите оглавление ниже, чтобы ознакомиться с ключевыми материалами.',
   },
@@ -455,10 +451,6 @@ useSeoMeta({
 .dark .book-badge {
   background: color-mix(in srgb, var(--gv-primary) 18%, var(--gv-surface-card));
   color: color-mix(in srgb, var(--gv-primary) 72%, #e2e8f0);
-}
-
-.book-hero-tagline {
-  margin: 0 0 1rem;
 }
 
 .book-description {

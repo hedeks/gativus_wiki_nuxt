@@ -84,6 +84,16 @@ if (Test-Path $nitroPkgPath) {
         "@vue/server-renderer" = $prodDeps."@vue/server-renderer"
     })
     $rootPkg | Add-Member -MemberType NoteProperty -Name "overrides" -Value $overrides -Force
+
+    # Align shiki versions directly in dependencies (overrides can't target direct deps)
+    $shikiVersion = $prodDeps."@shikijs/markdown-it"
+    if ($prodDeps.PSObject.Properties["shiki"]) {
+        $prodDeps.PSObject.Properties["shiki"].Value = $shikiVersion
+    }
+    if ($prodDeps.PSObject.Properties["@shikijs/core"]) {
+        $prodDeps.PSObject.Properties["@shikijs/core"].Value = $shikiVersion
+    }
+    Write-Host "[ OK ] Aligned shiki+@shikijs/core to $shikiVersion in dependencies" -ForegroundColor Green
 }
 
 # Clean up properties for production

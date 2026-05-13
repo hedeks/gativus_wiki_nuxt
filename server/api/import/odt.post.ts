@@ -108,7 +108,7 @@ export default defineEventHandler(async (event) => {
         VALUES (?, ?, 1, ?, ?)
       `).run(articleId, processedHtml, 'Импорт из ODT', auth.id)
 
-      syncArticleTermsFromArticleRow(db, articleId, termsMap)
+      await syncArticleTermsFromArticleRow(db, articleId, termsMap)
 
       importedArticles.push({ slug, title: article.title, id: articleId })
     }

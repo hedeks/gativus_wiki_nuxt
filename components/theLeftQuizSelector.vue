@@ -15,11 +15,11 @@
       variant="outline"
       color="gray"
       size="xs"
-      icon="i-heroicons-presentation-chart-bar"
+      :icon="props.isTheory ? 'i-heroicons-presentation-chart-bar' : 'i-heroicons-document-text'"
       class="mt-2 justify-start w-full"
-      @click="$emit('changeView', 'quiz')"
+      @click="$emit('changeView', props.isTheory ? 'quiz' : 'lection')"
     >
-      {{ pack.goToPresentation }}
+      {{ props.isTheory ? pack.goToPresentation : pack.goToText }}
     </GvButton>
 
     <template v-if="bookSlug && bookTitle">
@@ -47,7 +47,7 @@
           :key="`${ch.slug}-${ch.chapter_number}`"
           :to="`/articles/${ch.slug}`"
           class="chapter-link selector-row border-l-2 lg:border-r-2 lg:border-l-0 border-transparent px-3 py-2 text-sm cursor-pointer transition-all duration-300 rounded-none lv-row min-w-0 max-w-full break-words [overflow-wrap:anywhere]"
-          :class="{ 'chapter-link--current': isCurrentChapter(ch.slug) }"
+          :class="{ 'chapter-link--current': isCurrentChapter(ch) }"
         >
           <span class="tabular-nums opacity-55 mr-1">{{ ch.chapter_number }}.</span>
           <span class="break-words [overflow-wrap:anywhere]">{{ ch.title }}</span>
@@ -62,13 +62,13 @@ import { useLanguageStore } from '~/stores/language'
 
 const langStore = useLanguageStore()
 
-export type BookChapterNav = { slug: string; title: string; chapter_number: number }
+export type BookChapterNav = { slug: string; slug_canonical?: string; title: string; chapter_number: number }
 
 const pack = computed(() => {
-  const dict: Record<string, { text: string; article: string; fromBook: string; chapters: string; goToPresentation: string }> = {
-    en: { text: 'Text', article: 'Article', fromBook: 'Book', chapters: 'Chapters', goToPresentation: 'Go to Presentation' },
-    ru: { text: 'Текст', article: 'Статья', fromBook: 'Книга', chapters: 'Главы', goToPresentation: 'Перейти к презентации' },
-    zh: { text: '正文', article: '文章', fromBook: '图书', chapters: '章节', goToPresentation: '转到演示文稿' },
+  const dict: Record<string, { text: string; article: string; fromBook: string; chapters: string; goToPresentation: string; goToText: string }> = {
+    en: { text: 'Text', article: 'Article', fromBook: 'Book', chapters: 'Chapters', goToPresentation: 'Go to Presentation', goToText: 'Go to Text' },
+    ru: { text: 'Текст', article: 'Статья', fromBook: 'Книга', chapters: 'Главы', goToPresentation: 'Перейти к презентации', goToText: 'Перейти к тексту' },
+    zh: { text: '正文', article: '文章', fromBook: '图书', chapters: '章节', goToPresentation: '转到演示文稿', goToText: '转到正文' },
   }
   return dict[langStore.currentLang] || dict.ru
 })
@@ -98,9 +98,15 @@ const props = withDefaults(defineProps<{
   hasPresentation: true,
 })
 
-function isCurrentChapter(chSlug: string) {
-  const cur = props.currentArticleSlug || ''
-  return cur !== '' && chSlug === cur
+function isCurrentChapter(ch: BookChapterNav) {
+  const cur = (props.currentArticleSlug || '').trim()
+  if (!cur)
+    return false
+  if (ch.slug === cur)
+    return true
+  if (ch.slug_canonical && ch.slug_canonical === cur)
+    return true
+  return false
 }
 </script>
 

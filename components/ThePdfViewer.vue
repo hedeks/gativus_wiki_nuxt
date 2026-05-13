@@ -250,16 +250,28 @@ const handleWheel = (e: WheelEvent) => {
   }
 }
 
-// Fullscreen
+// Fullscreen (with Safari webkit-prefix support)
+function isFullscreenActive(): boolean {
+  return !!(
+    document.fullscreenElement ||
+    (document as any).webkitFullscreenElement
+  )
+}
+
 const toggleFullscreen = () => {
   if (!viewerRoot.value) return
-  if (!document.fullscreenElement) {
-    viewerRoot.value.requestFullscreen().catch(err => {
-      console.error(`Error attempting to enable fullscreen: ${err.message}`)
-    })
+  if (!isFullscreenActive()) {
+    const el = viewerRoot.value as any
+    const req = el.requestFullscreen || el.webkitRequestFullscreen
+    if (req) {
+      req.call(el).catch((err: Error) => {
+        console.warn(`Fullscreen request failed: ${err.message}`)
+      })
+    }
     isFullscreen.value = true
   } else {
-    document.exitFullscreen()
+    const exit = (document as any).exitFullscreen || (document as any).webkitExitFullscreen
+    if (exit) exit.call(document)
     isFullscreen.value = false
   }
 }
@@ -286,12 +298,17 @@ const visiblePages = computed(() => {
   return pages
 })
 
+function isSafariBrowser(): boolean {
+  if (!import.meta.client) return false
+  const ua = navigator.userAgent
+  return /Safari/.test(ua) && !/Chrome/.test(ua) && !/Chromium/.test(ua)
+}
+
 const initViewer = async () => {
   if (!import.meta.client) return
   loading.value = true
   error.value = false
   try {
-    // Import the main library
     const pdfjsModule = await import('pdfjs-dist')
     const pdfjs = pdfjsModule.default || pdfjsModule
 
@@ -299,13 +316,15 @@ const initViewer = async () => {
       throw new Error('GlobalWorkerOptions not found in pdfjs-dist')
     }
 
-    // ─── MIME TYPE FIX ───
-    // We use a local .js file from the /public folder to force the server 
-    // to send the correct "application/javascript" MIME type.
-    // If that fails, we use a CDN as a backup.
-    const PDFJS_VERSION = '5.6.205'
-    pdfjs.GlobalWorkerOptions.workerSrc = '/workers/pdf.worker.js'
-    
+    // Safari has issues with local module workers — use CDN as fallback
+    if (isSafariBrowser()) {
+      const version = (pdfjs as any).version || '4.4.168'
+      pdfjs.GlobalWorkerOptions.workerSrc =
+        `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`
+    } else {
+      pdfjs.GlobalWorkerOptions.workerSrc = '/workers/pdf.worker.js'
+    }
+
     pdfjsLib = pdfjs
     await loadPdf()
   } catch (err) {
@@ -316,12 +335,15 @@ const initViewer = async () => {
   }
 }
 
+function onFullscreenChange() {
+  isFullscreen.value = isFullscreenActive()
+}
+
 onMounted(async () => {
   await initViewer()
 
-  document.addEventListener('fullscreenchange', () => {
-    isFullscreen.value = !!document.fullscreenElement
-  })
+  document.addEventListener('fullscreenchange', onFullscreenChange)
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange)
 })
 
 watch(() => props.src, async () => {
