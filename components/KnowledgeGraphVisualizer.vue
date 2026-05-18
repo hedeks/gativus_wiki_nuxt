@@ -183,6 +183,47 @@
         </div>
       </div>
 
+      <!-- LOD indicator: shown when not all types are visible -->
+      <transition name="kg-lod-fade">
+        <div v-if="!isFocusMode && currentLodLevel < 3" class="kg-lod-indicator kg-glass-surface" @wheel.stop @mousewheel.stop>
+          <span class="kg-lod-dot" :class="currentLodLevel >= 0 ? 'kg-lod-dot--cat' : ''" title="Categories" />
+          <span class="kg-lod-dot" :class="currentLodLevel >= 1 ? 'kg-lod-dot--book' : ''" title="Books" />
+          <span class="kg-lod-dot" :class="currentLodLevel >= 2 ? 'kg-lod-dot--art' : ''" title="Articles" />
+          <span class="kg-lod-dot" :class="currentLodLevel >= 3 ? 'kg-lod-dot--term' : ''" title="Terms" />
+          <span class="kg-lod-label">{{ t.zoomForMore }}</span>
+        </div>
+      </transition>
+
+      <!-- Ego-mode bar: shown when focus mode is active -->
+      <transition name="kg-ego-bar-fade">
+        <div v-if="isFocusMode" class="kg-ego-bar kg-glass-surface" @wheel.stop @mousewheel.stop>
+          <UIcon name="i-heroicons-viewfinder-circle" class="kg-ego-bar__icon" />
+          <span class="kg-ego-bar__label">{{ focusNodeTitle }}</span>
+          <div class="kg-depth-switcher">
+            <button
+              v-for="d in [1, 2, 3]"
+              :key="d"
+              type="button"
+              class="kg-depth-btn"
+              :class="{ 'kg-depth-btn--active': focusDepth === d }"
+              :title="`Depth ${d}`"
+              @click="focusDepth = d"
+            >{{ d }}</button>
+          </div>
+          <GvButton
+            type="button"
+            unstyled
+            chromeless
+            square
+            class="action-btn kg-ego-bar__exit"
+            icon="i-heroicons-x-mark"
+            :title="t.exitFocus"
+            :aria-label="t.exitFocus"
+            @click="exitFocusMode"
+          />
+        </div>
+      </transition>
+
       <div class="kg-graph-ui-cluster" @wheel.stop @mousewheel.stop>
         <div class="custom-zoom-controls kg-glass-surface">
           <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-plus" title="+" @click="zoomIn" />
@@ -352,6 +393,15 @@
               <UIcon name="i-heroicons-arrow-path" class="graph-popup__spin" />
               {{ t.loadingDetail }}
             </span>
+            <button
+              v-if="!isFocusMode"
+              type="button"
+              class="graph-popup__focus-btn"
+              @click.stop="enterFocusMode(selectedNode.id)"
+            >
+              <UIcon name="i-heroicons-viewfinder-circle" class="graph-popup__focus-btn-icon" />
+              {{ t.focusMode }}
+            </button>
             <NuxtLink
               v-if="enableNavigation && selectedNodePath"
               :to="selectedNodePath"
@@ -483,6 +533,9 @@ const uiDict: Record<string, any> = {
     popupClose: 'Close',
     openEntity: 'Open page →',
     loadingDetail: 'Loading...',
+    focusMode: 'Focus',
+    exitFocus: 'Exit focus',
+    zoomForMore: 'Zoom in for more',
   },
   ru: {
     title: 'Граф знаний Gativus',
@@ -517,6 +570,9 @@ const uiDict: Record<string, any> = {
     popupClose: 'Закрыть',
     openEntity: 'Открыть страницу →',
     loadingDetail: 'Загрузка...',
+    focusMode: 'Фокус',
+    exitFocus: 'Выйти из фокуса',
+    zoomForMore: 'Приблизьте для деталей',
   },
   zh: {
     title: 'Gativus 知识图谱',
@@ -551,6 +607,9 @@ const uiDict: Record<string, any> = {
     popupClose: '关闭',
     openEntity: '打开页面 →',
     loadingDetail: '加载中...',
+    focusMode: '聚焦',
+    exitFocus: '退出聚焦',
+    zoomForMore: '放大查看更多',
   }
 }
 
@@ -697,6 +756,45 @@ const activeFilters = ref({
 const isFullscreen = ref(false)
 const isStatsCollapsed = ref(false)
 const isFilterMenuOpen = ref(false)
+
+// ─── Ego-graph (focus mode) ───────────────────────────────────────────────
+const focusNodeId = ref<string | null>(null)
+const focusDepth = ref(2)
+const isFocusMode = computed(() => focusNodeId.value !== null)
+const focusNodeTitle = computed(() =>
+  props.graphData?.nodes?.find((n: any) => n.id === focusNodeId.value)?.title || ''
+)
+
+// ─── Level-of-Detail ──────────────────────────────────────────────────────
+const currentLodLevel = ref(3) // 0=cats only · 1=+books · 2=+articles · 3=all
+
+function getLodLevel(k: number): number {
+  if (k < 0.5) return 0
+  if (k < 0.75) return 1
+  if (k < 1.1) return 2
+  return 3
+}
+
+function applyLOD(k: number) {
+  if (!svgRef.value || isFocusMode.value) return
+  const level = getLodLevel(k)
+  currentLodLevel.value = level
+
+  const visible = new Set<string>(['category'])
+  if (level >= 1) visible.add('book')
+  if (level >= 2) visible.add('article')
+  if (level >= 3) visible.add('term')
+
+  const layer = d3.select(svgRef.value)
+  layer.selectAll('.node-group')
+    .style('display', (d: any) => visible.has(d.type) ? null : 'none')
+  layer.selectAll('.kg-graph-link-bundle')
+    .style('display', (l: any) => {
+      const s = (l.source as any).type
+      const t = (l.target as any).type
+      return visible.has(s) && visible.has(t) ? null : 'none'
+    })
+}
 
 watch(isMobileToolbarExpanded, (open) => {
   if (!open)
@@ -1557,6 +1655,51 @@ const statsLinkRows = computed(() => {
     .sort((a, b) => b.count - a.count)
 })
 
+function getEgoSubgraph(allNodes: any[], allLinks: any[], rootId: string, depth: number) {
+  const adj = new Map<string, string[]>()
+  for (const l of allLinks) {
+    const s = typeof l.source === 'object' ? l.source.id : l.source
+    const t = typeof l.target === 'object' ? l.target.id : l.target
+    if (!adj.has(s)) adj.set(s, [])
+    if (!adj.has(t)) adj.set(t, [])
+    adj.get(s)!.push(t)
+    adj.get(t)!.push(s)
+  }
+  const visited = new Set<string>([rootId])
+  let frontier = [rootId]
+  for (let d = 0; d < depth; d++) {
+    const next: string[] = []
+    for (const id of frontier) {
+      for (const nb of adj.get(id) || []) {
+        if (!visited.has(nb)) { visited.add(nb); next.push(nb) }
+      }
+    }
+    frontier = next
+    if (!frontier.length) break
+  }
+  return {
+    egoNodes: allNodes.filter((n: any) => visited.has(n.id)),
+    egoLinks: allLinks.filter((l: any) => {
+      const s = typeof l.source === 'object' ? l.source.id : l.source
+      const t = typeof l.target === 'object' ? l.target.id : l.target
+      return visited.has(s) && visited.has(t)
+    }),
+  }
+}
+
+function enterFocusMode(nodeId: string) {
+  nodePopupPanelClosed.value = true
+  selectedNode.value = null
+  selectedLink.value = null
+  focusNodeId.value = nodeId
+}
+
+function exitFocusMode() {
+  focusNodeId.value = null
+  selectedNode.value = null
+  selectedLink.value = null
+}
+
 let simulation: any = null
 let zoomHandler: any = null
 
@@ -1703,6 +1846,7 @@ const initGraph = () => {
       scheduleVueZoomFromD3(event.transform)
       if (graphPopupClampNeeded())
         requestGraphPopupClamp()
+      applyLOD(event.transform.k)
     })
 
   svg.call(zoomHandler)
@@ -1711,13 +1855,23 @@ const initGraph = () => {
   const allLinks = props.graphData.links?.map((d: any) => ({ ...d })) || []
 
   // Filter based on activeFilters
-  const nodes = allNodes.filter((n: any) => activeFilters.value[n.type as keyof typeof activeFilters.value])
-  const nodeIds = new Set(nodes.map((n: any) => n.id))
-  const links = allLinks.filter((l: any) => {
+  let nodes = allNodes.filter((n: any) => activeFilters.value[n.type as keyof typeof activeFilters.value])
+  let nodeIds = new Set(nodes.map((n: any) => n.id))
+  let links = allLinks.filter((l: any) => {
     const sourceId = typeof l.source === 'object' ? l.source.id : l.source
     const targetId = typeof l.target === 'object' ? l.target.id : l.target
     return nodeIds.has(sourceId) && nodeIds.has(targetId)
   })
+
+  // Ego-graph: restrict to BFS neighbourhood when focus mode is active
+  if (focusNodeId.value) {
+    const ego = getEgoSubgraph(nodes, links, focusNodeId.value, focusDepth.value)
+    if (ego.egoNodes.length > 0) {
+      nodes = ego.egoNodes
+      links = ego.egoLinks
+      nodeIds = new Set(nodes.map((n: any) => n.id))
+    }
+  }
 
   // Горизонтальные кластеры слева направо (как в легенде): красные категории → синие книги → фиолетовые статьи → зелёные термины.
   const CLUSTER_MARGIN_FRAC = 0.07
@@ -1853,6 +2007,20 @@ const initGraph = () => {
     .attr('stroke', 'var(--node-stroke)')
     .attr('stroke-width', 2)
 
+  // Focus-root ring
+  if (focusNodeId.value) {
+    node.filter((d: any) => d.id === focusNodeId.value)
+      .append('circle')
+      .attr('class', 'kg-focus-ring')
+      .attr('r', (d: any) => nodeGlyphRadius(d) + 6)
+      .attr('fill', 'none')
+      .attr('stroke', (d: any) => getNodeColor(d))
+      .attr('stroke-width', 2)
+      .attr('stroke-opacity', 0.7)
+      .attr('stroke-dasharray', '4,3')
+      .style('pointer-events', 'none')
+  }
+
   // Node labels
   node.append('text')
     .attr('class', 'kg-node-label')
@@ -1897,6 +2065,7 @@ const initGraph = () => {
     simulation.alpha(0.085)
 
   updateHighlights()
+  applyLOD(graphLiveZoomTransform.k)
   simulation.restart()
 }
 
@@ -1934,6 +2103,11 @@ function onGraphPopupEscape(e: KeyboardEvent) {
   }
   if (selectedLink.value && !linkPopupPanelClosed.value) {
     linkPopupPanelClosed.value = true
+    e.preventDefault()
+    return
+  }
+  if (isFocusMode.value) {
+    exitFocusMode()
     e.preventDefault()
   }
 }
@@ -1990,8 +2164,12 @@ const handleFullscreenChange = () => {
 // Ensure dynamic resizing is captured properly
 watch(activeFilters, () => {
   initGraph()
-  zoomFit();
+  zoomFit()
 }, { deep: true })
+
+watch([focusNodeId, focusDepth], () => {
+  nextTick(() => { initGraph(); zoomFit() })
+})
 </script>
 
 
@@ -2023,6 +2201,175 @@ watch(activeFilters, () => {
   inset: 0;
   z-index: 10;
   pointer-events: none;
+}
+
+/* ─── LOD Indicator ──────────────────────────────────────────────────────── */
+.kg-lod-indicator {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  pointer-events: auto;
+}
+
+.kg-lod-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.dark .kg-lod-dot {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.kg-lod-dot--cat  { background: #ef4444; }
+.kg-lod-dot--book { background: #0ea5e9; }
+.kg-lod-dot--art  { background: #6366f1; }
+.kg-lod-dot--term { background: #10b981; }
+
+.kg-lod-label {
+  font-size: 11px;
+  color: var(--gv-text-secondary, #6b7280);
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.kg-lod-fade-enter-active,
+.kg-lod-fade-leave-active {
+  transition: opacity 0.3s;
+}
+
+.kg-lod-fade-enter-from,
+.kg-lod-fade-leave-to {
+  opacity: 0;
+}
+
+/* ─── Ego-mode bar ────────────────────────────────────────────────────────── */
+.kg-ego-bar {
+  position: absolute;
+  bottom: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  pointer-events: auto;
+  white-space: nowrap;
+  max-width: calc(100% - 32px);
+  overflow: hidden;
+}
+
+.kg-ego-bar__icon {
+  width: 16px;
+  height: 16px;
+  color: #0ea5e9;
+  flex-shrink: 0;
+}
+
+.kg-ego-bar__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gv-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.kg-depth-switcher {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.dark .kg-depth-switcher {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.kg-depth-btn {
+  width: 26px;
+  height: 22px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gv-text-secondary, #6b7280);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.kg-depth-btn:hover {
+  background: rgba(14, 165, 233, 0.15);
+  color: #0ea5e9;
+}
+
+.kg-depth-btn--active {
+  background: #0ea5e9;
+  color: #fff;
+}
+
+.kg-depth-btn--active:hover {
+  background: #0284c7;
+  color: #fff;
+}
+
+.kg-ego-bar__exit {
+  flex-shrink: 0;
+  color: var(--gv-text-secondary);
+}
+
+/* Focus button in node popup */
+.graph-popup__focus-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  background: rgba(14, 165, 233, 0.08);
+  color: #0ea5e9;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  line-height: 1;
+}
+
+.graph-popup__focus-btn:hover {
+  background: rgba(14, 165, 233, 0.16);
+  border-color: rgba(14, 165, 233, 0.5);
+}
+
+.graph-popup__focus-btn-icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* Ego bar entrance animation */
+.kg-ego-bar-fade-enter-active,
+.kg-ego-bar-fade-leave-active {
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.kg-ego-bar-fade-enter-from,
+.kg-ego-bar-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
 }
 
 .graph-chrome * {
