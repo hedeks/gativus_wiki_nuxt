@@ -201,7 +201,7 @@
           <span class="kg-ego-bar__label">{{ focusNodeTitle }}</span>
           <div class="kg-depth-switcher">
             <button
-              v-for="d in [1, 2, 3]"
+              v-for="d in [1, 2]"
               :key="d"
               type="button"
               class="kg-depth-btn"
@@ -394,7 +394,7 @@
               {{ t.loadingDetail }}
             </span>
             <button
-              v-if="!isFocusMode"
+              v-if="!isFocusMode || selectedNode.id !== focusNodeId"
               type="button"
               class="graph-popup__focus-btn"
               @click.stop="enterFocusMode(selectedNode.id)"
@@ -871,7 +871,7 @@ function nodeGlyphRadius(d: any): number {
 function nodeCollisionRadius(d: any): number {
   const r = nodeGlyphRadius(d)
   const len = String(d.title ?? '').length
-  const labelPad = Math.min(76, Math.max(12, len * 3.2))
+  const labelPad = Math.min(110, Math.max(20, len * 4.8))
   return r + labelPad + 8
 }
 
@@ -1719,6 +1719,29 @@ const zoomFit = () => {
     .call(zoomHandler.transform, d3.zoomIdentity.translate(0, 0).scale(1))
 }
 
+const zoomToFocusNode = () => {
+  const svgEl = svgRef.value
+  if (!svgEl || !zoomHandler) return zoomFit()
+  const w = svgEl.clientWidth || 800
+  const h = svgEl.clientHeight || 600
+
+  let fx: number | null = null
+  let fy: number | null = null
+  d3.select(svgEl).selectAll<SVGGElement, any>('.node-group')
+    .each((d: any) => {
+      if (d.id === focusNodeId.value) { fx = d.x; fy = d.y }
+    })
+
+  if (fx === null || fy === null) return zoomFit()
+
+  const scale = 1.35
+  const tx = w / 2 - (fx as number) * scale
+  const ty = h / 2 - (fy as number) * scale
+  d3.select(svgEl)
+    .transition().duration(420)
+    .call(zoomHandler.transform, d3.zoomIdentity.translate(tx, ty).scale(scale))
+}
+
 const getNodeIcon = (node: any) => {
   if (node.type === 'category') return node.icon || 'i-heroicons-folder'
   if (node.type === 'book') return 'i-heroicons-book-open'
@@ -1757,6 +1780,167 @@ const getTypeLabel = (type: string) => {
   }
   const currentDict = dict[langStore.currentLang] || dict.en
   return currentDict[type] || ''
+}
+
+function renderDagEgoGraph(
+  g: d3.Selection<SVGGElement, unknown, null, undefined>,
+  nodes: any[],
+  rawLinks: any[],
+  rootId: string,
+  width: number,
+  height: number,
+) {
+  const getId = (ep: any) => (typeof ep === 'object' && ep !== null) ? ep.id : ep
+  const nodeMap = new Map<string, any>(nodes.map((n: any) => [n.id, n]))
+
+  // Type hierarchy: category → book → article → term
+  const typeRank: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
+  const getTypeRank = (n: any): number => typeRank[n.type] ?? 1
+
+  // Group by type rank
+  const layerGroups = new Map<number, any[]>()
+  for (const n of nodes) {
+    const li = getTypeRank(n)
+    if (!layerGroups.has(li)) layerGroups.set(li, [])
+    layerGroups.get(li)!.push(n)
+  }
+
+  // Fixed spacing between layers; stagger within each layer (labels alternate above/below)
+  const layerSpacing = 180   // px between type rows
+  const stagger = 90         // px alternating Y offset within a row
+  const padX = 70
+
+  // Center DAG vertically: only layers present in this ego subgraph
+  const presentRanks = [...layerGroups.keys()].sort((a, b) => a - b)
+  const totalH = (presentRanks.length - 1) * layerSpacing + stagger
+  const startY = Math.max((height - totalH) / 2, 70)
+
+  presentRanks.forEach((li, rank) => {
+    const layerNodes = layerGroups.get(li)!
+    const baseY = startY + rank * layerSpacing
+    const n = layerNodes.length
+    // Each sub-row (even / odd) spans the full width independently → 2× horizontal spacing
+    const row0Count = Math.ceil(n / 2)   // even indices: 0,2,4…
+    const row1Count = Math.floor(n / 2)  // odd  indices: 1,3,5…
+    layerNodes.forEach((node: any, i: number) => {
+      const isOdd = i % 2 === 1
+      const posInRow = Math.floor(i / 2)
+      const rowCount = isOdd ? row1Count : row0Count
+      node.x = padX + ((posInRow + 1) / (rowCount + 1)) * (width - padX * 2)
+      node.y = baseY + (isOdd ? stagger : 0)
+      node._labelBelow = !isOdd  // even (row 0) → label below, odd (row 1) → label above
+    })
+  })
+
+  // Resolve links to node objects
+  const links = rawLinks
+    .map((l: any) => ({ ...l, source: nodeMap.get(getId(l.source)), target: nodeMap.get(getId(l.target)) }))
+    .filter((l: any) => l.source && l.target)
+
+  // Render edges as straight <line>
+  const dagTypeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
+  const dagLinkColors: Record<string, string> = { book: '#0ea5e9', article: '#6366f1', category: '#ef4444', term: '#10b981' }
+  const dagLinkGrp = g.append('g')
+
+  for (const l of links) {
+    const sLv = dagTypeLevels[l.source.type] ?? 99
+    const tLv = dagTypeLevels[l.target.type] ?? 99
+    const child = sLv > tLv ? l.source : l.target
+    const strokeColor = dagLinkColors[child.type] || '#94a3b8'
+    const strokeW = getLinkBaseWidth(l)
+
+    dagLinkGrp.append('line')
+      .datum(l)
+      .attr('class', 'visual-link')
+      .attr('x1', l.source.x).attr('y1', l.source.y)
+      .attr('x2', l.target.x).attr('y2', l.target.y)
+      .attr('stroke', strokeColor)
+      .attr('stroke-width', strokeW)
+      .attr('stroke-opacity', 0.5)
+      .style('pointer-events', 'none')
+
+    dagLinkGrp.append('line')
+      .attr('x1', l.source.x).attr('y1', l.source.y)
+      .attr('x2', l.target.x).attr('y2', l.target.y)
+      .attr('stroke', 'transparent')
+      .attr('stroke-width', Math.max(strokeW + 2, 3))
+      .style('pointer-events', 'auto')
+      .style('cursor', 'pointer')
+      .on('click', (event: any) => {
+        selectedNode.value = null
+        selectedLink.value = l
+        linkPopupPointerHost.value = clientToPointerHost(event.clientX, event.clientY)
+        linkPopupPanelClosed.value = false
+        event.stopPropagation()
+      })
+  }
+
+  // Render nodes
+  const dagNodeGrp = g.append('g')
+    .selectAll<SVGGElement, any>('.node-group')
+    .data(nodes)
+    .join('g')
+    .attr('class', 'node-group')
+    .attr('transform', (d: any) => `translate(${d.x},${d.y})`)
+    .style('cursor', 'pointer')
+    .on('click', (event: any, d: any) => {
+      selectedNode.value = d
+      selectedLink.value = null
+      nodePopupPointerHost.value = clientToPointerHost(event.clientX, event.clientY)
+      nodePopupPanelClosed.value = false
+      event.stopPropagation()
+    })
+
+  dagNodeGrp.append('circle')
+    .attr('r', (d: any) => nodeGlyphRadius(d) * (d.id === rootId ? 1.7 : 1))
+    .attr('fill', (d: any) => {
+      if (d.type === 'book') return 'url(#grad-book)'
+      if (d.type === 'category') return 'url(#grad-category)'
+      if (d.type === 'article') return 'url(#grad-article)'
+      if (d.type === 'term') return 'url(#grad-term)'
+      return '#94a3b8'
+    })
+    .attr('stroke', 'var(--node-stroke)')
+    .attr('stroke-width', (d: any) => d.id === rootId ? 3 : 2)
+
+  // Focal node: outer solid ring
+  dagNodeGrp.filter((d: any) => d.id === rootId)
+    .append('circle')
+    .attr('r', (d: any) => nodeGlyphRadius(d) * 1.7 + 10)
+    .attr('fill', 'none')
+    .attr('stroke', (d: any) => getNodeColor(d))
+    .attr('stroke-width', 2)
+    .attr('stroke-opacity', 0.45)
+    .style('pointer-events', 'none')
+
+  // Focal node: inner dashed ring
+  dagNodeGrp.filter((d: any) => d.id === rootId)
+    .append('circle')
+    .attr('r', (d: any) => nodeGlyphRadius(d) * 1.7 + 5)
+    .attr('fill', 'none')
+    .attr('stroke', (d: any) => getNodeColor(d))
+    .attr('stroke-width', 2.5)
+    .attr('stroke-opacity', 0.9)
+    .attr('stroke-dasharray', '5,3')
+    .style('pointer-events', 'none')
+
+  // Labels
+  dagNodeGrp.append('text')
+    .attr('class', 'kg-node-label')
+    .attr('dy', (d: any) => {
+      const r = nodeGlyphRadius(d) * (d.id === rootId ? 1.7 : 1)
+      if (d.id === rootId) return -(r + 8)
+      return d._labelBelow ? (r + 14) : -(r + 10)
+    })
+    .attr('text-anchor', 'middle')
+    .text((d: any) => d.title)
+    .attr('font-size', (d: any) => d.id === rootId ? '13px' : d.type === 'category' ? '12px' : '10.5px')
+    .attr('font-weight', (d: any) => d.id === rootId ? '700' : d.type === 'category' ? '600' : '500')
+    .attr('fill', 'var(--gv-text-primary)')
+    .style('pointer-events', 'none')
+    .attr('stroke', 'var(--text-halo)')
+    .attr('stroke-width', 3)
+    .style('paint-order', 'stroke fill')
 }
 
 const initGraph = () => {
@@ -1863,14 +2047,18 @@ const initGraph = () => {
     return nodeIds.has(sourceId) && nodeIds.has(targetId)
   })
 
-  // Ego-graph: restrict to BFS neighbourhood when focus mode is active
+  // Ego-graph: DAG layout — skip force simulation entirely
   if (focusNodeId.value) {
     const ego = getEgoSubgraph(nodes, links, focusNodeId.value, focusDepth.value)
     if (ego.egoNodes.length > 0) {
       nodes = ego.egoNodes
       links = ego.egoLinks
-      nodeIds = new Set(nodes.map((n: any) => n.id))
     }
+    renderDagEgoGraph(g, nodes, links, focusNodeId.value, width, height)
+    applyLOD(graphLiveZoomTransform.k)
+    updateHighlights()
+    nextTick(emitLayoutStable)
+    return
   }
 
   // Горизонтальные кластеры слева направо (как в легенде): красные категории → синие книги → фиолетовые статьи → зелёные термины.
@@ -1895,26 +2083,36 @@ const initGraph = () => {
     return marginPx + (i + 0.5) * (innerW / 4)
   }
 
+  const yBandCenter = (type: string): number => {
+    const bands: Record<string, number> = {
+      category: 0.14,
+      book:     0.37,
+      article:  0.63,
+      term:     0.83,
+    }
+    return (bands[type] ?? 0.5) * height
+  }
+
   for (const d of nodes) {
     const cx = laneCenterX((d as any).type)
     ;(d as any).x = cx + (Math.random() - 0.5) * innerW * 0.07
-    ;(d as any).y = height / 2 + (Math.random() - 0.5) * height * 0.38
+    ;(d as any).y = yBandCenter((d as any).type) + (Math.random() - 0.5) * height * 0.10
   }
 
   simulation = d3.forceSimulation(nodes)
     .velocityDecay(0.53)
     .alphaDecay(0.175)
     .alphaMin(0.028)
-    .force('link', d3.forceLink(links).id((d: any) => (d as any).id).distance(118))
-    .force('charge', d3.forceManyBody().strength(nodes.length > 130 ? -480 : -720))
+    .force('link', d3.forceLink(links).id((d: any) => (d as any).id).distance(150))
+    .force('charge', d3.forceManyBody().strength(nodes.length > 130 ? -620 : -920))
     .force(
       'collide',
       d3.forceCollide<any>()
         .radius((d: any) => nodeCollisionRadius(d))
         .strength(0.9),
     )
-    .force('x', d3.forceX((d: any) => laneCenterX(d.type)).strength(0.22))
-    .force('y', d3.forceY(height / 2).strength(0.075))
+    .force('x', d3.forceX((d: any) => laneCenterX(d.type)).strength(0.28))
+    .force('y', d3.forceY((d: any) => yBandCenter(d.type)).strength(0.32))
 
   simulation.stop()
   const warmupMax = Math.min(88, Math.max(24, Math.floor(nodes.length * 3 + links.length * 2)))
@@ -1922,6 +2120,31 @@ const initGraph = () => {
     if (simulation.alpha() <= simulation.alphaMin())
       break
     simulation.tick()
+  }
+
+  // Pre-compute per-link shape params: bundle offset + deterministic variety
+  {
+    const step = 22
+    const simpleHash = (s: string): number => {
+      let h = 0
+      for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0
+      return h
+    }
+    const bundleMap = new Map<string, any[]>()
+    for (const l of links) {
+      const s = (l.source as any).id as string
+      const t = (l.target as any).id as string
+      const key = [s, t].sort().join('||')
+      if (!bundleMap.has(key)) bundleMap.set(key, [])
+      bundleMap.get(key)!.push(l)
+      l._variety = ((simpleHash(s + t) % 1000) / 500) - 1
+    }
+    for (const bundle of bundleMap.values()) {
+      const n = bundle.length
+      bundle.forEach((l: any, i: number) => {
+        l._bundleOffset = n === 1 ? 0 : (i - (n - 1) / 2) * step
+      })
+    }
   }
 
   const linkBundles = g.append('g')
@@ -1934,8 +2157,9 @@ const initGraph = () => {
           .attr('class', 'kg-graph-link-bundle')
 
         grp
-          .append('line')
+          .append('path')
         .attr('class', 'visual-link')
+        .style('fill', 'none')
         .style('pointer-events', 'none')
         .attr('stroke-opacity', 0.4)
         .attr('stroke-width', (d: any) => getLinkBaseWidth(d))
@@ -1961,8 +2185,9 @@ const initGraph = () => {
           return colors[child.type] || '#94a3b8'
         })
 
-      grp.append('line')
+      grp.append('path')
         .attr('class', 'link-hit')
+        .style('fill', 'none')
         .attr('stroke', 'transparent')
         .attr('stroke-width', (d: any) => linkHitStrokeWidthPx(d))
         .style('pointer-events', 'auto')
@@ -2007,20 +2232,6 @@ const initGraph = () => {
     .attr('stroke', 'var(--node-stroke)')
     .attr('stroke-width', 2)
 
-  // Focus-root ring
-  if (focusNodeId.value) {
-    node.filter((d: any) => d.id === focusNodeId.value)
-      .append('circle')
-      .attr('class', 'kg-focus-ring')
-      .attr('r', (d: any) => nodeGlyphRadius(d) + 6)
-      .attr('fill', 'none')
-      .attr('stroke', (d: any) => getNodeColor(d))
-      .attr('stroke-width', 2)
-      .attr('stroke-opacity', 0.7)
-      .attr('stroke-dasharray', '4,3')
-      .style('pointer-events', 'none')
-  }
-
   // Node labels
   node.append('text')
     .attr('class', 'kg-node-label')
@@ -2041,12 +2252,19 @@ const initGraph = () => {
     .attr('stroke-width', 3)
     .style('paint-order', 'stroke fill')
 
+  const bezierPath = (d: any): string => {
+    const x1 = d.source.x, y1 = d.source.y
+    const x2 = d.target.x, y2 = d.target.y
+    const dx = x2 - x1, dy = y2 - y1
+    const len = Math.sqrt(dx * dx + dy * dy) || 1
+    const nx = -dy / len, ny = dx / len
+    const off = d._bundleOffset ?? 0
+    return `M${x1 + nx * off},${y1 + ny * off} L${x2 + nx * off},${y2 + ny * off}`
+  }
+
   simulation.on('tick', () => {
-    linkBundles.selectAll<SVGLineElement, any>('line')
-      .attr('x1', (d: any) => d.source.x)
-      .attr('y1', (d: any) => d.source.y)
-      .attr('x2', (d: any) => d.target.x)
-      .attr('y2', (d: any) => d.target.y)
+    linkBundles.selectAll<SVGPathElement, any>('path')
+      .attr('d', bezierPath)
 
     node
       .attr('transform', (d: any) => `translate(${d.x},${d.y})`)
@@ -2168,7 +2386,11 @@ watch(activeFilters, () => {
 }, { deep: true })
 
 watch([focusNodeId, focusDepth], () => {
-  nextTick(() => { initGraph(); zoomFit() })
+  nextTick(() => {
+    initGraph()
+    if (focusNodeId.value) zoomToFocusNode()
+    else zoomFit()
+  })
 })
 </script>
 
