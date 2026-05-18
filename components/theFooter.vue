@@ -1,17 +1,21 @@
-<script setup>
-const links = [{
-    label: 'Главная',
-    icon: 'i-heroicons-home',
-    to: '/'
-}, {
-    label: 'Книги Gativus',
-    icon: 'i-heroicons-book-open',
-    to: '/books'
-}, {
-    label: 'О проекте',
-    icon: "i-heroicons-information-circle",
-    to: "/about"
-}];
+<script setup lang="ts">
+import { useLanguageStore } from '~/stores/language'
+
+const langStore = useLanguageStore()
+
+const uiDict = {
+  en: {
+    description: 'From theory of consciousness to physical structure.\nOfficial knowledge base of the Gativus project.',
+  },
+  ru: {
+    description: 'От теории сознания к физическому устройству.\nОфициальная база знаний проекта Gativus.',
+  },
+  zh: {
+    description: '从意识理论到物理结构。\nGativus 项目的官方知识库。',
+  },
+} as const
+
+const t = computed(() => uiDict[langStore.currentLang as keyof typeof uiDict] || uiDict.ru)
 </script>
 
 <template>
@@ -24,10 +28,7 @@ const links = [{
                     <span class="footer-tagline">GTOM · GNET · GATE</span>
                 </div>
             </div>
-            <p class="footer-description">
-                От теории сознания к физическому устройству.<br>
-                Официальная база знаний проекта Gativus.
-            </p>
+            <p class="footer-description" style="white-space: pre-line">{{ t.description }}</p>
             <div class="footer-links">
                 <a href="mailto:info@gativus.com" class="footer-link">
                     <UIcon name="i-heroicons-envelope" class="footer-link-icon" />

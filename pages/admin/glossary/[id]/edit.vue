@@ -53,10 +53,15 @@
             </div>
             <div class="field">
               <label class="field-label">Определение (EN/Default) <span class="required">*</span></label>
-              <UTextarea v-model="form.definition" :rows="4" class="field-textarea" required placeholder="Brief definition in English..." />
+              <div class="def-field-wrap">
+                <div class="def-toolbar">
+                  <button type="button" class="def-toolbar-btn" title="Bold — выделите текст и нажмите" @click="applyBold(enDefRef, 'definition')"><strong>B</strong></button>
+                </div>
+                <textarea ref="enDefRef" v-model="form.definition" rows="4" class="field-textarea field-textarea--def" required placeholder="Brief definition in English..." />
+              </div>
             </div>
           </div>
-          
+
           <div v-else-if="item.key === 'ru'" class="tab-content space-y-5 pt-4">
             <div class="field">
               <label class="field-label">Название (RU)</label>
@@ -68,10 +73,15 @@
             </div>
             <div class="field">
               <label class="field-label">Определение (RU)</label>
-              <UTextarea v-model="form.definition_ru" :rows="4" class="field-textarea" placeholder="Краткое определение на русском..." />
+              <div class="def-field-wrap">
+                <div class="def-toolbar">
+                  <button type="button" class="def-toolbar-btn" title="Bold — выделите текст и нажмите" @click="applyBold(ruDefRef, 'definition_ru')"><strong>B</strong></button>
+                </div>
+                <textarea ref="ruDefRef" v-model="form.definition_ru" rows="4" class="field-textarea field-textarea--def" placeholder="Краткое определение на русском..." />
+              </div>
             </div>
           </div>
-          
+
           <div v-else-if="item.key === 'zh'" class="tab-content space-y-5 pt-4">
             <div class="field">
               <label class="field-label">Название (ZH)</label>
@@ -83,7 +93,12 @@
             </div>
             <div class="field">
               <label class="field-label">Определение (ZH)</label>
-              <UTextarea v-model="form.definition_zh" :rows="4" class="field-textarea" placeholder="简短定义..." />
+              <div class="def-field-wrap">
+                <div class="def-toolbar">
+                  <button type="button" class="def-toolbar-btn" title="Bold — выделите текст и нажмите" @click="applyBold(zhDefRef, 'definition_zh')"><strong>B</strong></button>
+                </div>
+                <textarea ref="zhDefRef" v-model="form.definition_zh" rows="4" class="field-textarea field-textarea--def" placeholder="简短定义..." />
+              </div>
             </div>
           </div>
         </template>
@@ -147,18 +162,28 @@
           Презентации
           <UBadge v-if="form.presentation_path || form.presentation_path_ru || form.presentation_path_zh" color="sky" variant="soft" size="xs" class="rounded-md">Файлы</UBadge>
         </label>
+        <p v-if="!term.term_article_id" class="text-xs text-gray-400 italic">Для загрузки файла сначала создайте статью-раскрытие.</p>
         <div class="space-y-3">
-          <div>
-            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">EN</label>
-            <input v-model="form.presentation_path" class="field-input mt-1" placeholder="/presentations/..." />
-          </div>
-          <div>
-            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">RU</label>
-            <input v-model="form.presentation_path_ru" class="field-input mt-1" placeholder="/presentations/..." />
-          </div>
-          <div>
-            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ZH</label>
-            <input v-model="form.presentation_path_zh" class="field-input mt-1" placeholder="/presentations/..." />
+          <div v-for="loc in (['en', 'ru', 'zh'] as const)" :key="loc" class="pres-locale-block">
+            <span class="pres-locale-label">{{ loc.toUpperCase() }}</span>
+            <input
+              v-model="form[loc === 'en' ? 'presentation_path' : loc === 'ru' ? 'presentation_path_ru' : 'presentation_path_zh']"
+              class="field-input pres-url-input"
+              :placeholder="loc === 'en' ? '/presentations/...' : `URL (${loc.toUpperCase()})`"
+            />
+            <div v-if="form[loc === 'en' ? 'presentation_path' : loc === 'ru' ? 'presentation_path_ru' : 'presentation_path_zh']" class="pres-attached">
+              <span class="pres-filename">{{ (form[loc === 'en' ? 'presentation_path' : loc === 'ru' ? 'presentation_path_ru' : 'presentation_path_zh'] || '').split('/').pop() }}</span>
+            </div>
+            <label
+              v-if="term.term_article_id"
+              class="pres-upload-btn"
+              :class="{ 'pres-upload-btn--loading': presUploadLocale === loc }"
+            >
+              <input type="file" accept=".odp,.pptx,.pdf" class="sr-only" :disabled="!!presUploadLocale" @change="uploadPresentation($event, loc)" />
+              <UIcon v-if="presUploadLocale !== loc" name="i-heroicons-arrow-up-tray" />
+              <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
+              <span>{{ presUploadLocale === loc ? 'Загрузка...' : `Загрузить ${loc.toUpperCase()}` }}</span>
+            </label>
           </div>
         </div>
       </div>
@@ -233,7 +258,7 @@
               <div v-if="form.aliases.length" class="pp-aliases">
                 <span v-for="alias in form.aliases.slice(0, 3)" :key="alias" class="pp-alias-chip">{{ alias }}</span>
               </div>
-              <p v-if="form.definition" class="pp-definition">{{ form.definition }}</p>
+              <p v-if="form.definition" class="pp-definition" v-html="renderBold(form.definition)" />
               <p v-else class="pp-definition pp-definition--empty">(нет определения)</p>
               <div class="pp-footer">
                 <span class="pp-link">Открыть статью →</span>
@@ -279,9 +304,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, nextTick } from 'vue'
 
 const odtFileInput = ref<HTMLInputElement>()
+const enDefRef = ref<HTMLTextAreaElement>()
+const ruDefRef = ref<HTMLTextAreaElement>()
+const zhDefRef = ref<HTMLTextAreaElement>()
 
 interface AdminTerm {
   id: number
@@ -346,12 +374,32 @@ const form = reactive({
 const aliasInput = ref('')
 const submitting = ref(false)
 const odtUploading = ref(false)
+const presUploadLocale = ref<'en' | 'ru' | 'zh' | null>(null)
 const error = ref('')
 const success = ref(false)
 const confirmDeleteArticle = ref(false)
 const showPopupPreview = ref(false)
 
 // 2. Pure functions
+function renderBold(text: string): string {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>')
+}
+
+function applyBold(el: HTMLTextAreaElement | undefined, field: 'definition' | 'definition_ru' | 'definition_zh') {
+  if (!el) return
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  if (start === end) return
+  const text = form[field]
+  form[field] = `${text.slice(0, start)}**${text.slice(start, end)}**${text.slice(end)}`
+  nextTick(() => {
+    el.focus()
+    el.setSelectionRange(start + 2, end + 2)
+  })
+}
+
 function addAlias() {
   const val = aliasInput.value.trim().replace(/,$/, '')
   if (val && !form.aliases.includes(val)) form.aliases.push(val)
@@ -395,6 +443,33 @@ watch(term, (t) => {
 useSeoMeta({ title: computed(() => `Редактировать: ${term.value?.title || '...'} — Admin`) })
 
 // 5. Async actions and handlers
+async function uploadPresentation(event: Event, locale: 'en' | 'ru' | 'zh') {
+  if (!term.value?.article_slug) return
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length) return
+
+  presUploadLocale.value = locale
+  try {
+    const formData = new FormData()
+    formData.append('file', input.files[0])
+    const result = await $fetch<{ presentation_path: string }>(`/api/articles/${term.value.article_slug}/presentation`, {
+      method: 'POST',
+      headers: store.getAuthHeader(),
+      body: formData,
+      query: { locale },
+    })
+    if (locale === 'ru') form.presentation_path_ru = result.presentation_path
+    else if (locale === 'zh') form.presentation_path_zh = result.presentation_path
+    else form.presentation_path = result.presentation_path
+    toast.add({ title: 'Презентация загружена', color: 'green' })
+  } catch (e: any) {
+    toast.add({ title: 'Ошибка загрузки', description: e.data?.statusMessage || e.message, color: 'red' })
+  } finally {
+    presUploadLocale.value = null
+    input.value = ''
+  }
+}
+
 async function handleOdtUpload(event: Event) {
   const input = event.target as HTMLInputElement
   if (!input.files?.length) return
@@ -621,6 +696,136 @@ async function handleSubmit() {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* ─── Presentation upload ─── */
+.pres-locale-block {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pres-locale-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+  min-width: 24px;
+}
+
+.pres-url-input {
+  flex: 1;
+  min-width: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 7px 10px !important;
+}
+
+.pres-attached {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #0ea5e9;
+}
+
+.pres-filename {
+  font-family: monospace;
+  font-size: 11px;
+  color: #0ea5e9;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pres-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, color 0.18s;
+  white-space: nowrap;
+}
+
+.pres-upload-btn:hover {
+  border-color: #0ea5e9;
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.pres-upload-btn--loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.dark .pres-upload-btn {
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #d1d5db;
+}
+
+.dark .pres-upload-btn:hover {
+  border-color: #0ea5e9;
+  background: #082f49;
+  color: #38bdf8;
+}
+
+/* ─── Definition field with toolbar ─── */
+.def-field-wrap {
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.dark .def-field-wrap { border-color: #3f3f46; }
+.def-field-wrap:focus-within {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14,165,233,0.12);
+}
+
+.def-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+.dark .def-toolbar { background: #27272a; border-bottom-color: #3f3f46; }
+
+.def-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.dark .def-toolbar-btn { background: #18181b; border-color: #3f3f46; color: #d1d5db; }
+.def-toolbar-btn:hover { background: #e0f2fe; border-color: #0ea5e9; color: #0ea5e9; }
+.dark .def-toolbar-btn:hover { background: #082f49; border-color: #0ea5e9; color: #38bdf8; }
+
+.field-textarea--def {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 /* ─── Popup preview ─── */

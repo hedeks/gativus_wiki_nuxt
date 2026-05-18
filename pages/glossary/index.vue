@@ -178,6 +178,22 @@ const uiDict: Record<string, any> = {
     resetFilters: 'Сбросить фильтры',
     hasArticle: 'Статья',
   },
+  zh: {
+    heroTitle: '术语表',
+    heroDesc: '系统化的 Gativus 知识体系。',
+    searchPlaceholder: '按术语或定义搜索...',
+    allLetters: '全部',
+    termsList: '术语',
+    filters: '筛选',
+    byLetter: '按字母',
+    categories: '分类',
+    allCategories: '所有分类',
+    loadingError: '加载错误',
+    refreshHint: '请尝试刷新页面。',
+    notFound: '未找到内容',
+    resetFilters: '重置筛选',
+    hasArticle: '文章',
+  },
 }
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 

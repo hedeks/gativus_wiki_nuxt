@@ -8,7 +8,7 @@
       :is-theory="isTheory"
       :quiz-title="term.title"
       :has-presentation="hasPresentation"
-      class="lg:col-span-2 xl:col-span-2 lg:sticky top-[--header-height] xl:justify-self-end xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]"
+      class="lg:col-span-2 xl:col-span-2 lg:sticky top-[--header-height] xl:justify-self-end xl:w-full xl:max-w-[320px] 2xl:max-w-[360px] max-lg:hidden"
     />
 
     <div
@@ -98,12 +98,16 @@
       </div>
 
       <theToc
-        v-if="tocLinks.length && isTheory"
+        v-if="(tocLinks.length || hasPresentation) && isTheory"
         :links="tocLinks"
         :activeID="activeID"
         :title="t.toc"
+        :has-presentation="hasPresentation"
+        :is-theory="isTheory"
+        :presentation-title="t.presentation"
         class="lg:w-auto lg:col-span-2 xl:col-span-2 xl:justify-self-start xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]"
         @updateActiveID="handleTocClick"
+        @changeView="changeView"
       />
     </div>
 

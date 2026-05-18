@@ -1,12 +1,53 @@
 <script setup lang="ts">
+import { useLanguageStore } from '~/stores/language'
+
 const store = userStore()
 const toast = useToast()
+const langStore = useLanguageStore()
+
+const uiDict = {
+  en: {
+    signedInAs: 'Signed in as',
+    notSignedIn: 'Not signed in',
+    guestAccess: 'Guest access',
+    signedOut: 'Signed out!',
+    articles: 'Articles',
+    profile: 'Profile',
+    admin: 'Admin Panel',
+    signOut: 'Sign out',
+    signIn: 'Sign in',
+  },
+  ru: {
+    signedInAs: 'Вошли как',
+    notSignedIn: 'Вы не в системе',
+    guestAccess: 'Гостевой доступ',
+    signedOut: 'Вы вышли из аккаунта!',
+    articles: 'Статьи',
+    profile: 'Профиль',
+    admin: 'Админ-панель',
+    signOut: 'Выйти',
+    signIn: 'Войти',
+  },
+  zh: {
+    signedInAs: '已登录为',
+    notSignedIn: '未登录',
+    guestAccess: '访客访问',
+    signedOut: '已退出账号！',
+    articles: '文章',
+    profile: '个人资料',
+    admin: '管理面板',
+    signOut: '退出',
+    signIn: '登录',
+  },
+} as const
+
+const t = computed(() => uiDict[langStore.currentLang as keyof typeof uiDict] || uiDict.ru)
 
 const signOut = () => {
   if (store.isLoggedIn) {
     store.logout()
     toast.add({
-      title: 'Вы вышли из аккаунта!',
+      title: t.value.signedOut,
       icon: 'i-heroicons-check-circle',
       color: 'sky',
     })
@@ -18,14 +59,14 @@ const signOut = () => {
 
 const linkItems = computed(() => {
   const links: { label: string; icon: string; to: string }[] = [
-    { label: 'Статьи', icon: 'i-heroicons-document-text', to: '/articles' },
+    { label: t.value.articles, icon: 'i-heroicons-document-text', to: '/articles' },
   ]
   if (store.isLoggedIn) {
-    links.push({ label: 'Профиль', icon: 'i-heroicons-user', to: '/profile' })
+    links.push({ label: t.value.profile, icon: 'i-heroicons-user', to: '/profile' })
   }
   if (store.userInfo?.role === 'admin' || store.userInfo?.role === 'editor') {
     links.push({
-      label: 'Админ-панель',
+      label: t.value.admin,
       icon: 'i-heroicons-rectangle-group',
       to: '/admin',
     })
@@ -34,7 +75,7 @@ const linkItems = computed(() => {
 })
 
 const authRow = computed(() => ({
-  label: store.isLoggedIn ? 'Выйти' : 'Войти',
+  label: store.isLoggedIn ? t.value.signOut : t.value.signIn,
   icon: store.isLoggedIn
     ? 'i-heroicons-arrow-left-on-rectangle'
     : 'i-heroicons-arrow-right-on-rectangle',
@@ -83,7 +124,7 @@ function onAuth (close: () => void) {
       <div class="profile-menu-stack">
         <div class="profile-menu-header" role="none">
           <p class="profile-menu-kicker">
-            {{ store.isLoggedIn ? 'Вошли как' : 'Вы не в системе' }}
+            {{ store.isLoggedIn ? t.signedInAs : t.notSignedIn }}
           </p>
           <p
             v-if="store.isLoggedIn"
@@ -92,7 +133,7 @@ function onAuth (close: () => void) {
             {{ store.userInfo?.email }}
           </p>
           <p v-else class="profile-menu-guest">
-            Гостевой доступ
+            {{ t.guestAccess }}
           </p>
         </div>
 

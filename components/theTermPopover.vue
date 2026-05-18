@@ -54,7 +54,7 @@
           </div>
 
           <p v-if="loadError" class="popover-definition popover-definition--error">{{ t.loadError }}</p>
-          <p v-else-if="term.definition" class="popover-definition">{{ term.definition }}</p>
+          <p v-else-if="term.definition" class="popover-definition" v-html="renderBold(term.definition)" />
         </template>
 
         <div class="popover-footer">
@@ -117,6 +117,12 @@ const uiDict: Record<string, { loading: string; openArticle: string; loadError: 
 }
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+
+function renderBold(text: string): string {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>')
+}
 
 /** Координаты клика в системе клиента (viewport) — единственный якорь позиции попапа. */
 const pointerClient = ref<{ x: number, y: number } | null>(null)

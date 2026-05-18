@@ -11,15 +11,20 @@
       <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
       </svg>
-      <span class="text-xs hidden sm:block">Наверх</span>
+      <span class="text-xs hidden sm:block">{{ label }}</span>
     </button>
   </Transition>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useLanguageStore } from '~/stores/language'
 
 const emit = defineEmits(['scrolled'])
+
+const langStore = useLanguageStore()
+const labels: Record<string, string> = { en: 'Top', ru: 'Наверх', zh: '顶部' }
+const label = computed(() => labels[langStore.currentLang] || labels.ru)
 
 const isVisible = ref(false)
 

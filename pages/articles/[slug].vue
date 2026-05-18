@@ -298,6 +298,28 @@ const uiDict: Record<string, any> = {
     download: 'Скачать оригинал',
     backToText: 'Вернуться к тексту',
     dismissSearchHighlight: 'Убрать подсветку поиска'
+  },
+  zh: {
+    library: '图书馆',
+    chapter: '章节',
+    articles: '文章',
+    searchFrom: '搜索',
+    noContent: '未找到内容',
+    presentation: '转到演示文稿',
+    prevChapter: '上一章',
+    nextChapter: '下一章',
+    toc: '目录',
+    chapters: '章节',
+    text: '正文',
+    info: '信息',
+    mobileControls: '键盘与PDF',
+    controls: '控制',
+    next: '下一步',
+    back: '返回',
+    zoom: '缩放',
+    download: '下载原件',
+    backToText: '返回正文',
+    dismissSearchHighlight: '清除搜索高亮'
   }
 }
 

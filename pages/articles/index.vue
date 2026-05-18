@@ -141,6 +141,18 @@ const uiDict: Record<string, any> = {
     resetFilters: 'Сбросить фильтры',
     allArticles: 'Все статьи',
   },
+  zh: {
+    heroTitle: '文章',
+    heroDesc: 'Gativus 的架构、基本原理和方法论。',
+    searchPlaceholder: '按标题或描述搜索...',
+    filters: '筛选',
+    categories: '分类',
+    loadingError: '加载错误',
+    refreshHint: '请尝试刷新页面。',
+    notFound: '未找到内容',
+    resetFilters: '重置筛选',
+    allArticles: '所有文章',
+  },
 }
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 

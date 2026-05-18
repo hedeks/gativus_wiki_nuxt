@@ -41,6 +41,16 @@
                     :activeRootId="activeRootId" :manualState="manualStates[item.id]" @scroll="handleLinkClick"
                     @toggle="handleToggle" />
 
+                <div v-if="!isDesktop && hasPresentation" class="toc-extra toc-extra--presentation px-1 pt-2 pb-1">
+                    <button type="button" class="toc-pres-btn" @click.stop="switchToPresentation">
+                        <svg class="toc-pres-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 4v16M17 4v16M3 8h4m10 0h4M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                        </svg>
+                        {{ presentationTitle }}
+                    </button>
+                </div>
+
                 <div v-if="!isDesktop && hasChapterControls" class="toc-extra toc-extra--chapters px-1 pt-2 pb-1">
                     <p class="toc-extra-title">{{ chaptersTitle }}</p>
                     <nav class="toc-extra-list" :aria-label="chaptersTitle">
@@ -108,7 +118,6 @@ const activeText = computed(() => {
 
 const hasChapterControls = computed(() => Array.isArray(props.chapters) && props.chapters.length > 0)
 
-const isPresentationActive = computed(() => props.hasPresentation && !props.isTheory)
 
 function isCurrentChapter(ch: ChapterNav) {
     const cur = (props.currentArticleSlug || '').trim()
@@ -306,6 +315,53 @@ const customScroll = (id: string) => {
     border-left-color: #38bdf8;
     background: rgb(14 165 233 / 0.2);
     color: #7dd3fc;
+}
+
+.toc-extra--presentation {
+    border-top: 1px solid color-mix(in srgb, var(--gv-border-principal) 55%, transparent);
+}
+
+.toc-pres-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 0;
+    border: none;
+    border-left: 2px solid transparent;
+    background: transparent;
+    color: var(--gv-text-secondary, #64748b);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    text-align: left;
+}
+
+.toc-pres-btn:hover {
+    color: var(--gv-primary, #0ea5e9);
+    border-left-color: var(--gv-primary, #0ea5e9);
+    background: rgb(14 165 233 / 0.06);
+}
+
+.dark .toc-pres-btn {
+    color: rgb(148 163 184 / 1);
+}
+
+.dark .toc-pres-btn:hover {
+    color: #38bdf8;
+    border-left-color: #38bdf8;
+    background: rgb(14 165 233 / 0.1);
+}
+
+.toc-pres-icon {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    opacity: 0.7;
 }
 
 .toc-extra--chapters {

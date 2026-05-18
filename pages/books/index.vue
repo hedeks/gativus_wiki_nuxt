@@ -147,6 +147,20 @@ const uiDict: Record<string, any> = {
     chapters: 'глав',
     allBooks: 'Все книги',
   },
+  zh: {
+    heroTitle: '图书馆',
+    heroDesc: '以互动书籍形式结构化的理论材料合集。',
+    searchPlaceholder: '按标题或描述搜索...',
+    booksList: '图书',
+    filters: '筛选',
+    categories: '分类',
+    loadingError: '加载错误',
+    refreshHint: '请尝试刷新页面。',
+    notFound: '未找到内容',
+    resetFilters: '重置筛选',
+    chapters: '章',
+    allBooks: '所有图书',
+  },
 }
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 
