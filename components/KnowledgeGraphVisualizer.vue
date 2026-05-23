@@ -764,6 +764,8 @@ const isFocusMode = computed(() => focusNodeId.value !== null)
 const focusNodeTitle = computed(() =>
   props.graphData?.nodes?.find((n: any) => n.id === focusNodeId.value)?.title || ''
 )
+/** IDs of nodes currently visible in the ego subgraph; used to limit search scope in ego mode */
+const egoNodeIds = ref<Set<string>>(new Set())
 
 // ─── Level-of-Detail ──────────────────────────────────────────────────────
 const currentLodLevel = ref(3) // 0=cats only · 1=+books · 2=+articles · 3=all
@@ -785,14 +787,30 @@ function applyLOD(k: number) {
   if (level >= 2) visible.add('article')
   if (level >= 3) visible.add('term')
 
+  const selectedId = selectedNode.value?.id
+
+  // Collect neighbor IDs of the selected node so they stay visible too
+  const neighborIds = new Set<string>()
+  if (selectedId && props.graphData?.links) {
+    for (const l of props.graphData.links) {
+      const s = typeof l.source === 'object' ? l.source.id : l.source
+      const t = typeof l.target === 'object' ? l.target.id : l.target
+      if (s === selectedId) neighborIds.add(t)
+      else if (t === selectedId) neighborIds.add(s)
+    }
+  }
+
   const layer = d3.select(svgRef.value)
   layer.selectAll('.node-group')
-    .style('display', (d: any) => visible.has(d.type) ? null : 'none')
+    .style('display', (d: any) =>
+      (visible.has(d.type) || d.id === selectedId || neighborIds.has(d.id)) ? null : 'none'
+    )
   layer.selectAll('.kg-graph-link-bundle')
     .style('display', (l: any) => {
-      const s = (l.source as any).type
-      const t = (l.target as any).type
-      return visible.has(s) && visible.has(t) ? null : 'none'
+      const s = (l.source as any)
+      const t = (l.target as any)
+      if (selectedId && (s.id === selectedId || t.id === selectedId)) return null
+      return visible.has(s.type) && visible.has(t.type) ? null : 'none'
     })
 }
 
@@ -953,8 +971,10 @@ const designSystemEase = (t: number) => {
 }
 
 // Поджим графа / рёбер только пока есть выделение по клику (или строка поиска → выбранный узел)
+// applyLOD перезапускаем тоже — чтобы найденный узел сразу стал виден при любом уровне зума
 watch([selectedNode, selectedLink], () => {
   updateHighlights()
+  applyLOD(graphLiveZoomTransform.k)
 })
 
 watch(() => langStore.currentLang, async () => {
@@ -1308,10 +1328,14 @@ function effectiveSearchQuery(raw: string) {
 }
 
 function rebuildSearchMatchesSorted(query: string) {
-  const matches = props.graphData?.nodes?.filter((n: any) =>
+  let sourceNodes: any[] = props.graphData?.nodes || []
+  if (isFocusMode.value && egoNodeIds.value.size > 0) {
+    sourceNodes = sourceNodes.filter((n: any) => egoNodeIds.value.has(n.id))
+  }
+  const matches = sourceNodes.filter((n: any) =>
     String(n.title ?? '').toLowerCase().includes(query)
     || (n.slug && String(n.slug).toLowerCase() === query),
-  ) || []
+  )
 
   const typeRank = (n: any) => ontologyLevels[n.type as keyof typeof ontologyLevels] ?? 99
   const slugExact = (n: any) => (n.slug && String(n.slug).toLowerCase() === query) ? 0 : 1
@@ -1471,8 +1495,14 @@ const focusOnNode = (nodeData: any) => {
   const width = graphContainer.value.clientWidth
   const height = graphContainer.value.clientHeight
 
-  // Find the existing node object in simulation
-  const target = simulation.nodes().find((n: any) => n.id === nodeData.id)
+  // In ego mode the simulation is not used — find node from rendered SVG data
+  let target: any = null
+  if (isFocusMode.value) {
+    d3.select(svgRef.value).selectAll<SVGGElement, any>('.node-group')
+      .each((d: any) => { if (d.id === nodeData.id) target = d })
+  } else {
+    target = simulation?.nodes().find((n: any) => n.id === nodeData.id)
+  }
   if (!target) return
 
   if (isZooming.value) {
@@ -1696,6 +1726,7 @@ function enterFocusMode(nodeId: string) {
 
 function exitFocusMode() {
   focusNodeId.value = null
+  egoNodeIds.value = new Set()
   selectedNode.value = null
   selectedLink.value = null
 }
@@ -2054,6 +2085,7 @@ const initGraph = () => {
       nodes = ego.egoNodes
       links = ego.egoLinks
     }
+    egoNodeIds.value = new Set(nodes.map((n: any) => n.id))
     renderDagEgoGraph(g, nodes, links, focusNodeId.value, width, height)
     applyLOD(graphLiveZoomTransform.k)
     updateHighlights()
@@ -2244,8 +2276,8 @@ const initGraph = () => {
     })
     .attr('text-anchor', 'middle')
     .text((d: any) => d.title)
-    .attr('font-size', (d: any) => d.type === 'category' ? '12px' : '10.5px')
-    .attr('font-weight', (d: any) => d.type === 'category' ? '600' : '500')
+    .attr('font-size', (d: any) => d.type === 'category' ? '15px' : d.type === 'book' ? '13px' : '10.5px')
+    .attr('font-weight', (d: any) => d.type === 'category' ? '700' : d.type === 'book' ? '600' : '500')
     .attr('fill', 'var(--gv-text-primary)')
     .style('pointer-events', 'none')
     .attr('stroke', 'var(--text-halo)')
