@@ -41,6 +41,10 @@ const excerptEn = ref('')
 const excerptRu = ref('')
 const excerptZh = ref('')
 
+const translationValidEn = ref(true)
+const translationValidRu = ref(false)
+const translationValidZh = ref(false)
+
 // Active Tab
 const activeTab = ref('en')
 
@@ -65,6 +69,9 @@ watch(fullArticle, (article: any) => {
     excerptEn.value = article.excerpt ?? ''
     excerptRu.value = article.excerpt_ru ?? ''
     excerptZh.value = article.excerpt_zh ?? ''
+    translationValidEn.value = article.translation_valid_en !== undefined ? Boolean(article.translation_valid_en) : true
+    translationValidRu.value = Boolean(article.translation_valid_ru)
+    translationValidZh.value = Boolean(article.translation_valid_zh)
     nextTick(() => pushHistory('Загрузка статьи'))
   }
 }, { immediate: true })
@@ -168,6 +175,9 @@ async function save() {
         excerpt: excerptEn.value.trim(),
         excerpt_ru: excerptRu.value.trim(),
         excerpt_zh: excerptZh.value.trim(),
+        translation_valid_en: translationValidEn.value,
+        translation_valid_ru: translationValidRu.value,
+        translation_valid_zh: translationValidZh.value,
       },
     })
 
@@ -851,7 +861,29 @@ async function uploadImage(e: Event) {
     <div class="editor-topbar">
       <div class="editor-topbar-left">
         <h1 class="editor-title">{{ title || 'Без названия' }}</h1>
-        <span class="entity-badge">UNIVERSAL ENTITY</span>
+        <div class="translation-flags">
+          <button
+            type="button"
+            class="lang-flag-btn"
+            :class="translationValidEn ? 'lang-flag--valid' : 'lang-flag--invalid'"
+            :title="translationValidEn ? 'EN: перевод валиден' : 'EN: перевод не валиден'"
+            @click="translationValidEn = !translationValidEn"
+          >EN</button>
+          <button
+            type="button"
+            class="lang-flag-btn"
+            :class="translationValidRu ? 'lang-flag--valid' : 'lang-flag--invalid'"
+            :title="translationValidRu ? 'RU: перевод валиден' : 'RU: перевод не валиден'"
+            @click="translationValidRu = !translationValidRu"
+          >RU</button>
+          <button
+            type="button"
+            class="lang-flag-btn"
+            :class="translationValidZh ? 'lang-flag--valid' : 'lang-flag--invalid'"
+            :title="translationValidZh ? 'ZH: перевод валиден' : 'ZH: перевод не валиден'"
+            @click="translationValidZh = !translationValidZh"
+          >ZH</button>
+        </div>
         <div v-if="fullArticle?.is_term_article" class="term-ref-badge">
           <UIcon name="i-heroicons-book-open" />
           <span>Disclosure for: </span>
@@ -1384,17 +1416,51 @@ async function uploadImage(e: Event) {
   font-weight: 500;
 }
 
-.entity-badge {
+.translation-flags {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
+  gap: 4px;
+}
+
+.lang-flag-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--gv-primary) 32%, var(--gv-border-principal));
-  background: color-mix(in srgb, var(--gv-primary) 12%, transparent);
-  color: var(--gv-primary);
+  border: 1.5px solid transparent;
   font-size: 10px;
-  letter-spacing: 0.08em;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.4;
+}
+
+.lang-flag--valid {
+  border-color: #16a34a;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.dark .lang-flag--valid {
+  border-color: #166534;
+  background: #052e16;
+  color: #4ade80;
+}
+
+.lang-flag--invalid {
+  border-color: #d1d5db;
+  background: transparent;
+  color: #9ca3af;
+}
+
+.dark .lang-flag--invalid {
+  border-color: #3f3f46;
+  color: #6b7280;
+}
+
+.lang-flag-btn:hover {
+  opacity: 0.75;
 }
 .dark .term-ref-badge {
   background: #082f49;

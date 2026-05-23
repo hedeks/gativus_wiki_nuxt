@@ -20,6 +20,8 @@ export default defineEventHandler(async (event) => {
   const search = (query.search as string) || null
   const publishedOnly = query.published_only !== 'false'
   const includeTermArticles = query.include_term_articles === 'true'
+  // translation_filter: 'all' | 'complete' | 'incomplete' | 'missing_ru' | 'missing_zh'
+  const translationFilter = (query.translation_filter as string) || null
 
   // Check if user is editor+
   const auth = event.context.auth
@@ -49,6 +51,15 @@ export default defineEventHandler(async (event) => {
     conditions.push('(a.title LIKE ? COLLATE NOCASE OR a.excerpt LIKE ? COLLATE NOCASE)')
     params.push(`%${search}%`, `%${search}%`)
   }
+  if (translationFilter === 'complete') {
+    conditions.push('(a.translation_valid_en = 1 AND a.translation_valid_ru = 1 AND a.translation_valid_zh = 1)')
+  } else if (translationFilter === 'incomplete') {
+    conditions.push('NOT (a.translation_valid_en = 1 AND a.translation_valid_ru = 1 AND a.translation_valid_zh = 1)')
+  } else if (translationFilter === 'missing_ru') {
+    conditions.push('(a.translation_valid_ru = 0 OR a.translation_valid_ru IS NULL)')
+  } else if (translationFilter === 'missing_zh') {
+    conditions.push('(a.translation_valid_zh = 0 OR a.translation_valid_zh IS NULL)')
+  }
 
   const whereClause = conditions.length > 0
     ? 'WHERE ' + conditions.join(' AND ')
@@ -67,6 +78,9 @@ export default defineEventHandler(async (event) => {
     SELECT 
       a.id, a.slug, a.title, a.excerpt, a.book_id, a.category_id,
       a.sort_order, a.is_published, a.is_term_article, a.created_at, a.updated_at, a.presentation_path,
+      COALESCE(a.translation_valid_en, 1) as translation_valid_en,
+      COALESCE(a.translation_valid_ru, 0) as translation_valid_ru,
+      COALESCE(a.translation_valid_zh, 0) as translation_valid_zh,
       b.title as book_title_en,
       b.title_ru as book_title_ru,
       b.title_zh as book_title_zh,

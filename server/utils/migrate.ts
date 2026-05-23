@@ -223,6 +223,9 @@ export async function runMigrations(db: Database) {
         await ensureColumn('lang_zh', 'TEXT')
         await ensureColumn('excerpt_ru', 'TEXT')
         await ensureColumn('excerpt_zh', 'TEXT')
+        await ensureColumn('translation_valid_en', 'INTEGER DEFAULT 1')
+        await ensureColumn('translation_valid_ru', 'INTEGER DEFAULT 0')
+        await ensureColumn('translation_valid_zh', 'INTEGER DEFAULT 0')
       }
 
       if (table === 'books') {

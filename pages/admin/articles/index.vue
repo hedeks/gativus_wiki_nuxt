@@ -12,6 +12,7 @@ const toast = useToast()
 // Filters
 const { searchQuery, debouncedQuery, isTyping } = useDebounce('', 300)
 const filterBookId = ref<string>('')
+const filterTranslation = ref<string>('')
 const currentPage = ref(1)
 
 // Fetch articles
@@ -21,6 +22,7 @@ const { data: articlesData, refresh, pending } = await useFetch('/api/articles',
     limit: 20,
     search: debouncedQuery.value || undefined,
     book_id: filterBookId.value || undefined,
+    translation_filter: filterTranslation.value || undefined,
     published_only: 'false',
     include_term_articles: 'true',
   })),
@@ -37,7 +39,7 @@ const { data: booksData } = await useFetch('/api/books', {
 })
 const books = computed(() => (booksData.value || []) as any[])
 
-const activeFilterCount = computed(() => (filterBookId.value ? 1 : 0))
+const activeFilterCount = computed(() => (filterBookId.value ? 1 : 0) + (filterTranslation.value ? 1 : 0))
 watch(debouncedQuery, () => {
   currentPage.value = 1
   selectedIds.value = new Set()
@@ -165,6 +167,16 @@ function formatDate(dateStr: string): string {
                 </option>
               </select>
             </div>
+            <div class="filter-group">
+              <span class="filter-group-label">Переводы</span>
+              <select v-model="filterTranslation" class="filter-select gv-admin-filter-select" @change="currentPage = 1">
+                <option value="">Все статьи</option>
+                <option value="complete">Все языки валидны</option>
+                <option value="incomplete">Не все языки валидны</option>
+                <option value="missing_ru">Нет RU</option>
+                <option value="missing_zh">Нет ZH</option>
+              </select>
+            </div>
           </ExpandableFilters>
         </div>
       </div>
@@ -189,7 +201,7 @@ function formatDate(dateStr: string): string {
             </th>
             <th>Название</th>
             <th>Книга</th>
-            <th>Модель</th>
+            <th>Переводы</th>
             <th>Статус</th>
             <th>Обновлено</th>
             <th>Действия</th>
@@ -213,7 +225,11 @@ function formatDate(dateStr: string): string {
               <span v-else class="text-muted">—</span>
             </td>
             <td>
-              <span class="locale-badge">GLOBAL</span>
+              <div class="lang-badges">
+                <span class="lang-badge" :class="article.translation_valid_en ? 'lang-badge--valid' : 'lang-badge--invalid'">EN</span>
+                <span class="lang-badge" :class="article.translation_valid_ru ? 'lang-badge--valid' : 'lang-badge--invalid'">RU</span>
+                <span class="lang-badge" :class="article.translation_valid_zh ? 'lang-badge--valid' : 'lang-badge--invalid'">ZH</span>
+              </div>
             </td>
             <td>
               <span class="status-badge" :class="article.is_published ? 'status--published' : 'status--draft'">
@@ -483,21 +499,43 @@ function formatDate(dateStr: string): string {
   color: #818cf8;
 }
 
-.locale-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 99px;
-  background: #f3f4f6;
-  color: #4b5563;
+.lang-badges {
+  display: flex;
+  gap: 3px;
+}
+
+.lang-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
   font-size: 10px;
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-.dark .locale-badge {
-  background: #27272a;
+.lang-badge--valid {
+  border-color: #16a34a;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.dark .lang-badge--valid {
+  border-color: #166534;
+  background: #052e16;
+  color: #4ade80;
+}
+
+.lang-badge--invalid {
+  border-color: #d1d5db;
+  background: transparent;
   color: #9ca3af;
+}
+
+.dark .lang-badge--invalid {
+  border-color: #3f3f46;
+  color: #52525b;
 }
 
 .status-badge {

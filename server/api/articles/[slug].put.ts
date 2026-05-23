@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' })
   }
 
-  const { title, title_ru, title_zh, slug_ru, slug_zh, html_content, html_content_ru, html_content_zh, book_id, category_id, is_published, sort_order, excerpt, excerpt_ru, excerpt_zh, change_summary, presentation_path, presentation_path_ru, presentation_path_zh } = body
+  const { title, title_ru, title_zh, slug_ru, slug_zh, html_content, html_content_ru, html_content_zh, book_id, category_id, is_published, sort_order, excerpt, excerpt_ru, excerpt_zh, change_summary, presentation_path, presentation_path_ru, presentation_path_zh, translation_valid_en, translation_valid_ru, translation_valid_zh } = body
 
   // Handle slug change
   let newSlug = existing.slug
@@ -78,6 +78,9 @@ export default defineEventHandler(async (event) => {
   if (presentation_path !== undefined) { updates.push('presentation_path = ?'); params.push(presentation_path) }
   if (presentation_path_ru !== undefined) { updates.push('presentation_path_ru = ?'); params.push(presentation_path_ru || null) }
   if (presentation_path_zh !== undefined) { updates.push('presentation_path_zh = ?'); params.push(presentation_path_zh || null) }
+  if (translation_valid_en !== undefined) { updates.push('translation_valid_en = ?'); params.push(translation_valid_en ? 1 : 0) }
+  if (translation_valid_ru !== undefined) { updates.push('translation_valid_ru = ?'); params.push(translation_valid_ru ? 1 : 0) }
+  if (translation_valid_zh !== undefined) { updates.push('translation_valid_zh = ?'); params.push(translation_valid_zh ? 1 : 0) }
 
   updates.push("updated_at = datetime('now')")
 
