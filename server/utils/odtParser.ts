@@ -658,7 +658,8 @@ function convertNode(
       if (style?.italic) result = `<em>${result}</em>`
       if (style?.underline) result = `<u>${result}</u>`
       if (style?.strikethrough) result = `<s>${result}</s>`
-      if (isPreformattedStyle(styleName, styles)) result = `<code>${result}</code>`
+      // Skip inline <code> wrap if content is already a block <pre> — prevents <code><pre>...</pre></code>
+      if (isPreformattedStyle(styleName, styles) && !result.trimStart().startsWith('<pre')) result = `<code>${result}</code>`
 
       return result
     }
