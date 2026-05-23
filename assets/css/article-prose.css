@@ -310,31 +310,38 @@
   object-fit: contain;
   height: auto;
   border-radius: 12px;
-  margin: 3em auto;
+  margin: 2.5em auto;
   display: block;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   cursor: zoom-in;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+  touch-action: manipulation;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
 }
 
-@media (min-width: 1024px) {
-  .article-prose img {
-    /* Large landscape images will naturally take more width due to height/max-width balance */
-    max-width: 100%;
+@media (hover: hover) {
+  /* Hover lift только на устройствах с настоящим hover (не тачскрин) */
+  .article-prose img:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.13);
   }
-}
-
-.article-prose img:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
 }
 
 .dark .article-prose img {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
-.dark .article-prose img:hover {
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+@media (hover: hover) {
+  .dark .article-prose img:hover {
+    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.55);
+  }
+}
+
+@media (max-width: 768px) {
+  .article-prose img {
+    max-height: 60vh;
+    margin: 1.5em auto;
+    border-radius: 8px;
+  }
 }
 
 /* ─── Lightbox ─── */
@@ -342,11 +349,10 @@
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.92);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+  align-items: stretch;
+  justify-content: stretch;
   padding: 0;
   transition: opacity 0.2s ease;
 }
@@ -355,27 +361,45 @@
   position: relative;
   width: 100%;
   height: 100%;
+  overflow: auto;
+  /* Пан пальцами свободно, pinch обрабатываем через JS */
+  touch-action: pan-x pan-y;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: auto;
+  cursor: zoom-in;
+}
+
+.lightbox-content.is-zoomed {
+  align-items: flex-start;
+  justify-content: flex-start;
+  cursor: grab;
+}
+
+.lightbox-content.is-zoomed:active {
+  cursor: grabbing;
 }
 
 .lightbox-image {
-  max-width: 95%;
+  /* Fit-to-screen по умолчанию */
+  max-width: 95vw;
   max-height: 95vh;
+  width: auto;
+  height: auto;
   object-fit: contain;
   border-radius: 4px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: zoom-in;
   user-select: none;
+  -webkit-user-drag: none;
+  flex-shrink: 0;
+  /* Без transition при pinch — иначе лагает */
+  transition: none;
 }
 
 .lightbox-image.is-zoomed {
   max-width: none;
   max-height: none;
-  transform: scale(1.5);
   cursor: zoom-out;
 }
 

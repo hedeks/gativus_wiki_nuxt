@@ -199,9 +199,23 @@
     <!-- Lightbox Overlay -->
     <Transition name="fade">
       <div v-if="isLightboxOpen" class="lightbox-overlay" @click="closeLightbox">
-        <div class="lightbox-content">
-          <img :src="lightboxImage" class="lightbox-image" :class="{ 'is-zoomed': isZoomed }"
-            @click.stop="toggleZoom" />
+        <div
+          ref="lbContentRef"
+          class="lightbox-content"
+          :class="{ 'is-zoomed': lbImgWidth !== null }"
+          @click.stop
+          @touchstart.passive="onLbTouchStart"
+          @touchmove.prevent="onLbTouchMove"
+          @wheel.prevent="onLbWheel"
+        >
+          <img
+            ref="lbImgRef"
+            :src="lightboxImage"
+            class="lightbox-image"
+            :class="{ 'is-zoomed': lbImgWidth !== null }"
+            :style="lbImgWidth ? { width: lbImgWidth + 'px' } : {}"
+            @click="toggleZoom"
+          />
           <GvButton
             type="button"
             unstyled
@@ -554,29 +568,69 @@ const changeView = (name: string) => {
 const isLightboxOpen = ref(false)
 const isZoomed = ref(false)
 const lightboxImage = ref('')
+const lbImgRef = ref<HTMLImageElement | null>(null)
+const lbContentRef = ref<HTMLDivElement | null>(null)
+const lbImgWidth = ref<number | null>(null)
+
+let _lbPinchDist0 = 0
+let _lbPinchWidth0 = 0
+
+function openLightbox(src: string) {
+  lightboxImage.value = src
+  isLightboxOpen.value = true
+  isZoomed.value = false
+  lbImgWidth.value = null
+  document.body.style.overflow = 'hidden'
+}
+
 const handleArticleClick = (e: MouseEvent) => {
   const t = e.target as HTMLElement
-  if (t.tagName === 'IMG') {
-    lightboxImage.value = (t as HTMLImageElement).src
-    isLightboxOpen.value = true
-    isZoomed.value = false
-    document.body.style.overflow = 'hidden'
+  if (t.tagName === 'IMG') openLightbox((t as HTMLImageElement).src)
+}
+
+const toggleZoom = () => {
+  if (lbImgWidth.value !== null) {
+    lbImgWidth.value = null
+  } else {
+    const img = lbImgRef.value
+    const w = Math.max(img?.naturalWidth ?? 0, window.innerWidth * 1.6)
+    lbImgWidth.value = w
+    nextTick(() => {
+      const c = lbContentRef.value
+      if (c && lbImgWidth.value) c.scrollLeft = (lbImgWidth.value - c.clientWidth) / 2
+    })
   }
 }
-const toggleZoom = () => { isZoomed.value = !isZoomed.value }
+
+function onLbTouchStart(e: TouchEvent) {
+  if (e.touches.length !== 2) return
+  _lbPinchDist0 = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY)
+  const img = lbImgRef.value
+  _lbPinchWidth0 = lbImgWidth.value ?? (img?.getBoundingClientRect().width ?? window.innerWidth)
+}
+
+function onLbTouchMove(e: TouchEvent) {
+  if (e.touches.length !== 2) return
+  const dist = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY)
+  lbImgWidth.value = Math.max(window.innerWidth * 0.4, Math.min(_lbPinchWidth0 * (dist / _lbPinchDist0), window.innerWidth * 6))
+}
+
+function onLbWheel(e: WheelEvent) {
+  const img = lbImgRef.value
+  const cur = lbImgWidth.value ?? (img?.getBoundingClientRect().width ?? window.innerWidth * 0.9)
+  const next = Math.max(window.innerWidth * 0.3, Math.min(cur * (e.deltaY > 0 ? 0.87 : 1.15), window.innerWidth * 6))
+  lbImgWidth.value = next < window.innerWidth * 0.98 ? null : next
+}
+
 const closeLightbox = () => {
   isLightboxOpen.value = false
   isZoomed.value = false
+  lbImgWidth.value = null
   document.body.style.overflow = ''
 }
 
 // ─── Term Media ───
-const handleMediaClick = (url: string) => {
-  lightboxImage.value = url
-  isLightboxOpen.value = true
-  isZoomed.value = false
-  document.body.style.overflow = 'hidden'
-}
+const handleMediaClick = (url: string) => openLightbox(url)
 
 // ─── Others ───
 const copied = ref(false)
@@ -681,20 +735,39 @@ onUnmounted(() => {
 
 .lightbox-content {
   position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  touch-action: pan-x pan-y;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-in;
+}
+
+.lightbox-content.is-zoomed {
+  align-items: flex-start;
+  justify-content: flex-start;
+  cursor: grab;
 }
 
 .lightbox-image {
-  max-width: 100%;
-  max-height: 90vh;
+  max-width: 95vw;
+  max-height: 95vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
   border-radius: 8px;
   cursor: zoom-in;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+  -webkit-user-drag: none;
+  flex-shrink: 0;
+  transition: none;
 }
 
 .lightbox-image.is-zoomed {
-  transform: scale(1.5);
+  max-width: none;
+  max-height: none;
   cursor: zoom-out;
 }
 
