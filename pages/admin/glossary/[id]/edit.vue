@@ -22,6 +22,11 @@
         <header class="card-header">
           <span class="card-badge">EDIT</span>
           <h2 class="card-header-title">Редактирование</h2>
+          <div class="translation-flags">
+            <button type="button" class="lang-flag-btn" :class="form.translation_valid_en ? 'lang-flag--valid' : 'lang-flag--invalid'" @click="form.translation_valid_en = !form.translation_valid_en">EN</button>
+            <button type="button" class="lang-flag-btn" :class="form.translation_valid_ru ? 'lang-flag--valid' : 'lang-flag--invalid'" @click="form.translation_valid_ru = !form.translation_valid_ru">RU</button>
+            <button type="button" class="lang-flag-btn" :class="form.translation_valid_zh ? 'lang-flag--valid' : 'lang-flag--invalid'" @click="form.translation_valid_zh = !form.translation_valid_zh">ZH</button>
+          </div>
         </header>
         <div class="card-body">
           <form class="term-form" @submit.prevent="handleSubmit">
@@ -369,6 +374,9 @@ const form = reactive({
   video_url: '',
   category_id: null as number | null,
   change_summary: '',
+  translation_valid_en: true,
+  translation_valid_ru: false,
+  translation_valid_zh: false,
 })
 
 const aliasInput = ref('')
@@ -438,6 +446,9 @@ watch(term, (t) => {
   form.image_url = (t as any).image_url || ''
   form.video_url = (t as any).video_url || ''
   form.category_id = t.category_id || null
+  form.translation_valid_en = (t as any).translation_valid_en !== undefined ? Boolean((t as any).translation_valid_en) : true
+  form.translation_valid_ru = Boolean((t as any).translation_valid_ru)
+  form.translation_valid_zh = Boolean((t as any).translation_valid_zh)
 }, { immediate: true })
 
 useSeoMeta({ title: computed(() => `Редактировать: ${term.value?.title || '...'} — Admin`) })
@@ -531,6 +542,9 @@ async function handleSubmit() {
         video_url: form.video_url || undefined,
         category_id: form.category_id,
         change_summary: form.change_summary || undefined,
+        translation_valid_en: form.translation_valid_en,
+        translation_valid_ru: form.translation_valid_ru,
+        translation_valid_zh: form.translation_valid_zh,
       },
     })
     success.value = true
@@ -668,6 +682,22 @@ async function handleSubmit() {
 .dark .error-banner { background: #450a0a; color: #f87171; }
 
 .not-found { padding: 60px; text-align: center; color: #94a3b8; }
+
+/* ─── Translation flags ─── */
+.translation-flags { display: flex; gap: 6px; margin-left: auto; }
+.lang-flag-btn {
+  padding: 4px 10px; border-radius: 6px; border: 1.5px solid;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+  cursor: pointer; transition: all 0.15s; line-height: 1;
+}
+.lang-flag--valid {
+  background: rgba(34,197,94,0.1); border-color: #22c55e; color: #16a34a;
+}
+.lang-flag--invalid {
+  background: rgba(148,163,184,0.1); border-color: #cbd5e1; color: #94a3b8;
+}
+.dark .lang-flag--valid { background: rgba(34,197,94,0.15); color: #4ade80; }
+.dark .lang-flag--invalid { background: rgba(100,116,139,0.15); border-color: #475569; color: #64748b; }
 
 @media (max-width: 768px) {
   .glossary-form-page {

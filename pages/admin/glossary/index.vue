@@ -75,6 +75,16 @@
                 <option v-for="cat in categories" :key="cat.id" :value="String(cat.id)">{{ cat.title }}</option>
               </select>
             </div>
+            <div class="filter-group">
+              <span class="filter-group-label">Переводы</span>
+              <select v-model="filterTranslation" class="gv-admin-filter-select">
+                <option value="">Все</option>
+                <option value="complete">Полные (EN+RU+ZH)</option>
+                <option value="incomplete">Неполные</option>
+                <option value="missing_ru">Нет RU</option>
+                <option value="missing_zh">Нет ZH</option>
+              </select>
+            </div>
           </ExpandableFilters>
         </div>
       </div>
@@ -108,6 +118,7 @@
               <input type="checkbox" :checked="allSelected" @change="toggleAll" class="gv-checkbox" />
             </th>
             <th>Термин</th>
+            <th>Переводы</th>
             <th>Определение</th>
             <th>Категория</th>
             <th>Статья</th>
@@ -126,6 +137,13 @@
                   {{ term.title }}
                 </NuxtLink>
                 <code class="term-slug">{{ term.slug }}</code>
+              </div>
+            </td>
+            <td>
+              <div class="lang-badges">
+                <span class="lang-badge" :class="term.translation_valid_en ? 'lang-badge--valid' : 'lang-badge--invalid'">EN</span>
+                <span class="lang-badge" :class="term.translation_valid_ru ? 'lang-badge--valid' : 'lang-badge--invalid'">RU</span>
+                <span class="lang-badge" :class="term.translation_valid_zh ? 'lang-badge--valid' : 'lang-badge--invalid'">ZH</span>
               </div>
             </td>
             <td>
@@ -234,6 +252,7 @@ useSeoMeta({ title: 'Глоссарий — Admin — Gativus' })
 
 const { searchQuery, debouncedQuery, isTyping } = useDebounce('', 300)
 const categoryFilter = ref('')
+const filterTranslation = ref('')
 const store = userStore()
 
 // Categories
@@ -246,20 +265,21 @@ const categories = computed(() => {
   if (Array.isArray(categoriesData.value)) return categoriesData.value
   return categoriesData.value?.items || []
 })
-const activeFilterCount = computed(() => (categoryFilter.value ? 1 : 0))
-const filteredTerms = computed(() => {
-  const list = data.value?.items || []
-  if (!categoryFilter.value) return list
-  return list.filter((t: any) => String(t.category_id || '') === categoryFilter.value)
-})
+const activeFilterCount = computed(() => (categoryFilter.value ? 1 : 0) + (filterTranslation.value ? 1 : 0))
+const filteredTerms = computed(() => data.value?.items || [])
 
 const { data, pending, refresh } = await useAsyncData(
   'admin-terms',
   () => $fetch<any>('/api/terms', {
-    params: { search: debouncedQuery.value || undefined, limit: 100 },
+    params: {
+      search: debouncedQuery.value || undefined,
+      category_id: categoryFilter.value || undefined,
+      translation_filter: filterTranslation.value || undefined,
+      limit: 100,
+    },
     headers: store.getAuthHeader()
   }),
-  { watch: [debouncedQuery] }
+  { watch: [debouncedQuery, categoryFilter, filterTranslation] }
 )
 
 // Relink / repair linker HTML
@@ -681,4 +701,19 @@ async function doDelete() {
     padding: 10px 12px;
   }
 }
+
+/* ─── Lang badges ─── */
+.lang-badges { display: flex; gap: 4px; }
+.lang-badge {
+  padding: 2px 7px; border-radius: 5px; border: 1.5px solid;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
+}
+.lang-badge--valid {
+  background: rgba(34,197,94,0.1); border-color: #22c55e; color: #16a34a;
+}
+.lang-badge--invalid {
+  background: rgba(148,163,184,0.1); border-color: #cbd5e1; color: #94a3b8;
+}
+.dark .lang-badge--valid { background: rgba(34,197,94,0.15); color: #4ade80; }
+.dark .lang-badge--invalid { background: rgba(100,116,139,0.15); border-color: #475569; color: #64748b; }
 </style>

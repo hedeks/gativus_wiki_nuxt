@@ -14,9 +14,10 @@ export default defineEventHandler(async (event) => {
   const offset = (page - 1) * limit
 
   const search = (query.search as string) || null
-  const letter = (query.letter as string) || null   // e.g. "A" or "А"
+  const letter = (query.letter as string) || null
   const categoryId = query.category_id ? parseInt(query.category_id as string) : null
   const lang = (query.lang as string) || 'ru'
+  const translationFilter = (query.translation_filter as string) || null
 
   const conditions: string[] = []
   const params: any[] = []
@@ -49,6 +50,15 @@ export default defineEventHandler(async (event) => {
     conditions.push('a.category_id = ?')
     params.push(categoryId)
   }
+  if (translationFilter === 'complete') {
+    conditions.push('(COALESCE(t.translation_valid_en,1)=1 AND COALESCE(t.translation_valid_ru,0)=1 AND COALESCE(t.translation_valid_zh,0)=1)')
+  } else if (translationFilter === 'incomplete') {
+    conditions.push('NOT (COALESCE(t.translation_valid_en,1)=1 AND COALESCE(t.translation_valid_ru,0)=1 AND COALESCE(t.translation_valid_zh,0)=1)')
+  } else if (translationFilter === 'missing_ru') {
+    conditions.push('(COALESCE(t.translation_valid_ru,0)=0)')
+  } else if (translationFilter === 'missing_zh') {
+    conditions.push('(COALESCE(t.translation_valid_zh,0)=0)')
+  }
 
   const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : ''
 
@@ -66,6 +76,9 @@ export default defineEventHandler(async (event) => {
     SELECT
       t.id, t.slug, t.slug_ru, t.slug_zh, t.title, t.title_ru, t.title_zh, t.aliases, t.definition, t.definition_ru, t.definition_zh,
       t.term_article_id, t.created_at, t.updated_at,
+      COALESCE(t.translation_valid_en,1) as translation_valid_en,
+      COALESCE(t.translation_valid_ru,0) as translation_valid_ru,
+      COALESCE(t.translation_valid_zh,0) as translation_valid_zh,
       a.category_id,
       c.title as category_title,
       c.title_ru as category_title_ru,

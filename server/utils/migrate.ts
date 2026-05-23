@@ -266,6 +266,9 @@ export async function runMigrations(db: Database) {
         await ensureColumn('lang', 'TEXT')
         await ensureColumn('lang_ru', 'TEXT')
         await ensureColumn('lang_zh', 'TEXT')
+        await ensureColumn('translation_valid_en', 'INTEGER DEFAULT 1')
+        await ensureColumn('translation_valid_ru', 'INTEGER DEFAULT 0')
+        await ensureColumn('translation_valid_zh', 'INTEGER DEFAULT 0')
       }
     } catch (e) {
       console.warn(`[migrate] Check failed for table ${table}:`, e)

@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Термин не найден' })
   }
 
-  const { title, title_ru, title_zh, definition, definition_ru, definition_zh, slug_ru, slug_zh, aliases, html_content, html_content_ru, html_content_zh, category_id, change_summary, presentation_path, presentation_path_ru, presentation_path_zh, image_url, video_url } = body
+  const { title, title_ru, title_zh, definition, definition_ru, definition_zh, slug_ru, slug_zh, aliases, html_content, html_content_ru, html_content_zh, category_id, change_summary, presentation_path, presentation_path_ru, presentation_path_zh, image_url, video_url, translation_valid_en, translation_valid_ru, translation_valid_zh } = body
 
   const updates: string[] = []
   const params: any[] = []
@@ -186,6 +186,10 @@ export default defineEventHandler(async (event) => {
   if (category_id !== undefined && existing.term_article_id) {
     await db.prepare(`UPDATE articles SET category_id = ? WHERE id = ?`).run(category_id || null, existing.term_article_id)
   }
+
+  if (translation_valid_en !== undefined) { updates.push('translation_valid_en = ?'); params.push(translation_valid_en ? 1 : 0) }
+  if (translation_valid_ru !== undefined) { updates.push('translation_valid_ru = ?'); params.push(translation_valid_ru ? 1 : 0) }
+  if (translation_valid_zh !== undefined) { updates.push('translation_valid_zh = ?'); params.push(translation_valid_zh ? 1 : 0) }
 
   updates.push("updated_at = datetime('now')")
 
