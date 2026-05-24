@@ -123,15 +123,14 @@ onUnmounted(() => {
               class="gv-header__nav-link gv-focusable"
               :class="{ 'gv-header__nav-link--active': isNavActive(item.to) }"
             >
-              <UIcon :name="item.icon" class="gv-header__nav-icon" aria-hidden="true" />
-              <span>{{ item.label }}</span>
+              {{ item.label }}
             </NuxtLink>
           </li>
         </ul>
       </nav>
 
       <div class="gv-header__actions gv-header__actions--desktop">
-        <LanguageSwitcher />
+        <LanguageSwitcher compact />
         <theThemeChanger />
         <theProfileIcon />
       </div>
@@ -336,12 +335,11 @@ onUnmounted(() => {
 .gv-header__nav-link {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  padding: 7px 13px;
   border-radius: var(--gv-radius-control);
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
   color: var(--gv-text-secondary);
   text-decoration: none;
   white-space: nowrap;
@@ -352,31 +350,20 @@ onUnmounted(() => {
 
 @media (min-width: 1280px) {
   .gv-header__nav-link {
-    font-size: 14px;
-    padding: 9px 14px;
+    font-size: 13.5px;
+    padding: 7px 15px;
   }
 }
 
 .gv-header__nav-link:hover {
   color: var(--gv-text-primary);
-  background: color-mix(in srgb, var(--gv-primary) 8%, transparent);
+  background: color-mix(in srgb, var(--gv-primary) 7%, transparent);
 }
 
 .gv-header__nav-link--active {
   color: var(--gv-primary);
-  background: color-mix(in srgb, var(--gv-primary) 14%, transparent);
-}
-
-.gv-header__nav-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  opacity: 0.88;
-}
-
-.gv-header__nav-link--active .gv-header__nav-icon {
-  opacity: 1;
-  color: var(--gv-primary);
+  background: color-mix(in srgb, var(--gv-primary) 12%, transparent);
+  font-weight: 700;
 }
 
 .gv-header__actions {
@@ -573,6 +560,61 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+/* ── Desktop actions: унифицированный ghost-стиль 34px ── */
+
+/* Search trigger */
+.gv-header__actions--desktop :deep(.gv-search__trigger.gv-btn--chromeless) {
+  min-height: 34px !important;
+  padding: 5px 10px !important;
+  border-radius: var(--gv-radius-control) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.gv-header__actions--desktop :deep(.gv-search__trigger.gv-btn--chromeless:hover),
+.gv-header__actions--desktop :deep(.gv-search__trigger.gv-btn--chromeless:focus-visible) {
+  background: color-mix(in srgb, var(--gv-primary) 8%, transparent) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* Language switcher */
+.gv-header__actions--desktop :deep(.gv-lang-select__control) {
+  min-height: 34px;
+  padding: 5px 10px;
+  border-radius: var(--gv-radius-control);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.gv-header__actions--desktop :deep(.gv-lang-select__control:hover) {
+  background: color-mix(in srgb, var(--gv-primary) 8%, transparent);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.gv-header__actions--desktop :deep(.gv-lang-select__control--open) {
+  background: color-mix(in srgb, var(--gv-primary) 12%, transparent);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Theme button (GvButton sm хардкодит 10px — выравниваем) */
+.gv-header__actions--desktop :deep(.gv-btn--sm) {
+  border-radius: var(--gv-radius-control) !important;
+}
+
+/* Profile button (chromeless использует 9999px pill — выравниваем) */
+.gv-header__actions--desktop :deep(.profile-button.gv-btn--chromeless) {
+  min-height: 34px !important;
+  padding: 3px 8px !important;
+  border-radius: var(--gv-radius-control) !important;
 }
 
 .gv-header-drawer-tr-enter-active,

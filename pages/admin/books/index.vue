@@ -80,10 +80,10 @@
             <th class="th-check">
               <input type="checkbox" :checked="allSelected" @change="toggleAll" class="gv-checkbox" />
             </th>
-            <th>ID</th>
-            <th>Обложка</th>
+            <th class="hidden sm:table-cell">ID</th>
+            <th class="hidden sm:table-cell">Обложка</th>
             <th>Заголовок</th>
-            <th>Категории</th>
+            <th class="hidden sm:table-cell">Категории</th>
             <th class="text-center">Глав</th>
             <th>Действия</th>
           </tr>
@@ -93,8 +93,8 @@
             <td class="td-check">
               <input type="checkbox" :checked="selectedIds.has(book.id)" @change="toggleSelect(book.id)" class="gv-checkbox" />
             </td>
-            <td class="text-xs text-gray-500">#{{ book.id }}</td>
-            <td>
+            <td class="hidden sm:table-cell text-xs text-gray-500">#{{ book.id }}</td>
+            <td class="hidden sm:table-cell">
               <div class="book-cover-preview">
                 <img v-if="book.cover_image" :src="book.cover_image" :alt="book.title" />
                 <div v-else class="book-cover-placeholder">
@@ -108,7 +108,7 @@
                 <span class="book-slug">/{{ book.slug }}</span>
               </div>
             </td>
-            <td>
+            <td class="hidden sm:table-cell">
               <div class="category-tags">
                 <span v-for="catId in (book.category_ids || [])" :key="catId" class="cat-tag">
                   {{ getCategoryTitle(catId) }}
@@ -506,4 +506,6 @@ async function handleDelete() {
     padding: 10px 12px;
   }
 }
+
+
 </style>

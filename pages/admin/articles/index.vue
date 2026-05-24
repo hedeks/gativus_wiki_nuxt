@@ -193,17 +193,17 @@ function formatDate(dateStr: string): string {
           <GvButton color="gray" variant="ghost" size="sm" @click="selectedIds = new Set()">Снять выбор</GvButton>
           <GvButton color="red" variant="solid" size="sm" icon="i-heroicons-trash" :loading="isBulkDeleting" @click="bulkDelete">Удалить выбранные</GvButton>
         </div>
-        <table class="admin-table min-w-[760px]">
+        <table class="admin-table">
         <thead>
           <tr>
             <th class="th-check">
               <input type="checkbox" :checked="allSelected" @change="toggleAll" class="gv-checkbox" />
             </th>
             <th>Название</th>
-            <th>Книга</th>
+            <th class="hidden sm:table-cell">Книга</th>
             <th>Переводы</th>
-            <th>Статус</th>
-            <th>Обновлено</th>
+            <th class="hidden sm:table-cell">Статус</th>
+            <th class="hidden sm:table-cell">Обновлено</th>
             <th>Действия</th>
           </tr>
         </thead>
@@ -220,7 +220,7 @@ function formatDate(dateStr: string): string {
                 <span class="article-slug">/articles/{{ article.slug }}</span>
               </div>
             </td>
-            <td>
+            <td class="hidden sm:table-cell">
               <NuxtLink v-if="article.book_title && article.book_id" :to="`/admin/books/${article.book_id}/edit`" class="book-badge">{{ article.book_title }}</NuxtLink>
               <span v-else class="text-muted">—</span>
             </td>
@@ -231,7 +231,7 @@ function formatDate(dateStr: string): string {
                 <span class="lang-badge" :class="article.translation_valid_zh ? 'lang-badge--valid' : 'lang-badge--invalid'">ZH</span>
               </div>
             </td>
-            <td>
+            <td class="hidden sm:table-cell">
               <span class="status-badge" :class="article.is_published ? 'status--published' : 'status--draft'">
                 {{ article.is_published ? 'Опубликовано' : 'Черновик' }}
               </span>
@@ -239,7 +239,7 @@ function formatDate(dateStr: string): string {
               <UIcon v-if="article.presentation_path || article.presentation_path_ru || article.presentation_path_zh" name="i-heroicons-presentation-chart-bar" class="pres-indicator"
                 title="Есть презентация" />
             </td>
-            <td class="text-muted">{{ formatDate(article.updated_at) }}</td>
+            <td class="hidden sm:table-cell text-muted">{{ formatDate(article.updated_at) }}</td>
             <td>
               <div class="actions-cell">
                 <GvButton
@@ -343,6 +343,7 @@ function formatDate(dateStr: string): string {
 /* Bulk select */
 .bulk-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 10px 20px;
@@ -764,4 +765,6 @@ function formatDate(dateStr: string): string {
     font-size: 13px;
   }
 }
+
+
 </style>

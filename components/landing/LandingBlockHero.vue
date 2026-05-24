@@ -57,7 +57,7 @@ function labelCta(i: { label_en: string; label_ru?: string; label_zh?: string })
         <p v-if="block.kicker" class="home-eyebrow">
           {{ block.kicker }}
         </p>
-        <h1 v-if="block.title" class="home-title">
+        <h1 v-if="block.title" class="home-title gv-hero-gradient">
           {{ block.title }}
         </h1>
         <p v-if="block.subtitle" class="home-tagline">
@@ -129,18 +129,15 @@ function labelCta(i: { label_en: string; label_ru?: string; label_zh?: string })
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: clamp(2.5rem, 8vw, 5.5rem);
-  background: 
-    radial-gradient(circle at top right, color-mix(in srgb, var(--gv-primary) 8%, transparent) 0%, transparent 50%),
-    radial-gradient(circle at 10% 90%, color-mix(in srgb, var(--gv-primary) 4%, transparent) 0%, transparent 40%),
-    linear-gradient(165deg, var(--gv-surface-card) 0%, color-mix(in srgb, var(--gv-surface-card) 96%, var(--gv-primary)) 100%);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
+  padding: clamp(2.5rem, 8vw, 5rem);
+  background:
+    radial-gradient(ellipse at top right, color-mix(in srgb, var(--gv-primary) 7%, transparent) 0%, transparent 55%),
+    var(--gv-surface-card);
   border: 1px solid var(--gv-border-subtle);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: var(--gv-shadow-md);
   border-radius: var(--gv-radius-container);
   overflow: hidden;
-  min-height: clamp(400px, 70vh, 850px);
+  min-height: clamp(380px, 62vh, 740px);
   justify-content: center;
 }
 
@@ -228,16 +225,7 @@ function labelCta(i: { label_en: string; label_ru?: string; label_zh?: string })
   letter-spacing: 0.14em;
   text-transform: uppercase;
   line-height: 1.05;
-  background: linear-gradient(135deg, var(--gv-text-primary) 0%, color-mix(in srgb, var(--gv-primary) 40%, var(--gv-text-primary)) 50%, var(--gv-text-primary) 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: shine 10s linear infinite;
-}
-
-@keyframes shine {
-  to { background-position: 200% center; }
+  /* gradient and animation come from global .gv-hero-gradient */
 }
 
 .home-tagline {

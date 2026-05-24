@@ -281,18 +281,18 @@ async function deleteUser(user: AdminUserPublic) {
             <GvButton color="gray" variant="ghost" size="sm" @click="selectedIds = new Set()">Снять выбор</GvButton>
             <GvButton color="red" variant="solid" size="sm" icon="i-heroicons-trash" :loading="isBulkDeleting" @click="bulkDelete">Удалить выбранных</GvButton>
           </div>
-          <table class="users-table min-w-[720px]">
+          <table class="users-table">
           <thead>
             <tr>
               <th v-if="isAdmin" class="th-check">
                 <input type="checkbox" :checked="allSelected" @change="toggleAll" class="gv-checkbox" />
               </th>
-              <th>ID</th>
+              <th class="hidden sm:table-cell">ID</th>
               <th>Логин</th>
-              <th>Email</th>
+              <th class="hidden sm:table-cell">Email</th>
               <th>Роль</th>
-              <th>Создан</th>
-              <th>Визит</th>
+              <th class="hidden sm:table-cell">Создан</th>
+              <th class="hidden sm:table-cell">Визит</th>
               <th v-if="isAdmin" class="col-save">Действия</th>
             </tr>
           </thead>
@@ -307,9 +307,9 @@ async function deleteUser(user: AdminUserPublic) {
                   class="gv-checkbox"
                 />
               </td>
-              <td class="td-num">{{ u.id }}</td>
+              <td class="td-num hidden sm:table-cell">{{ u.id }}</td>
               <td>{{ u.login }}</td>
-              <td class="td-email">{{ u.email }}</td>
+              <td class="td-email hidden sm:table-cell">{{ u.email }}</td>
               <td>
                 <template v-if="isAdmin">
                   <select
@@ -325,8 +325,8 @@ async function deleteUser(user: AdminUserPublic) {
                   <UBadge color="gray" variant="soft">{{ roleLabel[u.role] }}</UBadge>
                 </template>
               </td>
-              <td class="td-muted">{{ formatDt(u.created_at) }}</td>
-              <td class="td-muted">{{ formatDt(u.last_visited) }}</td>
+              <td class="td-muted hidden sm:table-cell">{{ formatDt(u.created_at) }}</td>
+              <td class="td-muted hidden sm:table-cell">{{ formatDt(u.last_visited) }}</td>
               <td v-if="isAdmin" class="col-save">
                 <div class="flex flex-wrap items-center gap-2 justify-end">
                   <GvButton
@@ -365,6 +365,7 @@ async function deleteUser(user: AdminUserPublic) {
 <style scoped>
 .bulk-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 10px 20px;
@@ -508,4 +509,6 @@ async function deleteUser(user: AdminUserPublic) {
   width: 1%;
   white-space: nowrap;
 }
+
+
 </style>

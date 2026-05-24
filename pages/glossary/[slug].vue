@@ -22,10 +22,11 @@
 
         <!-- Header Section -->
         <div class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800">
-          <TheBreadcrumbs :items="[
+          <TheBreadcrumbs :items="([
             { label: t.glossary, to: '/glossary' },
+            term.category_title ? { label: term.category_title } : null,
             { label: term.title }
-          ]" />
+          ] as any[]).filter(Boolean)" />
 
           <h1
             class="text-3xl lg:text-4xl mb-0 font-bold text-[#233a4d] dark:text-gray-100 uppercase tracking-widest leading-tight m-0">
@@ -80,10 +81,11 @@
 
         <!-- Actions -->
         <div class="mt-12 pt-8 border-t border-gray-100 dark:border-zinc-800 flex justify-between gap-4 not-prose term-footer-actions">
-          <NuxtLink to="/glossary"
-            class="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-sky-600 transition-colors">
+          <button
+            class="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-sky-600 transition-colors"
+            @click="router.back()">
             <UIcon name="i-heroicons-arrow-left" /> {{ t.back }}
-          </NuxtLink>
+          </button>
           <GvButton
             type="button"
             unstyled
@@ -240,7 +242,7 @@
   <div v-else class="text-center py-24">
     <UIcon name="i-heroicons-exclamation-triangle" class="text-5xl text-rose-500 mb-4" />
     <h2 class="text-xl font-bold">{{ t.notFound }}</h2>
-    <NuxtLink to="/glossary" class="mt-4 inline-block text-sky-600 font-bold">{{ t.back }}</NuxtLink>
+    <button class="mt-4 inline-block text-sky-600 font-bold" @click="router.back()">{{ t.back }}</button>
   </div>
 </template>
 
@@ -248,14 +250,16 @@
 import { onUnmounted, ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useLanguageStore } from '~/stores/language'
 import { wrapArticleTables } from '~/utils/wrapArticleTables'
+import { renderInlineMarkup } from '~/utils/renderInlineMarkup'
 
 const langStore = useLanguageStore()
 const route = useRoute()
+const router = useRouter()
 const slug = route.params.slug as string
 
 const uiDict: Record<string, any> = {
   en: {
-    back: 'Back to Glossary',
+    back: 'Back',
     share: 'Share',
     copied: 'Link copied',
     presentation: 'Go to Presentation',
@@ -270,9 +274,11 @@ const uiDict: Record<string, any> = {
     backPres: 'Back',
     zoom: 'Zoom',
     download: 'Download Original',
+    seoFallback: 'Term — Gativus',
+    errorMessage: 'Term not found',
   },
   ru: {
-    back: 'Назад в глоссарий',
+    back: 'Назад',
     share: 'Поделиться',
     copied: 'Ссылка скопирована',
     presentation: 'Перейти к презентации',
@@ -287,9 +293,11 @@ const uiDict: Record<string, any> = {
     backPres: 'Назад',
     zoom: 'Масштаб',
     download: 'Скачать оригинал',
+    seoFallback: 'Термин — Gativus',
+    errorMessage: 'Термин не найден',
   },
   zh: {
-    back: '返回词汇表',
+    back: '返回',
     share: '分享',
     copied: '链接已复制',
     presentation: '打开演示',
@@ -304,6 +312,8 @@ const uiDict: Record<string, any> = {
     backPres: '返回',
     zoom: '缩放',
     download: '下载原文件',
+    seoFallback: '术语 — Gativus',
+    errorMessage: '未找到术语',
   },
 }
 
@@ -319,7 +329,8 @@ const isTheory = ref(true)
 const activeID = ref('')
 const hasPresentation = computed(() => !!term.value?.presentation_path)
 const contentHtml = computed(() => {
-  const raw = term.value?.article_html || term.value?.definition || ''
+  const raw = term.value?.article_html
+    || renderInlineMarkup(term.value?.definition || '')
   return typeof raw === 'string' ? wrapArticleTables(raw) : ''
 })
 
@@ -349,15 +360,17 @@ termData.value = initialData
 pending.value = false
 
 if (error.value && !termData.value) {
+  const lang = langStore.currentLang
+  const errMsg = lang === 'zh' ? '未找到术语' : lang === 'en' ? 'Term not found' : 'Термин не найден'
   throw createError({
     statusCode: error.value.statusCode || 404,
-    statusMessage: 'Термин не найден',
+    statusMessage: errMsg,
     fatal: true,
   })
 }
 
 useSeoMeta({
-  title: computed(() => term.value?.title ? `${term.value.title} — Gativus` : 'Термин — Gativus'),
+  title: computed(() => term.value?.title ? `${term.value.title} — Gativus` : t.value.seoFallback),
   ogTitle: computed(() => term.value?.title),
   description: computed(() => term.value?.definition || ''),
   ogDescription: computed(() => term.value?.definition || ''),

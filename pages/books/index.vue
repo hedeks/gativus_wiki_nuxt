@@ -80,18 +80,19 @@
           </div>
         </template>
 
-        <KnowledgeListTransition class="cards-list">
-          <ListItemCard
+        <KnowledgeListTransition class="books-grid">
+          <BookCard
             v-for="book in paginatedBooks"
             :key="book.id"
-            variant="book"
-            category-link-kind="virtual"
             :to="`/books/${book.slug}`"
-            icon="i-heroicons-book-open"
             :title="book.title"
-            :description="book.description"
+            :cover-image="book.cover_image || undefined"
+            :description-html="renderInlineMarkup(book.description || '')"
             :badges="bookBadges(book)"
-            :index="`${book.article_count || 0} ${t.chapters}`"
+            :chapters="book.article_count || 0"
+            :chapters-label="t.chapters"
+            :preview-label="t.previewLabel"
+            @preview="previewBook = book"
           />
         </KnowledgeListTransition>
       </BaseStateWrapper>
@@ -104,6 +105,52 @@
         :page-size="BOOKS_PAGE_SIZE"
       />
     </div>
+
+    <!-- Book preview modal — inside layout so page stays single-root -->
+    <UModal v-model="previewOpen" :ui="{ width: 'sm:max-w-lg' }">
+    <div v-if="previewBook" class="book-preview-modal">
+      <div class="preview-header">
+        <div class="preview-cover">
+          <img v-if="previewBook.cover_image" :src="previewBook.cover_image" :alt="previewBook.title" class="preview-cover-img" />
+          <div v-else class="preview-cover-placeholder">
+            <UIcon name="i-heroicons-book-open" class="w-10 h-10" />
+          </div>
+        </div>
+        <div class="preview-header-info">
+          <div class="preview-badges">
+            <span
+              v-for="badge in bookBadges(previewBook)"
+              :key="badge.label"
+              class="preview-badge"
+              :class="badge.class"
+              :style="badge.style"
+            >{{ badge.label }}</span>
+          </div>
+          <h2 class="preview-title">{{ previewBook.title }}</h2>
+          <p class="preview-chapters">{{ previewBook.article_count || 0 }} {{ t.chapters }}</p>
+        </div>
+      </div>
+
+      <div v-if="previewBook.description" class="preview-description">
+        <p v-html="renderInlineMarkup(previewBook.description)" />
+      </div>
+
+      <div class="preview-actions">
+        <GvButton
+          :to="`/books/${previewBook.slug}`"
+          color="sky"
+          variant="solid"
+          icon="i-heroicons-book-open"
+          @click="previewBook = null"
+        >
+          {{ t.openBook }}
+        </GvButton>
+        <GvButton color="gray" variant="ghost" @click="previewBook = null">
+          {{ t.close }}
+        </GvButton>
+      </div>
+    </div>
+    </UModal>
   </KnowledgeIndexLayout>
 </template>
 
@@ -112,6 +159,7 @@ import { useLanguageStore } from '~/stores/language'
 import { useDebounce } from '~/composables/useDebounce'
 import { filterBySearch, slicePage, totalPagesFor } from '~/composables/useSearch'
 import type { CardBadge } from '~/components/common/ListItemCard.vue'
+import { renderInlineMarkup } from '~/utils/renderInlineMarkup'
 
 const route = useRoute()
 const langStore = useLanguageStore()
@@ -131,6 +179,9 @@ const uiDict: Record<string, any> = {
     resetFilters: 'Reset filters',
     chapters: 'chapters',
     allBooks: 'All Books',
+    previewLabel: 'Quick preview',
+    openBook: 'Open book',
+    close: 'Close',
   },
   ru: {
     heroTitle: 'БИБЛИОТЕКА',
@@ -146,6 +197,9 @@ const uiDict: Record<string, any> = {
     resetFilters: 'Сбросить фильтры',
     chapters: 'глав',
     allBooks: 'Все книги',
+    previewLabel: 'Быстрый просмотр',
+    openBook: 'Открыть книгу',
+    close: 'Закрыть',
   },
   zh: {
     heroTitle: '图书馆',
@@ -160,11 +214,20 @@ const uiDict: Record<string, any> = {
     resetFilters: '重置筛选',
     chapters: '章',
     allBooks: '所有图书',
+    previewLabel: '快速预览',
+    openBook: '打开书籍',
+    close: '关闭',
   },
 }
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 
 const BOOKS_PAGE_SIZE = 12
+
+const previewBook = ref<any>(null)
+const previewOpen = computed({
+  get: () => previewBook.value !== null,
+  set: (v) => { if (!v) previewBook.value = null },
+})
 
 const page = ref(parseInt(route.query.page as string) || 1)
 
@@ -257,3 +320,160 @@ watch([page, searchQuery, activeCategory], () => {
 
 useMainNavSeo('library')
 </script>
+
+<style scoped>
+.books-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
+@media (max-width: 860px) {
+  .books-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Book preview modal */
+.book-preview-modal {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.preview-header {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.preview-cover {
+  flex-shrink: 0;
+  width: 110px;
+  height: 154px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f0f9ff;
+  box-shadow: 3px 4px 14px rgba(0, 0, 0, 0.14), inset -1px 0 0 rgba(0, 0, 0, 0.06);
+}
+
+.dark .preview-cover {
+  background: rgba(14, 165, 233, 0.08);
+  box-shadow: 3px 4px 14px rgba(0, 0, 0, 0.4), inset -1px 0 0 rgba(0, 0, 0, 0.2);
+}
+
+.preview-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.preview-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0ea5e9;
+  opacity: 0.6;
+}
+
+.preview-header-info {
+  flex: 1;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.preview-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.preview-badge {
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.35px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 5px;
+  color: #0ea5e9;
+  background: #f0f9ff;
+}
+
+.dark .preview-badge {
+  background: rgba(14, 165, 233, 0.1);
+  filter: brightness(1.1);
+}
+
+.preview-badge.category-badge {
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+}
+
+.preview-badge.ontology-category {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(254, 242, 242, 0.85);
+}
+
+.dark .preview-badge.ontology-category {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border-color: rgba(252, 165, 165, 0.3);
+}
+
+.preview-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 8px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.dark .preview-title { color: #e5e5e5; }
+
+.preview-chapters {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  margin: 0;
+}
+
+.dark .preview-chapters { color: #71717a; }
+
+.preview-description {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #374151;
+  border-top: 1px solid var(--gv-border-subtle, #f4f4f5);
+  padding-top: 16px;
+}
+
+.dark .preview-description {
+  color: #d1d5db;
+  border-top-color: #2a2a2e;
+}
+
+.preview-description :deep(strong) { font-weight: 700; }
+.preview-description :deep(em) { font-style: italic; }
+
+.preview-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .book-preview-modal { padding: 16px; gap: 16px; }
+  .preview-cover { width: 80px; height: 112px; }
+  .preview-title { font-size: 15px; }
+}
+</style>

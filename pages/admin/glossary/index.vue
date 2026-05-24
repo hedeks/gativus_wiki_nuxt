@@ -111,7 +111,7 @@
           <GvButton color="gray" variant="ghost" size="sm" @click="selectedIds = new Set()">Снять выбор</GvButton>
           <GvButton color="red" variant="solid" size="sm" icon="i-heroicons-trash" :loading="isBulkDeleting" @click="bulkDelete">Удалить выбранные</GvButton>
         </div>
-        <table class="admin-table min-w-[760px]">
+        <table class="admin-table">
         <thead>
           <tr>
             <th class="th-check">
@@ -119,10 +119,10 @@
             </th>
             <th>Термин</th>
             <th>Переводы</th>
-            <th>Определение</th>
-            <th>Категория</th>
-            <th>Статья</th>
-            <th>Синонимы</th>
+            <th class="hidden sm:table-cell">Определение</th>
+            <th class="hidden sm:table-cell">Категория</th>
+            <th class="hidden sm:table-cell">Статья</th>
+            <th class="hidden sm:table-cell">Синонимы</th>
             <th>Действия</th>
           </tr>
         </thead>
@@ -146,22 +146,22 @@
                 <span class="lang-badge" :class="term.translation_valid_zh ? 'lang-badge--valid' : 'lang-badge--invalid'">ZH</span>
               </div>
             </td>
-            <td>
+            <td class="hidden sm:table-cell">
               <p class="definition-preview">{{ term.definition }}</p>
             </td>
-            <td>
+            <td class="hidden sm:table-cell">
               <span v-if="term.category_title" class="category-chip">
                 {{ term.category_title }}
               </span>
               <span v-else class="no-category">—</span>
             </td>
-            <td>
+            <td class="hidden sm:table-cell">
               <div class="flex flex-col gap-1 items-start">
                 <UBadge v-if="term.has_article" color="green" variant="soft" size="xs" icon="i-heroicons-check">
                   Есть
                 </UBadge>
                 <UBadge v-else color="gray" variant="soft" size="xs">Нет</UBadge>
-                
+
                 <NuxtLink
                   v-if="term.term_article_id"
                   :to="`/admin/articles/${term.term_article_id}/edit`"
@@ -180,7 +180,7 @@
                 </NuxtLink>
               </div>
             </td>
-            <td>
+            <td class="hidden sm:table-cell">
               <div class="aliases-list" v-if="term.aliases?.length">
                 <span v-for="a in term.aliases.slice(0, 2)" :key="a" class="alias-pill">{{ a }}</span>
                 <span v-if="term.aliases.length > 2" class="alias-more">+{{ term.aliases.length - 2 }}</span>
@@ -390,6 +390,7 @@ async function doDelete() {
 <style scoped>
 .bulk-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 10px 20px;
