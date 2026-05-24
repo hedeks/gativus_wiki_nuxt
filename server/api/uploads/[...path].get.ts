@@ -6,7 +6,7 @@
 
 import { createReadStream, existsSync, statSync } from 'fs'
 import { join, extname } from 'path'
-import { sendStream, setResponseHeader } from 'h3'
+import { sendStream, setResponseHeader, getRequestHeader } from 'h3'
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -42,9 +42,33 @@ export default defineEventHandler(async (event) => {
 
   const ext = extname(filePath).toLowerCase()
   const mimeType = MIME_TYPES[ext] || 'application/octet-stream'
+  const isPdf = ext === '.pdf'
+  const fileSize = stat.size
 
   setResponseHeader(event, 'Content-Type', mimeType)
-  setResponseHeader(event, 'Content-Length', stat.size.toString())
+  setResponseHeader(event, 'Accept-Ranges', 'bytes')
+  if (isPdf) {
+    setResponseHeader(event, 'Content-Disposition', 'inline')
+  }
+
+  // Handle byte-range requests (required by PDF.js and iOS for streaming)
+  const rangeHeader = getRequestHeader(event, 'range')
+  if (rangeHeader) {
+    const match = rangeHeader.match(/bytes=(\d+)-(\d*)/)
+    if (match) {
+      const start = parseInt(match[1], 10)
+      const end = match[2] ? parseInt(match[2], 10) : fileSize - 1
+      const chunkSize = end - start + 1
+
+      setResponseHeader(event, 'Content-Range', `bytes ${start}-${end}/${fileSize}`)
+      setResponseHeader(event, 'Content-Length', chunkSize.toString())
+      event.node.res.statusCode = 206
+
+      return sendStream(event, createReadStream(filePath, { start, end }))
+    }
+  }
+
+  setResponseHeader(event, 'Content-Length', fileSize.toString())
   setResponseHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
 
   return sendStream(event, createReadStream(filePath))

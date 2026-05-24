@@ -304,8 +304,8 @@
 
 /* ─── Images ─── */
 .article-prose img {
-  max-width: 100%;
-  width: auto;
+  max-width: 100% !important;
+  width: auto !important;
   max-height: 75vh;
   object-fit: contain;
   height: auto;
@@ -338,7 +338,9 @@
 
 @media (max-width: 768px) {
   .article-prose img {
-    max-height: 60vh;
+    max-width: 100% !important;
+    width: auto !important;
+    max-height: 60vh !important;
     margin: 1.5em auto;
     border-radius: 8px;
   }

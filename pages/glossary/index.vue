@@ -119,7 +119,7 @@
             :to="`/glossary/${term.slug}`"
             :icon="term.has_article ? 'i-heroicons-document-text' : 'i-heroicons-bookmark'"
             :title="term.title"
-            :description="term.definition"
+            :description-html="renderInlineMarkup(term.definition)"
             :badges="termBadges(term)"
           />
         </KnowledgeListTransition>
@@ -138,6 +138,7 @@
 
 <script setup lang="ts">
 import { useLanguageStore } from '~/stores/language'
+import { renderInlineMarkup } from '~/utils/renderInlineMarkup'
 import { useDebounce } from '~/composables/useDebounce'
 import { filterBySearch, countActiveFilters, slicePage, totalPagesFor } from '~/composables/useSearch'
 import type { CardBadge } from '~/components/common/ListItemCard.vue'

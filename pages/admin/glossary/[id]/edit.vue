@@ -61,6 +61,7 @@
               <div class="def-field-wrap">
                 <div class="def-toolbar">
                   <button type="button" class="def-toolbar-btn" title="Bold — выделите текст и нажмите" @click="applyBold(enDefRef, 'definition')"><strong>B</strong></button>
+                  <button type="button" class="def-toolbar-btn" title="Italic — выделите текст и нажмите" @click="applyItalic(enDefRef, 'definition')"><em>I</em></button>
                 </div>
                 <textarea ref="enDefRef" v-model="form.definition" rows="4" class="field-textarea field-textarea--def" required placeholder="Brief definition in English..." />
               </div>
@@ -81,6 +82,7 @@
               <div class="def-field-wrap">
                 <div class="def-toolbar">
                   <button type="button" class="def-toolbar-btn" title="Bold — выделите текст и нажмите" @click="applyBold(ruDefRef, 'definition_ru')"><strong>B</strong></button>
+                  <button type="button" class="def-toolbar-btn" title="Italic — выделите текст и нажмите" @click="applyItalic(ruDefRef, 'definition_ru')"><em>I</em></button>
                 </div>
                 <textarea ref="ruDefRef" v-model="form.definition_ru" rows="4" class="field-textarea field-textarea--def" placeholder="Краткое определение на русском..." />
               </div>
@@ -101,6 +103,7 @@
               <div class="def-field-wrap">
                 <div class="def-toolbar">
                   <button type="button" class="def-toolbar-btn" title="Bold — выделите текст и нажмите" @click="applyBold(zhDefRef, 'definition_zh')"><strong>B</strong></button>
+                  <button type="button" class="def-toolbar-btn" title="Italic — выделите текст и нажмите" @click="applyItalic(zhDefRef, 'definition_zh')"><em>I</em></button>
                 </div>
                 <textarea ref="zhDefRef" v-model="form.definition_zh" rows="4" class="field-textarea field-textarea--def" placeholder="简短定义..." />
               </div>
@@ -263,7 +266,7 @@
               <div v-if="form.aliases.length" class="pp-aliases">
                 <span v-for="alias in form.aliases.slice(0, 3)" :key="alias" class="pp-alias-chip">{{ alias }}</span>
               </div>
-              <p v-if="form.definition" class="pp-definition" v-html="renderBold(form.definition)" />
+              <p v-if="form.definition" class="pp-definition" v-html="renderInlineMarkup(form.definition)" />
               <p v-else class="pp-definition pp-definition--empty">(нет определения)</p>
               <div class="pp-footer">
                 <span class="pp-link">Открыть статью →</span>
@@ -310,6 +313,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, nextTick } from 'vue'
+import { renderInlineMarkup } from '~/utils/renderInlineMarkup'
 
 const odtFileInput = ref<HTMLInputElement>()
 const enDefRef = ref<HTMLTextAreaElement>()
@@ -389,23 +393,25 @@ const confirmDeleteArticle = ref(false)
 const showPopupPreview = ref(false)
 
 // 2. Pure functions
-function renderBold(text: string): string {
-  return text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>')
-}
-
-function applyBold(el: HTMLTextAreaElement | undefined, field: 'definition' | 'definition_ru' | 'definition_zh') {
+function applyWrap(el: HTMLTextAreaElement | undefined, field: 'definition' | 'definition_ru' | 'definition_zh', wrap: string) {
   if (!el) return
   const start = el.selectionStart
   const end = el.selectionEnd
   if (start === end) return
   const text = form[field]
-  form[field] = `${text.slice(0, start)}**${text.slice(start, end)}**${text.slice(end)}`
+  form[field] = `${text.slice(0, start)}${wrap}${text.slice(start, end)}${wrap}${text.slice(end)}`
   nextTick(() => {
     el.focus()
-    el.setSelectionRange(start + 2, end + 2)
+    el.setSelectionRange(start + wrap.length, end + wrap.length)
   })
+}
+
+function applyBold(el: HTMLTextAreaElement | undefined, field: 'definition' | 'definition_ru' | 'definition_zh') {
+  applyWrap(el, field, '**')
+}
+
+function applyItalic(el: HTMLTextAreaElement | undefined, field: 'definition' | 'definition_ru' | 'definition_zh') {
+  applyWrap(el, field, '*')
 }
 
 function addAlias() {
@@ -960,6 +966,8 @@ async function handleSubmit() {
 }
 .dark .pp-definition { color: #94a3b8; }
 .pp-definition--empty { color: #cbd5e1; font-style: italic; }
+.pp-definition :deep(strong) { font-weight: 700; }
+.pp-definition :deep(em) { font-style: italic; }
 
 .pp-footer {
   display: flex;

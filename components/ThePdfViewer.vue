@@ -76,8 +76,24 @@
         </div>
       </div>
 
-      <!-- Native Iframe Fallback -->
-      <iframe v-if="useNativeViewer" :src="src" class="absolute inset-0 w-full h-full border-none z-50 bg-white" />
+      <!-- Native Fallback (iOS: object tag; others: iframe) -->
+      <template v-if="useNativeViewer">
+        <object
+          v-if="isIosBrowser()"
+          :data="src"
+          type="application/pdf"
+          class="absolute inset-0 w-full h-full border-none z-50 bg-white"
+        >
+          <div class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gray-50 dark:bg-zinc-950 p-8 text-center">
+            <UIcon name="i-heroicons-document" class="w-12 h-12 text-sky-500" />
+            <p class="text-gray-600 dark:text-gray-400">Ваш браузер не поддерживает встроенный просмотр PDF.</p>
+            <a :href="src" target="_blank" rel="noopener" class="px-4 py-2 bg-sky-600 text-white rounded-lg font-semibold text-sm hover:bg-sky-700 transition-colors">
+              Открыть PDF
+            </a>
+          </div>
+        </object>
+        <iframe v-else :src="src" class="absolute inset-0 w-full h-full border-none z-50 bg-white" />
+      </template>
     </div>
 
     <!-- Floating Navigation Bar (Overlay) - MINIMIZED -->
@@ -298,14 +314,23 @@ const visiblePages = computed(() => {
   return pages
 })
 
-function isSafariBrowser(): boolean {
+function isIosBrowser(): boolean {
   if (!import.meta.client) return false
   const ua = navigator.userAgent
-  return /Safari/.test(ua) && !/Chrome/.test(ua) && !/Chromium/.test(ua)
+  return /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
 const initViewer = async () => {
   if (!import.meta.client) return
+
+  // iOS: all browsers use WKWebView — native viewer is most reliable
+  if (isIosBrowser()) {
+    useNativeViewer.value = true
+    loading.value = false
+    return
+  }
+
   loading.value = true
   error.value = false
   try {
@@ -316,15 +341,7 @@ const initViewer = async () => {
       throw new Error('GlobalWorkerOptions not found in pdfjs-dist')
     }
 
-    // Safari has issues with local module workers — use CDN as fallback
-    if (isSafariBrowser()) {
-      const version = (pdfjs as any).version || '4.4.168'
-      pdfjs.GlobalWorkerOptions.workerSrc =
-        `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`
-    } else {
-      pdfjs.GlobalWorkerOptions.workerSrc = '/workers/pdf.worker.js'
-    }
-
+    pdfjs.GlobalWorkerOptions.workerSrc = '/workers/pdf.worker.js'
     pdfjsLib = pdfjs
     await loadPdf()
   } catch (err) {

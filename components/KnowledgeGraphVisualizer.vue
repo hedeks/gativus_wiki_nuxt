@@ -378,11 +378,16 @@
             <p
               v-if="termPopupDetail?.definition || selectedNode.description"
               class="graph-popup__definition"
-            >{{ termPopupDetail?.definition || selectedNode.description }}</p>
+              v-html="renderInlineMarkup(termPopupDetail?.definition || selectedNode.description || '')"
+            />
           </template>
           <template v-else>
             <div class="graph-popup__title-text">{{ selectedNode.title }}</div>
-            <p v-if="selectedNode.description" class="graph-popup__definition">{{ selectedNode.description }}</p>
+            <p
+              v-if="selectedNode.description"
+              class="graph-popup__definition"
+              v-html="renderInlineMarkup(selectedNode.description)"
+            />
           </template>
 
           <div class="graph-popup__footer">
@@ -488,6 +493,7 @@ import { shallowRef } from 'vue'
 import * as d3 from 'd3'
 import { useMediaQuery } from '@vueuse/core'
 import { useLanguageStore } from '~/stores/language'
+import { renderInlineMarkup } from '~/utils/renderInlineMarkup'
 import {
   ANCHORED_POPUP_GAP_PX,
   pickPopupRectFromPoint,
@@ -1931,7 +1937,7 @@ function renderDagEgoGraph(
       if (d.type === 'term') return 'url(#grad-term)'
       return '#94a3b8'
     })
-    .attr('stroke', 'var(--node-stroke)')
+    .style('stroke', 'var(--node-stroke)')
     .attr('stroke-width', (d: any) => d.id === rootId ? 3 : 2)
 
   // Focal node: outer solid ring
@@ -1967,9 +1973,9 @@ function renderDagEgoGraph(
     .text((d: any) => d.title)
     .attr('font-size', (d: any) => d.id === rootId ? '13px' : d.type === 'category' ? '12px' : '10.5px')
     .attr('font-weight', (d: any) => d.id === rootId ? '700' : d.type === 'category' ? '600' : '500')
-    .attr('fill', 'var(--gv-text-primary)')
+    .style('fill', 'var(--gv-text-primary)')
     .style('pointer-events', 'none')
-    .attr('stroke', 'var(--text-halo)')
+    .style('stroke', 'var(--text-halo)')
     .attr('stroke-width', 3)
     .style('paint-order', 'stroke fill')
 }
@@ -2049,7 +2055,6 @@ const initGraph = () => {
   createGradient('grad-term', '#10b981', '#047857')      // Emerald
 
   const g = svg.append('g')
-    .style('will-change', 'transform')
     .style('transform-origin', '0 0')
 
   // Zoom behavior
@@ -2261,7 +2266,7 @@ const initGraph = () => {
       if (d.type === 'term') return 'url(#grad-term)'
       return '#94a3b8'
     })
-    .attr('stroke', 'var(--node-stroke)')
+    .style('stroke', 'var(--node-stroke)')
     .attr('stroke-width', 2)
 
   // Node labels
@@ -2278,9 +2283,9 @@ const initGraph = () => {
     .text((d: any) => d.title)
     .attr('font-size', (d: any) => d.type === 'category' ? '15px' : d.type === 'book' ? '13px' : '10.5px')
     .attr('font-weight', (d: any) => d.type === 'category' ? '700' : d.type === 'book' ? '600' : '500')
-    .attr('fill', 'var(--gv-text-primary)')
+    .style('fill', 'var(--gv-text-primary)')
     .style('pointer-events', 'none')
-    .attr('stroke', 'var(--text-halo)')
+    .style('stroke', 'var(--text-halo)')
     .attr('stroke-width', 3)
     .style('paint-order', 'stroke fill')
 
@@ -3429,6 +3434,7 @@ watch([focusNodeId, focusDepth], () => {
   width: 100%;
   height: 100%;
   cursor: grab;
+  contain: layout paint;
 }
 
 .graph-svg:active {
@@ -3635,6 +3641,9 @@ watch([focusNodeId, focusDepth], () => {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+.graph-popup__definition :deep(strong) { font-weight: 700; }
+.graph-popup__definition :deep(em) { font-style: italic; }
 
 .graph-popup__footer {
   display: flex;

@@ -54,7 +54,7 @@
           </div>
 
           <p v-if="loadError" class="popover-definition popover-definition--error">{{ t.loadError }}</p>
-          <p v-else-if="term.definition" class="popover-definition" v-html="renderBold(term.definition)" />
+          <p v-else-if="term.definition" class="popover-definition" v-html="renderInlineMarkup(term.definition)" />
         </template>
 
         <div class="popover-footer">
@@ -73,6 +73,7 @@
 
 <script setup lang="ts">
 import { useLanguageStore } from '~/stores/language'
+import { renderInlineMarkup } from '~/utils/renderInlineMarkup'
 import {
   ANCHORED_POPUP_GAP_PX,
   ANCHORED_POPUP_PAD_PX,
@@ -118,11 +119,6 @@ const uiDict: Record<string, { loading: string; openArticle: string; loadError: 
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 
-function renderBold(text: string): string {
-  return text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>')
-}
 
 /** Координаты клика в системе клиента (viewport) — единственный якорь позиции попапа. */
 const pointerClient = ref<{ x: number, y: number } | null>(null)
@@ -610,6 +606,9 @@ onUnmounted(() => {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+.popover-definition :deep(strong) { font-weight: 700; }
+.popover-definition :deep(em) { font-style: italic; }
 
 .popover-definition--error {
   -webkit-line-clamp: unset;

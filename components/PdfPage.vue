@@ -86,7 +86,7 @@ const renderPage = async () => {
     const ctx = canvas.value.getContext('2d', { alpha: false })
     if (!ctx) return
 
-    const outputScale = window.devicePixelRatio || 1
+    const outputScale = Math.min(window.devicePixelRatio || 1, 2)
     canvas.value.width = Math.floor(viewport.width * outputScale)
     canvas.value.height = Math.floor(viewport.height * outputScale)
     canvas.value.style.width = Math.floor(viewport.width) + "px"

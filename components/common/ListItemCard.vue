@@ -33,9 +33,8 @@
 
       <h3 class="card-title">{{ title }}</h3>
 
-      <p v-if="description" class="card-description line-clamp-2">
-        {{ description }}
-      </p>
+      <p v-if="descriptionHtml" class="card-description line-clamp-2" v-html="descriptionHtml" />
+      <p v-else-if="description" class="card-description line-clamp-2">{{ description }}</p>
     </div>
 
     <div class="card-arrow">
@@ -64,6 +63,7 @@ withDefaults(
     iconClass?: string
     title: string
     description?: string
+    descriptionHtml?: string
     badges?: CardBadge[]
     index?: string | number
     variant?: KnowledgeEntityVariant
@@ -314,6 +314,9 @@ withDefaults(
   margin-top: 4px;
   margin-bottom: 0;
 }
+
+.card-description :deep(strong) { font-weight: 700; }
+.card-description :deep(em) { font-style: italic; }
 
 .dark .card-description {
   color: #a1a1aa;

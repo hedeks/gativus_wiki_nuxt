@@ -258,14 +258,19 @@
 </template>
 
 <script setup lang="ts">
-import { onUnmounted, ref, computed, watch, nextTick, onMounted } from 'vue'
+import { onUnmounted, onBeforeUnmount, ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useLanguageStore } from '~/stores/language'
 import { wrapArticleTables } from '~/utils/wrapArticleTables'
+import { useNavHistoryStore } from '~/stores/navHistory'
 
 const langStore = useLanguageStore()
 const route = useRoute()
 const router = useRouter()
 const slug = computed(() => String(route.params.slug ?? ''))
+const navHistory = useNavHistoryStore()
+
+// ─── Article view state persistence ───
+function lsKey() { return `gv:article-state:${route.path}` }
 
 const articleMainCardRef = ref<HTMLElement | null>(null)
 
@@ -709,6 +714,23 @@ const tocLinks = computed<TocLink[]>(() => {
 
 const activeID = ref('')
 const isTheory = ref(true)
+
+function saveArticleState() {
+  if (!import.meta.client) return
+  const state = { scroll: window.scrollY, isPresentation: !isTheory.value }
+  try { localStorage.setItem(lsKey(), JSON.stringify(state)) } catch {}
+  try {
+    window.history.replaceState({ ...window.history.state, gv_article: state }, '')
+  } catch {}
+  navHistory.record(route.path, state.scroll, state.isPresentation)
+}
+
+let _saveTimer: ReturnType<typeof setTimeout> | null = null
+function debouncedSave() {
+  if (_saveTimer) clearTimeout(_saveTimer)
+  _saveTimer = setTimeout(saveArticleState, 350)
+}
+
 const lection = ref<HTMLElement | undefined>()
 
 // Presentation Sidebar State (Symmetry with TOC)
@@ -896,11 +918,11 @@ const currentPosition = ref<number>()
 
 const changeView = (name: string) => {
   if (name === 'quiz') {
-    // Capture position BEFORE changing state to avoid race condition with scrollTo(0)
     currentPosition.value = window.scrollY
     isTheory.value = false
     nextTick(() => {
       window.scrollTo({ top: 0 })
+      saveArticleState()
     })
   } else {
     isTheory.value = true
@@ -908,10 +930,11 @@ const changeView = (name: string) => {
       nextTick(() => {
         window.scrollTo({ top: currentPosition.value })
         scheduleScrollSpy()
+        saveArticleState()
       })
     }
     else {
-      nextTick(() => scheduleScrollSpy())
+      nextTick(() => { scheduleScrollSpy(); saveArticleState() })
     }
   }
 }
@@ -929,6 +952,7 @@ onMounted(() => {
       currentPosition.value = scrollY
       scheduleScrollSpy()
     }
+    debouncedSave()
   }, { passive: true })
   updateHeadingsAndObserve()
   window.addEventListener('keydown', handleKeydown)
@@ -937,6 +961,27 @@ onMounted(() => {
       scrollToFirstSearchHighlight()
     }, 260)
   }
+
+  // Restore state on back navigation
+  const gvState = window.history.state?.gv_article
+  if (gvState) {
+    if (gvState.isPresentation) {
+      isTheory.value = false
+    }
+    currentPosition.value = gvState.scroll ?? 0
+    const targetScroll = gvState.scroll ?? 0
+    if (targetScroll > 0) {
+      // Use timeout to run after Vue Router's own savedPosition scroll
+      setTimeout(() => {
+        window.scrollTo({ top: targetScroll, behavior: 'instant' })
+      }, 80)
+    }
+  }
+})
+
+onBeforeUnmount(() => {
+  saveArticleState()
+  if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null }
 })
 
 onUnmounted(() => {

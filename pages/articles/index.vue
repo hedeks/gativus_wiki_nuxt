@@ -89,7 +89,7 @@
             :to="`/articles/${article.slug}`"
             icon="i-heroicons-document-text"
             :title="article.title"
-            :description="article.excerpt"
+            :description-html="renderInlineMarkup(article.excerpt || '')"
             :badges="getArticleBadges(article)"
             :index="`#${(page - 1) * 10 + index + 1}`"
           />
@@ -112,6 +112,7 @@ import { useLanguageStore } from '~/stores/language'
 import { useDebounce } from '~/composables/useDebounce'
 import { filterBySearch, slicePage } from '~/composables/useSearch'
 import type { CardBadge } from '~/components/common/ListItemCard.vue'
+import { renderInlineMarkup } from '~/utils/renderInlineMarkup'
 
 const route = useRoute()
 const langStore = useLanguageStore()
