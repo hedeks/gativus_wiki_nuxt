@@ -91,9 +91,11 @@
             :title="article.title"
             :description-html="renderInlineMarkup(article.excerpt || '')"
             :badges="getArticleBadges(article)"
-            :index="`#${(page - 1) * 10 + index + 1}`"
+            :index="`#${index + 1}`"
           />
         </KnowledgeListTransition>
+        <!-- Sentinel for infinite scroll -->
+        <div v-if="page < totalPages" ref="sentinelRef" class="h-4 w-full" />
       </BaseStateWrapper>
     </div>
 
@@ -108,6 +110,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useLanguageStore } from '~/stores/language'
 import { useDebounce } from '~/composables/useDebounce'
 import { filterBySearch, slicePage } from '~/composables/useSearch'
@@ -144,7 +147,7 @@ const uiDict: Record<string, any> = {
   },
   zh: {
     heroTitle: '文章',
-    heroDesc: 'Gativus 的架构、基本原理和方法论。',
+    heroDesc: 'Gativus 的架构、基本原理 and 方法论。',
     searchPlaceholder: '按标题或描述搜索...',
     filters: '筛选',
     categories: '分类',
@@ -193,8 +196,33 @@ const totalFiltered = computed(() => filteredArticles.value.length)
 const totalPages = computed(() => Math.ceil(totalFiltered.value / 10))
 
 const paginatedArticles = computed(() =>
-  slicePage(filteredArticles.value, page.value, 10)
+  filteredArticles.value.slice(0, page.value * 10)
 )
+
+const sentinelRef = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
+
+onMounted(() => {
+  if (typeof IntersectionObserver !== 'undefined' && sentinelRef.value) {
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          if (page.value < totalPages.value) {
+            page.value++
+          }
+        }
+      },
+      { rootMargin: '300px' }
+    )
+    observer.observe(sentinelRef.value)
+  }
+})
+
+onUnmounted(() => {
+  if (observer) {
+    observer.disconnect()
+  }
+})
 
 function onSelectCategory(id: number | null) {
   activeCategory.value = id

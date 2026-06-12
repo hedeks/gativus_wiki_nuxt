@@ -262,6 +262,7 @@ import { onUnmounted, onBeforeUnmount, ref, computed, watch, nextTick, onMounted
 import { useLanguageStore } from '~/stores/language'
 import { wrapArticleTables } from '~/utils/wrapArticleTables'
 import { useNavHistoryStore } from '~/stores/navHistory'
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 
 const langStore = useLanguageStore()
 const route = useRoute()
@@ -944,6 +945,38 @@ watch(() => article.value?.html_content, () => {
   updateHeadingsAndObserve()
 }, { immediate: false }) // Disable immediate to prevent SSR crash
 
+const scrollRestoreWithRetry = (targetScroll: number, retries = 5) => {
+  if (!import.meta.client) return
+  window.scrollTo({ top: targetScroll, behavior: 'instant' })
+  if (Math.abs(window.scrollY - targetScroll) > 4 && retries > 0) {
+    setTimeout(() => {
+      scrollRestoreWithRetry(targetScroll, retries - 1)
+    }, 60)
+  }
+}
+
+// Watch for chapter slug changes to reset scroll/TOC highlight (in case of component reuse)
+watch(slug, (newSlug, oldSlug) => {
+  if (newSlug && newSlug !== oldSlug) {
+    activeID.value = ''
+    const gvState = window.history.state?.gv_article
+    if (gvState) {
+      if (gvState.isPresentation) {
+        isTheory.value = false
+      }
+      currentPosition.value = gvState.scroll ?? 0
+      const targetScroll = gvState.scroll ?? 0
+      if (targetScroll > 0) {
+        scrollRestoreWithRetry(targetScroll)
+      }
+    } else if (!route.hash) {
+      isTheory.value = true
+      currentPosition.value = 0
+      window.scrollTo({ top: 0, behavior: 'instant' })
+    }
+  }
+})
+
 onMounted(() => {
   checkSize()
   window.addEventListener('resize', checkSize)
@@ -971,16 +1004,23 @@ onMounted(() => {
     currentPosition.value = gvState.scroll ?? 0
     const targetScroll = gvState.scroll ?? 0
     if (targetScroll > 0) {
-      // Use timeout to run after Vue Router's own savedPosition scroll
-      setTimeout(() => {
-        window.scrollTo({ top: targetScroll, behavior: 'instant' })
-      }, 80)
+      scrollRestoreWithRetry(targetScroll)
     }
+  } else if (!route.hash) {
+    // Normal navigation without hash -> scroll to top immediately
+    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 })
 
-onBeforeUnmount(() => {
+onBeforeRouteLeave(() => {
   saveArticleState()
+})
+
+onBeforeRouteUpdate(() => {
+  saveArticleState()
+})
+
+onBeforeUnmount(() => {
   if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null }
 })
 

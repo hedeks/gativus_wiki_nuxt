@@ -95,6 +95,8 @@
             @preview="previewBook = book"
           />
         </KnowledgeListTransition>
+        <!-- Sentinel for infinite scroll -->
+        <div v-if="page < totalBookPages" ref="sentinelRef" class="h-4 w-full" />
       </BaseStateWrapper>
     </div>
 
@@ -155,6 +157,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useLanguageStore } from '~/stores/language'
 import { useDebounce } from '~/composables/useDebounce'
 import { filterBySearch, slicePage, totalPagesFor } from '~/composables/useSearch'
@@ -261,8 +264,33 @@ const filteredBooks = computed(() => {
 const totalBookPages = computed(() => totalPagesFor(filteredBooks.value.length, BOOKS_PAGE_SIZE))
 
 const paginatedBooks = computed(() =>
-  slicePage(filteredBooks.value, page.value, BOOKS_PAGE_SIZE),
+  filteredBooks.value.slice(0, page.value * BOOKS_PAGE_SIZE)
 )
+
+const sentinelRef = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
+
+onMounted(() => {
+  if (typeof IntersectionObserver !== 'undefined' && sentinelRef.value) {
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          if (page.value < totalBookPages.value) {
+            page.value++
+          }
+        }
+      },
+      { rootMargin: '300px' }
+    )
+    observer.observe(sentinelRef.value)
+  }
+})
+
+onUnmounted(() => {
+  if (observer) {
+    observer.disconnect()
+  }
+})
 
 function bookBadges(book: any): CardBadge[] {
   const badges: CardBadge[] = []

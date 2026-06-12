@@ -123,6 +123,8 @@
             :badges="termBadges(term)"
           />
         </KnowledgeListTransition>
+        <!-- Sentinel for infinite scroll -->
+        <div v-if="page < totalPageButtons" ref="sentinelRef" class="h-4 w-full" />
       </BaseStateWrapper>
     </div>
 
@@ -137,6 +139,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useLanguageStore } from '~/stores/language'
 import { renderInlineMarkup } from '~/utils/renderInlineMarkup'
 import { useDebounce } from '~/composables/useDebounce'
@@ -256,8 +259,33 @@ const totalPageButtons = computed(() =>
 )
 
 const paginatedTerms = computed(() =>
-  slicePage(filteredTerms.value, page.value, 20)
+  filteredTerms.value.slice(0, page.value * 20)
 )
+
+const sentinelRef = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
+
+onMounted(() => {
+  if (typeof IntersectionObserver !== 'undefined' && sentinelRef.value) {
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          if (page.value < totalPageButtons.value) {
+            page.value++
+          }
+        }
+      },
+      { rootMargin: '300px' }
+    )
+    observer.observe(sentinelRef.value)
+  }
+})
+
+onUnmounted(() => {
+  if (observer) {
+    observer.disconnect()
+  }
+})
 
 function termBadges(term: any): CardBadge[] {
   const badges: CardBadge[] = []

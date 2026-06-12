@@ -52,7 +52,6 @@ function go(p: number): void {
   if (next !== props.modelValue) emit('update:modelValue', next)
 }
 </script>
-
 <template>
   <nav
     v-if="totalPages > 1"
@@ -78,17 +77,20 @@ function go(p: number): void {
           class="gv-pagination__ellipsis"
           aria-hidden="true"
         >…</span>
-        <button
+        <GvButton
           v-else
           type="button"
-          class="gv-pagination__num gv-focus"
+          :variant="item === current ? 'solid' : 'outline'"
+          :color="item === current ? 'primary' : 'gray'"
+          size="sm"
+          class="gv-pagination__num"
           :class="{ 'gv-pagination__num--active': item === current }"
           :aria-current="item === current ? 'page' : undefined"
           :aria-label="`Страница ${item}`"
           @click="go(item)"
         >
           {{ item }}
-        </button>
+        </GvButton>
       </template>
     </div>
     <GvButton
@@ -125,8 +127,9 @@ function go(p: number): void {
 }
 
 .gv-pagination__step {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  height: 34px !important;
 }
 
 .gv-pagination__ellipsis {
@@ -142,58 +145,40 @@ function go(p: number): void {
 }
 
 .gv-pagination__num {
-  box-sizing: border-box;
-  min-width: 44px;
-  height: 44px;
-  padding: 0 10px;
-  border-radius: var(--gv-radius-control);
-  border: 1px solid var(--gv-border-principal);
-  background: var(--gv-surface-card);
-  color: var(--gv-text-secondary);
-  font-size: 13px;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 0 6px !important;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease;
 }
 
-.gv-pagination__num:hover:not(:disabled) {
-  border-color: var(--gv-primary);
-  color: var(--gv-primary);
+/* Hover effect override for entity accent color consistency */
+.gv-pagination__num:hover:not(.gv-btn--disabled):not(.gv-pagination__num--active) {
+  border-color: var(--gv-primary) !important;
+  color: var(--gv-primary) !important;
 }
 
-.gv-pagination__num:focus-visible {
-  outline: 2px solid var(--gv-primary);
-  outline-offset: 2px;
-}
-
+/* Active page overrides for entity colors */
 .gv-pagination__num--active {
-  background: var(--gv-primary);
-  border-color: var(--gv-primary-hover);
-  color: #fff;
-  box-shadow: var(--gv-shadow-sm);
+  background: var(--gv-primary) !important;
+  border-color: var(--gv-primary-hover) !important;
+  color: #fff !important;
+  box-shadow: var(--gv-shadow-sm) !important;
 }
 
-.gv-pagination__num--active:hover {
-  background: var(--gv-primary-hover);
-  border-color: var(--gv-primary-hover);
-  color: #fff;
+.gv-pagination__num--active:hover:not(.gv-btn--disabled) {
+  background: var(--gv-primary-hover) !important;
+  border-color: var(--gv-primary-hover) !important;
+  color: #fff !important;
 }
 
 @media (max-width: 640px) {
-  .gv-pagination__step {
-    min-width: 40px;
-    min-height: 40px;
-  }
-
+  .gv-pagination__step,
   .gv-pagination__num {
-    min-width: 40px;
-    height: 40px;
-    font-size: 13px;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    height: 32px !important;
   }
 }
 </style>
