@@ -117,7 +117,17 @@
       <!-- Section 2: Chapter Management -->
       <div class="card p-6">
         <div class="section-header mb-6">
-          <h3 class="section-title">Состав глав</h3>
+          <div class="flex items-center gap-4">
+            <h3 class="section-title mb-0">Состав глав</h3>
+            <div class="flex gap-1">
+              <button v-for="l in (['en', 'ru', 'zh'] as const)" :key="l"
+                class="chapter-lang-btn"
+                :class="{ 'chapter-lang-btn--active': chapterLangView === l }"
+                @click="chapterLangView = l">
+                {{ l === 'en' ? 'EN' : l === 'ru' ? 'RU' : 'ZH' }}
+              </button>
+            </div>
+          </div>
           <div class="add-chapter-box flex items-center gap-4">
             <USelectMenu v-model="selectedArticleToAdd" :options="availableArticles" option-attribute="title" searchable
               class="w-64" placeholder="Добавить статью..."
@@ -129,6 +139,9 @@
                 </div>
               </template>
             </USelectMenu>
+            <GvButton :to="`/admin/import-odm?bookId=${book?.id}`" variant="outline" color="sky" size="sm" icon="i-heroicons-arrow-up-tray">
+              Импорт из ODM / ODT
+            </GvButton>
           </div>
         </div>
 
@@ -146,7 +159,7 @@
             </div>
             <div class="chapter-info">
               <span class="chapter-index">#{{ index + 1 }}</span>
-              <span class="chapter-title">{{ chapter.title }}</span>
+              <span class="chapter-title">{{ chapterDisplayTitle(chapter) }}</span>
               <span v-if="!chapter.is_published" class="draft-badge">Черновик</span>
             </div>
             <div class="chapter-actions">
@@ -178,9 +191,9 @@
           </GvButton>
         </div>
       </div>
-      </div>
-    </template>
-  </div>
+    </div>
+  </template>
+</div>
 </template>
 
 <script setup lang="ts">
@@ -291,7 +304,7 @@ async function updateMetadata() {
   savingMetadata.value = true
   try {
     await $fetch(`/api/books/${book.value.slug}`, {
-      method: 'PUT',
+      method: 'PUT' as any,
       body: form.value,
       headers: store.getAuthHeader()
     })
@@ -328,6 +341,17 @@ function removeChapter(index: number) {
   chapters.value.splice(index, 1)
   chaptersChanged.value = true
 }
+
+// ─── Chapter Language View ───
+const chapterLangView = ref<'en' | 'ru' | 'zh'>('ru')
+
+function chapterDisplayTitle(chapter: any): string {
+  if (chapterLangView.value === 'ru') return chapter.title_ru || chapter.title || ''
+  if (chapterLangView.value === 'zh') return chapter.title_zh || chapter.title || ''
+  return chapter.title || ''
+}
+
+
 
 const savingChapters = ref(false)
 async function saveChapters() {
@@ -415,6 +439,46 @@ async function saveChapters() {
 }
 
 /* Chapter Styles */
+.chapter-lang-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #4b5563;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.dark .chapter-lang-btn {
+  border-color: #3f3f46;
+  background: #27272a;
+  color: #d1d5db;
+}
+
+.chapter-lang-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.dark .chapter-lang-btn:hover {
+  background: #3f3f46;
+  color: #f9fafb;
+}
+
+.chapter-lang-btn--active {
+  background: #0ea5e9 !important;
+  border-color: #0ea5e9 !important;
+  color: #ffffff !important;
+}
+
+.dark .chapter-lang-btn--active {
+  background: #38bdf8 !important;
+  border-color: #38bdf8 !important;
+  color: #0f172a !important;
+}
+
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -557,6 +621,8 @@ async function saveChapters() {
     transform: rotate(360deg);
   }
 }
+
+
 
 @media (max-width: 768px) {
   .book-edit-page {

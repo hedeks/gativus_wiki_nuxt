@@ -72,6 +72,7 @@ interface ConvertCtx {
   numbering: NumberingState
   imageMap: Map<string, string>
   contentLocale?: OdtContentLocale
+  usedIds: Map<string, number>
 }
 
 export function cloneNumberingState(state: NumberingState): NumberingState {
@@ -147,7 +148,7 @@ export async function parseOdtBuffer(
     : { listCounters: {} }
 
   const imageMap = new Map(images.map(img => [img.originalPath, img.savedPath]))
-  const ctx: ConvertCtx = { styles, listStyles, numbering, imageMap, contentLocale }
+  const ctx: ConvertCtx = { styles, listStyles, numbering, imageMap, contentLocale, usedIds: new Map() }
   const fullHtml = convertChildren(textNode, ctx)
 
   return {
@@ -620,8 +621,11 @@ function convertNode(
         }
       }
 
-      // Generate stable ID from content
-      const id = slugify(stripHtml(content))
+      // Generate unique ID from content — deduplicate by appending a counter
+      const baseId = slugify(stripHtml(content))
+      const count = (ctx.usedIds.get(baseId) ?? 0) + 1
+      ctx.usedIds.set(baseId, count)
+      const id = count === 1 ? baseId : `${baseId}-${count}`
       return `<h${clampedLevel} id="${id}">${marker}${content}</h${clampedLevel}>\n`
     }
 
@@ -889,7 +893,8 @@ export function splitIntoArticles(
   let match: RegExpExecArray | null
 
   while ((match = regex.exec(html)) !== null) {
-    const title = stripHtml(match[2]).trim()
+    const cleanContent = match[2].replace(/<span[^>]*\bodt-heading-marker\b[^>]*>[\s\S]*?<\/span>/gi, '')
+    const title = stripTitleIndexing(stripHtml(cleanContent).trim())
     if (title) {
       matches.push({ index: match.index, title })
     }
@@ -955,11 +960,35 @@ function stripHtml(html: string): string {
 }
 
 /**
+ * Очищает название статьи от ручных или автоматических текстовых префиксов нумерации глав.
+ */
+export function stripTitleIndexing(title: string): string {
+  let cleaned = title.trim()
+
+  // 1. Chapter / Глава
+  cleaned = cleaned.replace(/^(Chapter|Глава)\s+\d+(\.\d+)*[\s\.\:\-–—]*/i, '')
+
+  // 2. Chinese 第 N 章
+  cleaned = cleaned.replace(/^第\s*\d+\s*章[\s\.\:\-–—]*/i, '')
+
+  // 3. Multi-level numbering (e.g. 1.1., 1.2.3)
+  cleaned = cleaned.replace(/^\d+(\.\d+)+[\s\.\:\-–—]*/, '')
+
+  // 4. Single number with separator (e.g. "3. GERM" or "3 - GERM" or "3: GERM")
+  cleaned = cleaned.replace(/^\d+[\s\.\:\-–—]+/, '')
+
+  cleaned = cleaned.trim()
+  return cleaned || title
+}
+
+/**
  * Extract the text of the first heading found in the HTML.
  */
 export function extractFirstHeading(html: string): string | null {
   const match = html.match(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/i)
-  return match ? stripHtml(match[1]).trim() : null
+  if (!match) return null
+  const cleanContent = match[1].replace(/<span[^>]*\bodt-heading-marker\b[^>]*>[\s\S]*?<\/span>/gi, '')
+  return stripTitleIndexing(stripHtml(cleanContent).trim())
 }
 
 function renderSingleDrawNode(

@@ -6,6 +6,7 @@
 .cache
 dist
 dist_deploy
+json_work
 # Node dependencies
 node_modules
 

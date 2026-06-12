@@ -15,4 +15,4 @@ export default defineNitroPlugin(async () => {
   } catch (error) {
     console.error('[dbInit] Database initialization failed:', error)
   }
-})
+}) // Trigger hot-reload for database migrations

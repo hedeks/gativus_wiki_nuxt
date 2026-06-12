@@ -4,7 +4,7 @@
  */
 
 import { requireRole } from '~/server/utils/requireRole'
-import { cascadeResetOdmSlotsFrom } from '~/server/utils/odmSlotReset'
+import { cascadeResetOdmSlotsFrom, cascadeResetOdmSlotsTranslationFrom } from '~/server/utils/odmSlotReset'
 
 export default defineEventHandler(async (event) => {
   requireRole(event, 'editor')
@@ -13,6 +13,12 @@ export default defineEventHandler(async (event) => {
   const partId = Number(getRouterParam(event, 'partId'))
   if (!Number.isFinite(projectId) || !Number.isFinite(partId))
     throw createError({ statusCode: 400, statusMessage: 'Некорректные параметры' })
+
+  const query = getQuery(event)
+  const lang = (query.lang as string || 'en').toLowerCase() as 'en' | 'ru' | 'zh'
+  if (lang !== 'en' && lang !== 'ru' && lang !== 'zh') {
+    throw createError({ statusCode: 400, statusMessage: 'Некорректный параметр lang' })
+  }
 
   const target = await db.prepare(`
     SELECT id, project_id, sort_order
@@ -23,14 +29,26 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Слот не найден' })
 
   const sortOrder = Number(target.sort_order)
-  const { articleIds, resetSlotCount } = await cascadeResetOdmSlotsFrom(db, projectId, sortOrder)
 
-  if (resetSlotCount === 0)
-    throw createError({ statusCode: 400, statusMessage: 'В этом и следующих слотах нет импорта для сброса' })
+  if (lang === 'en') {
+    const { articleIds, resetSlotCount } = await cascadeResetOdmSlotsFrom(db, projectId, sortOrder)
+    if (resetSlotCount === 0)
+      throw createError({ statusCode: 400, statusMessage: 'В этом и следующих слотах нет импорта для сброса' })
 
-  return {
-    ok: true,
-    resetSlots: resetSlotCount,
-    deletedArticles: articleIds.length,
+    return {
+      ok: true,
+      resetSlots: resetSlotCount,
+      deletedArticles: articleIds.length,
+    }
+  } else {
+    const { resetSlotCount } = await cascadeResetOdmSlotsTranslationFrom(db, projectId, sortOrder, lang)
+    if (resetSlotCount === 0)
+      throw createError({ statusCode: 400, statusMessage: 'В этом и следующих слотах нет импорта перевода для сброса' })
+
+    return {
+      ok: true,
+      resetSlots: resetSlotCount,
+      deletedArticles: 0,
+    }
   }
 })

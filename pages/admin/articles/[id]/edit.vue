@@ -853,6 +853,49 @@ async function uploadImage(e: Event) {
   input.value = ''
 }
 
+// ─── Reindex heading markers ───
+const reindexOpen = ref(false)
+const reindexChapterStart = ref(1)
+const reindexLocaleEn = ref<'en' | 'ru' | 'zh' | 'none'>('en')
+const reindexLocaleRu = ref<'en' | 'ru' | 'zh' | 'none'>('ru')
+const reindexLocaleZh = ref<'en' | 'ru' | 'zh' | 'none'>('zh')
+const reindexing = ref(false)
+
+async function runReindex() {
+  if (!fullArticle.value?.id) return
+  reindexing.value = true
+  try {
+    const res = await $fetch<{
+      markersChanged: number
+      html_content: string | null
+      html_content_ru: string | null
+      html_content_zh: string | null
+    }>(`/api/admin/articles/${fullArticle.value.id}/reindex`, {
+      method: 'POST',
+      headers: store.getAuthHeader(),
+      body: {
+        chapter_start: reindexChapterStart.value,
+        locale_en: reindexLocaleEn.value,
+        locale_ru: reindexLocaleRu.value,
+        locale_zh: reindexLocaleZh.value,
+      },
+    })
+    if (res.html_content != null) { htmlContent.value = res.html_content; pushHistory('Переиндексация EN') }
+    if (res.html_content_ru != null) { htmlContentRu.value = res.html_content_ru; pushHistory('Переиндексация RU') }
+    if (res.html_content_zh != null) { htmlContentZh.value = res.html_content_zh; pushHistory('Переиндексация ZH') }
+    if (res.markersChanged === 0) {
+      toast.add({ title: 'Маркеры не найдены', description: 'В тексте нет odt-heading-marker. Статья создана не через ODT-парсер?', color: 'amber' })
+    } else {
+      toast.add({ title: `Переиндексировано ${res.markersChanged} маркеров (глава ${reindexChapterStart.value})`, color: 'green' })
+    }
+    reindexOpen.value = false
+  }
+  catch (e: any) {
+    toast.add({ title: 'Ошибка переиндексации', description: e?.data?.statusMessage || e?.message, color: 'red' })
+  }
+  reindexing.value = false
+}
+
 </script>
 
 <template>
@@ -927,6 +970,10 @@ async function uploadImage(e: Event) {
         <button class="translate-prompt-btn" @click="copyTranslationPrompt" :title="`Скопировать промт перевода с ${activeTab.toUpperCase()}`">
           <UIcon :name="promptCopied ? 'i-heroicons-check' : 'i-heroicons-language'" />
           <span>{{ promptCopied ? 'Скопировано' : 'Промт' }}</span>
+        </button>
+        <button class="translate-prompt-btn" @click="reindexOpen = true" title="Переиндексация номеров глав">
+          <UIcon name="i-heroicons-hashtag" />
+          <span>Главы</span>
         </button>
         <NuxtLink v-if="slug" :to="`/admin/articles/${articleId}/history`" class="history-btn">
           <UIcon name="i-heroicons-clock" />
@@ -1349,6 +1396,60 @@ async function uploadImage(e: Event) {
         </button>
       </div>
     </Teleport>
+
+    <!-- Reindex modal -->
+    <UModal v-model="reindexOpen">
+      <div class="p-6 space-y-5">
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-sky-500/10 text-sky-500">
+            <UIcon name="i-heroicons-hashtag" class="size-6" />
+          </div>
+          <h3 class="text-lg font-bold">Переиндексация номеров глав</h3>
+        </div>
+        <p class="text-sm opacity-60 leading-relaxed">
+          Находит все <code class="text-xs bg-black/10 dark:bg-white/10 px-1 rounded">odt-heading-marker</code> в тексте и заменяет номер главы.
+          Применяется ко всем языковым версиям сразу.
+        </p>
+
+        <UFormGroup label="Номер первой главы" help="Например: 3 → «Глава 3», «3.1», «3.2»…">
+          <UInput v-model.number="reindexChapterStart" type="number" :min="1" size="lg" class="max-w-[120px]" />
+        </UFormGroup>
+
+        <div class="space-y-3">
+          <p class="text-xs font-semibold opacity-60 uppercase tracking-wide">Подпись первого уровня заголовка</p>
+          <p class="text-xs opacity-50 leading-relaxed">«1» — только цифра, без слова «Глава»</p>
+          <div class="grid grid-cols-3 gap-3">
+            <div v-for="({ col, label, model, setter }) in [
+              { col: 'html_content', label: 'EN', model: reindexLocaleEn, setter: (v: any) => reindexLocaleEn = v },
+              { col: 'html_content_ru', label: 'RU', model: reindexLocaleRu, setter: (v: any) => reindexLocaleRu = v },
+              { col: 'html_content_zh', label: 'ZH', model: reindexLocaleZh, setter: (v: any) => reindexLocaleZh = v },
+            ]" :key="col" class="space-y-1">
+              <p class="text-xs opacity-50">{{ label }}</p>
+              <div class="flex gap-1 flex-wrap">
+                <GvButton v-for="opt in ([
+                  { label: 'Глава', value: 'ru' },
+                  { label: 'Chapter', value: 'en' },
+                  { label: '章', value: 'zh' },
+                  { label: '1', value: 'none' },
+                ] as const)" :key="opt.value"
+                  :variant="model === opt.value ? 'solid' : 'outline'"
+                  :color="model === opt.value ? 'sky' : 'gray'"
+                  size="xs" @click="setter(opt.value)">
+                  {{ opt.label }}
+                </GvButton>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <GvButton variant="ghost" color="gray" @click="reindexOpen = false">Отмена</GvButton>
+          <GvButton color="sky" :loading="reindexing" icon="i-heroicons-arrow-path" @click="runReindex">
+            Переиндексировать с главы {{ reindexChapterStart }}
+          </GvButton>
+        </div>
+      </div>
+    </UModal>
   </div>
 </template>
 

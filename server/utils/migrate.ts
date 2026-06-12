@@ -226,6 +226,9 @@ export async function runMigrations(db: Database) {
         await ensureColumn('translation_valid_en', 'INTEGER DEFAULT 1')
         await ensureColumn('translation_valid_ru', 'INTEGER DEFAULT 0')
         await ensureColumn('translation_valid_zh', 'INTEGER DEFAULT 0')
+        await ensureColumn('master_href_en', 'TEXT')
+        await ensureColumn('master_href_ru', 'TEXT')
+        await ensureColumn('master_href_zh', 'TEXT')
       }
 
       if (table === 'books') {
@@ -360,8 +363,16 @@ export async function runMigrations(db: Database) {
       is_enabled              INTEGER NOT NULL DEFAULT 1,
       odt_storage_path        TEXT,
       odt_original_name       TEXT,
+      odt_storage_path_ru     TEXT,
+      odt_original_name_ru    TEXT,
+      odt_storage_path_zh     TEXT,
+      odt_original_name_zh    TEXT,
       numbering_state_in_json  TEXT,
       numbering_state_out_json TEXT,
+      numbering_state_in_json_ru  TEXT,
+      numbering_state_out_json_ru TEXT,
+      numbering_state_in_json_zh  TEXT,
+      numbering_state_out_json_zh TEXT,
       imported_article_ids    TEXT,
       status                  TEXT NOT NULL DEFAULT 'pending',
       updated_at              DATETIME DEFAULT (datetime('now')),
@@ -396,6 +407,50 @@ export async function runMigrations(db: Database) {
     if (!odmPartNames.includes('is_enabled')) {
       await db.exec('ALTER TABLE odm_project_parts ADD COLUMN is_enabled INTEGER NOT NULL DEFAULT 1')
       console.log('[migrate] Added is_enabled to odm_project_parts')
+    }
+    if (!odmPartNames.includes('master_href_en')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN master_href_en TEXT')
+      console.log('[migrate] Added master_href_en to odm_project_parts')
+    }
+    if (!odmPartNames.includes('master_href_ru')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN master_href_ru TEXT')
+      console.log('[migrate] Added master_href_ru to odm_project_parts')
+    }
+    if (!odmPartNames.includes('master_href_zh')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN master_href_zh TEXT')
+      console.log('[migrate] Added master_href_zh to odm_project_parts')
+    }
+    if (!odmPartNames.includes('odt_storage_path_ru')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN odt_storage_path_ru TEXT')
+      console.log('[migrate] Added odt_storage_path_ru to odm_project_parts')
+    }
+    if (!odmPartNames.includes('odt_original_name_ru')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN odt_original_name_ru TEXT')
+      console.log('[migrate] Added odt_original_name_ru to odm_project_parts')
+    }
+    if (!odmPartNames.includes('odt_storage_path_zh')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN odt_storage_path_zh TEXT')
+      console.log('[migrate] Added odt_storage_path_zh to odm_project_parts')
+    }
+    if (!odmPartNames.includes('odt_original_name_zh')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN odt_original_name_zh TEXT')
+      console.log('[migrate] Added odt_original_name_zh to odm_project_parts')
+    }
+    if (!odmPartNames.includes('numbering_state_in_json_ru')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN numbering_state_in_json_ru TEXT')
+      console.log('[migrate] Added numbering_state_in_json_ru to odm_project_parts')
+    }
+    if (!odmPartNames.includes('numbering_state_out_json_ru')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN numbering_state_out_json_ru TEXT')
+      console.log('[migrate] Added numbering_state_out_json_ru to odm_project_parts')
+    }
+    if (!odmPartNames.includes('numbering_state_in_json_zh')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN numbering_state_in_json_zh TEXT')
+      console.log('[migrate] Added numbering_state_in_json_zh to odm_project_parts')
+    }
+    if (!odmPartNames.includes('numbering_state_out_json_zh')) {
+      await db.exec('ALTER TABLE odm_project_parts ADD COLUMN numbering_state_out_json_zh TEXT')
+      console.log('[migrate] Added numbering_state_out_json_zh to odm_project_parts')
     }
   }
   catch (e) {

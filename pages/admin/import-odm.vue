@@ -38,8 +38,14 @@ const newBookForm = reactive({
   cover_image: '',
 })
 
-const masterFile = ref<File | null>(null)
-const masterFileInputRef = ref<HTMLInputElement | null>(null)
+const masterFileEn = ref<File | null>(null)
+const masterFileRu = ref<File | null>(null)
+const masterFileZh = ref<File | null>(null)
+const masterFileEnInputRef = ref<HTMLInputElement | null>(null)
+const masterFileRuInputRef = ref<HTMLInputElement | null>(null)
+const masterFileZhInputRef = ref<HTMLInputElement | null>(null)
+const hasAnyMasterFile = computed(() => !!(masterFileEn.value || masterFileRu.value || masterFileZh.value))
+
 const projectId = ref<number | null>(null)
 const projectBookId = ref<number | null>(null)
 const parts = ref<any[]>([])
@@ -55,10 +61,190 @@ const publishStats = reactive({ draft: 0, live: 0 })
 /** Локальные правки названий слота до сохранения на сервер */
 const titleDrafts = ref<Record<number, { display_title?: string; display_title_ru?: string; display_title_zh?: string }>>({})
 const savingTitlesPartId = ref<number | null>(null)
+const editingPartId = ref<number | null>(null)
 
+function startEditing(p: any) {
+  editingPartId.value = p.id
+  if (!titleDrafts.value[p.id]) {
+    titleDrafts.value[p.id] = {}
+  }
+  if (titleDrafts.value[p.id].display_title === undefined) {
+    titleDrafts.value[p.id].display_title = p.display_title || ''
+  }
+  if (titleDrafts.value[p.id].display_title_ru === undefined) {
+    titleDrafts.value[p.id].display_title_ru = p.display_title_ru || ''
+  }
+  if (titleDrafts.value[p.id].display_title_zh === undefined) {
+    titleDrafts.value[p.id].display_title_zh = p.display_title_zh || ''
+  }
+}
+
+// ─── Enrich locale (дополнительный ODM для другого языка) ───
+const enrichLocale = ref<'ru' | 'en' | 'zh'>('ru')
+const enrichFile = ref<File | null>(null)
+const enrichFileInputRef = ref<HTMLInputElement | null>(null)
+const enriching = ref(false)
+
+function onEnrichSelect(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files?.length) {
+    const f = input.files[0]
+    if (!f.name.toLowerCase().endsWith('.odm')) {
+      toast.add({ title: 'Нужен файл .odm', color: 'red' })
+      return
+    }
+    enrichFile.value = f
+  }
+}
+
+async function runEnrichLocale() {
+  if (!projectId.value || !enrichFile.value) return
+  enriching.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', enrichFile.value)
+    fd.append('locale', enrichLocale.value)
+    const res = await $fetch<{ updatedCount: number; totalSlots: number }>(`/api/import/odm/project/${projectId.value}/enrich-locale`, {
+      method: 'POST',
+      body: fd,
+      headers: store.getAuthHeader(),
+    })
+    enrichFile.value = null
+    await refreshProject()
+    toast.add({
+      title: 'Названия обновлены',
+      description: `Обновлено ${res.updatedCount} из ${res.totalSlots} слотов (${enrichLocale.value.toUpperCase()}).`,
+      color: 'green',
+    })
+  }
+  catch (e: any) {
+    toast.add({ title: 'Ошибка обогащения', description: e?.data?.statusMessage || e?.message, color: 'red' })
+  }
+  enriching.value = false
+}
+
+// ─── Bulk ODT upload ───
+const bulkFiles = ref<File[]>([])
+const bulkFileInputRef = ref<HTMLInputElement | null>(null)
+const bulkDragging = ref(false)
+const bulkUploading = ref(false)
+const bulkHeadingLocale = ref<'ru' | 'en' | 'zh' | 'none' | ''>('')
+const bulkChapterStart = ref(1)
+
+interface MatchedOdtFile {
+  file: File
+  filename: string
+  matchedPart: any | null
+  matchedLang: 'en' | 'ru' | 'zh' | null
+}
+
+const bulkMatchedFiles = computed<MatchedOdtFile[]>(() => {
+  return bulkFiles.value.map(file => {
+    const fileBn = file.name.toLowerCase()
+    let matchedPart: any = null
+    let matchedLang: 'en' | 'ru' | 'zh' | null = null
+
+    for (const p of parts.value) {
+      const bnEn = p.master_href_en ? p.master_href_en.replace(/\\/g, '/').split('/').pop()?.toLowerCase() : null
+      const bnRu = p.master_href_ru ? p.master_href_ru.replace(/\\/g, '/').split('/').pop()?.toLowerCase() : null
+      const bnZh = p.master_href_zh ? p.master_href_zh.replace(/\\/g, '/').split('/').pop()?.toLowerCase() : null
+
+      if (bnEn && bnEn === fileBn) {
+        matchedPart = p
+        matchedLang = 'en'
+        break
+      }
+      if (bnRu && bnRu === fileBn) {
+        matchedPart = p
+        matchedLang = 'ru'
+        break
+      }
+      if (bnZh && bnZh === fileBn) {
+        matchedPart = p
+        matchedLang = 'zh'
+        break
+      }
+    }
+
+    return {
+      file,
+      filename: file.name,
+      matchedPart,
+      matchedLang,
+    }
+  })
+})
+
+const hasUnmatchedBulkFiles = computed(() => bulkMatchedFiles.value.some(m => !m.matchedPart))
+
+function handleBulkFiles(files: FileList | File[]) {
+  const odtFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.odt'))
+  if (!odtFiles.length) {
+    toast.add({ title: 'Нужны файлы .odt', color: 'red' })
+    return
+  }
+  bulkFiles.value = odtFiles
+}
+
+function onBulkSelect(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files?.length) handleBulkFiles(input.files)
+}
+
+function onBulkDragOver(e: DragEvent) { e.preventDefault(); bulkDragging.value = true }
+function onBulkDragLeave() { bulkDragging.value = false }
+function onBulkDrop(e: DragEvent) {
+  e.preventDefault(); bulkDragging.value = false
+  if (e.dataTransfer?.files?.length) handleBulkFiles(e.dataTransfer.files)
+}
+
+async function runBulkOdt() {
+  if (!projectId.value || !bulkFiles.value.length) return
+  if (hasUnmatchedBulkFiles.value) {
+    if (!confirm('Некоторые файлы не сопоставлены со структурой ODM. Они будут пропущены при импорте. Продолжить?')) {
+      return
+    }
+  }
+  bulkUploading.value = true
+  try {
+    const fd = new FormData()
+    if (bulkHeadingLocale.value) fd.append('heading_locale', bulkHeadingLocale.value)
+    fd.append('chapter_start', String(bulkChapterStart.value))
+    for (const f of bulkFiles.value) fd.append('files', f, f.name)
+    const res = await $fetch<{ matched: number; created: number; updated: number; skipped: number }>(`/api/import/odm/project/${projectId.value}/bulk-odt`, {
+      method: 'POST',
+      body: fd,
+      headers: store.getAuthHeader(),
+    })
+    bulkFiles.value = []
+    titleDrafts.value = {}
+    await refreshProject()
+    let skippedMsg = ''
+    if (res.skipped > 0) {
+      skippedMsg = ` (Пропущено: ${res.skipped})`
+    }
+    toast.add({
+      title: 'Массовый импорт завершён',
+      description: `Создано: ${res.created} · Обновлено: ${res.updated}${skippedMsg}`,
+      color: 'primary',
+    })
+  }
+  catch (e: any) {
+    toast.add({ title: 'Ошибка массового импорта', description: e?.data?.statusMessage || e?.message, color: 'red' })
+  }
+  bulkUploading.value = false
+}
+
+const route = useRoute()
 watch(books, (list) => {
-  if (bookMode.value === 'existing' && selectedBookId.value == null && list.length > 0)
-    selectedBookId.value = Number(list[0].id)
+  if (bookMode.value === 'existing' && selectedBookId.value == null && list.length > 0) {
+    const qId = Number(route.query.bookId)
+    if (qId && list.some(b => Number(b.id) === qId)) {
+      selectedBookId.value = qId
+    } else {
+      selectedBookId.value = Number(list[0].id)
+    }
+  }
 }, { immediate: true })
 
 function partTitleField(p: any, key: 'display_title' | 'display_title_ru' | 'display_title_zh'): string {
@@ -104,6 +290,7 @@ async function saveSlotTitles(partId: number) {
     const next = { ...titleDrafts.value }
     delete next[partId]
     titleDrafts.value = next
+    editingPartId.value = null
     await refreshProject()
     toast.add({ title: 'Названия слота сохранены', color: 'green' })
   }
@@ -173,45 +360,9 @@ async function togglePartEnabled(partId: number) {
   }
 }
 
-function handleMasterFile(file: File | null) {
-  if (!file) return
-  if (!file.name.toLowerCase().endsWith('.odm')) {
-    toast.add({ title: 'Нужен файл .odm', color: 'red' })
-    return
-  }
-  masterFile.value = file
-  projectId.value = null
-  projectBookId.value = null
-  parts.value = []
-  publishStats.draft = 0
-  publishStats.live = 0
-  titleDrafts.value = {}
-}
-
-function onMasterSelect(e: Event) {
-  const input = e.target as HTMLInputElement
-  if (input.files?.length) handleMasterFile(input.files[0])
-}
-
-function onDragOver(e: DragEvent) {
-  e.preventDefault()
-  isDragging.value = true
-}
-
-function onDragLeave() {
-  isDragging.value = false
-}
-
-function onDrop(e: DragEvent) {
-  e.preventDefault()
-  isDragging.value = false
-  const f = e.dataTransfer?.files?.[0]
-  if (f) handleMasterFile(f)
-}
-
 async function createProject() {
-  if (!masterFile.value) return
-  if (bookMode.value === 'existing' && (selectedBookId.value == null || selectedBookId.value === '')) {
+  if (!hasAnyMasterFile.value) return
+  if (bookMode.value === 'existing' && !selectedBookId.value) {
     toast.add({
       title: 'Выберите книгу',
       description: 'Импорт ODM доступен только в составе книги.',
@@ -250,7 +401,9 @@ async function createProject() {
     }
 
     const fd = new FormData()
-    fd.append('file', masterFile.value)
+    if (masterFileEn.value) fd.append('file_en', masterFileEn.value)
+    if (masterFileRu.value) fd.append('file_ru', masterFileRu.value)
+    if (masterFileZh.value) fd.append('file_zh', masterFileZh.value)
     fd.append('options', JSON.stringify(options))
     const res = await $fetch<{ projectId: number; parts: any[]; book_id?: number | null }>('/api/import/odm/project', {
       method: 'POST',
@@ -276,22 +429,22 @@ async function createProject() {
   loadingMaster.value = false
 }
 
-function triggerPartUpload(partId: number) {
-  const el = document.getElementById(`part-input-${partId}`)
+function triggerPartUpload(partId: number, lang: 'en' | 'ru' | 'zh') {
+  const el = document.getElementById(`part-input-${partId}-${lang}`)
   if (el) (el as HTMLInputElement).click()
 }
 
-async function handlePartFileChange(partId: number, event: Event) {
+async function handlePartFileChange(partId: number, lang: 'en' | 'ru' | 'zh', event: Event) {
   const input = event.target as HTMLInputElement
   if (!input.files?.length) return
   
-  await uploadPart(partId, input.files)
+  await uploadPart(partId, lang, input.files)
   
   // Clear the input so the same file can be selected again if needed
   input.value = ''
 }
 
-async function uploadPart(partId: number, fileList: FileList | null) {
+async function uploadPart(partId: number, lang: 'en' | 'ru' | 'zh', fileList: FileList | null) {
   if (!fileList?.length || !projectId.value) return
   const file = fileList[0]
   if (!file.name.toLowerCase().endsWith('.odt')) {
@@ -330,7 +483,7 @@ async function uploadPart(partId: number, fileList: FileList | null) {
       display_title_ru,
       display_title_zh,
     }))
-    const res = await $fetch<{ imported: number }>(`/api/import/odm/project/${projectId.value}/part/${partId}`, {
+    const res = await $fetch<{ imported: number }>(`/api/import/odm/project/${projectId.value}/part/${partId}?lang=${lang}`, {
       method: 'POST',
       body: fd,
       headers: store.getAuthHeader(),
@@ -339,7 +492,7 @@ async function uploadPart(partId: number, fileList: FileList | null) {
     delete next[partId]
     titleDrafts.value = next
     toast.add({
-      title: p.status === 'imported' ? 'Глава заменена (черновик)' : 'Глава в черновиках',
+      title: lang === 'en' ? (p.status === 'imported' ? 'Глава EN заменена' : 'Глава EN импортирована') : `Перевод ${lang.toUpperCase()} успешно импортирован`,
       description: `${res.imported} статей. На публичном графе знаний рёбра по терминам появятся после публикации сборки.`,
       color: 'primary',
     })
@@ -381,17 +534,22 @@ async function publishProject() {
   publishing.value = false
 }
 
-async function clearSlotImport(partId: number) {
+async function clearSlotImport(partId: number, lang: 'en' | 'ru' | 'zh') {
   if (!projectId.value) return
-  if (!confirm('Сбросить импорт этого слота и всех следующих? Черновики статей из этих слотов будут удалены из базы.'))
+  const label = lang.toUpperCase()
+  const confirmationText = lang === 'en'
+    ? 'Сбросить импорт этого слота и всех следующих? Черновики статей из этих слотов будут удалены из базы.'
+    : `Сбросить перевод ${label} для этого слота и всех последующих? Переведенный контент будет очищен.`
+
+  if (!confirm(confirmationText))
     return
   clearingPartId.value = partId
   try {
-    await $fetch(`/api/import/odm/project/${projectId.value}/part/${partId}/import`, {
+    await $fetch(`/api/import/odm/project/${projectId.value}/part/${partId}/import?lang=${lang}`, {
       method: 'DELETE',
       headers: store.getAuthHeader(),
     })
-    toast.add({ title: 'Импорт слотов сброшен', color: 'green' })
+    toast.add({ title: `Импорт ${label} сброшен`, color: 'green' })
     await refreshProject()
   }
   catch (e: any) {
@@ -435,7 +593,9 @@ async function resetFlow() {
       return
     }
   }
-  masterFile.value = null
+  masterFileEn.value = null
+  masterFileRu.value = null
+  masterFileZh.value = null
   projectId.value = null
   projectBookId.value = null
   parts.value = []
@@ -484,70 +644,53 @@ function slotRowStatus(part: any) {
       </div>
     </header>
 
-    <!-- Publication Status -->
+    <!-- Project Info Banner (Top-level status summary) -->
+    <div v-if="projectId" class="flex items-center justify-between p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 mb-6">
+      <div class="flex items-center gap-3">
+        <div class="p-2 rounded-xl bg-sky-500/10 text-sky-500">
+          <UIcon name="i-heroicons-beaker" class="size-5" />
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Проект #{{ projectId }}</h3>
+          <p class="text-xs opacity-60">Активных глав: {{ totalSlots }} · Импортировано ODT: {{ importedCount }} из {{ totalSlots }}</p>
+        </div>
+      </div>
+      <GvButton variant="ghost" color="red" size="sm" icon="i-heroicons-trash" @click="resetFlow">
+        Удалить проект
+      </GvButton>
+    </div>
+
+    <!-- Publication Status (Only when all slots uploaded) -->
     <section v-if="projectId && allSlotsImported" class="section-card publish-ready-card">
-      <header class="card-header">
-        <span class="card-badge">READY</span>
-        <h2 class="card-header-title">Статус публикации</h2>
-      </header>
-      <div class="card-body">
-        <div class="flex items-start gap-4 p-4 rounded-2xl bg-black/5 dark:bg-white/5">
-          <div class="p-3 rounded-xl bg-white dark:bg-black/20 shadow-sm">
-            <UIcon :name="allPublished ? 'i-heroicons-check-badge' : 'i-heroicons-eye-slash'" class="size-8"
-              :class="allPublished ? 'text-green-500' : 'text-sky-500'" />
+      <div class="card-body p-4 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 rounded-xl" :class="allPublished ? 'bg-emerald-500/10 text-emerald-500' : 'bg-sky-500/10 text-sky-500'">
+            <UIcon :name="allPublished ? 'i-heroicons-check-badge' : 'i-heroicons-eye-slash'" class="size-6" />
           </div>
-          <div class="flex-1">
-            <h3 class="text-base font-bold mb-1">
-              {{ allPublished ? 'Все материалы на сайте' : `Черновики: ${publishStats.draft} · На сайте:
-              ${publishStats.live}` }}
+          <div>
+            <h3 class="text-sm font-bold">
+              {{ allPublished ? 'Все материалы опубликованы' : `Черновики: ${publishStats.draft} · На сайте: ${publishStats.live}` }}
             </h3>
-            <p class="text-sm opacity-60 leading-relaxed">
-              {{ allPublished
-                ? `Все статьи этого проекта успешно опубликованы. Вы можете продолжить редактирование в общем списке
-              статей.`
-                : `Импорт завершен, но статьи не видны читателям. Проверьте содержимое и нажмите кнопку ниже.`
-              }}
+            <p class="text-xs opacity-60">
+              {{ allPublished ? 'Все статьи этого проекта успешно выведены в общий доступ.' : 'Импорт завершен, но статьи не видны читателям. Опубликуйте их для вывода на сайт.' }}
             </p>
-            <div v-if="!allPublished" class="flex gap-3 mt-4">
-              <GvButton color="sky" size="lg" icon="i-heroicons-rocket-launch" :disabled="!canPublish" class="px-8"
-                @click="publishConfirmOpen = true">
-                Опубликовать сборку
-              </GvButton>
-              <GvButton v-if="projectBookId" :to="`/admin/books/${projectBookId}/edit`" variant="outline" color="gray"
-                size="lg" icon="i-heroicons-pencil-square">
-                Правки книги
-              </GvButton>
-            </div>
           </div>
+        </div>
+        <div v-if="!allPublished" class="flex gap-2">
+          <GvButton color="sky" size="sm" icon="i-heroicons-rocket-launch" :disabled="!canPublish" @click="publishConfirmOpen = true">
+            Опубликовать сборку
+          </GvButton>
         </div>
       </div>
     </section>
 
-    <UModal v-model="publishConfirmOpen">
-      <div class="p-6">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="p-2 rounded-lg bg-sky-500/10 text-sky-500">
-            <UIcon name="i-heroicons-rocket-launch" class="size-6" />
-          </div>
-          <h3 class="text-lg font-bold">Опубликовать {{ publishStats.draft }} статей?</h3>
-        </div>
-        <p class="text-sm opacity-70 mb-6 leading-relaxed">
-          Статьи станут доступны всем пользователям согласно настройкам видимости книги. Вы сможете скрыть их вручную
-          позже в панели управления статьями.
-        </p>
-        <div class="flex justify-end gap-3">
-          <GvButton variant="ghost" color="gray" @click="publishConfirmOpen = false">Отмена</GvButton>
-          <GvButton color="sky" :loading="publishing" @click="publishProject">Подтверждаю публикацию</GvButton>
-        </div>
-      </div>
-    </UModal>
-
-    <section class="section-card">
+    <!-- Project Creation Form (Hidden once project is active) -->
+    <section v-if="!projectId" class="section-card">
       <header class="card-header">
         <span class="card-badge">ODM</span>
         <h2 class="card-header-title">Книга и мастер-документ</h2>
       </header>
-      <div class="card-body space-y-8">
+      <div class="card-body space-y-6">
         <!-- Mode Switcher -->
         <div>
           <p class="gv-admin-eyebrow mb-3">Режим импорта</p>
@@ -622,7 +765,7 @@ function slotRowStatus(part: any) {
                           :disabled="!!projectId" />
                       </UFormGroup>
                       <UFormGroup label="描述 (中文)">
-                        <UTextarea v-model="newBookForm.description_zh" :rows="4" placeholder="书的简要摘要..."
+                        <UTextarea v-model="newBookForm.description_zh" :rows="4" placeholder="书의简要摘要..."
                           :disabled="!!projectId" />
                       </UFormGroup>
                     </div>
@@ -659,78 +802,160 @@ function slotRowStatus(part: any) {
         </div>
 
         <!-- Global Settings -->
-        <UFormGroup label="Язык подписей глав" help="Нумерация в тексте (Глава / Chapter / 第N章) и имена слотов по умолчанию">
-          <div class="flex flex-wrap gap-2">
-            <GvButton
-              v-for="opt in ([
-                { label: 'RU · Глава', value: 'ru' as const },
-                { label: 'EN · Chapter', value: 'en' as const },
-                { label: 'ZH · 章', value: 'zh' as const },
-              ])"
-              :key="opt.value"
-              :variant="odmContentLocale === opt.value ? 'solid' : 'outline'"
-              :color="odmContentLocale === opt.value ? 'sky' : 'gray'"
-              size="xs"
-              :disabled="!!projectId"
-              @click="odmContentLocale = opt.value"
-            >
-              {{ opt.label }}
-            </GvButton>
-          </div>
-        </UFormGroup>
-
-        <UFormGroup label="Режим разборки ODT" help="Разрезать ли главы на отдельные статьи">
-          <div class="flex gap-2">
-            <GvButton
-              v-for="opt in ([{ label: 'Целиком', value: 'none' }, { label: 'По H1', value: 'h1' }, { label: 'По H2', value: 'h2' }] as const)"
-              :key="opt.value" :variant="splitLevel === opt.value ? 'solid' : 'outline'"
-              :color="splitLevel === opt.value ? 'sky' : 'gray'" size="xs" :disabled="!!projectId"
-              @click="splitLevel = opt.value">
-              {{ opt.label }}
-            </GvButton>
-          </div>
-        </UFormGroup>
-
-        <!-- Drop Zone or Project Info -->
-        <div v-if="!projectId" class="pt-4">
-          <div class="drop-zone gv-focusable" :class="{ 'drop-zone--active': isDragging || masterFile }"
-            @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
-            <div class="drop-zone-inner">
-              <div class="p-4 rounded-full bg-sky-500/10 text-sky-500 mb-2">
-                <UIcon :name="masterFile ? 'i-heroicons-document-check' : 'i-heroicons-cloud-arrow-up'"
-                  class="size-10" />
-              </div>
-              <p class="text-base font-bold">
-                {{ masterFile ? masterFile.name : 'Перетащите мастер .odm файл' }}
-              </p>
-              <p class="text-xs opacity-50 mb-4">Файл задает последовательность и названия глав</p>
-              <input
-                ref="masterFileInputRef"
-                type="file"
-                accept=".odm"
-                class="sr-only"
-                @change="onMasterSelect"
-              >
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+          <UFormGroup label="Язык подписей глав" help="Нумерация в тексте и имена слотов по умолчанию">
+            <div class="flex flex-wrap gap-2">
               <GvButton
-                type="button"
-                variant="outline"
-                color="gray"
-                size="sm"
-                icon="i-heroicons-folder-open"
-                @click="masterFileInputRef?.click()"
+                v-for="opt in ([
+                  { label: 'RU · Глава', value: 'ru' as const },
+                  { label: 'EN · Chapter', value: 'en' as const },
+                  { label: 'ZH · 章', value: 'zh' as const },
+                ])"
+                :key="opt.value"
+                :variant="odmContentLocale === opt.value ? 'solid' : 'outline'"
+                :color="odmContentLocale === opt.value ? 'sky' : 'gray'"
+                size="xs"
+                :disabled="!!projectId"
+                @click="odmContentLocale = opt.value"
               >
-                Выбрать файл
+                {{ opt.label }}
               </GvButton>
+            </div>
+          </UFormGroup>
+
+          <UFormGroup label="Режим разборки ODT" help="Разрезать ли главы на отдельные статьи">
+            <div class="flex gap-2">
+              <GvButton
+                v-for="opt in ([{ label: 'Целиком', value: 'none' }, { label: 'По H1', value: 'h1' }, { label: 'По H2', value: 'h2' }] as const)"
+                :key="opt.value" :variant="splitLevel === opt.value ? 'solid' : 'outline'"
+                :color="splitLevel === opt.value ? 'sky' : 'gray'" size="xs" :disabled="!!projectId"
+                @click="splitLevel = opt.value">
+                {{ opt.label }}
+              </GvButton>
+            </div>
+          </UFormGroup>
+        </div>
+
+        <!-- 3 ODM File Selectors -->
+        <div v-if="!projectId" class="pt-4 space-y-6 border-t border-black/5 dark:border-white/5">
+          <p class="gv-admin-eyebrow">Мастер-документы .odm (загрузите до 3 языковых версий)</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- English ODM -->
+            <div
+              class="drop-zone gv-focusable !py-8"
+              :style="masterFileEn ? 'border-color: var(--gv-primary); background: color-mix(in srgb, var(--gv-primary) 5%, var(--gv-surface-card))' : ''"
+              @click="masterFileEnInputRef?.click()"
+            >
+              <div class="drop-zone-inner">
+                <div class="p-3 rounded-full bg-sky-500/10 text-sky-500 mb-2">
+                  <UIcon :name="masterFileEn ? 'i-heroicons-document-check' : 'i-heroicons-cloud-arrow-up'" class="size-8" />
+                </div>
+                <p class="text-sm font-bold">🇬🇧 English ODM</p>
+                <p class="text-[11px] opacity-60 truncate max-w-full px-2 mt-1 mb-3">
+                  {{ masterFileEn ? masterFileEn.name : 'Выбрать .odm' }}
+                </p>
+                <input
+                  ref="masterFileEnInputRef"
+                  type="file"
+                  accept=".odm"
+                  class="sr-only"
+                  @change="masterFileEn = ($event.target as HTMLInputElement).files?.[0] || null"
+                  @click.stop
+                >
+                <GvButton
+                  v-if="masterFileEn"
+                  type="button"
+                  variant="ghost"
+                  color="red"
+                  size="xs"
+                  icon="i-heroicons-trash"
+                  @click.stop="masterFileEn = null"
+                >
+                  Удалить
+                </GvButton>
+              </div>
+            </div>
+
+            <!-- Russian ODM -->
+            <div
+              class="drop-zone gv-focusable !py-8"
+              :style="masterFileRu ? 'border-color: var(--gv-primary); background: color-mix(in srgb, var(--gv-primary) 5%, var(--gv-surface-card))' : ''"
+              @click="masterFileRuInputRef?.click()"
+            >
+              <div class="drop-zone-inner">
+                <div class="p-3 rounded-full bg-sky-500/10 text-sky-500 mb-2">
+                  <UIcon :name="masterFileRu ? 'i-heroicons-document-check' : 'i-heroicons-cloud-arrow-up'" class="size-8" />
+                </div>
+                <p class="text-sm font-bold">🇷🇺 Русский ODM</p>
+                <p class="text-[11px] opacity-60 truncate max-w-full px-2 mt-1 mb-3">
+                  {{ masterFileRu ? masterFileRu.name : 'Выбрать .odm' }}
+                </p>
+                <input
+                  ref="masterFileRuInputRef"
+                  type="file"
+                  accept=".odm"
+                  class="sr-only"
+                  @change="masterFileRu = ($event.target as HTMLInputElement).files?.[0] || null"
+                  @click.stop
+                >
+                <GvButton
+                  v-if="masterFileRu"
+                  type="button"
+                  variant="ghost"
+                  color="red"
+                  size="xs"
+                  icon="i-heroicons-trash"
+                  @click.stop="masterFileRu = null"
+                >
+                  Удалить
+                </GvButton>
+              </div>
+            </div>
+
+            <!-- Chinese ODM -->
+            <div
+              class="drop-zone gv-focusable !py-8"
+              :style="masterFileZh ? 'border-color: var(--gv-primary); background: color-mix(in srgb, var(--gv-primary) 5%, var(--gv-surface-card))' : ''"
+              @click="masterFileZhInputRef?.click()"
+            >
+              <div class="drop-zone-inner">
+                <div class="p-3 rounded-full bg-sky-500/10 text-sky-500 mb-2">
+                  <UIcon :name="masterFileZh ? 'i-heroicons-document-check' : 'i-heroicons-cloud-arrow-up'" class="size-8" />
+                </div>
+                <p class="text-sm font-bold">🇨🇳 Китайский ODM</p>
+                <p class="text-[11px] opacity-60 truncate max-w-full px-2 mt-1 mb-3">
+                  {{ masterFileZh ? masterFileZh.name : 'Выбрать .odm' }}
+                </p>
+                <input
+                  ref="masterFileZhInputRef"
+                  type="file"
+                  accept=".odm"
+                  class="sr-only"
+                  @change="masterFileZh = ($event.target as HTMLInputElement).files?.[0] || null"
+                  @click.stop
+                >
+                <GvButton
+                  v-if="masterFileZh"
+                  type="button"
+                  variant="ghost"
+                  color="red"
+                  size="xs"
+                  icon="i-heroicons-trash"
+                  @click.stop="masterFileZh = null"
+                >
+                  Удалить
+                </GvButton>
+              </div>
             </div>
           </div>
 
-          <div class="flex justify-center pt-8">
+          <div class="flex justify-center pt-4">
             <GvButton
               color="sky"
               size="lg"
               icon="i-heroicons-play"
               :loading="loadingMaster"
-              :disabled="!masterFile || (bookMode === 'existing' && selectedBookId == null)"
+              :disabled="!hasAnyMasterFile || (bookMode === 'existing' && selectedBookId == null)"
               class="px-12 rounded-2xl"
               @click="createProject"
             >
@@ -738,175 +963,248 @@ function slotRowStatus(part: any) {
             </GvButton>
           </div>
         </div>
-
-        <div v-else class="project-banner p-6 rounded-2xl border-2 border-dashed border-sky-500/30 bg-sky-500/5">
-          <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-4">
-              <div class="p-3 rounded-xl bg-sky-500 text-white shadow-lg shadow-sky-500/20">
-                <UIcon name="i-heroicons-beaker" class="size-6" />
-              </div>
-              <div>
-                <p class="text-lg font-black uppercase tracking-tight">Проект #{{ projectId }}</p>
-                <p class="text-sm opacity-60">Включено слотов: {{ totalSlots }} · Импортировано: {{ importedCount }}</p>
-              </div>
-            </div>
-            <GvButton variant="outline" color="gray" size="sm" @click="resetFlow">Новый проект</GvButton>
-          </div>
-        </div>
       </div>
     </section>
 
+    <!-- Table of Slots (Queue) -->
     <section v-if="parts.length" class="section-card">
       <header class="card-header">
-        <span class="card-badge">ODT</span>
-        <h2 class="card-header-title">Очередь загрузки глав</h2>
-        <span class="ml-auto text-xs opacity-50 font-bold">{{ importedCount }}/{{ totalSlots }}</span>
+        <span class="card-badge">QUEUE</span>
+        <h2 class="card-header-title">Очередь глав (слоты)</h2>
+        <span class="ml-auto text-xs opacity-50 font-bold">{{ importedCount }} / {{ totalSlots }}</span>
       </header>
       <div class="card-body card-body--flush overflow-x-auto">
-        <div class="p-4 text-xs opacity-80 bg-black/5 dark:bg-white/5 space-y-1.5 leading-relaxed">
-          <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Загружайте главы (.odt) по порядку.</p>
-          <p class="opacity-90">Поле <strong>EN</strong> задаёт <code class="rounded bg-black/10 px-1 py-0.5 text-[11px] dark:bg-white/15">title</code> и основной slug <code class="rounded bg-black/10 px-1 py-0.5 text-[11px] dark:bg-white/15">/articles/…</code>; <strong>RU</strong> и <strong>ZH</strong> — по желанию. Отдельно нажимать «Сохранить» не обязательно: заголовки уходят на сервер вместе с .odt.</p>
-          <p class="text-[11px] opacity-85 pt-1 border-t border-black/10 dark:border-white/10">
-            Граф знаний на сайте («упоминания» по якорям <code class="rounded bg-black/10 px-1 dark:bg-white/15">wiki-term</code>): рёбра появляются только для <strong>опубликованных</strong> статей — после «Опубликовать сборку». В черновиках термины уже подсвечиваются в тексте.
-          </p>
-        </div>
-        <table class="admin-table min-w-[1040px]">
+        <table class="admin-table">
           <thead>
             <tr>
-              <th class="w-12">#</th>
-              <th class="w-[130px]">Импорт</th>
-              <th class="min-w-[320px]">Заголовки статьи</th>
-              <th class="hidden lg:table-cell">HREF</th>
-              <th>Статус</th>
-              <th>Публикация</th>
-              <th>Действие</th>
+              <th class="w-12 text-center">#</th>
+              <th class="w-16 text-center">Импорт</th>
+              <th class="min-w-[320px]">Статья (Глава)</th>
+              <th class="w-[220px]">🇬🇧 Английский (EN)</th>
+              <th class="w-[220px]">🇷🇺 Русский (RU)</th>
+              <th class="w-[220px]">🇨🇳 Китайский (ZH)</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="p in parts" :key="p.id">
-              <td class="tabular-nums font-bold opacity-30 text-xs text-center">{{ p.sort_order }}</td>
-              <td class="align-top py-2">
-                <div class="flex flex-col items-start gap-2">
-                  <GvButton
-                    v-if="p.status === 'pending'"
-                    variant="outline"
-                    :color="Number(p.is_enabled ?? 1) === 1 ? 'sky' : 'gray'"
+            <tr v-for="p in parts" :key="p.id" :class="{ 'opacity-40 select-none': Number(p.is_enabled ?? 1) !== 1 }">
+              <!-- Row Index -->
+              <td class="tabular-nums font-bold opacity-30 text-xs text-center align-middle">{{ p.sort_order }}</td>
+              
+              <!-- Enabled Status Toggle -->
+              <td class="text-center align-middle py-2">
+                <GvButton
+                  variant="ghost"
+                  :color="Number(p.is_enabled ?? 1) === 1 ? 'sky' : 'gray'"
+                  size="xs"
+                  :icon="Number(p.is_enabled ?? 1) === 1 ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
+                  :disabled="p.status !== 'pending'"
+                  @click="togglePartEnabled(p.id)"
+                  :title="Number(p.is_enabled ?? 1) === 1 ? 'Глава включена в импорт' : 'Глава исключена из импорта'"
+                />
+              </td>
+
+              <!-- Article titles + Inline Editor -->
+              <td class="align-middle py-2 pr-4">
+                <div v-if="editingPartId === p.id" class="flex flex-col gap-2 p-2 bg-black/5 dark:bg-white/5 rounded-xl border border-black/10 dark:border-white/10">
+                  <UInput
                     size="xs"
-                    icon="i-heroicons-adjustments-horizontal"
-                    @click="togglePartEnabled(p.id)"
-                  >
-                    {{ Number(p.is_enabled ?? 1) === 1 ? 'Включена' : 'Исключена' }}
-                  </GvButton>
-                  <span v-else class="text-[10px] opacity-60">
-                    {{ Number(p.is_enabled ?? 1) === 1 ? 'Включена' : 'Исключена' }}
-                  </span>
-                  <p v-if="Number(p.is_enabled ?? 1) !== 1" class="text-[10px] opacity-50 leading-snug">
-                    Слот пропускается при публикации и не требует загрузки .odt.
-                  </p>
+                    placeholder="Название (EN) *"
+                    :model-value="partTitleField(p, 'display_title')"
+                    @update:model-value="setTitleDraft(p.id, 'display_title', $event)"
+                  />
+                  <UInput
+                    size="xs"
+                    placeholder="Название (RU)"
+                    :model-value="partTitleField(p, 'display_title_ru')"
+                    @update:model-value="setTitleDraft(p.id, 'display_title_ru', $event)"
+                  />
+                  <UInput
+                    size="xs"
+                    placeholder="Название (ZH)"
+                    :model-value="partTitleField(p, 'display_title_zh')"
+                    @update:model-value="setTitleDraft(p.id, 'display_title_zh', $event)"
+                  />
+                  <div class="flex gap-2 justify-end mt-1">
+                    <GvButton
+                      variant="ghost"
+                      color="gray"
+                      size="xs"
+                      icon="i-heroicons-x-mark"
+                      @click="editingPartId = null"
+                    >
+                      Отмена
+                    </GvButton>
+                    <GvButton
+                      color="sky"
+                      size="xs"
+                      icon="i-heroicons-check"
+                      :loading="savingTitlesPartId === p.id"
+                      @click="saveSlotTitles(p.id)"
+                    >
+                      Сохранить
+                    </GvButton>
+                  </div>
                 </div>
-              </td>
-              <td class="align-top py-2">
-                <p v-if="p.status === 'imported'" class="text-[10px] opacity-70 mb-2 leading-snug">
-                  При «Заменить .odt» этой главы заново создаются черновики для этой и всех следующих уже импортированных слотов (нумерация списков сохраняется).
-                </p>
-                <div class="flex flex-col gap-3 min-w-[280px] py-1" :class="{ 'opacity-50': Number(p.is_enabled ?? 1) !== 1 }">
-                  <UFormGroup
-                    label="Заголовок EN"
-                    help="Поле title; по нему строится основной slug и ссылка /articles/…"
-                    class="[&_.text-sm]:text-[10px]"
-                  >
-                    <UInput
-                      size="xs"
-                      :model-value="partTitleField(p, 'display_title')"
-                      :disabled="Number(p.is_enabled ?? 1) !== 1"
-                      @update:model-value="setTitleDraft(p.id, 'display_title', $event)"
-                    />
-                  </UFormGroup>
-                  <UFormGroup
-                    label="Заголовок RU"
-                    help="Необязательно · title_ru"
-                    class="[&_.text-sm]:text-[10px]"
-                  >
-                    <UInput
-                      size="xs"
-                      :model-value="partTitleField(p, 'display_title_ru')"
-                      :disabled="Number(p.is_enabled ?? 1) !== 1"
-                      @update:model-value="setTitleDraft(p.id, 'display_title_ru', $event)"
-                    />
-                  </UFormGroup>
-                  <UFormGroup
-                    label="Заголовок ZH"
-                    help="Необязательно · title_zh"
-                    class="[&_.text-sm]:text-[10px]"
-                  >
-                    <UInput
-                      size="xs"
-                      :model-value="partTitleField(p, 'display_title_zh')"
-                      :disabled="Number(p.is_enabled ?? 1) !== 1"
-                      @update:model-value="setTitleDraft(p.id, 'display_title_zh', $event)"
-                    />
-                  </UFormGroup>
+                <div v-else class="group flex items-start justify-between gap-4 py-1" :title="`Исходные пути:
+EN: ${p.master_href_en || 'нет'}
+RU: ${p.master_href_ru || 'нет'}
+ZH: ${p.master_href_zh || 'нет'}`">
+                  <div class="space-y-1 select-text">
+                    <div class="font-bold text-gray-900 dark:text-gray-100 text-sm leading-snug">
+                      {{ p.display_title || 'Без названия (EN)' }}
+                    </div>
+                    <div v-if="p.display_title_ru" class="text-xs opacity-60 flex items-center gap-1.5 leading-none">
+                      <span class="text-[10px]">🇷🇺</span>
+                      <span>{{ p.display_title_ru }}</span>
+                    </div>
+                    <div v-if="p.display_title_zh" class="text-xs opacity-60 flex items-center gap-1.5 leading-none">
+                      <span class="text-[10px]">🇨🇳</span>
+                      <span>{{ p.display_title_zh }}</span>
+                    </div>
+                  </div>
                   <GvButton
-                    v-if="p.status === 'pending'"
-                    variant="soft"
-                    color="gray"
-                    size="xs"
-                    class="self-start"
-                    :loading="savingTitlesPartId === p.id"
-                    :disabled="Number(p.is_enabled ?? 1) !== 1"
-                    icon="i-heroicons-check"
-                    @click="saveSlotTitles(p.id)"
-                  >
-                    Только названия (без .odt)
-                  </GvButton>
-                </div>
-              </td>
-              <td class="hidden lg:table-cell text-[10px] font-mono opacity-50">{{ p.master_href }}</td>
-              <td>
-                <span class="gv-status-pill" :data-status="p.status">
-                  {{ p.status === 'imported' ? 'Готово' : 'Ожидание' }}
-                </span>
-              </td>
-              <td>
-                <span v-if="p.status === 'imported'" class="gv-status-pill" :data-pub="slotRowStatus(p)">
-                  {{ p.articles_publish === 'published' ? 'Live' : 'Draft' }}
-                </span>
-                <span v-else class="text-[10px] opacity-30">—</span>
-              </td>
-              <td>
-                <div class="flex flex-col gap-2 items-start">
-                  <GvButton
-                    variant="outline"
-                    color="gray"
-                    size="xs"
-                    :loading="uploadingPartId === p.id"
-                    :disabled="Number(p.is_enabled ?? 1) !== 1"
-                    icon="i-heroicons-arrow-up-tray"
-                    @click="triggerPartUpload(p.id)"
-                  >
-                    {{ p.status === 'imported' ? 'Заменить .odt' : 'Загрузить .odt' }}
-                  </GvButton>
-                  <input
-                    :id="`part-input-${p.id}`"
-                    type="file"
-                    accept=".odt"
-                    class="hidden"
-                    @change="handlePartFileChange(p.id, $event)"
-                  >
-                  <GvButton
-                    v-if="p.status === 'imported'"
+                    v-if="p.status === 'pending' && Number(p.is_enabled ?? 1) === 1"
                     variant="ghost"
                     color="gray"
                     size="xs"
-                    icon="i-heroicons-arrow-uturn-left"
-                    :loading="clearingPartId === p.id"
-                    @click="clearSlotImport(p.id)"
-                  >
-                    Сбросить слот…
-                  </GvButton>
-                  <span v-if="p.status === 'imported' && p.odt_original_name" class="text-[10px] font-bold opacity-40 truncate max-w-[180px]">
-                    {{ p.odt_original_name }}
-                  </span>
+                    icon="i-heroicons-pencil"
+                    class="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0"
+                    @click="startEditing(p)"
+                    title="Редактировать названия"
+                  />
+                </div>
+              </td>
+
+              <!-- EN File Column -->
+              <td class="align-middle py-2">
+                <div class="flex items-center gap-3" :class="{ 'opacity-50': Number(p.is_enabled ?? 1) !== 1 }">
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <span v-if="!p.odt_original_name" class="size-2 rounded-full bg-gray-300 dark:bg-gray-700 shadow-[0_0_6px_rgba(156,163,175,0.3)]" title="Файл не загружен"></span>
+                    <span v-else class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="slotRowStatus(p) === 'live' ? 'bg-emerald-400' : 'bg-amber-400'"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2" :class="slotRowStatus(p) === 'live' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'" :title="slotRowStatus(p) === 'live' ? 'На сайте (Live)' : 'Черновик (Draft)'"></span>
+                    </span>
+                    <span class="text-[10px] font-bold tracking-wider opacity-60">{{ p.odt_original_name ? (slotRowStatus(p) === 'live' ? 'LIVE' : 'DRAFT') : 'EMPTY' }}</span>
+                  </div>
+                  
+                  <div class="flex items-center gap-1">
+                    <GvButton
+                      variant="ghost"
+                      color="gray"
+                      size="xs"
+                      :loading="uploadingPartId === p.id"
+                      :disabled="Number(p.is_enabled ?? 1) !== 1"
+                      icon="i-heroicons-arrow-up-tray"
+                      @click="triggerPartUpload(p.id, 'en')"
+                      :title="p.odt_original_name ? 'Заменить файл .odt' : 'Загрузить файл .odt'"
+                    />
+                    <GvButton
+                      v-if="p.odt_original_name"
+                      variant="ghost"
+                      color="red"
+                      size="xs"
+                      icon="i-heroicons-trash"
+                      :loading="clearingPartId === p.id"
+                      @click="clearSlotImport(p.id, 'en')"
+                      title="Сбросить импорт EN"
+                    />
+                  </div>
+                </div>
+                <div v-if="p.odt_original_name" class="text-[10px] opacity-40 font-mono truncate max-w-[170px] mt-1" :title="p.odt_original_name">
+                  {{ p.odt_original_name }}
+                </div>
+                <input :id="`part-input-${p.id}-en`" type="file" accept=".odt" class="hidden" @change="handlePartFileChange(p.id, 'en', $event)">
+              </td>
+
+              <!-- RU File Column -->
+              <td class="align-middle py-2">
+                <div v-if="!p.master_href_ru" class="text-xs opacity-20 italic">
+                  —
+                </div>
+                <div v-else>
+                  <div class="flex items-center gap-3" :class="{ 'opacity-50': Number(p.is_enabled ?? 1) !== 1 }">
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      <span v-if="!p.odt_original_name_ru" class="size-2 rounded-full bg-gray-300 dark:bg-gray-700 shadow-[0_0_6px_rgba(156,163,175,0.3)]" title="Файл не загружен"></span>
+                      <span v-else class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="slotRowStatus(p) === 'live' ? 'bg-emerald-400' : 'bg-amber-400'"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2" :class="slotRowStatus(p) === 'live' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'" :title="slotRowStatus(p) === 'live' ? 'На сайте (Live)' : 'Черновик (Draft)'"></span>
+                      </span>
+                      <span class="text-[10px] font-bold tracking-wider opacity-60">{{ p.odt_original_name_ru ? (slotRowStatus(p) === 'live' ? 'LIVE' : 'DRAFT') : 'EMPTY' }}</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-1">
+                      <GvButton
+                        variant="ghost"
+                        color="gray"
+                        size="xs"
+                        :loading="uploadingPartId === p.id"
+                        :disabled="Number(p.is_enabled ?? 1) !== 1 || !p.odt_original_name"
+                        icon="i-heroicons-arrow-up-tray"
+                        @click="triggerPartUpload(p.id, 'ru')"
+                        :title="p.odt_original_name_ru ? 'Заменить перевод RU .odt' : 'Загрузить перевод RU .odt'"
+                      />
+                      <GvButton
+                        v-if="p.odt_original_name_ru"
+                        variant="ghost"
+                        color="red"
+                        size="xs"
+                        icon="i-heroicons-trash"
+                        :loading="clearingPartId === p.id"
+                        @click="clearSlotImport(p.id, 'ru')"
+                        title="Сбросить перевод RU"
+                      />
+                    </div>
+                  </div>
+                  <div v-if="p.odt_original_name_ru" class="text-[10px] opacity-40 font-mono truncate max-w-[170px] mt-1" :title="p.odt_original_name_ru">
+                    {{ p.odt_original_name_ru }}
+                  </div>
+                  <input :id="`part-input-${p.id}-ru`" type="file" accept=".odt" class="hidden" @change="handlePartFileChange(p.id, 'ru', $event)">
+                </div>
+              </td>
+
+              <!-- ZH File Column -->
+              <td class="align-middle py-2">
+                <div v-if="!p.master_href_zh" class="text-xs opacity-20 italic">
+                  —
+                </div>
+                <div v-else>
+                  <div class="flex items-center gap-3" :class="{ 'opacity-50': Number(p.is_enabled ?? 1) !== 1 }">
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      <span v-if="!p.odt_original_name_zh" class="size-2 rounded-full bg-gray-300 dark:bg-gray-700 shadow-[0_0_6px_rgba(156,163,175,0.3)]" title="Файл не загружен"></span>
+                      <span v-else class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="slotRowStatus(p) === 'live' ? 'bg-emerald-400' : 'bg-amber-400'"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2" :class="slotRowStatus(p) === 'live' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'" :title="slotRowStatus(p) === 'live' ? 'На сайте (Live)' : 'Черновик (Draft)'"></span>
+                      </span>
+                      <span class="text-[10px] font-bold tracking-wider opacity-60">{{ p.odt_original_name_zh ? (slotRowStatus(p) === 'live' ? 'LIVE' : 'DRAFT') : 'EMPTY' }}</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-1">
+                      <GvButton
+                        variant="ghost"
+                        color="gray"
+                        size="xs"
+                        :loading="uploadingPartId === p.id"
+                        :disabled="Number(p.is_enabled ?? 1) !== 1 || !p.odt_original_name"
+                        icon="i-heroicons-arrow-up-tray"
+                        @click="triggerPartUpload(p.id, 'zh')"
+                        :title="p.odt_original_name_zh ? 'Заменить перевод ZH .odt' : 'Загрузить перевод ZH .odt'"
+                      />
+                      <GvButton
+                        v-if="p.odt_original_name_zh"
+                        variant="ghost"
+                        color="red"
+                        size="xs"
+                        icon="i-heroicons-trash"
+                        :loading="clearingPartId === p.id"
+                        @click="clearSlotImport(p.id, 'zh')"
+                        title="Сбросить перевод ZH"
+                      />
+                    </div>
+                  </div>
+                  <div v-if="p.odt_original_name_zh" class="text-[10px] opacity-40 font-mono truncate max-w-[170px] mt-1" :title="p.odt_original_name_zh">
+                    {{ p.odt_original_name_zh }}
+                  </div>
+                  <input :id="`part-input-${p.id}-zh`" type="file" accept=".odt" class="hidden" @change="handlePartFileChange(p.id, 'zh', $event)">
                 </div>
               </td>
             </tr>
@@ -914,6 +1212,159 @@ function slotRowStatus(part: any) {
         </table>
       </div>
     </section>
+
+    <!-- ─── Enrich: Дополнить названия из ODM другого языка ─── -->
+    <section v-if="projectId" class="section-card">
+      <header class="card-header">
+        <span class="card-badge">TRANSLATION</span>
+        <h2 class="card-header-title">Обогатить названия из другого ODM</h2>
+      </header>
+      <div class="card-body">
+        <div class="flex flex-wrap items-end gap-4">
+          <UFormGroup label="Язык ODM" class="shrink-0">
+            <div class="flex gap-2">
+              <GvButton
+                v-for="opt in ([
+                  { label: 'RU', value: 'ru' as const },
+                  { label: 'EN', value: 'en' as const },
+                  { label: 'ZH', value: 'zh' as const },
+                ])"
+                :key="opt.value"
+                :variant="enrichLocale === opt.value ? 'solid' : 'outline'"
+                :color="enrichLocale === opt.value ? 'sky' : 'gray'"
+                size="xs"
+                @click="enrichLocale = opt.value"
+              >
+                {{ opt.label }}
+              </GvButton>
+            </div>
+          </UFormGroup>
+          <UFormGroup label="ODM файл" class="flex-1 min-w-[200px]">
+            <div class="flex items-center gap-3">
+              <input ref="enrichFileInputRef" type="file" accept=".odm" class="sr-only" @change="onEnrichSelect" />
+              <GvButton variant="outline" color="gray" size="sm" icon="i-heroicons-folder-open"
+                @click="enrichFileInputRef?.click()">
+                {{ enrichFile ? enrichFile.name : 'Выбрать .odm' }}
+              </GvButton>
+              <span v-if="enrichFile" class="text-xs opacity-50 truncate max-w-[180px]">{{ enrichFile.name }}</span>
+            </div>
+          </UFormGroup>
+          <GvButton color="sky" size="sm" icon="i-heroicons-language" :loading="enriching"
+            :disabled="!enrichFile" @click="runEnrichLocale">
+            Применить
+          </GvButton>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Bulk ODT upload ─── -->
+    <section v-if="projectId" class="section-card">
+      <header class="card-header">
+        <span class="card-badge">BULK</span>
+        <h2 class="card-header-title">Массовая загрузка .odt</h2>
+      </header>
+      <div class="card-body space-y-4">
+        <div class="flex flex-wrap items-end gap-6">
+          <UFormGroup label="Формат нумерации" help="Автоопределение на основе языка">
+            <div class="flex gap-1.5 flex-wrap">
+              <GvButton
+                v-for="opt in ([
+                  { label: 'Глава N', value: 'ru' as const },
+                  { label: 'Chapter N', value: 'en' as const },
+                  { label: '第N章', value: 'zh' as const },
+                  { label: 'N', value: 'none' as const },
+                  { label: 'Авто', value: '' as const },
+                ])"
+                :key="opt.value"
+                :variant="bulkHeadingLocale === opt.value ? 'solid' : 'outline'"
+                :color="bulkHeadingLocale === opt.value ? 'sky' : 'gray'"
+                size="xs"
+                @click="bulkHeadingLocale = opt.value"
+              >
+                {{ opt.label }}
+              </GvButton>
+            </div>
+          </UFormGroup>
+          <UFormGroup label="Первая глава №">
+            <UInput v-model.number="bulkChapterStart" type="number" :min="1" size="sm" class="w-20" />
+          </UFormGroup>
+        </div>
+
+        <div
+          class="drop-zone gv-focusable"
+          :class="{ 'drop-zone--active': bulkDragging || bulkFiles.length }"
+          @dragover="onBulkDragOver"
+          @dragleave="onBulkDragLeave"
+          @drop="onBulkDrop"
+        >
+          <div class="drop-zone-inner">
+            <div class="p-3 rounded-full bg-sky-500/10 text-sky-500 mb-2">
+              <UIcon name="i-heroicons-document-duplicate" class="size-8" />
+            </div>
+            <p class="text-sm font-bold">
+              {{ bulkFiles.length ? `Выбрано ${bulkFiles.length} файлов` : 'Перетащите .odt файлы сюда' }}
+            </p>
+            <ul v-if="bulkFiles.length" class="text-[11px] mt-2 mb-3 space-y-1 text-left max-h-36 overflow-y-auto border border-black/10 dark:border-white/10 rounded-lg p-2 bg-black/5 dark:bg-white/5">
+              <li v-for="m in bulkMatchedFiles" :key="m.filename" class="flex items-center justify-between gap-3">
+                <span class="truncate max-w-[280px] font-mono opacity-80" :class="{ 'text-red-500': !m.matchedPart }">
+                  {{ m.filename }}
+                </span>
+                <span v-if="m.matchedPart && m.matchedLang" class="shrink-0 flex items-center gap-1.5">
+                  <span class="gv-status-pill text-[9px] !px-1.5 !py-0.5" :data-pub="m.matchedLang === 'en' ? 'live' : 'draft'">
+                    {{ m.matchedLang.toUpperCase() }}
+                  </span>
+                  <span class="opacity-50">→ Глава {{ m.matchedPart.sort_order }}</span>
+                </span>
+                <span v-else class="shrink-0 text-red-500 font-bold flex items-center gap-1">
+                  <UIcon name="i-heroicons-exclamation-triangle" class="size-3.5" />
+                  Не найдено в ODM
+                </span>
+              </li>
+            </ul>
+            <div class="flex gap-2 mt-3">
+              <input ref="bulkFileInputRef" type="file" accept=".odt" multiple class="sr-only" @change="onBulkSelect" />
+              <GvButton variant="outline" color="gray" size="sm" icon="i-heroicons-folder-open"
+                @click="bulkFileInputRef?.click()">
+                Выбрать файлы
+              </GvButton>
+              <GvButton v-if="bulkFiles.length" variant="soft" color="gray" size="sm"
+                icon="i-heroicons-x-mark" @click="bulkFiles = []">
+                Очистить
+              </GvButton>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <GvButton color="sky" size="lg" icon="i-heroicons-arrow-up-tray"
+            :loading="bulkUploading" :disabled="!bulkFiles.length"
+            class="px-10 rounded-2xl"
+            @click="runBulkOdt">
+            Импортировать {{ bulkFiles.length ? `(${bulkFiles.length} файлов)` : '' }}
+          </GvButton>
+        </div>
+      </div>
+    </section>
+
+    <!-- Publication Confirmation Modal -->
+    <UModal v-model="publishConfirmOpen">
+      <div class="p-6">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="p-2 rounded-lg bg-sky-500/10 text-sky-500">
+            <UIcon name="i-heroicons-rocket-launch" class="size-6" />
+          </div>
+          <h3 class="text-lg font-bold">Опубликовать {{ publishStats.draft }} статей?</h3>
+        </div>
+        <p class="text-sm opacity-70 mb-6 leading-relaxed">
+          Статьи станут доступны всем пользователям согласно настройкам видимости книги. Вы сможете скрыть их вручную
+          позже в панели управления статьями.
+        </p>
+        <div class="flex justify-end gap-3">
+          <GvButton variant="ghost" color="gray" @click="publishConfirmOpen = false">Отмена</GvButton>
+          <GvButton color="sky" :loading="publishing" @click="publishProject">Подтверждаю публикацию</GvButton>
+        </div>
+      </div>
+    </UModal>
   </div>
 </template>
 
