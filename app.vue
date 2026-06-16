@@ -110,15 +110,17 @@ const pageTransition = {
   filter: blur(1rem);
 }
 
-.fade-enter-active,
+.fade-enter-active {
+  transition: opacity 0.22s cubic-bezier(0.39, 0.575, 0.565, 1);
+}
+
 .fade-leave-active {
-  transition: all 0.3s linear;
+  transition: opacity 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-  filter: blur(0.1rem);
 }
 html {
   font-family: Arial, sans-serif;

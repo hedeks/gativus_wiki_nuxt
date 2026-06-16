@@ -82,7 +82,7 @@
           v-if="isIosBrowser()"
           :data="src"
           type="application/pdf"
-          class="absolute inset-0 w-full h-full border-none z-50 bg-white"
+          class="absolute inset-0 w-full h-full border-none z-10 bg-white"
         >
           <div class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gray-50 dark:bg-zinc-950 p-8 text-center">
             <UIcon name="i-heroicons-document" class="w-12 h-12 text-sky-500" />
@@ -92,7 +92,7 @@
             </a>
           </div>
         </object>
-        <iframe v-else :src="src" class="absolute inset-0 w-full h-full border-none z-50 bg-white" />
+        <iframe v-else :src="src" class="absolute inset-0 w-full h-full border-none z-10 bg-white" />
       </template>
     </div>
 

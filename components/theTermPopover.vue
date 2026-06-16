@@ -669,15 +669,19 @@ onUnmounted(() => {
   color: var(--gv-primary);
 }
 
-.popover-enter-active,
+.popover-enter-active {
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center;
+}
+
 .popover-leave-active {
-  transition: all 0.35s cubic-bezier(0.705, 0.01, 0, 0.915);
-  transform-origin: top left;
+  transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+  transform-origin: center;
 }
 
 .popover-enter-from,
 .popover-leave-to {
   opacity: 0;
-  transform: scale(0.96) translateY(6px);
+  transform: scale(0.94) translateY(4px);
 }
 </style>

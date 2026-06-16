@@ -1,5 +1,5 @@
 <template>
-    <div :class="[
+    <div v-show="isDesktop || isTheory" :class="[
         'flex flex-col z-30 transition-all duration-500 overflow-x-hidden',
         'lg:sticky lg:top-[--header-height] lg:h-fit lg:w-full lg:p-0 lg:z-auto lg:max-w-none lg:static lg:border-none lg:shadow-none lg:bg-transparent',
         'fixed inset-x-0 top-[var(--header-height)] w-full max-w-none',

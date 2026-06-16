@@ -199,38 +199,7 @@
     </div>
 
     <!-- Lightbox Overlay -->
-    <Transition name="fade">
-      <div v-if="isLightboxOpen" class="lightbox-overlay" @click="closeLightbox">
-        <div
-          ref="lbContentRef"
-          class="lightbox-content"
-          :class="{ 'is-zoomed': lbImgWidth !== null }"
-          @click.stop
-          @touchstart.passive="onLbTouchStart"
-          @touchmove.prevent="onLbTouchMove"
-          @wheel.prevent="onLbWheel"
-        >
-          <img
-            ref="lbImgRef"
-            :src="lightboxImage"
-            class="lightbox-image"
-            :class="{ 'is-zoomed': lbImgWidth !== null }"
-            :style="lbImgWidth ? { width: lbImgWidth + 'px' } : {}"
-            @click="toggleZoom"
-          />
-          <GvButton
-            type="button"
-            unstyled
-            chromeless
-            class="lightbox-close"
-            aria-label="Close"
-            @click="closeLightbox"
-          >
-            &times;
-          </GvButton>
-        </div>
-      </div>
-    </Transition>
+    <TheImageViewer :src="lightboxImage" :visible="isLightboxOpen" @close="closeLightbox" />
 
     <theScrollToTop @scrolled="resetToFirstHeading" />
   </div>
@@ -579,21 +548,11 @@ const changeView = (name: string) => {
 
 // ─── Lightbox ───
 const isLightboxOpen = ref(false)
-const isZoomed = ref(false)
 const lightboxImage = ref('')
-const lbImgRef = ref<HTMLImageElement | null>(null)
-const lbContentRef = ref<HTMLDivElement | null>(null)
-const lbImgWidth = ref<number | null>(null)
-
-let _lbPinchDist0 = 0
-let _lbPinchWidth0 = 0
 
 function openLightbox(src: string) {
   lightboxImage.value = src
   isLightboxOpen.value = true
-  isZoomed.value = false
-  lbImgWidth.value = null
-  document.body.style.overflow = 'hidden'
 }
 
 const handleArticleClick = (e: MouseEvent) => {
@@ -601,45 +560,8 @@ const handleArticleClick = (e: MouseEvent) => {
   if (t.tagName === 'IMG') openLightbox((t as HTMLImageElement).src)
 }
 
-const toggleZoom = () => {
-  if (lbImgWidth.value !== null) {
-    lbImgWidth.value = null
-  } else {
-    const img = lbImgRef.value
-    const w = Math.max(img?.naturalWidth ?? 0, window.innerWidth * 1.6)
-    lbImgWidth.value = w
-    nextTick(() => {
-      const c = lbContentRef.value
-      if (c && lbImgWidth.value) c.scrollLeft = (lbImgWidth.value - c.clientWidth) / 2
-    })
-  }
-}
-
-function onLbTouchStart(e: TouchEvent) {
-  if (e.touches.length !== 2) return
-  _lbPinchDist0 = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY)
-  const img = lbImgRef.value
-  _lbPinchWidth0 = lbImgWidth.value ?? (img?.getBoundingClientRect().width ?? window.innerWidth)
-}
-
-function onLbTouchMove(e: TouchEvent) {
-  if (e.touches.length !== 2) return
-  const dist = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY)
-  lbImgWidth.value = Math.max(window.innerWidth * 0.4, Math.min(_lbPinchWidth0 * (dist / _lbPinchDist0), window.innerWidth * 6))
-}
-
-function onLbWheel(e: WheelEvent) {
-  const img = lbImgRef.value
-  const cur = lbImgWidth.value ?? (img?.getBoundingClientRect().width ?? window.innerWidth * 0.9)
-  const next = Math.max(window.innerWidth * 0.3, Math.min(cur * (e.deltaY > 0 ? 0.87 : 1.15), window.innerWidth * 6))
-  lbImgWidth.value = next < window.innerWidth * 0.98 ? null : next
-}
-
 const closeLightbox = () => {
   isLightboxOpen.value = false
-  isZoomed.value = false
-  lbImgWidth.value = null
-  document.body.style.overflow = ''
 }
 
 // ─── Term Media ───
