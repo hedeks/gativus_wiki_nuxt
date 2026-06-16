@@ -969,7 +969,7 @@ onUnmounted(() => {
 /* Lightbox Transitions */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity 0.2s ease;
 }
 
 .fade-enter-from,
@@ -987,7 +987,7 @@ onUnmounted(() => {
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 0 2px rgba(34, 60, 80, 0.1);
-  transition: all 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
+  transition: all 0.2s cubic-bezier(0.705, 0.01, 0, 0.915);
   text-decoration: none !important;
   position: relative;
 }
@@ -1036,7 +1036,7 @@ onUnmounted(() => {
   font-size: 20px;
   color: #0ea5e9;
   opacity: 0;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .nav-card--prev:hover {
@@ -1056,7 +1056,7 @@ onUnmounted(() => {
   font-size: 20px;
   color: #0ea5e9;
   opacity: 0;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .nav-card--next:hover {
@@ -1070,7 +1070,7 @@ onUnmounted(() => {
 /* Animations for Presentation Info Accordion (Matching TOC) */
 .expand-pres-enter-active,
 .expand-pres-leave-active {
-  transition: max-height 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915), opacity 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915);
+  transition: max-height 0.2s cubic-bezier(0.705, 0.010, 0.000, 0.915), opacity 0.2s cubic-bezier(0.705, 0.010, 0.000, 0.915);
   overflow: hidden;
 }
 

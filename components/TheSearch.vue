@@ -658,7 +658,7 @@ function onHitPointerArticle(idx: number) {
   padding: 8px 16px !important;
   border-radius: var(--gv-radius-control);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   background: var(--gv-surface-card);
   border: 1px solid var(--gv-border-principal);
   box-shadow: var(--gv-shadow-sm);
@@ -771,7 +771,7 @@ function onHitPointerArticle(idx: number) {
   border: 1px solid var(--gv-border-principal);
   box-shadow: var(--gv-shadow-lg);
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 /* ─── Ontology local accents (design_system §5) ─── */

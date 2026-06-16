@@ -452,7 +452,7 @@ onUnmounted(() => {
   object-fit: contain;
   border-radius: 6px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow 0.2s ease;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -518,7 +518,7 @@ onUnmounted(() => {
 }
 
 .fade-enter-active .image-wrapper {
-  animation: zoom-in-bounce 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: zoom-in-bounce 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 .fade-leave-active .image-wrapper {

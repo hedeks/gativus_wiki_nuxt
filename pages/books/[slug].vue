@@ -262,7 +262,7 @@ useSeoMeta({
   box-shadow:
     4px 6px 18px rgba(0, 0, 0, 0.14),
     inset -1px 0 0 rgba(0, 0, 0, 0.06);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dark .book-cover {

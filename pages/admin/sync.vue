@@ -500,7 +500,7 @@ async function runImport() {
   border-radius: 16px;
   padding: 48px 24px;
   text-align: center;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   cursor: pointer;
   background: #fafafa;
 }

@@ -50,7 +50,7 @@ const langStore = useLanguageStore()
 }
 
 .home-wiki-arr {
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .home-wiki:hover .home-wiki-arr {

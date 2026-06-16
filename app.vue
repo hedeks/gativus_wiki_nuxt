@@ -254,7 +254,7 @@ a:hover {
   background: var(--gv-primary);
   color: #fff;
   border-radius: var(--gv-radius-control);
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .gv-btn-primary:hover {
@@ -296,7 +296,7 @@ a:hover {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .gv-filter-pill:hover {

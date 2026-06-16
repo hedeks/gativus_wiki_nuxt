@@ -112,7 +112,7 @@ function labelCta(i: { label_en: string; label_ru?: string; label_zh?: string })
   letter-spacing: 0.02em;
   padding-left: 1.5rem;
   padding-right: 1.5rem;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .gv-btn--premium:hover {

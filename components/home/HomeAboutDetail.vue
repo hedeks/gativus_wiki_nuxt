@@ -411,7 +411,7 @@ const uiDict: Record<Lang, AboutStrings> = {
   border: 1px solid var(--gv-border-subtle);
   border-radius: var(--gv-radius-control);
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .home-about-level:hover {
@@ -479,7 +479,7 @@ const uiDict: Record<Lang, AboutStrings> = {
   border: 1px solid var(--gv-border-subtle);
   border-radius: var(--gv-radius-control);
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .home-about-net-item:hover {
@@ -533,7 +533,7 @@ const uiDict: Record<Lang, AboutStrings> = {
   border: 1px solid var(--gv-border-subtle);
   border-radius: var(--gv-radius-control);
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .home-about-stat:hover {

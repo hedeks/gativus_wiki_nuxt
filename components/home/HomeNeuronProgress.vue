@@ -224,7 +224,7 @@ function ariaLabel(i: number) {
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: var(--gv-shadow-md);
   border: 1px solid var(--gv-border-subtle);
 }

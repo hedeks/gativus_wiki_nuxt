@@ -218,7 +218,7 @@ const customScroll = (id: string) => {
 /* Animations for Mobile Accordion */
 .expand-enter-active,
 .expand-leave-active {
-    transition: max-height 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915), opacity 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915);
+    transition: max-height 0.2s cubic-bezier(0.705, 0.010, 0.000, 0.915), opacity 0.2s cubic-bezier(0.705, 0.010, 0.000, 0.915);
     overflow: hidden;
 }
 

@@ -2503,7 +2503,7 @@ watch([focusNodeId, focusDepth], () => {
 
 .kg-lod-fade-enter-active,
 .kg-lod-fade-leave-active {
-  transition: opacity 0.3s;
+  transition: opacity 0.2s;
 }
 
 .kg-lod-fade-enter-from,
@@ -3020,7 +3020,7 @@ watch([focusNodeId, focusDepth], () => {
   width: 200px;
   outline: none;
   color: var(--gv-text-primary);
-  transition: width 0.3s ease;
+  transition: width 0.2s ease;
   user-select: text;
 }
 
@@ -3161,7 +3161,7 @@ watch([focusNodeId, focusDepth], () => {
   background: #e2e8f0;
   border-radius: 20px;
   position: relative;
-  transition: all 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
+  transition: all 0.2s cubic-bezier(0.705, 0.01, 0, 0.915);
 }
 
 .dark .custom-switch {
@@ -3181,7 +3181,7 @@ watch([focusNodeId, focusDepth], () => {
   background: #fff;
   border-radius: 50%;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
+  transition: all 0.2s cubic-bezier(0.705, 0.01, 0, 0.915);
 }
 
 .custom-switch.checked .switch-handle {
@@ -3459,9 +3459,9 @@ watch([focusNodeId, focusDepth], () => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: background 0.3s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
+  transition: background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -3877,7 +3877,7 @@ watch([focusNodeId, focusDepth], () => {
 
 .pop-enter-active,
 .pop-leave-active {
-  transition: all 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915);
+  transition: all 0.2s cubic-bezier(0.705, 0.010, 0.000, 0.915);
 }
 
 .pop-enter-from,

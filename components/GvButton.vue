@@ -245,7 +245,7 @@ const showLabel = computed(() => !!(props.label || slots.default))
   border: 1px solid transparent;
   cursor: pointer;
   line-height: 1.25;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 

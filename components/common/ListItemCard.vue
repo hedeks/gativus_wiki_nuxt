@@ -98,8 +98,8 @@ withDefaults(
   transition:
     background 0.25s ease,
     border-color 0.25s ease,
-    box-shadow 0.3s ease,
-    transform 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
+    box-shadow 0.2s ease,
+    transform 0.2s cubic-bezier(0.705, 0.01, 0, 0.915);
 }
 
 .list-item-card:focus-visible {

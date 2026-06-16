@@ -433,7 +433,7 @@ onUnmounted(() => {
 }
 
 .gv-header__menu-btn {
-  transition: transform 0.3s cubic-bezier(0.705, 0.01, 0, 0.915);
+  transition: transform 0.2s cubic-bezier(0.705, 0.01, 0, 0.915);
 }
 
 .gv-header__menu-btn--open {

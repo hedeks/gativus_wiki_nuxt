@@ -80,7 +80,7 @@ const paddingClass = computed(() => {
 /* Animations for Accordion */
 .expand-enter-active,
 .expand-leave-active {
-  transition: all 0.3s cubic-bezier(0.705, 0.010, 0.000, 0.915), opacity 0.5s cubic-bezier(0.705, 0.010, 0.000, 0.915);
+  transition: all 0.2s cubic-bezier(0.705, 0.010, 0.000, 0.915), opacity 0.5s cubic-bezier(0.705, 0.010, 0.000, 0.915);
   max-height: 500px;
   overflow: hidden;
 }
