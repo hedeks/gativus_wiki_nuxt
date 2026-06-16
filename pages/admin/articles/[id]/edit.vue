@@ -1420,9 +1420,9 @@ async function runReindex() {
           <p class="text-xs opacity-50 leading-relaxed">«1» — только цифра, без слова «Глава»</p>
           <div class="grid grid-cols-3 gap-3">
             <div v-for="({ col, label, model, setter }) in [
-              { col: 'html_content', label: 'EN', model: reindexLocaleEn, setter: (v: any) => reindexLocaleEn = v },
-              { col: 'html_content_ru', label: 'RU', model: reindexLocaleRu, setter: (v: any) => reindexLocaleRu = v },
-              { col: 'html_content_zh', label: 'ZH', model: reindexLocaleZh, setter: (v: any) => reindexLocaleZh = v },
+              { col: 'html_content', label: 'EN', model: reindexLocaleEn, setter: (v: any) => reindexLocaleEn.value = v },
+              { col: 'html_content_ru', label: 'RU', model: reindexLocaleRu, setter: (v: any) => reindexLocaleRu.value = v },
+              { col: 'html_content_zh', label: 'ZH', model: reindexLocaleZh, setter: (v: any) => reindexLocaleZh.value = v },
             ]" :key="col" class="space-y-1">
               <p class="text-xs opacity-50">{{ label }}</p>
               <div class="flex gap-1 flex-wrap">

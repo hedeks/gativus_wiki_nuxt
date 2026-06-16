@@ -15,7 +15,7 @@ const LEVEL1_PATTERNS: RegExp[] = [
   /^\d+$/, // просто число (locale=none)
 ]
 
-const SUBLEVEL_RE = /^(\d+)((?:\.\d+)+)$/
+const SUBLEVEL_RE = /^(\d+)([^\d]+\d+.*)$/
 
 function formatLevel1(n: number, locale: HeadingLocale): string {
   if (locale === 'none') return `${n}`
@@ -47,18 +47,32 @@ export function reindexHeadingMarkers(
   const result = html.replace(
     /<span class="odt-heading-marker">([^<]*)<\/span>/g,
     (_match, raw: string) => {
+      // Preserve original leading and trailing spaces inside the span tag
+      const leadingSpaceMatch = raw.match(/^\s+/)
+      const leadingSpace = leadingSpaceMatch ? leadingSpaceMatch[0] : ''
+
+      const trailingSpaceMatch = raw.match(/\s+$/)
+      const trailingSpace = trailingSpaceMatch ? trailingSpaceMatch[0] : ''
+
       const text = raw.trim()
 
-      if (isLevel1(text)) {
+      // Extract trailing separators (dots, colons)
+      const sepMatch = text.match(/[\.:]+$/)
+      const separator = sepMatch ? sepMatch[0] : ''
+      const cleanText = separator ? text.slice(0, -separator.length).trim() : text
+
+      if (isLevel1(cleanText)) {
         changed++
-        return `<span class="odt-heading-marker">${formatLevel1(chapterStart, locale)}</span>`
+        const replacement = `${formatLevel1(chapterStart, locale)}${separator}`
+        return `<span class="odt-heading-marker">${leadingSpace}${replacement}${trailingSpace}</span>`
       }
 
-      const sub = SUBLEVEL_RE.exec(text)
+      const sub = SUBLEVEL_RE.exec(cleanText)
       if (sub) {
         changed++
-        const rest = sub[2] // «.2.3»
-        return `<span class="odt-heading-marker">${chapterStart}${rest}</span>`
+        const rest = sub[2]
+        const replacement = `${chapterStart}${rest}${separator}`
+        return `<span class="odt-heading-marker">${leadingSpace}${replacement}${trailingSpace}</span>`
       }
 
       return _match

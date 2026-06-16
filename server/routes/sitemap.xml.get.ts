@@ -33,11 +33,11 @@ export default defineEventHandler(async (event) => {
 
   // 1. Add static pages for each locale
   for (const locale of locales) {
-    const prefix = locale === 'en' ? '' : `/${locale}`
     for (const page of staticPages) {
+      const urlPath = page === '' ? `/?lang=${locale}` : `${page}?lang=${locale}`
       xml += `
   <url>
-    <loc>${baseUrl}${prefix}${page}</loc>
+    <loc>${baseUrl}${urlPath}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`
@@ -47,23 +47,21 @@ export default defineEventHandler(async (event) => {
   // 2. Add Books
   for (const book of books) {
     for (const locale of locales) {
-      const prefix = locale === 'en' ? '' : `/${locale}`
       xml += `
   <url>
-    <loc>${baseUrl}${prefix}/books/${book.slug}</loc>
+    <loc>${baseUrl}/books/${book.slug}?lang=${locale}</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>`
     }
   }
 
-  // 3. Add Articles (shared entity, available under all locale prefixes)
+  // 3. Add Articles
   for (const article of articles) {
     for (const locale of locales) {
-      const prefix = locale === 'en' ? '' : `/${locale}`
       xml += `
   <url>
-    <loc>${baseUrl}${prefix}/articles/${article.slug}</loc>
+    <loc>${baseUrl}/articles/${article.slug}?lang=${locale}</loc>
     <lastmod>${new Date(article.updated_at).toISOString().split('T')[0]}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
@@ -74,10 +72,9 @@ export default defineEventHandler(async (event) => {
   // 4. Add Glossary Terms
   for (const term of terms) {
     for (const locale of locales) {
-      const prefix = locale === 'en' ? '' : `/${locale}`
       xml += `
   <url>
-    <loc>${baseUrl}${prefix}/glossary/${term.slug}</loc>
+    <loc>${baseUrl}/glossary/${term.slug}?lang=${locale}</loc>
     <lastmod>${new Date(term.updated_at).toISOString().split('T')[0]}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>

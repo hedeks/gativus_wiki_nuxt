@@ -26,3 +26,7 @@ logs
 
 # Server storage (uploads, ODT originals)
 server/storage/
+
+# Search engine verification files
+public/google*.html
+public/yandex*.html
