@@ -346,6 +346,21 @@ watch([page, searchQuery, activeCategory], () => {
   )
 })
 
+watch(
+  () => route.query,
+  (newQuery) => {
+    const p = parseInt(newQuery.page as string) || 1
+    if (page.value !== p) page.value = p
+
+    const s = (newQuery.search as string) || ''
+    if (searchQuery.value !== s) searchQuery.value = s
+
+    const cat = newQuery.category_id ? parseInt(newQuery.category_id as string) : null
+    if (activeCategory.value !== cat) activeCategory.value = cat
+  },
+  { deep: true }
+)
+
 useMainNavSeo('library')
 </script>
 

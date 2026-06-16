@@ -342,6 +342,24 @@ watch([page, searchQuery, activeLetter, activeCategory], () => {
   )
 })
 
+watch(
+  () => route.query,
+  (newQuery) => {
+    const p = parseInt(newQuery.page as string) || 1
+    if (page.value !== p) page.value = p
+
+    const s = (newQuery.search as string) || ''
+    if (searchQuery.value !== s) searchQuery.value = s
+
+    const letter = (newQuery.letter as string) || null
+    if (activeLetter.value !== letter) activeLetter.value = letter
+
+    const cat = newQuery.category_id ? parseInt(newQuery.category_id as string) : null
+    if (activeCategory.value !== cat) activeCategory.value = cat
+  },
+  { deep: true }
+)
+
 watch(() => langStore.currentLang, () => {
   refreshTerms()
   refreshCategories()
