@@ -90,6 +90,8 @@ export async function runMigrations(db: Database) {
       title_ru        TEXT,
       title_zh        TEXT,
       aliases         TEXT,
+      aliases_ru      TEXT,
+      aliases_zh      TEXT,
       definition      TEXT NOT NULL,
       definition_ru   TEXT,
       definition_zh   TEXT,
@@ -261,6 +263,8 @@ export async function runMigrations(db: Database) {
         await ensureColumn('definition_zh', 'TEXT')
         await ensureColumn('slug_ru', 'TEXT')
         await ensureColumn('slug_zh', 'TEXT')
+        await ensureColumn('aliases_ru', 'TEXT')
+        await ensureColumn('aliases_zh', 'TEXT')
         await ensureColumn('image_url', 'TEXT')
         await ensureColumn('video_url', 'TEXT')
         await ensureColumn('presentation_path', 'TEXT')

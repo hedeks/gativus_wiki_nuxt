@@ -66,16 +66,49 @@
               <div class="space-y-4">
                 <template v-if="activeLang === 'en'">
                   <div class="field"><label class="field-label">Название (EN)</label><input v-model="form.title" class="field-input text-sm" required /></div>
+                  <div class="field">
+                    <label class="field-label">Синонимы (EN)</label>
+                    <div class="aliases-input">
+                      <div class="aliases-tags">
+                        <span v-for="(alias, i) in form.aliases" :key="i" class="alias-tag">
+                          {{ alias }} <button type="button" @click="form.aliases.splice(i, 1)" class="remove-alias">×</button>
+                        </span>
+                      </div>
+                      <input v-model="aliasInput_en" class="alias-field" placeholder="Добавить, Enter" @keydown.enter.prevent="addAlias('en')" @keydown.comma.prevent="addAlias('en')" />
+                    </div>
+                  </div>
                   <div class="field"><label class="field-label">Определение (EN)</label><textarea v-model="form.definition" rows="4" class="field-textarea text-sm" required /></div>
                 </template>
                 <template v-else-if="activeLang === 'ru'">
                   <div class="field"><label class="field-label">Название (RU)</label><input v-model="form.title_ru" class="field-input text-sm" /></div>
                   <div class="field"><label class="field-label">Slug (RU)</label><input v-model="form.slug_ru" class="field-input text-sm" /></div>
+                  <div class="field">
+                    <label class="field-label">Синонимы (RU)</label>
+                    <div class="aliases-input">
+                      <div class="aliases-tags">
+                        <span v-for="(alias, i) in form.aliases_ru" :key="i" class="alias-tag">
+                          {{ alias }} <button type="button" @click="form.aliases_ru.splice(i, 1)" class="remove-alias">×</button>
+                        </span>
+                      </div>
+                      <input v-model="aliasInput_ru" class="alias-field" placeholder="Добавить, Enter" @keydown.enter.prevent="addAlias('ru')" @keydown.comma.prevent="addAlias('ru')" />
+                    </div>
+                  </div>
                   <div class="field"><label class="field-label">Определение (RU)</label><textarea v-model="form.definition_ru" rows="4" class="field-textarea text-sm" /></div>
                 </template>
                 <template v-else-if="activeLang === 'zh'">
                   <div class="field"><label class="field-label">Название (ZH)</label><input v-model="form.title_zh" class="field-input text-sm" /></div>
                   <div class="field"><label class="field-label">Slug (ZH)</label><input v-model="form.slug_zh" class="field-input text-sm" /></div>
+                  <div class="field">
+                    <label class="field-label">Синонимы (ZH)</label>
+                    <div class="aliases-input">
+                      <div class="aliases-tags">
+                        <span v-for="(alias, i) in form.aliases_zh" :key="i" class="alias-tag">
+                          {{ alias }} <button type="button" @click="form.aliases_zh.splice(i, 1)" class="remove-alias">×</button>
+                        </span>
+                      </div>
+                      <input v-model="aliasInput_zh" class="alias-field" placeholder="Добавить, Enter" @keydown.enter.prevent="addAlias('zh')" @keydown.comma.prevent="addAlias('zh')" />
+                    </div>
+                  </div>
                   <div class="field"><label class="field-label">Определение (ZH)</label><textarea v-model="form.definition_zh" rows="4" class="field-textarea text-sm" /></div>
                 </template>
               </div>
@@ -136,15 +169,7 @@
                   </select>
                 </div>
                 <div class="field">
-                  <label class="field-label">Синонимы (aliases)</label>
-                  <div class="aliases-input">
-                    <div class="aliases-tags">
-                      <span v-for="(alias, i) in form.aliases" :key="i" class="alias-tag">
-                        {{ alias }} <button type="button" @click="form.aliases.splice(i, 1)" class="remove-alias">×</button>
-                      </span>
-                    </div>
-                    <input v-model="aliasInput" class="alias-field" placeholder="Добавить, Enter" @keydown.enter.prevent="addAlias" @keydown.comma.prevent="addAlias" />
-                  </div>
+                  <!-- Aliases moved to language tabs -->
                 </div>
               </div>
 
@@ -274,12 +299,16 @@ function clearArticle() {
   }
 }
 
-const aliasInput = ref('')
+const aliasInput_en = ref('')
+const aliasInput_ru = ref('')
+const aliasInput_zh = ref('')
 
 const form = reactive({
   title: '', title_ru: '', title_zh: '',
   slug_ru: '', slug_zh: '',
   aliases: [] as string[],
+  aliases_ru: [] as string[],
+  aliases_zh: [] as string[],
   definition: '', definition_ru: '', definition_zh: '',
   category_id: null as number | null,
   html_content: '', html_content_ru: '', html_content_zh: '',
@@ -314,6 +343,8 @@ async function fetchTerm() {
     form.slug_ru = t.slug_ru || ''
     form.slug_zh = t.slug_zh || ''
     form.aliases = Array.isArray(t.aliases) ? [...t.aliases] : []
+    form.aliases_ru = Array.isArray(t.aliases_ru) ? [...t.aliases_ru] : []
+    form.aliases_zh = Array.isArray(t.aliases_zh) ? [...t.aliases_zh] : []
     form.definition = t.definition || ''
     form.definition_ru = t.definition_ru || ''
     form.definition_zh = t.definition_zh || ''
@@ -342,10 +373,20 @@ watch(() => props.termId, () => {
   fetchTerm()
 }, { immediate: true })
 
-function addAlias() {
-  const val = aliasInput.value.trim().replace(/,$/, '')
-  if (val && !form.aliases.includes(val)) form.aliases.push(val)
-  aliasInput.value = ''
+function addAlias(lang: 'en'|'ru'|'zh') {
+  if (lang === 'en') {
+    const val = aliasInput_en.value.trim().replace(/,$/, '')
+    if (val && !form.aliases.includes(val)) form.aliases.push(val)
+    aliasInput_en.value = ''
+  } else if (lang === 'ru') {
+    const val = aliasInput_ru.value.trim().replace(/,$/, '')
+    if (val && !form.aliases_ru.includes(val)) form.aliases_ru.push(val)
+    aliasInput_ru.value = ''
+  } else if (lang === 'zh') {
+    const val = aliasInput_zh.value.trim().replace(/,$/, '')
+    if (val && !form.aliases_zh.includes(val)) form.aliases_zh.push(val)
+    aliasInput_zh.value = ''
+  }
 }
 
 const isSaving = ref(false)

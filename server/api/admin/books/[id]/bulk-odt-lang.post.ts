@@ -21,7 +21,7 @@ import type { OdtContentLocale } from '~/server/utils/odtParser'
 import { parseOdtBuffer, generateExcerpt, extractFirstHeading } from '~/server/utils/odtParser'
 import { slugify, ensureUniqueArticleAnySlug } from '~/server/utils/slugify'
 import { requireRole } from '~/server/utils/requireRole'
-import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
+import { buildTermsMaps, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 import { reindexHeadingMarkers, type HeadingLocale } from '~/server/utils/reindexHeadingMarkers'
 
 type Lang = 'en' | 'ru' | 'zh'
@@ -124,7 +124,7 @@ export default defineEventHandler(async (event) => {
   const contentLocale: OdtContentLocale = lang === 'ru' ? 'ru' : lang === 'zh' ? 'zh' : 'en'
   const col = htmlCol(lang)
   const ec = exCol(lang)
-  const termsMap = await buildTermsMap(db)
+  const termsMaps = await buildTermsMaps(db)
 
   const results: { articleId: number; filename: string; status: 'updated' | 'skipped'; error?: string }[] = []
 
@@ -139,7 +139,7 @@ export default defineEventHandler(async (event) => {
       writeFileSync(odtPath, buf as any)
 
       const parsed = await parseOdtBuffer(buf, { subDir: 'articles', contentLocale })
-      let html = linkTermsInHtml(parsed.fullHtml, termsMap).html
+      let html = linkTermsInHtml(parsed.fullHtml, lang === 'en' ? termsMaps.en : (lang === 'ru' ? termsMaps.ru : termsMaps.zh)).html
 
       if (headingLocale) {
         const chapterNum = articleChapterNum.get(article.id) ?? chapterStart
@@ -178,7 +178,7 @@ export default defineEventHandler(async (event) => {
         ]
       )
 
-      await syncArticleTermsFromArticleRow(db, article.id, termsMap)
+      await syncArticleTermsFromArticleRow(db, article.id, termsMaps)
 
       const revNum = await db.prepare(
         'SELECT COALESCE(MAX(revision_num), 0) + 1 as n FROM article_revisions WHERE article_id = ?',

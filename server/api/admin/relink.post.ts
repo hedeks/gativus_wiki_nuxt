@@ -4,15 +4,15 @@
  * Role: admin.
  */
 
-import { buildTermsMap, linkTermsInHtml, mergeMentionCountMaps, replaceArticleTermMentions } from '~/server/utils/termLinker'
+import { buildTermsMaps, linkTermsInHtml, mergeMentionCountMaps, replaceArticleTermMentions } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   requireRole(event, 'admin')
   const db = useDatabase()
 
-  const termsMap = await buildTermsMap(db)
+  const termsMaps = await buildTermsMaps(db)
 
-  if (termsMap.size === 0) {
+  if (termsMaps.en.size === 0 && termsMaps.ru.size === 0 && termsMaps.zh.size === 0) {
     return { updated: 0, message: 'Нет терминов для линковки' }
   }
 
@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
     let bodyChanged = false
 
     if (article.html_content?.trim()) {
-      const r = linkTermsInHtml(article.html_content, termsMap)
+      const r = linkTermsInHtml(article.html_content, termsMaps.en)
       maps.push(r.mentionCountByTermId)
       if (r.html !== article.html_content) {
         newEn = r.html
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
       }
     }
     if (article.html_content_ru?.trim()) {
-      const r = linkTermsInHtml(article.html_content_ru, termsMap)
+      const r = linkTermsInHtml(article.html_content_ru, termsMaps.ru)
       maps.push(r.mentionCountByTermId)
       if (r.html !== article.html_content_ru) {
         newRu = r.html
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
       }
     }
     if (article.html_content_zh?.trim()) {
-      const r = linkTermsInHtml(article.html_content_zh, termsMap)
+      const r = linkTermsInHtml(article.html_content_zh, termsMaps.zh)
       maps.push(r.mentionCountByTermId)
       if (r.html !== article.html_content_zh) {
         newZh = r.html

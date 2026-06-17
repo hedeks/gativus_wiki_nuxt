@@ -12,7 +12,7 @@ import { defaultOdmChapterTitle } from '~/server/utils/odmParser'
 import { reindexHeadingMarkers, type HeadingLocale } from '~/server/utils/reindexHeadingMarkers'
 import { slugify, ensureUniqueArticleAnySlug } from '~/server/utils/slugify'
 import { requireRole } from '~/server/utils/requireRole'
-import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
+import { buildTermsMaps, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 type Lang = 'en' | 'ru' | 'zh'
 
@@ -154,7 +154,7 @@ export default defineEventHandler(async (event) => {
 
   const splitLevel = String(project.split_level || 'none')
   const results: { partId: number; sortOrder: number; lang: Lang; status: 'created' | 'updated' | 'skipped'; articleIds?: number[]; error?: string }[] = []
-  const termsMap = await buildTermsMap(db)
+  const termsMaps = await buildTermsMaps(db)
 
   // Несём numbering state между слотами отдельно для каждого языка
   const carryNumberingState = {
@@ -227,7 +227,7 @@ export default defineEventHandler(async (event) => {
         const displayTitleLocal = titleOdt || (lang === 'ru' ? part.display_title_ru : part.display_title_zh)
 
         if (splitLevel === 'none' || articleIds.length === 1) {
-          let html = linkTermsInHtml(parsed.fullHtml, termsMap).html
+          let html = linkTermsInHtml(parsed.fullHtml, lang === 'en' ? termsMaps.en : (lang === 'ru' ? termsMaps.ru : termsMaps.zh)).html
           if (headingLocale) html = reindexHeadingMarkers(html, chapterNum, headingLocale).html
           const ex = generateExcerpt(html)
           let slugVal: string | null = null
@@ -262,7 +262,7 @@ export default defineEventHandler(async (event) => {
               ]
             )
           }
-          await syncArticleTermsFromArticleRow(db, articleIds[0], termsMap)
+          await syncArticleTermsFromArticleRow(db, articleIds[0], termsMaps)
           const revNum = await db.prepare(
             'SELECT COALESCE(MAX(revision_num), 0) + 1 as n FROM article_revisions WHERE article_id = ?',
           ).get(articleIds[0]) as { n: number }
@@ -274,7 +274,7 @@ export default defineEventHandler(async (event) => {
           const shifted = splitLevel === 'h1' ? 'h2' : 'h3'
           const subArticles = splitIntoArticles(parsed.fullHtml, shifted as 'h2' | 'h3')
           for (let i = 0; i < Math.min(articleIds.length, subArticles.length); i++) {
-            let html = linkTermsInHtml(subArticles[i].html, termsMap).html
+            let html = linkTermsInHtml(subArticles[i].html, lang === 'en' ? termsMaps.en : (lang === 'ru' ? termsMaps.ru : termsMaps.zh)).html
             if (headingLocale) html = reindexHeadingMarkers(html, chapterNum, headingLocale).html
             const ex = generateExcerpt(html)
             const isFirst = i === 0
@@ -311,7 +311,7 @@ export default defineEventHandler(async (event) => {
                 ]
               )
             }
-            await syncArticleTermsFromArticleRow(db, articleIds[i], termsMap)
+            await syncArticleTermsFromArticleRow(db, articleIds[i], termsMaps)
           }
         }
 
@@ -392,7 +392,7 @@ export default defineEventHandler(async (event) => {
           if (isFirst && insTitleZh) slugZh = await ensureUniqueArticleAnySlug(db, slugify(insTitleZh))
 
           const articleSortOrder = maxSortOrder + sortOrder * 100 + i + 1
-          let processedHtml = linkTermsInHtml(article.html, termsMap).html
+          let processedHtml = linkTermsInHtml(article.html, termsMaps.en).html
           if (headingLocale) processedHtml = reindexHeadingMarkers(processedHtml, chapterNum, headingLocale).html
           const excerpt = generateExcerpt(processedHtml)
 
@@ -427,7 +427,7 @@ export default defineEventHandler(async (event) => {
             `INSERT INTO article_revisions (article_id, html_content, revision_num, change_summary, created_by) VALUES (?, ?, 1, ?, ?)`,
           ).run(articleId, processedHtml, `Bulk ODM import (${lang})`, auth.id)
 
-          await syncArticleTermsFromArticleRow(db, articleId, termsMap)
+          await syncArticleTermsFromArticleRow(db, articleId, termsMaps)
         }
 
         const outState = parsed.numberingState ? cloneNumberingState(parsed.numberingState) : { listCounters: {} }

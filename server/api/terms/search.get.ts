@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
 
   const items = await db.prepare(`
     SELECT
-      t.id, t.slug, t.title, t.aliases, t.definition,
+      t.id, t.slug, t.title, t.aliases, t.aliases_ru, t.aliases_zh, t.definition,
       t.term_article_id,
       c.title as category_title,
       c.slug as category_slug,
@@ -25,17 +25,19 @@ export default defineEventHandler(async (event) => {
     FROM terms t
     LEFT JOIN articles a ON t.term_article_id = a.id
     LEFT JOIN categories c ON a.category_id = c.id
-    WHERE t.title LIKE ? OR t.aliases LIKE ? OR t.definition LIKE ?
+    WHERE t.title LIKE ? OR t.aliases LIKE ? OR t.aliases_ru LIKE ? OR t.aliases_zh LIKE ? OR t.definition LIKE ?
     ORDER BY
       CASE WHEN t.title LIKE ? THEN 0 ELSE 1 END,
       length(t.title) ASC
     LIMIT 10
-  `).all(`%${q}%`, `%${q}%`, `%${q}%`, `${q}%`) as any[]
+  `).all(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `${q}%`) as any[]
 
   return {
     items: (items || []).map(t => ({
       ...t,
       aliases: t.aliases ? JSON.parse(t.aliases) : [],
+      aliases_ru: t.aliases_ru ? JSON.parse(t.aliases_ru) : [],
+      aliases_zh: t.aliases_zh ? JSON.parse(t.aliases_zh) : [],
       has_article: Boolean(t.term_article_id),
     })),
   }

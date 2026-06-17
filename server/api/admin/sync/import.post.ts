@@ -163,12 +163,12 @@ export default defineEventHandler(async (event) => {
     const termArtId = t.term_article_slug ? idMap.art.get(t.term_article_slug) || null : null
 
     await db.prepare(`
-      INSERT INTO terms (slug, slug_ru, slug_zh, title, title_ru, title_zh, aliases, definition, definition_ru, definition_zh, image_url, video_url, presentation_path, presentation_path_ru, presentation_path_zh, term_article_id, created_by, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
+      INSERT INTO terms (slug, slug_ru, slug_zh, title, title_ru, title_zh, aliases, aliases_ru, aliases_zh, definition, definition_ru, definition_zh, image_url, video_url, presentation_path, presentation_path_ru, presentation_path_zh, term_article_id, created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
       ON CONFLICT(slug) DO UPDATE SET
         slug_ru = excluded.slug_ru, slug_zh = excluded.slug_zh,
         title = excluded.title, title_ru = excluded.title_ru, title_zh = excluded.title_zh,
-        aliases = excluded.aliases, definition = excluded.definition, definition_ru = excluded.definition_ru, definition_zh = excluded.definition_zh,
+        aliases = excluded.aliases, aliases_ru = excluded.aliases_ru, aliases_zh = excluded.aliases_zh, definition = excluded.definition, definition_ru = excluded.definition_ru, definition_zh = excluded.definition_zh,
         image_url = excluded.image_url, video_url = excluded.video_url, presentation_path = excluded.presentation_path, presentation_path_ru = excluded.presentation_path_ru, presentation_path_zh = excluded.presentation_path_zh,
         term_article_id = excluded.term_article_id, created_at = excluded.created_at, updated_at = excluded.updated_at
     `).run(
@@ -179,6 +179,8 @@ export default defineEventHandler(async (event) => {
       t.title_ru || null,
       t.title_zh || null,
       t.aliases || null,
+      t.aliases_ru || null,
+      t.aliases_zh || null,
       t.definition,
       t.definition_ru || null,
       t.definition_zh || null,

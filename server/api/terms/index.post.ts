@@ -5,14 +5,14 @@
  */
 
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
-import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
+import { buildTermsMaps, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
   const db = useDatabase()
   const body = await readBody(event)
 
-  const { title, title_ru, title_zh, definition, definition_ru, definition_zh, slug_ru, slug_zh, aliases, html_content, html_content_ru, html_content_zh, category_id, presentation_path, presentation_path_ru, presentation_path_zh, image_url, video_url } = body
+  const { title, title_ru, title_zh, definition, definition_ru, definition_zh, slug_ru, slug_zh, aliases, aliases_ru, aliases_zh, html_content, html_content_ru, html_content_zh, category_id, presentation_path, presentation_path_ru, presentation_path_zh, image_url, video_url } = body
 
   if (!title || !definition) {
     throw createError({ statusCode: 400, statusMessage: 'title и definition обязательны' })
@@ -36,15 +36,23 @@ export default defineEventHandler(async (event) => {
   const aliasesJson = aliases
     ? JSON.stringify(Array.isArray(aliases) ? aliases : [aliases])
     : null
+    
+  const aliasesRuJson = aliases_ru
+    ? JSON.stringify(Array.isArray(aliases_ru) ? aliases_ru : [aliases_ru])
+    : null
+    
+  const aliasesZhJson = aliases_zh
+    ? JSON.stringify(Array.isArray(aliases_zh) ? aliases_zh : [aliases_zh])
+    : null
 
   let termArticleId: number | null = null
 
   // If extended content provided — create a linked term-article first
   if (html_content || html_content_ru || html_content_zh || presentation_path || presentation_path_ru || presentation_path_zh) {
-    const termsMap = await buildTermsMap(db)
-    const rMain = html_content ? linkTermsInHtml(html_content, termsMap) : null
-    const rRu = html_content_ru ? linkTermsInHtml(html_content_ru, termsMap) : null
-    const rZh = html_content_zh ? linkTermsInHtml(html_content_zh, termsMap) : null
+    const termsMaps = await buildTermsMaps(db)
+    const rMain = html_content ? linkTermsInHtml(html_content, termsMaps.en) : null
+    const rRu = html_content_ru ? linkTermsInHtml(html_content_ru, termsMaps.ru) : null
+    const rZh = html_content_zh ? linkTermsInHtml(html_content_zh, termsMaps.zh) : null
     const finalHtml = rMain?.html ?? ''
     const finalHtmlRu = rRu?.html ?? null
     const finalHtmlZh = rZh?.html ?? null
@@ -68,14 +76,16 @@ export default defineEventHandler(async (event) => {
       VALUES (?, ?, 1, 'Initial version (term article)', ?)
     `).run(termArticleId, finalHtml, auth.id)
 
-    syncArticleTermsFromArticleRow(db, termArticleId, termsMap)
+    if (termArticleId) {
+      syncArticleTermsFromArticleRow(db, termArticleId, termsMaps)
+    }
   }
 
   await db.prepare(`
-    INSERT INTO terms (slug, slug_ru, slug_zh, title, title_ru, title_zh, aliases, definition, definition_ru, definition_zh, term_article_id, image_url, video_url, presentation_path, presentation_path_ru, presentation_path_zh, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO terms (slug, slug_ru, slug_zh, title, title_ru, title_zh, aliases, aliases_ru, aliases_zh, definition, definition_ru, definition_zh, term_article_id, image_url, video_url, presentation_path, presentation_path_ru, presentation_path_zh, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    slug, finalSlugRu, finalSlugZh, title, title_ru || null, title_zh || null, aliasesJson,
+    slug, finalSlugRu, finalSlugZh, title, title_ru || null, title_zh || null, aliasesJson, aliasesRuJson, aliasesZhJson,
     definition, definition_ru || null, definition_zh || null, termArticleId,
     image_url || null, video_url || null,
     termArticleId ? null : (presentation_path || null),

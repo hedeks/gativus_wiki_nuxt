@@ -21,6 +21,8 @@ export default defineEventHandler(async (event) => {
         t.title_ru,
         t.title_zh,
         t.aliases,
+        t.aliases_ru,
+        t.aliases_zh,
         t.definition,
         t.definition_ru,
         t.definition_zh,
@@ -62,6 +64,8 @@ export default defineEventHandler(async (event) => {
         definition:
             resolveLocalized(t.definition, t.definition_ru, t.definition_zh, isRu, isZh) || '',
         aliases: t.aliases ? safeParseJson(t.aliases) : [],
+        aliases_ru: t.aliases_ru ? safeParseJson(t.aliases_ru) : [],
+        aliases_zh: t.aliases_zh ? safeParseJson(t.aliases_zh) : [],
         term_article_id: t.term_article_id,
         has_article: Boolean(t.term_article_id),
         category_id: t.category_id || null,

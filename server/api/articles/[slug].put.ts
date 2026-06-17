@@ -5,7 +5,7 @@
  */
 
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
-import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
+import { buildTermsMaps, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
@@ -33,27 +33,28 @@ export default defineEventHandler(async (event) => {
   }
 
   // ─── Phase 3: Auto-linking terms ───
-  let processedHtml = html_content
-  let processedHtmlRu = html_content_ru
-  let processedHtmlZh = html_content_zh
-  const termsMap = await buildTermsMap(db)
+  const termsMaps = await buildTermsMaps(db)
+
+  let finalHtml = html_content
+  let finalHtmlRu = html_content_ru
+  let finalHtmlZh = html_content_zh
 
   if (html_content !== undefined) {
-    const result = linkTermsInHtml(html_content, termsMap)
-    processedHtml = result.html
+    const rEn = linkTermsInHtml(html_content, termsMaps.en)
+    finalHtml = rEn.html
   }
   
-  if (html_content_ru !== undefined && html_content_ru !== null) {
-    processedHtmlRu = linkTermsInHtml(html_content_ru, termsMap).html
+  if (html_content_ru !== undefined) {
+    finalHtmlRu = html_content_ru ? linkTermsInHtml(html_content_ru, termsMaps.ru).html : null
   }
   
-  if (html_content_zh !== undefined && html_content_zh !== null) {
-    processedHtmlZh = linkTermsInHtml(html_content_zh, termsMap).html
+  if (html_content_zh !== undefined) {
+    finalHtmlZh = html_content_zh ? linkTermsInHtml(html_content_zh, termsMaps.zh).html : null
   }
 
-  const finalExcerpt = excerpt || (processedHtml && html_content !== undefined ? generateExcerptFromHtml(processedHtml) : undefined)
-  const finalExcerptRu = excerpt_ru || (processedHtmlRu && html_content_ru !== undefined ? generateExcerptFromHtml(processedHtmlRu) : undefined)
-  const finalExcerptZh = excerpt_zh || (processedHtmlZh && html_content_zh !== undefined ? generateExcerptFromHtml(processedHtmlZh) : undefined)
+  const finalExcerpt = excerpt || (finalHtml && html_content !== undefined ? generateExcerptFromHtml(finalHtml) : undefined)
+  const finalExcerptRu = excerpt_ru || (finalHtmlRu && html_content_ru !== undefined ? generateExcerptFromHtml(finalHtmlRu) : undefined)
+  const finalExcerptZh = excerpt_zh || (finalHtmlZh && html_content_zh !== undefined ? generateExcerptFromHtml(finalHtmlZh) : undefined)
 
   // Build update
   const updates: string[] = []
@@ -64,9 +65,9 @@ export default defineEventHandler(async (event) => {
   if (title_zh !== undefined) { updates.push('title_zh = ?'); params.push(title_zh || null) }
   if (slug_ru !== undefined) { updates.push('slug_ru = ?'); params.push(slug_ru || null) }
   if (slug_zh !== undefined) { updates.push('slug_zh = ?'); params.push(slug_zh || null) }
-  if (html_content !== undefined) { updates.push('html_content = ?'); params.push(processedHtml) }
-  if (html_content_ru !== undefined) { updates.push('html_content_ru = ?'); params.push(processedHtmlRu || null) }
-  if (html_content_zh !== undefined) { updates.push('html_content_zh = ?'); params.push(processedHtmlZh || null) }
+  if (html_content !== undefined) { updates.push('html_content = ?'); params.push(finalHtml) }
+  if (html_content_ru !== undefined) { updates.push('html_content_ru = ?'); params.push(finalHtmlRu || null) }
+  if (html_content_zh !== undefined) { updates.push('html_content_zh = ?'); params.push(finalHtmlZh || null) }
   if (newSlug !== existing.slug) { updates.push('slug = ?'); params.push(newSlug) }
   if (book_id !== undefined) { updates.push('book_id = ?'); params.push(book_id || null) }
   if (category_id !== undefined) { updates.push('category_id = ?'); params.push(category_id || null) }
@@ -94,7 +95,7 @@ export default defineEventHandler(async (event) => {
 
   // ─── Phase 4: Sync Knowledge Graph (все локали, mention_count) ───
   if (html_content !== undefined || html_content_ru !== undefined || html_content_zh !== undefined) {
-    syncArticleTermsFromArticleRow(db, existing.id, termsMap)
+    syncArticleTermsFromArticleRow(db, existing.id, termsMaps)
   }
 
   // Create new revision if html_content changed
@@ -108,7 +109,7 @@ export default defineEventHandler(async (event) => {
     await db.prepare(`
       INSERT INTO article_revisions (article_id, html_content, revision_num, change_summary, created_by)
       VALUES (?, ?, ?, ?, ?)
-    `).run(existing.id, processedHtml, nextNum, change_summary || null, auth.id)
+    `).run(existing.id, finalHtml, nextNum, change_summary || null, auth.id)
   }
 
   return {

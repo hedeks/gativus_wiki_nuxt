@@ -6,7 +6,7 @@
  */
 
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
-import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
+import { buildTermsMaps, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Термин не найден' })
   }
 
-  const { title, title_ru, title_zh, definition, definition_ru, definition_zh, slug_ru, slug_zh, aliases, html_content, html_content_ru, html_content_zh, category_id, change_summary, presentation_path, presentation_path_ru, presentation_path_zh, image_url, video_url, translation_valid_en, translation_valid_ru, translation_valid_zh } = body
+  const { title, title_ru, title_zh, definition, definition_ru, definition_zh, slug_ru, slug_zh, aliases, aliases_ru, aliases_zh, html_content, html_content_ru, html_content_zh, category_id, change_summary, presentation_path, presentation_path_ru, presentation_path_zh, image_url, video_url, translation_valid_en, translation_valid_ru, translation_valid_zh } = body
 
   const updates: string[] = []
   const params: any[] = []
@@ -40,6 +40,18 @@ export default defineEventHandler(async (event) => {
   if (aliases !== undefined) {
     const json = Array.isArray(aliases) ? JSON.stringify(aliases) : JSON.stringify([aliases])
     updates.push('aliases = ?')
+    params.push(json)
+  }
+  
+  if (aliases_ru !== undefined) {
+    const json = Array.isArray(aliases_ru) ? JSON.stringify(aliases_ru) : JSON.stringify([aliases_ru])
+    updates.push('aliases_ru = ?')
+    params.push(json)
+  }
+  
+  if (aliases_zh !== undefined) {
+    const json = Array.isArray(aliases_zh) ? JSON.stringify(aliases_zh) : JSON.stringify([aliases_zh])
+    updates.push('aliases_zh = ?')
     params.push(json)
   }
 
@@ -78,7 +90,7 @@ export default defineEventHandler(async (event) => {
   // Handle html_content and presentation_path — create or update linked article
   if (html_content !== undefined || html_content_ru !== undefined || html_content_zh !== undefined
     || presentation_path !== undefined || presentation_path_ru !== undefined || presentation_path_zh !== undefined) {
-    const termsMap = await buildTermsMap(db)
+    const termsMaps = await buildTermsMaps(db)
 
     // Fetch current article state if it exists
     let currentArticle: any = null
@@ -88,28 +100,9 @@ export default defineEventHandler(async (event) => {
       ).get(existing.term_article_id)
     }
 
-    let finalHtml = ''
-    let finalHtmlRu = null
-    let finalHtmlZh = null
-
-    if (html_content !== undefined) {
-      const result = linkTermsInHtml(html_content, termsMap)
-      finalHtml = result.html
-    } else {
-      finalHtml = currentArticle?.html_content || ''
-    }
-    
-    if (html_content_ru !== undefined) {
-      finalHtmlRu = html_content_ru ? linkTermsInHtml(html_content_ru, termsMap).html : null
-    } else {
-      finalHtmlRu = currentArticle?.html_content_ru || null
-    }
-    
-    if (html_content_zh !== undefined) {
-      finalHtmlZh = html_content_zh ? linkTermsInHtml(html_content_zh, termsMap).html : null
-    } else {
-      finalHtmlZh = currentArticle?.html_content_zh || null
-    }
+    let finalHtml = html_content !== undefined ? linkTermsInHtml(html_content, termsMaps.en).html : currentArticle?.html_content || ''
+    let finalHtmlRu = html_content_ru !== undefined ? linkTermsInHtml(html_content_ru, termsMaps.ru).html : currentArticle?.html_content_ru || null
+    let finalHtmlZh = html_content_zh !== undefined ? linkTermsInHtml(html_content_zh, termsMaps.zh).html : currentArticle?.html_content_zh || null
     
     const finalPresPath = presentation_path !== undefined
       ? presentation_path
@@ -157,7 +150,7 @@ export default defineEventHandler(async (event) => {
         }
 
         if (html_content !== undefined || html_content_ru !== undefined || html_content_zh !== undefined) {
-          syncArticleTermsFromArticleRow(db, existing.term_article_id, termsMap)
+          syncArticleTermsFromArticleRow(db, existing.term_article_id, termsMaps)
         }
       }
     } else {
@@ -184,7 +177,7 @@ export default defineEventHandler(async (event) => {
       `).run(newArticleId, finalHtml, auth.id)
 
       if (html_content !== undefined || html_content_ru !== undefined || html_content_zh !== undefined) {
-        syncArticleTermsFromArticleRow(db, newArticleId, termsMap)
+        syncArticleTermsFromArticleRow(db, newArticleId, termsMaps)
       }
 
       updates.push('term_article_id = ?')

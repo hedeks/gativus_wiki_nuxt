@@ -24,11 +24,11 @@ export default defineEventHandler(async (event) => {
 
   if (search) {
     if (lang === 'ru') {
-      conditions.push('(t.title_ru LIKE ? COLLATE NOCASE OR t.title LIKE ? COLLATE NOCASE OR t.aliases LIKE ? COLLATE NOCASE OR t.definition_ru LIKE ? COLLATE NOCASE OR t.definition LIKE ? COLLATE NOCASE)')
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`)
+      conditions.push('(t.title_ru LIKE ? COLLATE NOCASE OR t.title LIKE ? COLLATE NOCASE OR t.aliases_ru LIKE ? COLLATE NOCASE OR t.aliases LIKE ? COLLATE NOCASE OR t.definition_ru LIKE ? COLLATE NOCASE OR t.definition LIKE ? COLLATE NOCASE)')
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`)
     } else if (lang === 'zh') {
-      conditions.push('(t.title_zh LIKE ? COLLATE NOCASE OR t.title LIKE ? COLLATE NOCASE OR t.aliases LIKE ? COLLATE NOCASE OR t.definition_zh LIKE ? COLLATE NOCASE OR t.definition LIKE ? COLLATE NOCASE)')
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`)
+      conditions.push('(t.title_zh LIKE ? COLLATE NOCASE OR t.title LIKE ? COLLATE NOCASE OR t.aliases_zh LIKE ? COLLATE NOCASE OR t.aliases LIKE ? COLLATE NOCASE OR t.definition_zh LIKE ? COLLATE NOCASE OR t.definition LIKE ? COLLATE NOCASE)')
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`)
     } else {
       conditions.push('(t.title LIKE ? COLLATE NOCASE OR t.aliases LIKE ? COLLATE NOCASE OR t.definition LIKE ? COLLATE NOCASE)')
       params.push(`%${search}%`, `%${search}%`, `%${search}%`)
@@ -74,7 +74,7 @@ export default defineEventHandler(async (event) => {
 
   const items = await db.prepare(`
     SELECT
-      t.id, t.slug, t.slug_ru, t.slug_zh, t.title, t.title_ru, t.title_zh, t.aliases, t.definition, t.definition_ru, t.definition_zh,
+      t.id, t.slug, t.slug_ru, t.slug_zh, t.title, t.title_ru, t.title_zh, t.aliases, t.aliases_ru, t.aliases_zh, t.definition, t.definition_ru, t.definition_zh,
       t.term_article_id, t.created_at, t.updated_at,
       COALESCE(t.translation_valid_en,1) as translation_valid_en,
       COALESCE(t.translation_valid_ru,0) as translation_valid_ru,
@@ -122,6 +122,8 @@ export default defineEventHandler(async (event) => {
         category_title: isRu ? (t.category_title_ru || t.category_title) : (isZh ? (t.category_title_zh || t.category_title) : t.category_title),
         // We keep the primary slug for stability but could support slug_ru if needed
         aliases: t.aliases ? JSON.parse(t.aliases) : [],
+        aliases_ru: t.aliases_ru ? JSON.parse(t.aliases_ru) : [],
+        aliases_zh: t.aliases_zh ? JSON.parse(t.aliases_zh) : [],
         has_article: Boolean(t.term_article_id),
       }
     }),

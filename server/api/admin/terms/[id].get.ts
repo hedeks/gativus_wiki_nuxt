@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
 
   const term = await db.prepare(`
     SELECT
-      t.id, t.slug, t.slug_ru, t.slug_zh, t.title, t.title_ru, t.title_zh, t.aliases, t.definition, t.definition_ru, t.definition_zh,
+      t.id, t.slug, t.slug_ru, t.slug_zh, t.title, t.title_ru, t.title_zh, t.aliases, t.aliases_ru, t.aliases_zh, t.definition, t.definition_ru, t.definition_zh,
       t.term_article_id, t.created_at, t.updated_at,
       t.created_by, t.image_url, t.video_url,
       a.html_content as article_html,
@@ -40,6 +40,8 @@ export default defineEventHandler(async (event) => {
   return {
     ...term,
     aliases: term.aliases ? JSON.parse(term.aliases) : [],
+    aliases_ru: term.aliases_ru ? JSON.parse(term.aliases_ru) : [],
+    aliases_zh: term.aliases_zh ? JSON.parse(term.aliases_zh) : [],
     has_article: Boolean(term.term_article_id),
   }
 })

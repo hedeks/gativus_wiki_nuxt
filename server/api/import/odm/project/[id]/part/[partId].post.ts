@@ -11,7 +11,7 @@ import { defaultOdmChapterTitle } from '~/server/utils/odmParser'
 import { slugify, ensureUniqueArticleAnySlug } from '~/server/utils/slugify'
 import { requireRole } from '~/server/utils/requireRole'
 import { cascadeResetOdmSlotsFrom, cascadeResetOdmSlotsTranslationFrom, parseOdmImportedArticleIds } from '~/server/utils/odmSlotReset'
-import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
+import { buildTermsMaps, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 function parseNumberingJson(raw: string | null): NumberingState | undefined {
   if (!raw) return undefined
@@ -238,7 +238,7 @@ export default defineEventHandler(async (event) => {
       }
 
       const importedIds: number[] = []
-      const termsMap = await buildTermsMap(db)
+      const termsMaps = await buildTermsMaps(db)
 
       for (let i = 0; i < articles.length; i++) {
         const article = articles[i]
@@ -258,7 +258,7 @@ export default defineEventHandler(async (event) => {
           slugZh = await ensureUniqueArticleAnySlug(db, slugify(insTitleZh))
 
         const articleSortOrder = maxSortOrder + sortOrder * 100 + i + 1
-        const processedHtml = linkTermsInHtml(article.html, termsMap).html
+        const processedHtml = linkTermsInHtml(article.html, termsMaps.en).html
         const excerpt = generateExcerpt(processedHtml)
 
         await db.prepare(`
@@ -289,7 +289,7 @@ export default defineEventHandler(async (event) => {
           VALUES (?, ?, 1, ?, ?)
         `).run(articleId, processedHtml, 'Импорт ODM (слой книги)', auth.id)
 
-        await syncArticleTermsFromArticleRow(db, articleId, termsMap)
+        await syncArticleTermsFromArticleRow(db, articleId, termsMaps)
       }
 
       const outState = parsed.numberingState ? cloneNumberingState(parsed.numberingState) : { listCounters: {} }
@@ -327,7 +327,7 @@ export default defineEventHandler(async (event) => {
       if (importedIds.length === 0)
         throw new Error('Связанные статьи не найдены в этом слоте')
 
-      const termsMap = await buildTermsMap(db)
+      const termsMaps = await buildTermsMaps(db)
       const col = lang === 'ru' ? 'html_content_ru' : 'html_content_zh'
       const exCol = lang === 'ru' ? 'excerpt_ru' : 'excerpt_zh'
       const titleCol = lang === 'ru' ? 'title_ru' : 'title_zh'
@@ -341,7 +341,7 @@ export default defineEventHandler(async (event) => {
         const articleId = importedIds[i]
         const isFirst = i === 0
 
-        const processedHtml = linkTermsInHtml(article.html, termsMap).html
+        const processedHtml = linkTermsInHtml(article.html, lang === 'ru' ? termsMaps.ru : termsMaps.zh).html
         const excerpt = generateExcerpt(processedHtml)
 
         let slugVal: string | null = null
@@ -374,7 +374,7 @@ export default defineEventHandler(async (event) => {
           VALUES (?, ?, ?, ?, ?)
         `).run(articleId, processedHtml, revNum.n, `Импорт перевода ODM (${lang.toUpperCase()})`, auth.id)
 
-        await syncArticleTermsFromArticleRow(db, articleId, termsMap)
+        await syncArticleTermsFromArticleRow(db, articleId, termsMaps)
       }
 
       const outState = parsed.numberingState ? cloneNumberingState(parsed.numberingState) : { listCounters: {} }

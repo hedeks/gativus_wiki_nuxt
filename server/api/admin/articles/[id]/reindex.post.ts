@@ -7,7 +7,7 @@
 
 import { reindexHeadingMarkers, type HeadingLocale } from '~/server/utils/reindexHeadingMarkers'
 import { requireRole } from '~/server/utils/requireRole'
-import { linkTermsInHtml, buildTermsMap, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
+import { linkTermsInHtml, buildTermsMaps, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
   if (!article)
     throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' })
 
-  const termsMap = await buildTermsMap(db)
+  const termsMaps = await buildTermsMaps(db)
 
   let totalChanged = 0
 
@@ -56,9 +56,9 @@ export default defineEventHandler(async (event) => {
   if (rRu) totalChanged += rRu.changed
   if (rZh) totalChanged += rZh.changed
 
-  const newEn = rEn ? linkTermsInHtml(rEn.html, termsMap).html : null
-  const newRu = rRu ? linkTermsInHtml(rRu.html, termsMap).html : null
-  const newZh = rZh ? linkTermsInHtml(rZh.html, termsMap).html : null
+  const newEn = rEn ? linkTermsInHtml(rEn.html, termsMaps.en).html : null
+  const newRu = rRu ? linkTermsInHtml(rRu.html, termsMaps.ru).html : null
+  const newZh = rZh ? linkTermsInHtml(rZh.html, termsMaps.zh).html : null
 
   await db.prepare(`
     UPDATE articles SET
@@ -78,7 +78,7 @@ export default defineEventHandler(async (event) => {
     ).run(id, newEn, revNum.n, `Переиндексация: глава ${chapterStart}`, auth.id)
   }
 
-  await syncArticleTermsFromArticleRow(db, id, termsMap)
+  await syncArticleTermsFromArticleRow(db, id, termsMaps)
 
   return {
     ok: true,

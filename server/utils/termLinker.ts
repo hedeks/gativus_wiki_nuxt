@@ -9,36 +9,53 @@
  * - Skips matches inside raw tags and inside any <a>…</a> (including non–wiki-term links)
  */
 
-/**
- * Build a Map<phrase, {id, slug}> from the database.
- * Ключи: title, title_ru, title_zh, slug, aliases (нижний регистр для сопоставления).
- */
-export async function buildTermsMap(db: any): Promise<Map<string, { id: number, slug: string }>> {
+export async function buildTermsMaps(db: any): Promise<{ en: Map<string, { id: number, slug: string }>, ru: Map<string, { id: number, slug: string }>, zh: Map<string, { id: number, slug: string }>, all: Map<string, { id: number, slug: string }> }> {
   const terms = await db.prepare(`
-    SELECT id, slug, title, title_ru, title_zh, aliases FROM terms
+    SELECT id, slug, title, title_ru, title_zh, aliases, aliases_ru, aliases_zh FROM terms
   `).all() as any[]
-  const map = new Map<string, { id: number, slug: string }>()
+  const en = new Map<string, { id: number, slug: string }>()
+  const ru = new Map<string, { id: number, slug: string }>()
+  const zh = new Map<string, { id: number, slug: string }>()
+  const all = new Map<string, { id: number, slug: string }>()
 
-  const add = (phrase: string | null | undefined, data: { id: number, slug: string }) => {
+  const add = (map: Map<string, { id: number, slug: string }>, phrase: string | null | undefined, data: { id: number, slug: string }) => {
     const k = phrase?.trim().toLowerCase()
     if (k) map.set(k, data)
   }
 
   for (const term of terms || []) {
-    const data = { id: term.id, slug: term.slug }
-    add(term.title, data)
-    add(term.title_ru, data)
-    add(term.title_zh, data)
-    add(term.slug, data)
+    const data = { id: term.id, slug: term.slug } // Везде используем английский (основной) слаг для ссылки
+    
+    // EN
+    add(en, term.title, data)
+    add(en, term.slug, data)
     if (term.aliases) {
-      try {
-        const aliases: string[] = JSON.parse(term.aliases)
-        for (const alias of aliases) add(alias, data)
-      } catch { /* invalid JSON — skip */ }
+      try { JSON.parse(term.aliases).forEach((a: string) => add(en, a, data)) } catch {}
     }
+    
+    // RU
+    add(ru, term.title_ru, data)
+    if (term.aliases_ru) {
+      try { JSON.parse(term.aliases_ru).forEach((a: string) => add(ru, a, data)) } catch {}
+    }
+    
+    // ZH
+    add(zh, term.title_zh, data)
+    if (term.aliases_zh) {
+      try { JSON.parse(term.aliases_zh).forEach((a: string) => add(zh, a, data)) } catch {}
+    }
+    
+    // Для обратной совместимости, если где-то нужен общий мап:
+    add(all, term.title, data)
+    add(all, term.title_ru, data)
+    add(all, term.title_zh, data)
+    add(all, term.slug, data)
+    if (term.aliases) try { JSON.parse(term.aliases).forEach((a: string) => add(all, a, data)) } catch {}
+    if (term.aliases_ru) try { JSON.parse(term.aliases_ru).forEach((a: string) => add(all, a, data)) } catch {}
+    if (term.aliases_zh) try { JSON.parse(term.aliases_zh).forEach((a: string) => add(all, a, data)) } catch {}
   }
 
-  return map
+  return { en, ru, zh, all }
 }
 
 /**
@@ -289,10 +306,10 @@ export async function replaceArticleTermMentions(db: any, articleId: number, cou
 }
 
 /** Пересобрать article_terms по трём полям HTML статьи (после сохранения в БД). */
-export async function syncArticleTermsFromArticleRow(db: any, articleId: number, termsMap: Map<string, { id: number, slug: string }>) {
+export async function syncArticleTermsFromArticleRow(db: any, articleId: number, termsMaps: { en: Map<string, { id: number, slug: string }>, ru: Map<string, { id: number, slug: string }>, zh: Map<string, { id: number, slug: string }>, all: Map<string, { id: number, slug: string }> }) {
   const row = await db.prepare('SELECT html_content, html_content_ru, html_content_zh FROM articles WHERE id = ?').get(articleId) as any
   if (!row) return
-  const slugToId = buildSlugToIdMap(termsMap)
+  const slugToId = buildSlugToIdMap(termsMaps.all)
   const merged = mergeMentionCountMaps([
     countWikiTermMentionsInHtml(row.html_content, slugToId),
     countWikiTermMentionsInHtml(row.html_content_ru, slugToId),

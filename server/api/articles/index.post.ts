@@ -5,7 +5,7 @@
  */
 
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
-import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
+import { buildTermsMaps, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
 export default defineEventHandler(async (event) => {
   const auth = requireRole(event, 'editor')
@@ -22,13 +22,10 @@ export default defineEventHandler(async (event) => {
   const slug = await ensureUniqueSlug(db, 'articles', baseSlug)
 
   // ─── Phase 3: Auto-linking terms ───
-  const termsMap = await buildTermsMap(db)
-  const rEn = linkTermsInHtml(html_content, termsMap)
-  const processedHtml = rEn.html
-  const rRu = html_content_ru ? linkTermsInHtml(html_content_ru, termsMap) : null
-  const rZh = html_content_zh ? linkTermsInHtml(html_content_zh, termsMap) : null
-  const processedHtmlRu = rRu?.html ?? null
-  const processedHtmlZh = rZh?.html ?? null
+  const termsMaps = await buildTermsMaps(db)
+  const processedHtml = html_content ? linkTermsInHtml(html_content, termsMaps.en).html : ''
+  const processedHtmlRu = html_content_ru ? linkTermsInHtml(html_content_ru, termsMaps.ru).html : null
+  const processedHtmlZh = html_content_zh ? linkTermsInHtml(html_content_zh, termsMaps.zh).html : null
 
   const finalExcerpt = excerpt || generateExcerptFromHtml(processedHtml)
   const finalExcerptRu = excerpt_ru || (processedHtmlRu ? generateExcerptFromHtml(processedHtmlRu) : null)
@@ -76,7 +73,7 @@ export default defineEventHandler(async (event) => {
   `).run(articleId, processedHtml, 'Initial version', auth.id)
 
   // ─── Phase 4: Sync Knowledge Graph (как PUT — по сохранённому HTML всех локалей) ───
-  syncArticleTermsFromArticleRow(db, articleId, termsMap)
+  syncArticleTermsFromArticleRow(db, inserted?.id, termsMaps)
 
   return {
     id: articleId,

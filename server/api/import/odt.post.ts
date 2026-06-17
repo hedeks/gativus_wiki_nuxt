@@ -10,7 +10,7 @@
 
 import { parseOdtBuffer, splitIntoArticles, extractFirstHeading, generateExcerpt } from '~/server/utils/odtParser'
 import { slugify, ensureUniqueSlug } from '~/server/utils/slugify'
-import { buildTermsMap, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
+import { buildTermsMaps, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 import { writeFileSync, mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
 
@@ -76,12 +76,12 @@ export default defineEventHandler(async (event) => {
 
     // 5. Save each article to DB (линковка терминов + синхронизация графа article_terms)
     const importedArticles: { slug: string; title: string; id: number }[] = []
-    const termsMap = await buildTermsMap(db)
+    const termsMaps = await buildTermsMaps(db)
 
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i]
       const slug = await ensureUniqueSlug(db, 'articles', article.slug)
-      const processedHtml = linkTermsInHtml(article.html, termsMap).html
+      const processedHtml = linkTermsInHtml(article.html, termsMaps.en).html
       const excerpt = generateExcerpt(processedHtml)
 
       await db.prepare(`
@@ -108,7 +108,7 @@ export default defineEventHandler(async (event) => {
         VALUES (?, ?, 1, ?, ?)
       `).run(articleId, processedHtml, 'Импорт из ODT', auth.id)
 
-      await syncArticleTermsFromArticleRow(db, articleId, termsMap)
+      await syncArticleTermsFromArticleRow(db, articleId, termsMaps)
 
       importedArticles.push({ slug, title: article.title, id: articleId })
     }

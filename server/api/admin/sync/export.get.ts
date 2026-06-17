@@ -85,6 +85,8 @@ export default defineEventHandler(async (event) => {
     title_ru: t.title_ru || null,
     title_zh: t.title_zh || null,
     aliases: t.aliases || null,
+    aliases_ru: t.aliases_ru || null,
+    aliases_zh: t.aliases_zh || null,
     definition: t.definition,
     definition_ru: t.definition_ru || null,
     definition_zh: t.definition_zh || null,
