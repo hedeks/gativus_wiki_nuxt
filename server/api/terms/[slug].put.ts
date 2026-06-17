@@ -122,33 +122,43 @@ export default defineEventHandler(async (event) => {
       : (currentArticle?.presentation_path_zh || null)
 
     if (existing.term_article_id) {
-      // Update existing article
-      await db.prepare(`
-        UPDATE articles SET 
-          html_content = ?, 
-          html_content_ru = ?,
-          html_content_zh = ?,
-          presentation_path = ?,
-          presentation_path_ru = ?,
-          presentation_path_zh = ?,
-          updated_at = datetime('now')
-        WHERE id = ?
-      `).run(finalHtml, finalHtmlRu, finalHtmlZh, finalPresPath, finalPresPathRu, finalPresPathZh, existing.term_article_id)
-
-      // Create new revision if HTML changed
-      if (html_content !== undefined) {
-        const lastRev = await db.prepare(
-          'SELECT MAX(revision_num) as max_num FROM article_revisions WHERE article_id = ?'
-        ).get(existing.term_article_id) as any
-        const nextNum = (lastRev?.max_num || 0) + 1
+      const isHtmlEmpty = (h: any) => !h || h.trim() === '' || h.trim() === '<p></p>' || h.trim() === '<p><br></p>'
+      
+      if (isHtmlEmpty(finalHtml) && isHtmlEmpty(finalHtmlRu) && isHtmlEmpty(finalHtmlZh)) {
+        // Delete the article completely since all language contents are empty
+        await db.prepare('UPDATE terms SET term_article_id = NULL WHERE id = ?').run(existing.id)
+        await db.prepare('DELETE FROM article_revisions WHERE article_id = ?').run(existing.term_article_id)
+        await db.prepare('DELETE FROM article_terms WHERE article_id = ?').run(existing.term_article_id)
+        await db.prepare('DELETE FROM articles WHERE id = ?').run(existing.term_article_id)
+      } else {
+        // Update existing article
         await db.prepare(`
-          INSERT INTO article_revisions (article_id, html_content, revision_num, change_summary, created_by)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(existing.term_article_id, finalHtml, nextNum, change_summary || null, auth.id)
-      }
+          UPDATE articles SET 
+            html_content = ?, 
+            html_content_ru = ?,
+            html_content_zh = ?,
+            presentation_path = ?,
+            presentation_path_ru = ?,
+            presentation_path_zh = ?,
+            updated_at = datetime('now')
+          WHERE id = ?
+        `).run(finalHtml, finalHtmlRu, finalHtmlZh, finalPresPath, finalPresPathRu, finalPresPathZh, existing.term_article_id)
 
-      if (html_content !== undefined || html_content_ru !== undefined || html_content_zh !== undefined) {
-        syncArticleTermsFromArticleRow(db, existing.term_article_id, termsMap)
+        // Create new revision if HTML changed
+        if (html_content !== undefined) {
+          const lastRev = await db.prepare(
+            'SELECT MAX(revision_num) as max_num FROM article_revisions WHERE article_id = ?'
+          ).get(existing.term_article_id) as any
+          const nextNum = (lastRev?.max_num || 0) + 1
+          await db.prepare(`
+            INSERT INTO article_revisions (article_id, html_content, revision_num, change_summary, created_by)
+            VALUES (?, ?, ?, ?, ?)
+          `).run(existing.term_article_id, finalHtml, nextNum, change_summary || null, auth.id)
+        }
+
+        if (html_content !== undefined || html_content_ru !== undefined || html_content_zh !== undefined) {
+          syncArticleTermsFromArticleRow(db, existing.term_article_id, termsMap)
+        }
       }
     } else {
       // Create new linked article

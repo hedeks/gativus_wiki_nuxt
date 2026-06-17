@@ -174,11 +174,22 @@
         <div class="space-y-3">
           <div v-for="loc in (['en', 'ru', 'zh'] as const)" :key="loc" class="pres-locale-block">
             <span class="pres-locale-label">{{ loc.toUpperCase() }}</span>
-            <input
-              v-model="form[loc === 'en' ? 'presentation_path' : loc === 'ru' ? 'presentation_path_ru' : 'presentation_path_zh']"
-              class="field-input pres-url-input"
-              :placeholder="loc === 'en' ? '/presentations/...' : `URL (${loc.toUpperCase()})`"
-            />
+            <div class="flex items-center gap-2">
+              <input
+                v-model="form[loc === 'en' ? 'presentation_path' : loc === 'ru' ? 'presentation_path_ru' : 'presentation_path_zh']"
+                class="field-input pres-url-input flex-1 font-mono text-[10px]"
+                :placeholder="loc === 'en' ? '/presentations/...' : `URL (${loc.toUpperCase()})`"
+              />
+              <button
+                v-if="form[loc === 'en' ? 'presentation_path' : loc === 'ru' ? 'presentation_path_ru' : 'presentation_path_zh']"
+                type="button"
+                @click="form[loc === 'en' ? 'presentation_path' : loc === 'ru' ? 'presentation_path_ru' : 'presentation_path_zh'] = ''"
+                class="text-red-500 hover:text-red-700 p-2"
+                title="Удалить презентацию"
+              >
+                <UIcon name="i-heroicons-trash" />
+              </button>
+            </div>
             <div v-if="form[loc === 'en' ? 'presentation_path' : loc === 'ru' ? 'presentation_path_ru' : 'presentation_path_zh']" class="pres-attached">
               <span class="pres-filename">{{ (form[loc === 'en' ? 'presentation_path' : loc === 'ru' ? 'presentation_path_ru' : 'presentation_path_zh'] || '').split('/').pop() }}</span>
             </div>

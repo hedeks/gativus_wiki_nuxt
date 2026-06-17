@@ -130,6 +130,7 @@ const visible = ref(false)
 const loading = ref(false)
 const loadError = ref(false)
 const term = ref<TermData | null>(null)
+
 const popoverEl = ref<HTMLElement>()
 const route = useRoute()
 
@@ -332,7 +333,8 @@ function handleDocClick(e: MouseEvent) {
   if (termEl) {
     e.preventDefault()
     const slug = termEl.dataset.termSlug
-    if (slug) showPopover(slug, termEl, e.clientX, e.clientY)
+    const lang = termEl.dataset.termLang || undefined
+    if (slug) showPopover(slug, termEl, e.clientX, e.clientY, lang)
     return
   }
 
@@ -361,7 +363,7 @@ function placeholderTerm(slug: string, anchor: HTMLElement): TermData {
   }
 }
 
-async function showPopover(slug: string, anchor: HTMLElement, clientX: number, clientY: number) {
+async function showPopover(slug: string, anchor: HTMLElement, clientX: number, clientY: number, customLang?: string) {
   loadError.value = false
   pointerClient.value = { x: clientX, y: clientY }
   lastAnchorEl.value = anchor
@@ -370,10 +372,13 @@ async function showPopover(slug: string, anchor: HTMLElement, clientX: number, c
   visible.value = true
   loading.value = true
 
+  const langToFetch = customLang || langStore.currentLang
+  const cacheKey = `${slug}_${langToFetch}`
+
   if (process.client) await nextTick()
 
-  if (cache.has(slug)) {
-    term.value = cache.get(slug)!
+  if (cache.has(cacheKey)) {
+    term.value = cache.get(cacheKey)!
     loading.value = false
     loadError.value = false
     positionPopover()
@@ -383,7 +388,7 @@ async function showPopover(slug: string, anchor: HTMLElement, clientX: number, c
 
   try {
     const data = await $fetch<any>(`/api/terms/${slug}`, {
-      query: { lang: langStore.currentLang },
+      query: { lang: langToFetch },
     })
     const mapped: TermData = {
       id: data.id,
@@ -399,7 +404,7 @@ async function showPopover(slug: string, anchor: HTMLElement, clientX: number, c
       image_url: data.image_url,
       video_url: data.video_url,
     }
-    cache.set(slug, mapped)
+    cache.set(cacheKey, mapped)
     term.value = mapped
     loadError.value = false
   } catch {

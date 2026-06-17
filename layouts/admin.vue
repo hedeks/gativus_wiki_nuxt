@@ -112,6 +112,8 @@
         </div>
       </main>
     </div>
+    
+    <theTermPopover />
   </div>
 </template>
 
