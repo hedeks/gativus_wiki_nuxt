@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   let term = await db.prepare(`
     SELECT
       t.id, t.slug, t.slug_ru, t.slug_zh, t.title, t.title_ru, t.title_zh, 
-      t.aliases, t.definition, t.definition_ru, t.definition_zh,
+      t.aliases, t.aliases_ru, t.aliases_zh, t.definition, t.definition_ru, t.definition_zh,
       t.term_article_id, t.created_at, t.updated_at,
       t.created_by, t.image_url, t.video_url, t.presentation_path, t.presentation_path_ru, t.presentation_path_zh,
       a.html_content as term_article_html_en,
@@ -100,7 +100,14 @@ export default defineEventHandler(async (event) => {
     title: isRu ? (term.title_ru || term.title) : (isZh ? (term.title_zh || term.title) : term.title),
     definition: isRu ? (term.definition_ru || term.definition) : (isZh ? (term.definition_zh || term.definition) : term.definition),
     category_title: isRu ? (term.category_title_ru || term.category_title) : (isZh ? (term.category_title_zh || term.category_title) : term.category_title),
-    aliases: term.aliases ? JSON.parse(term.aliases) : [],
+    aliases: (() => {
+      const enAliases = term.aliases ? JSON.parse(term.aliases) : []
+      const ruAliases = term.aliases_ru ? JSON.parse(term.aliases_ru) : []
+      const zhAliases = term.aliases_zh ? JSON.parse(term.aliases_zh) : []
+      if (isRu) return ruAliases.length ? ruAliases : enAliases
+      if (isZh) return zhAliases.length ? zhAliases : enAliases
+      return enAliases
+    })(),
     has_article: Boolean(term.term_article_id),
     presentation_path: resolvedPres,
   }

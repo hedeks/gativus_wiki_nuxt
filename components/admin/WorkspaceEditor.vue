@@ -268,6 +268,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import AdminArticleWysiwyg from './AdminArticleWysiwyg.vue'
+import { useLanguageStore } from '~/stores/language'
 
 const props = defineProps<{
   termId: number
@@ -279,8 +280,14 @@ const emit = defineEmits<{
 
 const store = userStore()
 const toast = useToast()
+const langStore = useLanguageStore()
 
-const activeLang = ref<'en'|'ru'|'zh'>('en')
+const activeLang = ref<'en'|'ru'|'zh'>(langStore.currentLang as 'en'|'ru'|'zh')
+
+// Sync workspace language tab → global language store
+watch(activeLang, (newLang) => {
+  langStore.setLanguage(newLang)
+})
 const isArticleModalOpen = ref(false)
 const modalLang = ref<'en'|'ru'|'zh'>('en')
 
@@ -345,6 +352,9 @@ async function fetchTerm() {
     form.aliases = Array.isArray(t.aliases) ? [...t.aliases] : []
     form.aliases_ru = Array.isArray(t.aliases_ru) ? [...t.aliases_ru] : []
     form.aliases_zh = Array.isArray(t.aliases_zh) ? [...t.aliases_zh] : []
+    aliasInput_en.value = ''
+    aliasInput_ru.value = ''
+    aliasInput_zh.value = ''
     form.definition = t.definition || ''
     form.definition_ru = t.definition_ru || ''
     form.definition_zh = t.definition_zh || ''
@@ -434,15 +444,24 @@ async function save() {
   if (!term.value) return
   isSaving.value = true
   try {
+    // Auto-add any pending alias text that wasn't confirmed with Enter
+    if (aliasInput_en.value.trim()) addAlias('en')
+    if (aliasInput_ru.value.trim()) addAlias('ru')
+    if (aliasInput_zh.value.trim()) addAlias('zh')
+
+    const saveBody = {
+      ...form,
+      aliases: [...form.aliases],
+      aliases_ru: [...form.aliases_ru],
+      aliases_zh: [...form.aliases_zh],
+      html_content: form.html_content || undefined,
+      html_content_ru: form.html_content_ru || undefined,
+      html_content_zh: form.html_content_zh || undefined,
+    }
     await $fetch(`/api/terms/${term.value.slug}`, {
       method: 'PUT',
       headers: store.getAuthHeader(),
-      body: {
-        ...form,
-        html_content: form.html_content || undefined,
-        html_content_ru: form.html_content_ru || undefined,
-        html_content_zh: form.html_content_zh || undefined,
-      }
+      body: saveBody,
     })
     toast.add({ title: 'Сохранено!', color: 'green' })
     fetchTerm()
@@ -483,8 +502,8 @@ async function save() {
 .aliases-input { border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; padding: 6px 10px; display: flex; flex-wrap: wrap; gap: 6px; }
 .dark .aliases-input { background: #1e1e21; border-color: #2a2a2e; }
 .alias-tag { background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
-.remove-alias { cursor: pointer; opacity: 0.6; }
-.remove-alias:hover { opacity: 1; }
+.remove-alias { cursor: pointer; opacity: 0.6; background: none; border: none; padding: 0 2px; font-size: 14px; line-height: 1; color: inherit; }
+.remove-alias:hover { opacity: 1; color: #ef4444; }
 .alias-field { background: transparent; border: none; outline: none; flex: 1; min-width: 100px; font-size: 13px; color: #1a1a1a; }
 .dark .alias-field { color: #e5e5e5; }
 </style>
