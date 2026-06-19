@@ -665,8 +665,9 @@ const props = withDefaults(
      * (панели graph-chrome остаются доступны).
      */
     graphInitializing?: boolean
+    initialFocusNodeId?: string | null
   }>(),
-  { pending: false, frameless: false, graphInitializing: false },
+  { pending: false, frameless: false, graphInitializing: false, initialFocusNodeId: null },
 )
 
 const graphInitializingOverlay = computed(
@@ -765,6 +766,9 @@ const isFilterMenuOpen = ref(false)
 
 // ─── Ego-graph (focus mode) ───────────────────────────────────────────────
 const focusNodeId = ref<string | null>(null)
+watch(() => props.initialFocusNodeId, (newId) => {
+  focusNodeId.value = newId || null
+}, { immediate: true })
 const focusDepth = ref(2)
 const isFocusMode = computed(() => focusNodeId.value !== null)
 const focusNodeTitle = computed(() =>

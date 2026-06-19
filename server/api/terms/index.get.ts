@@ -72,6 +72,41 @@ export default defineEventHandler(async (event) => {
   const total = countResult?.count || 0
   const pages = Math.ceil(total / limit)
 
+  const sortBy = (query.sort_by as string) || 'title_asc'
+  let orderSql = ''
+  const orderParams: any[] = []
+
+  if (sortBy === 'title_desc') {
+    orderSql = `ORDER BY CASE 
+      WHEN ? = 'ru' AND t.title_ru IS NOT NULL THEN t.title_ru 
+      WHEN ? = 'zh' AND t.title_zh IS NOT NULL THEN t.title_zh 
+      ELSE t.title END DESC`
+    orderParams.push(lang, lang)
+  } else if (sortBy === 'mentions_desc') {
+    orderSql = `ORDER BY (SELECT COALESCE(SUM(mention_count), 0) FROM article_terms WHERE term_id = t.id) DESC`
+  } else if (sortBy === 'mentions_asc') {
+    orderSql = `ORDER BY (SELECT COALESCE(SUM(mention_count), 0) FROM article_terms WHERE term_id = t.id) ASC`
+  } else if (sortBy === 'category_asc') {
+    orderSql = `ORDER BY CASE 
+      WHEN ? = 'ru' AND c.title_ru IS NOT NULL THEN c.title_ru 
+      WHEN ? = 'zh' AND c.title_zh IS NOT NULL THEN c.title_zh 
+      ELSE c.title END ASC`
+    orderParams.push(lang, lang)
+  } else if (sortBy === 'category_desc') {
+    orderSql = `ORDER BY CASE 
+      WHEN ? = 'ru' AND c.title_ru IS NOT NULL THEN c.title_ru 
+      WHEN ? = 'zh' AND c.title_zh IS NOT NULL THEN c.title_zh 
+      ELSE c.title END DESC`
+    orderParams.push(lang, lang)
+  } else {
+    // Default to title_asc
+    orderSql = `ORDER BY CASE 
+      WHEN ? = 'ru' AND t.title_ru IS NOT NULL THEN t.title_ru 
+      WHEN ? = 'zh' AND t.title_zh IS NOT NULL THEN t.title_zh 
+      ELSE t.title END ASC`
+    orderParams.push(lang, lang)
+  }
+
   const items = await db.prepare(`
     SELECT
       t.id, t.slug, t.slug_ru, t.slug_zh, t.title, t.title_ru, t.title_zh, t.aliases, t.aliases_ru, t.aliases_zh, t.definition, t.definition_ru, t.definition_zh,
@@ -87,17 +122,15 @@ export default defineEventHandler(async (event) => {
       c.slug_ru as category_slug_ru,
       c.slug_zh as category_slug_zh,
       c.icon as category_icon,
-      c.color as category_color
+      c.color as category_color,
+      (SELECT COALESCE(SUM(mention_count), 0) FROM article_terms WHERE term_id = t.id) as mention_count
     FROM terms t
     LEFT JOIN articles a ON t.term_article_id = a.id
     LEFT JOIN categories c ON a.category_id = c.id
     ${whereClause}
-    ORDER BY CASE 
-      WHEN ? = 'ru' AND t.title_ru IS NOT NULL THEN t.title_ru 
-      WHEN ? = 'zh' AND t.title_zh IS NOT NULL THEN t.title_zh 
-      ELSE t.title END ASC
+    ${orderSql}
     LIMIT ? OFFSET ?
-  `).all(...params, lang, lang, limit, offset) as any[]
+  `).all(...params, ...orderParams, limit, offset) as any[]
 
   // Fetch available letters for the alphabet filter
   // We take the first character of each title (in uppercase)
@@ -125,6 +158,7 @@ export default defineEventHandler(async (event) => {
         aliases_ru: t.aliases_ru ? JSON.parse(t.aliases_ru) : [],
         aliases_zh: t.aliases_zh ? JSON.parse(t.aliases_zh) : [],
         has_article: Boolean(t.term_article_id),
+        mention_count: t.mention_count || 0,
       }
     }),
     total,

@@ -12,9 +12,9 @@
       <!-- Editor Header -->
       <header class="editor-header shrink-0 p-4 bg-white dark:bg-[#1a1a1d] border-b border-gray-200 dark:border-[#2a2a2e] flex justify-between items-center z-10">
         <div>
-          <span class="editor-badge">ТЕРМИН</span>
-          <h2 class="editor-title">{{ form.title || 'Безымянный термин' }}</h2>
-          <p class="editor-slug">{{ term.slug }}</p>
+          <span class="editor-badge">{{ props.termId === 'new' ? 'НОВЫЙ ТЕРМИН' : 'ТЕРМИН' }}</span>
+          <h2 class="editor-title">{{ form.title || (props.termId === 'new' ? 'Новый термин' : 'Безымянный термин') }}</h2>
+          <p class="editor-slug">{{ props.termId === 'new' ? 'Создание новой записи' : term.slug }}</p>
         </div>
         <div class="editor-actions flex items-center gap-2">
           <div class="translation-flags mr-2">
@@ -23,7 +23,8 @@
             <button type="button" class="lang-flag-btn" :class="form.translation_valid_zh ? 'lang-flag--valid' : 'lang-flag--invalid'" @click="form.translation_valid_zh = !form.translation_valid_zh">ZH</button>
           </div>
           
-          <GvButton :to="`/glossary/${term.slug}`" target="_blank" color="gray" variant="ghost" size="sm" icon="i-heroicons-eye">Просмотр</GvButton>
+          <GvButton v-if="props.termId !== 'new'" type="button" @click="openGraphModal" color="gray" variant="ghost" size="sm" icon="i-heroicons-share">Показать связи узла</GvButton>
+          <GvButton v-if="props.termId !== 'new'" :to="`/glossary/${term.slug}`" target="_blank" color="gray" variant="ghost" size="sm" icon="i-heroicons-eye">Просмотр</GvButton>
           <GvButton @click="save" color="sky" :loading="isSaving" size="sm" icon="i-heroicons-check">Сохранить</GvButton>
         </div>
       </header>
@@ -65,7 +66,14 @@
               <!-- Left Col -->
               <div class="space-y-4">
                 <template v-if="activeLang === 'en'">
-                  <div class="field"><label class="field-label">Название (EN)</label><input v-model="form.title" class="field-input text-sm" required /></div>
+                  <div class="field">
+                    <label class="field-label">Название (EN) <span class="text-red-500 font-bold">*</span></label>
+                    <input v-model="form.title" class="field-input text-sm" required />
+                  </div>
+                  <div v-if="props.termId === 'new'" class="field">
+                    <label class="field-label">Slug (EN/Optional)</label>
+                    <input v-model="form.slug" class="field-input text-sm font-mono" placeholder="auto" />
+                  </div>
                   <div class="field">
                     <label class="field-label">Синонимы (EN)</label>
                     <div class="aliases-input">
@@ -260,6 +268,41 @@
           </div>
         </UModal>
 
+        <!-- Graph Connections Modal -->
+        <UModal v-model="isGraphModalOpen" fullscreen :ui="{ width: 'w-full', margin: 'sm:my-0' }">
+          <div class="flex flex-col h-screen bg-white dark:bg-[#111113]">
+            <div class="bg-gray-50 dark:bg-[#1e1e21] px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center shrink-0">
+              <div class="flex flex-col">
+                <span class="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                  <UIcon name="i-heroicons-share" class="text-sky-500" />
+                  Связи термина в графе знаний
+                </span>
+                <span class="text-[11px] text-gray-500">
+                  Показан термин: <strong class="text-sky-600">{{ term.title }}</strong>
+                </span>
+              </div>
+              <button type="button" @click="isGraphModalOpen = false" class="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500">
+                <UIcon name="i-heroicons-x-mark" class="text-xl" />
+              </button>
+            </div>
+            
+            <div class="flex-1 min-h-0 relative">
+              <div class="absolute inset-0 w-full h-full">
+                <KnowledgeGraphVisualizer
+                  v-if="isGraphModalOpen"
+                  :graph-data="graphData"
+                  :pending="pendingGraph"
+                  :graph-initializing="graphInitializing"
+                  :enable-navigation="false"
+                  :initial-focus-node-id="`term-${term.id}`"
+                  frameless
+                  @layout-ready="onGraphLayoutReady"
+                />
+              </div>
+            </div>
+          </div>
+        </UModal>
+
       </div>
     </template>
   </div>
@@ -271,11 +314,12 @@ import AdminArticleWysiwyg from './AdminArticleWysiwyg.vue'
 import { useLanguageStore } from '~/stores/language'
 
 const props = defineProps<{
-  termId: number
+  termId: number | string
 }>()
 
 const emit = defineEmits<{
   (e: 'loading-change', val: boolean): void
+  (e: 'term-created', val: number): void
 }>()
 
 const store = userStore()
@@ -296,6 +340,40 @@ function openArticleModal() {
   isArticleModalOpen.value = true
 }
 
+const isGraphModalOpen = ref(false)
+const graphData = ref<any>(null)
+const pendingGraph = ref(false)
+const graphInitializing = ref(false)
+
+async function openGraphModal() {
+  isGraphModalOpen.value = true
+  await fetchGraphData()
+}
+
+async function fetchGraphData() {
+  pendingGraph.value = true
+  graphInitializing.value = true
+  try {
+    graphData.value = await $fetch('/api/knowledge-graph', { query: { lang: activeLang.value } })
+  } catch (e) {
+    console.error(e)
+  } finally {
+    pendingGraph.value = false
+  }
+}
+
+watch(activeLang, () => {
+  if (isGraphModalOpen.value) {
+    fetchGraphData()
+  } else {
+    graphData.value = null // will refetch on next open
+  }
+})
+
+function onGraphLayoutReady() {
+  graphInitializing.value = false
+}
+
 function clearArticle() {
   if (confirm('Вы уверены, что хотите удалить статью? Это очистит контент, а полное удаление произойдет при сохранении термина.')) {
     form.html_content = ''
@@ -312,6 +390,7 @@ const aliasInput_zh = ref('')
 
 const form = reactive({
   title: '', title_ru: '', title_zh: '',
+  slug: '',
   slug_ru: '', slug_zh: '',
   aliases: [] as string[],
   aliases_ru: [] as string[],
@@ -337,6 +416,39 @@ const pending = ref(true)
 const term = ref<any>(null)
 
 async function fetchTerm() {
+  if (props.termId === 'new') {
+    term.value = { id: 0, title: '', slug: '', article_id: null }
+    form.title = ''
+    form.title_ru = ''
+    form.title_zh = ''
+    form.slug = ''
+    form.slug_ru = ''
+    form.slug_zh = ''
+    form.aliases = []
+    form.aliases_ru = []
+    form.aliases_zh = []
+    aliasInput_en.value = ''
+    aliasInput_ru.value = ''
+    aliasInput_zh.value = ''
+    form.definition = ''
+    form.definition_ru = ''
+    form.definition_zh = ''
+    form.category_id = null
+    form.html_content = ''
+    form.html_content_ru = ''
+    form.html_content_zh = ''
+    form.image_url = ''
+    form.video_url = ''
+    form.presentation_path = ''
+    form.presentation_path_ru = ''
+    form.presentation_path_zh = ''
+    form.translation_valid_en = true
+    form.translation_valid_ru = false
+    form.translation_valid_zh = false
+    form.change_summary = ''
+    pending.value = false
+    return
+  }
   pending.value = true
   emit('loading-change', true)
   try {
@@ -442,6 +554,17 @@ function clearPresentation(locale: 'en' | 'ru' | 'zh') {
 
 async function save() {
   if (!term.value) return
+
+  // Mandatory Validation
+  if (!form.title || !form.title.trim()) {
+    toast.add({ title: 'Ошибка валидации', description: 'Название на английском языке (EN) обязательно для заполнения!', color: 'red' })
+    return
+  }
+  if (!form.definition || !form.definition.trim()) {
+    toast.add({ title: 'Ошибка валидации', description: 'Определение на английском языке (EN) обязательно для заполнения!', color: 'red' })
+    return
+  }
+
   isSaving.value = true
   try {
     // Auto-add any pending alias text that wasn't confirmed with Enter
@@ -449,22 +572,79 @@ async function save() {
     if (aliasInput_ru.value.trim()) addAlias('ru')
     if (aliasInput_zh.value.trim()) addAlias('zh')
 
-    const saveBody = {
-      ...form,
-      aliases: [...form.aliases],
-      aliases_ru: [...form.aliases_ru],
-      aliases_zh: [...form.aliases_zh],
-      html_content: form.html_content || undefined,
-      html_content_ru: form.html_content_ru || undefined,
-      html_content_zh: form.html_content_zh || undefined,
+    if (props.termId === 'new') {
+      // 1. Create Mode: POST /api/terms
+      const res = await $fetch<any>('/api/terms', {
+        method: 'POST',
+        headers: store.getAuthHeader(),
+        body: {
+          title: form.title,
+          title_ru: form.title_ru || undefined,
+          title_zh: form.title_zh || undefined,
+          slug: form.slug || undefined,
+          slug_ru: form.slug_ru || undefined,
+          slug_zh: form.slug_zh || undefined,
+          aliases: form.aliases,
+          aliases_ru: form.aliases_ru,
+          aliases_zh: form.aliases_zh,
+          definition: form.definition,
+          definition_ru: form.definition_ru || undefined,
+          definition_zh: form.definition_zh || undefined,
+          presentation_path: form.presentation_path || undefined,
+          presentation_path_ru: form.presentation_path_ru || undefined,
+          presentation_path_zh: form.presentation_path_zh || undefined,
+          image_url: form.image_url || undefined,
+          video_url: form.video_url || undefined,
+          category_id: form.category_id,
+          // Conditionally build article on create if HTML content or presentations are filled
+          html_content: form.html_content || undefined,
+          html_content_ru: form.html_content_ru || undefined,
+          html_content_zh: form.html_content_zh || undefined,
+        },
+      })
+      toast.add({ title: 'Термин успешно создан!', color: 'green' })
+      emit('term-created', res.id)
+    } else {
+      // 2. Edit Mode: PUT /api/terms/:slug
+      const saveBody: any = {
+        ...form,
+        aliases: [...form.aliases],
+        aliases_ru: [...form.aliases_ru],
+        aliases_zh: [...form.aliases_zh],
+      }
+
+      const hasArticleContent = 
+        (form.html_content && form.html_content.trim() !== '' && form.html_content !== '<p></p>' && form.html_content !== '<p><br></p>') ||
+        (form.html_content_ru && form.html_content_ru.trim() !== '' && form.html_content_ru !== '<p></p>' && form.html_content_ru !== '<p><br></p>') ||
+        (form.html_content_zh && form.html_content_zh.trim() !== '' && form.html_content_zh !== '<p></p>' && form.html_content_zh !== '<p><br></p>') ||
+        (form.presentation_path && form.presentation_path.trim() !== '') ||
+        (form.presentation_path_ru && form.presentation_path_ru.trim() !== '') ||
+        (form.presentation_path_zh && form.presentation_path_zh.trim() !== '')
+
+      if (!term.value.article_id && !hasArticleContent) {
+        saveBody.html_content = undefined
+        saveBody.html_content_ru = undefined
+        saveBody.html_content_zh = undefined
+        saveBody.presentation_path = undefined
+        saveBody.presentation_path_ru = undefined
+        saveBody.presentation_path_zh = undefined
+      } else {
+        saveBody.html_content = form.html_content
+        saveBody.html_content_ru = form.html_content_ru
+        saveBody.html_content_zh = form.html_content_zh
+        saveBody.presentation_path = form.presentation_path || null
+        saveBody.presentation_path_ru = form.presentation_path_ru || null
+        saveBody.presentation_path_zh = form.presentation_path_zh || null
+      }
+
+      await $fetch(`/api/terms/${term.value.slug}`, {
+        method: 'PUT',
+        headers: store.getAuthHeader(),
+        body: saveBody,
+      })
+      toast.add({ title: 'Сохранено!', color: 'green' })
+      fetchTerm()
     }
-    await $fetch(`/api/terms/${term.value.slug}`, {
-      method: 'PUT',
-      headers: store.getAuthHeader(),
-      body: saveBody,
-    })
-    toast.add({ title: 'Сохранено!', color: 'green' })
-    fetchTerm()
   } catch (e: any) {
     toast.add({ title: 'Ошибка сохранения', description: e.data?.statusMessage || e.message, color: 'red' })
   } finally {
