@@ -163,14 +163,14 @@ export default defineEventHandler(async (event) => {
     const termArtId = t.term_article_slug ? idMap.art.get(t.term_article_slug) || null : null
 
     await db.prepare(`
-      INSERT INTO terms (slug, slug_ru, slug_zh, title, title_ru, title_zh, aliases, aliases_ru, aliases_zh, definition, definition_ru, definition_zh, image_url, video_url, presentation_path, presentation_path_ru, presentation_path_zh, term_article_id, created_by, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
+      INSERT INTO terms (slug, slug_ru, slug_zh, title, title_ru, title_zh, aliases, aliases_ru, aliases_zh, definition, definition_ru, definition_zh, image_url, video_url, presentation_path, presentation_path_ru, presentation_path_zh, term_article_id, translation_valid_en, translation_valid_ru, translation_valid_zh, created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 1), COALESCE(?, 0), COALESCE(?, 0), ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))
       ON CONFLICT(slug) DO UPDATE SET
         slug_ru = excluded.slug_ru, slug_zh = excluded.slug_zh,
         title = excluded.title, title_ru = excluded.title_ru, title_zh = excluded.title_zh,
         aliases = excluded.aliases, aliases_ru = excluded.aliases_ru, aliases_zh = excluded.aliases_zh, definition = excluded.definition, definition_ru = excluded.definition_ru, definition_zh = excluded.definition_zh,
         image_url = excluded.image_url, video_url = excluded.video_url, presentation_path = excluded.presentation_path, presentation_path_ru = excluded.presentation_path_ru, presentation_path_zh = excluded.presentation_path_zh,
-        term_article_id = excluded.term_article_id, created_at = excluded.created_at, updated_at = excluded.updated_at
+        term_article_id = excluded.term_article_id, translation_valid_en = excluded.translation_valid_en, translation_valid_ru = excluded.translation_valid_ru, translation_valid_zh = excluded.translation_valid_zh, created_at = excluded.created_at, updated_at = excluded.updated_at
     `).run(
       t.slug,
       t.slug_ru || null,
@@ -190,6 +190,9 @@ export default defineEventHandler(async (event) => {
       t.presentation_path_ru || null,
       t.presentation_path_zh || null,
       termArtId,
+      t.translation_valid_en !== undefined ? t.translation_valid_en : 1,
+      t.translation_valid_ru !== undefined ? t.translation_valid_ru : 0,
+      t.translation_valid_zh !== undefined ? t.translation_valid_zh : 0,
       auth.id,
       t.created_at || null,
       t.updated_at || null,

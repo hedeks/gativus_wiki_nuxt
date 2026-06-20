@@ -666,8 +666,9 @@ const props = withDefaults(
      */
     graphInitializing?: boolean
     initialFocusNodeId?: string | null
+    disableLod?: boolean
   }>(),
-  { pending: false, frameless: false, graphInitializing: false, initialFocusNodeId: null },
+  { pending: false, frameless: false, graphInitializing: false, initialFocusNodeId: null, disableLod: false },
 )
 
 const graphInitializingOverlay = computed(
@@ -789,7 +790,11 @@ function getLodLevel(k: number): number {
 
 function applyLOD(k: number) {
   if (!svgRef.value || isFocusMode.value) return
-  const level = getLodLevel(k)
+  
+  const nodeCount = props.graphData?.nodes?.length || 0
+  const isLodDisabled = props.disableLod || nodeCount < 100
+  
+  const level = isLodDisabled ? 3 : getLodLevel(k)
   currentLodLevel.value = level
 
   const visible = new Set<string>(['category'])

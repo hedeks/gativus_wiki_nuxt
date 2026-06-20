@@ -115,6 +115,156 @@ function formatDate(dateStr: string): string {
   })
 }
 
+// Export & Import states
+const isExportModalOpen = ref(false)
+const exportMode = ref<'selected' | 'filter'>('selected')
+
+const importJsonInputRef = ref<HTMLInputElement | null>(null)
+const isToolsModalOpen = ref(false)
+const toolsModalTitle = ref('')
+const toolsModalMessage = ref('')
+
+const isImportPreviewModalOpen = ref(false)
+const importPreviewData = ref<any>({ nodes: [], links: [] })
+const importFileToConfirm = ref<File | null>(null)
+
+// Exports
+function openExportModal(mode: 'selected' | 'filter') {
+  if (mode === 'selected' && selectedIds.value.size === 0) return
+  exportMode.value = mode
+  isExportModalOpen.value = true
+}
+
+async function runExport() {
+  const query = new URLSearchParams()
+  
+  if (exportMode.value === 'selected') {
+    query.set('ids', Array.from(selectedIds.value).join(','))
+  } else {
+    if (debouncedQuery.value) query.set('search', debouncedQuery.value)
+    if (filterBookId.value) query.set('book_id', filterBookId.value)
+    if (filterTranslation.value) query.set('translation_filter', filterTranslation.value)
+  }
+  
+  isExportModalOpen.value = false
+  const url = `/api/admin/articles/export?${query.toString()}`
+  
+  try {
+    toast.add({ title: 'Экспорт запущен, ожидайте...' })
+    const response = await $fetch.raw<Blob>(url, { 
+      headers: store.getAuthHeader(),
+      responseType: 'blob'
+    })
+    
+    if (!response.ok) throw new Error('Ошибка скачивания файла')
+
+    const contentDisposition = response.headers.get('Content-Disposition')
+    let filename = 'export.json'
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/) || contentDisposition.match(/filename="?([^"]+)"?/)
+      if (match) filename = decodeURIComponent(match[1])
+    }
+
+    const blob = response._data
+    if (!blob) throw new Error('Пустой ответ')
+    
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(downloadUrl)
+  } catch (err: any) {
+    toast.add({ title: 'Ошибка экспорта', description: err.message, color: 'red' })
+  }
+}
+
+async function runDownloadTemplate() {
+  const url = `/api/admin/articles/export-template`
+  try {
+    const response = await $fetch.raw<Blob>(url, {
+      headers: store.getAuthHeader(),
+      responseType: 'blob'
+    })
+    if (!response.ok) throw new Error('Ошибка скачивания шаблона')
+
+    const contentDisposition = response.headers.get('Content-Disposition')
+    let filename = 'gativus-article-import-template.json'
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^"]+)"?/)
+      if (match) filename = match[1]
+    }
+
+    const blob = await response.blob()
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(downloadUrl)
+  } catch (err: any) {
+    toast.add({ title: 'Ошибка', description: err.message, color: 'red' })
+  }
+}
+
+// Import
+async function onImportFileSelect(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files.length > 0) {
+    const file = input.files[0]
+    if (!file.name.endsWith('.json')) {
+      toast.add({ title: 'Неверный формат', description: 'Загрузите JSON файл', color: 'red' })
+      return
+    }
+    
+    importFileToConfirm.value = file
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const dump = JSON.parse(e.target?.result as string)
+        importPreviewData.value = generateImportGraphPreview(dump)
+        isImportPreviewModalOpen.value = true
+      } catch (err) {
+        toast.add({ title: 'Ошибка', description: 'Неверный формат JSON', color: 'red' })
+      }
+      if (importJsonInputRef.value) importJsonInputRef.value.value = ''
+    }
+    reader.readAsText(file)
+  }
+}
+
+async function confirmImport() {
+  if (!importFileToConfirm.value) return
+  isImportPreviewModalOpen.value = false
+  
+  toolsModalTitle.value = 'Импорт статей'
+  toolsModalMessage.value = 'Пожалуйста, подождите, идет загрузка и обработка файла...'
+  isToolsModalOpen.value = true
+  
+  try {
+    const formData = new FormData()
+    formData.append('file', importFileToConfirm.value)
+
+    const res = await $fetch<any>('/api/admin/sync/import', {
+      method: 'POST',
+      body: formData,
+      headers: store.getAuthHeader(),
+    })
+    toast.add({ title: 'Импорт завершен', description: res.message, color: 'green' })
+    
+    await refresh()
+  } catch (err: any) {
+    toast.add({ title: 'Ошибка импорта', description: err?.data?.statusMessage || err.message, color: 'red' })
+  } finally {
+    isToolsModalOpen.value = false
+    importFileToConfirm.value = null
+  }
+}
+
 </script>
 
 <template>
@@ -131,12 +281,31 @@ function formatDate(dateStr: string): string {
     </section>
 
     <div class="cta-buttons admin-index-toolbar cta-buttons--left">
-      <GvButton to="/admin/import" variant="outline" color="gray" size="sm" icon="i-heroicons-arrow-up-tray">
-        Импорт ODT
-      </GvButton>
-      <GvButton to="/admin/articles/create" color="sky" variant="solid" size="sm" icon="i-heroicons-plus">
-        Создать статью
-      </GvButton>
+      <UDropdown :items="[
+        [
+          { label: 'Скачать шаблон импорта JSON', icon: 'i-heroicons-document-arrow-down', click: runDownloadTemplate }
+        ]
+      ]">
+        <GvButton type="button" color="gray" variant="soft" size="sm" icon="i-heroicons-cog-8-tooth">Инструменты</GvButton>
+      </UDropdown>
+      
+      <UDropdown :items="[
+        [
+          { label: 'Создать статью', icon: 'i-heroicons-plus', to: '/admin/articles/create' },
+          { label: 'Импорт из ODT', icon: 'i-heroicons-document-text', to: '/admin/import' },
+          { label: 'Импорт из JSON', icon: 'i-heroicons-arrow-up-tray', click: () => { importJsonInputRef?.click() } }
+        ]
+      ]">
+        <GvButton type="button" color="sky" size="sm" icon="i-heroicons-plus" trailing-icon="i-heroicons-chevron-down-20-solid">Новый</GvButton>
+      </UDropdown>
+
+      <input
+        ref="importJsonInputRef"
+        type="file"
+        accept=".json"
+        class="sr-only"
+        @change="onImportFileSelect"
+      >
     </div>
 
     <section class="section-card">
@@ -178,6 +347,16 @@ function formatDate(dateStr: string): string {
               </select>
             </div>
           </ExpandableFilters>
+
+          <GvButton 
+            v-if="activeFilterCount > 0 || debouncedQuery"
+            type="button" 
+            color="sky" 
+            variant="soft" 
+            icon="i-heroicons-arrow-down-tray"
+            title="Экспорт по фильтру"
+            @click="openExportModal('filter')"
+          />
         </div>
       </div>
     </section>
@@ -191,6 +370,7 @@ function formatDate(dateStr: string): string {
         <div v-if="selectedIds.size > 0" class="bulk-bar">
           <span class="bulk-bar-info">Выбрано: <strong>{{ selectedIds.size }}</strong></span>
           <GvButton color="gray" variant="ghost" size="sm" @click="selectedIds = new Set()">Снять выбор</GvButton>
+          <GvButton color="sky" variant="solid" size="sm" icon="i-heroicons-arrow-down-tray" @click="openExportModal('selected')">Экспорт ({{ selectedIds.size }})</GvButton>
           <GvButton color="red" variant="solid" size="sm" icon="i-heroicons-trash" :loading="isBulkDeleting" @click="bulkDelete">Удалить выбранные</GvButton>
         </div>
         <table class="admin-table">
@@ -336,6 +516,61 @@ function formatDate(dateStr: string): string {
         </div>
       </div>
     </Teleport>
+
+    <!-- Import / Tools Progress Modal -->
+    <UModal v-model="isToolsModalOpen" prevent-close :ui="{ width: 'sm:max-w-md' }">
+      <div class="p-6 flex flex-col items-center gap-4 text-center bg-white dark:bg-[#1c1c1e] rounded-xl shadow-2xl border border-gray-150 dark:border-zinc-800">
+        <UIcon name="i-heroicons-arrow-path" class="animate-spin text-5xl text-sky-500" />
+        <div class="space-y-1">
+          <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+            {{ toolsModalTitle }}
+          </h3>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            {{ toolsModalMessage }}
+          </p>
+        </div>
+      </div>
+    </UModal>
+
+    <!-- Export Modal -->
+    <UModal v-model="isExportModalOpen" :ui="{ width: 'sm:max-w-md' }">
+      <div class="p-6 bg-white dark:bg-[#1c1c1e] rounded-xl shadow-2xl border border-gray-150 dark:border-zinc-800">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Экспорт статей</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+          Вы выбрали выгрузку <strong>{{ exportMode === 'selected' ? selectedIds.size + ' статей' : 'по фильтру' }}</strong>.
+        </p>
+        
+        <div class="mt-6 flex justify-end gap-3">
+          <GvButton type="button" color="gray" variant="soft" @click="isExportModalOpen = false">Отмена</GvButton>
+          <GvButton type="button" color="sky" icon="i-heroicons-arrow-down-tray" @click="runExport">Выгрузить JSON</GvButton>
+        </div>
+      </div>
+    </UModal>
+
+    <!-- Import Preview Modal -->
+    <UModal v-model="isImportPreviewModalOpen" :ui="{ width: 'sm:max-w-4xl' }">
+      <div class="p-6 bg-white dark:bg-[#1c1c1e] rounded-xl shadow-2xl border border-gray-150 dark:border-zinc-800 flex flex-col h-[80vh]">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Предпросмотр импорта</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          В файле найдено узлов: <b>{{ importPreviewData.nodes.length }}</b> / связей: <b>{{ importPreviewData.links.length }}</b>.
+        </p>
+        
+        <div class="flex-1 bg-gray-50 dark:bg-[#111113] rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden relative min-h-0">
+          <KnowledgeGraphVisualizer 
+            v-if="isImportPreviewModalOpen"
+            :graphData="importPreviewData" 
+            :pending="false" 
+            :enableNavigation="false"
+            :disableLod="true"
+          />
+        </div>
+        
+        <div class="mt-6 flex justify-end gap-3 shrink-0">
+          <GvButton type="button" color="gray" variant="soft" @click="isImportPreviewModalOpen = false">Отмена</GvButton>
+          <GvButton type="button" color="sky" icon="i-heroicons-arrow-up-tray" @click="confirmImport">Импортировать</GvButton>
+        </div>
+      </div>
+    </UModal>
   </div>
 </template>
 

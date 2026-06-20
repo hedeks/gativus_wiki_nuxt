@@ -7,8 +7,8 @@ export const userStore = defineStore('user', () => {
     const token = ref<string | null>(null)
 
     // Using Nuxt cookies to persist state across SSR and client
-    const tokenCookie = useCookie<string | null>('gativus_token', { maxAge: 60 * 60 * 24 })
-    const userCookie = useCookie<User | null>('gativus_user', { maxAge: 60 * 60 * 24 })
+    const tokenCookie = useCookie<string | null>('gativus_token', { maxAge: 60 * 60 * 24 * 30 })
+    const userCookie = useCookie<User | null>('gativus_user', { maxAge: 60 * 60 * 24 * 30 })
 
     /** Initialize state from cookies (works in SSR and client) */
     function checkAuth() {

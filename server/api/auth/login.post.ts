@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const tokenJWT = jwt.sign({
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24), // 24 hours
+        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 30), // 30 days
         data: safeUser,
         created_at: Date.now()
     }, config.jwtSecret);

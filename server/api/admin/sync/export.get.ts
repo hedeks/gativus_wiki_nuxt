@@ -96,6 +96,9 @@ export default defineEventHandler(async (event) => {
     presentation_path_ru: t.presentation_path_ru || null,
     presentation_path_zh: t.presentation_path_zh || null,
     term_article_slug: t.term_article_slug || null,
+    translation_valid_en: t.translation_valid_en,
+    translation_valid_ru: t.translation_valid_ru,
+    translation_valid_zh: t.translation_valid_zh,
     created_at: t.created_at || null,
     updated_at: t.updated_at || null
   }))
