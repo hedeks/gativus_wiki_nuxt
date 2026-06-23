@@ -511,24 +511,22 @@ export async function runMigrations(db: Database) {
   await db.exec(`
     CREATE TRIGGER tr_articles_insert AFTER INSERT ON articles BEGIN
       INSERT INTO wiki_fts(id, type, title, content, slug, locale)
-      VALUES (
-        new.id,
-        'article',
-        COALESCE(new.title, '') || ' ' || COALESCE(new.title_ru, '') || ' ' || COALESCE(new.title_zh, ''),
-        COALESCE(new.html_content, '') || ' ' || COALESCE(new.html_content_ru, '') || ' ' || COALESCE(new.html_content_zh, ''),
-        new.slug,
-        new.locale
-      );
+      SELECT new.id, 'article', new.title, new.html_content, new.slug, 'en' WHERE COALESCE(new.title, '') != '';
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      SELECT new.id, 'article', new.title_ru, new.html_content_ru, new.slug, 'ru' WHERE COALESCE(new.title_ru, '') != '';
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      SELECT new.id, 'article', new.title_zh, new.html_content_zh, new.slug, 'zh' WHERE COALESCE(new.title_zh, '') != '';
     END;
   `)
   await db.exec(`
     CREATE TRIGGER tr_articles_update AFTER UPDATE ON articles BEGIN
-      UPDATE wiki_fts SET
-        title = COALESCE(new.title, '') || ' ' || COALESCE(new.title_ru, '') || ' ' || COALESCE(new.title_zh, ''),
-        content = COALESCE(new.html_content, '') || ' ' || COALESCE(new.html_content_ru, '') || ' ' || COALESCE(new.html_content_zh, ''),
-        slug = new.slug,
-        locale = new.locale
-      WHERE id = old.id AND type = 'article';
+      DELETE FROM wiki_fts WHERE id = old.id AND type = 'article';
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      SELECT new.id, 'article', new.title, new.html_content, new.slug, 'en' WHERE COALESCE(new.title, '') != '';
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      SELECT new.id, 'article', new.title_ru, new.html_content_ru, new.slug, 'ru' WHERE COALESCE(new.title_ru, '') != '';
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      SELECT new.id, 'article', new.title_zh, new.html_content_zh, new.slug, 'zh' WHERE COALESCE(new.title_zh, '') != '';
     END;
   `)
   await db.exec(`
@@ -540,24 +538,22 @@ export async function runMigrations(db: Database) {
   await db.exec(`
     CREATE TRIGGER tr_terms_insert AFTER INSERT ON terms BEGIN
       INSERT INTO wiki_fts(id, type, title, content, slug, locale)
-      VALUES (
-        new.id,
-        'term',
-        COALESCE(new.title, '') || ' ' || COALESCE(new.title_ru, '') || ' ' || COALESCE(new.title_zh, ''),
-        COALESCE(new.definition, '') || ' ' || COALESCE(new.definition_ru, '') || ' ' || COALESCE(new.definition_zh, ''),
-        new.slug,
-        COALESCE(new.lang, 'en')
-      );
+      SELECT new.id, 'term', new.title, new.definition, new.slug, 'en' WHERE COALESCE(new.title, '') != '';
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      SELECT new.id, 'term', new.title_ru, new.definition_ru, new.slug, 'ru' WHERE COALESCE(new.title_ru, '') != '';
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      SELECT new.id, 'term', new.title_zh, new.definition_zh, new.slug, 'zh' WHERE COALESCE(new.title_zh, '') != '';
     END;
   `)
   await db.exec(`
     CREATE TRIGGER tr_terms_update AFTER UPDATE ON terms BEGIN
-      UPDATE wiki_fts SET
-        title = COALESCE(new.title, '') || ' ' || COALESCE(new.title_ru, '') || ' ' || COALESCE(new.title_zh, ''),
-        content = COALESCE(new.definition, '') || ' ' || COALESCE(new.definition_ru, '') || ' ' || COALESCE(new.definition_zh, ''),
-        slug = new.slug,
-        locale = COALESCE(new.lang, 'en')
-      WHERE id = old.id AND type = 'term';
+      DELETE FROM wiki_fts WHERE id = old.id AND type = 'term';
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      SELECT new.id, 'term', new.title, new.definition, new.slug, 'en' WHERE COALESCE(new.title, '') != '';
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      SELECT new.id, 'term', new.title_ru, new.definition_ru, new.slug, 'ru' WHERE COALESCE(new.title_ru, '') != '';
+      INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+      SELECT new.id, 'term', new.title_zh, new.definition_zh, new.slug, 'zh' WHERE COALESCE(new.title_zh, '') != '';
     END;
   `)
   await db.exec(`
@@ -569,25 +565,27 @@ export async function runMigrations(db: Database) {
   console.log('[migrate] Resyncing FTS5 index from live data...')
   await db.exec(`
     INSERT INTO wiki_fts(id, type, title, content, slug, locale)
-    SELECT
-      id,
-      'article',
-      COALESCE(title, '') || ' ' || COALESCE(title_ru, '') || ' ' || COALESCE(title_zh, ''),
-      COALESCE(html_content, '') || ' ' || COALESCE(html_content_ru, '') || ' ' || COALESCE(html_content_zh, ''),
-      slug,
-      locale
-    FROM articles;
+    SELECT id, 'article', title, html_content, slug, 'en' FROM articles WHERE COALESCE(title, '') != '';
   `)
   await db.exec(`
     INSERT INTO wiki_fts(id, type, title, content, slug, locale)
-    SELECT
-      id,
-      'term',
-      COALESCE(title, '') || ' ' || COALESCE(title_ru, '') || ' ' || COALESCE(title_zh, ''),
-      COALESCE(definition, '') || ' ' || COALESCE(definition_ru, '') || ' ' || COALESCE(definition_zh, ''),
-      slug,
-      COALESCE(lang, 'en')
-    FROM terms;
+    SELECT id, 'article', title_ru, html_content_ru, slug, 'ru' FROM articles WHERE COALESCE(title_ru, '') != '';
+  `)
+  await db.exec(`
+    INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+    SELECT id, 'article', title_zh, html_content_zh, slug, 'zh' FROM articles WHERE COALESCE(title_zh, '') != '';
+  `)
+  await db.exec(`
+    INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+    SELECT id, 'term', title, definition, slug, 'en' FROM terms WHERE COALESCE(title, '') != '';
+  `)
+  await db.exec(`
+    INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+    SELECT id, 'term', title_ru, definition_ru, slug, 'ru' FROM terms WHERE COALESCE(title_ru, '') != '';
+  `)
+  await db.exec(`
+    INSERT INTO wiki_fts(id, type, title, content, slug, locale)
+    SELECT id, 'term', title_zh, definition_zh, slug, 'zh' FROM terms WHERE COALESCE(title_zh, '') != '';
   `)
   console.log('[migrate] FTS5 resync complete ✓')
 

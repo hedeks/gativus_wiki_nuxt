@@ -34,44 +34,56 @@ async function runTitleLikeFallback(db: any, needle: string, typeList: ('article
   const out: any[] = []
 
   if (typeList.includes('article')) {
-    const rows = (await db.prepare(`
-      SELECT id, 'article' AS type,
-             CASE 
-               WHEN ? = 'ru' AND COALESCE(title_ru, '') != '' THEN title_ru
-               WHEN ? = 'zh' AND COALESCE(title_zh, '') != '' THEN title_zh
-               ELSE title
-             END AS title,
-             slug, locale,
-             100 AS rank
-      FROM articles
-      WHERE (
-        (? = 'ru' AND COALESCE(title_ru, '') LIKE ? ESCAPE '\\') OR
-        (? = 'zh' AND COALESCE(title_zh, '') LIKE ? ESCAPE '\\') OR
-        (? = 'en' AND COALESCE(title, '') LIKE ? ESCAPE '\\')
-      )
-      LIMIT 15
-    `).all(locale, locale, locale, pattern, locale, pattern, locale, pattern)) as any[]
+    let rows: any[] = []
+    if (locale === 'ru') {
+      rows = (await db.prepare(`
+        SELECT id, 'article' AS type, title_ru AS title, slug, 'ru' AS locale, 100 AS rank
+        FROM articles
+        WHERE COALESCE(title_ru, '') LIKE ? ESCAPE '\\'
+        LIMIT 15
+      `).all(pattern)) as any[]
+    } else if (locale === 'zh') {
+      rows = (await db.prepare(`
+        SELECT id, 'article' AS type, title_zh AS title, slug, 'zh' AS locale, 100 AS rank
+        FROM articles
+        WHERE COALESCE(title_zh, '') LIKE ? ESCAPE '\\'
+        LIMIT 15
+      `).all(pattern)) as any[]
+    } else {
+      rows = (await db.prepare(`
+        SELECT id, 'article' AS type, title, slug, 'en' AS locale, 100 AS rank
+        FROM articles
+        WHERE COALESCE(title, '') LIKE ? ESCAPE '\\'
+        LIMIT 15
+      `).all(pattern)) as any[]
+    }
     out.push(...(rows || []))
   }
 
   if (typeList.includes('term')) {
-    const rows = (await db.prepare(`
-      SELECT id, 'term' AS type,
-             CASE 
-               WHEN ? = 'ru' AND COALESCE(title_ru, '') != '' THEN title_ru
-               WHEN ? = 'zh' AND COALESCE(title_zh, '') != '' THEN title_zh
-               ELSE title
-             END AS title,
-             slug, COALESCE(lang, 'en') AS locale,
-             100 AS rank
-      FROM terms
-      WHERE (
-        (? = 'ru' AND COALESCE(title_ru, '') LIKE ? ESCAPE '\\') OR
-        (? = 'zh' AND COALESCE(title_zh, '') LIKE ? ESCAPE '\\') OR
-        (? = 'en' AND COALESCE(title, '') LIKE ? ESCAPE '\\')
-      )
-      LIMIT 15
-    `).all(locale, locale, locale, pattern, locale, pattern, locale, pattern)) as any[]
+    let rows: any[] = []
+    if (locale === 'ru') {
+      rows = (await db.prepare(`
+        SELECT id, 'term' AS type, title_ru AS title, slug, 'ru' AS locale, 100 AS rank
+        FROM terms
+        WHERE COALESCE(title_ru, '') LIKE ? ESCAPE '\\'
+        LIMIT 15
+      `).all(pattern)) as any[]
+    } else if (locale === 'zh') {
+      rows = (await db.prepare(`
+        SELECT id, 'term' AS type, title_zh AS title, slug, 'zh' AS locale, 100 AS rank
+        FROM terms
+        WHERE COALESCE(title_zh, '') LIKE ? ESCAPE '\\'
+        LIMIT 15
+      `).all(pattern)) as any[]
+    } else {
+      rows = (await db.prepare(`
+        SELECT id, 'term' AS type, title, slug, 'en' AS locale, 100 AS rank
+        FROM terms
+        WHERE COALESCE(title, '') LIKE ? ESCAPE '\\'
+        LIMIT 15
+      `).all(pattern)) as any[]
+    }
     out.push(...(rows || []))
   }
 
@@ -107,32 +119,18 @@ export default defineEventHandler(async (event) => {
       SELECT
         wiki_fts.id AS id,
         wiki_fts.type AS type,
-        CASE
-          WHEN ? = 'ru' THEN COALESCE(NULLIF(a.title_ru, ''), NULLIF(t.title_ru, ''), a.title, t.title)
-          WHEN ? = 'zh' THEN COALESCE(NULLIF(a.title_zh, ''), NULLIF(t.title_zh, ''), a.title, t.title)
-          ELSE COALESCE(a.title, t.title)
-        END AS title,
-        CASE wiki_fts.type
-          WHEN 'article' THEN COALESCE(a.slug, wiki_fts.slug)
-          WHEN 'term' THEN COALESCE(t.slug, wiki_fts.slug)
-          ELSE wiki_fts.slug
-        END AS slug,
+        wiki_fts.title AS title,
+        wiki_fts.slug AS slug,
         wiki_fts.locale AS locale,
         snippet(wiki_fts, 3, '<b>', '</b>', '...', 32) AS snippet,
         wiki_fts.rank AS rank
       FROM wiki_fts
-      LEFT JOIN articles a ON wiki_fts.type = 'article' AND wiki_fts.id = a.id
-      LEFT JOIN terms t ON wiki_fts.type = 'term' AND wiki_fts.id = t.id
       WHERE wiki_fts MATCH ?
+        AND wiki_fts.locale = ?
         AND wiki_fts.type IN (${typePlaceholders})
-        AND (
-          (? = 'ru' AND COALESCE(a.title_ru, t.title_ru, '') != '') OR
-          (? = 'zh' AND COALESCE(a.title_zh, t.title_zh, '') != '') OR
-          (? = 'en' AND COALESCE(a.title, t.title, '') != '')
-        )
       ORDER BY wiki_fts.rank
       LIMIT 15
-    `).all(locale, locale, ftsMatch, ...typeList, locale, locale, locale)) as any[]
+    `).all(ftsMatch, locale, ...typeList)) as any[]
   }
   catch (err) {
     console.error('[search] FTS query failed:', err)

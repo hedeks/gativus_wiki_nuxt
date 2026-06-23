@@ -565,7 +565,7 @@ onUnmounted(() => {
 /* ── Desktop actions: унифицированный ghost-стиль 34px ── */
 
 /* Search trigger */
-.gv-header__actions--desktop :deep(.gv-search__trigger.gv-btn--chromeless) {
+.gv-header__search :deep(.gv-search__trigger.gv-btn--chromeless) {
   min-height: 34px !important;
   padding: 5px 10px !important;
   border-radius: var(--gv-radius-control) !important;
@@ -575,8 +575,8 @@ onUnmounted(() => {
   transform: none !important;
 }
 
-.gv-header__actions--desktop :deep(.gv-search__trigger.gv-btn--chromeless:hover),
-.gv-header__actions--desktop :deep(.gv-search__trigger.gv-btn--chromeless:focus-visible) {
+.gv-header__search :deep(.gv-search__trigger.gv-btn--chromeless:hover),
+.gv-header__search :deep(.gv-search__trigger.gv-btn--chromeless:focus-visible) {
   background: color-mix(in srgb, var(--gv-primary) 8%, transparent) !important;
   border-color: transparent !important;
   box-shadow: none !important;
