@@ -1,9 +1,9 @@
 <template>
   <div class="gv-workspace-page">
-    <div class="workspace-grid grid grid-cols-5 gap-0">
+    <div class="workspace-grid grid grid-cols-12 gap-0">
       
-      <!-- Left Pane: List (2/5) -->
-      <div class="workspace-list col-span-2 flex flex-col border-r border-gray-200 dark:border-gray-800 min-h-0">
+      <!-- Left Pane: List (3/12) -->
+      <div class="workspace-list col-span-3 flex flex-col border-r border-gray-200 dark:border-gray-800 min-h-0">
         <header class="workspace-list-header flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#161618] border-b border-gray-200 dark:border-gray-800 shrink-0">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-500">
@@ -86,8 +86,8 @@
         </div>
       </div>
 
-      <!-- Right Pane: Editor (3/5) -->
-      <div class="workspace-editor-pane col-span-3 bg-[#fafafa] dark:bg-[#161618] flex flex-col relative overflow-hidden min-h-0">
+      <!-- Right Pane: Editor (9/12) -->
+      <div class="workspace-editor-pane col-span-9 bg-[#fafafa] dark:bg-[#161618] flex flex-col relative overflow-hidden min-h-0">
         <div v-if="!selectedTermId" class="empty-state flex-1 flex flex-col items-center justify-center opacity-60">
           <UIcon name="i-heroicons-cursor-arrow-rays" class="text-6xl text-gray-300 dark:text-gray-700 mb-4" />
           <p class="text-sm font-medium text-gray-500">Выберите термин слева для редактирования</p>
@@ -121,7 +121,7 @@
 import { ref, computed } from 'vue'
 import WorkspaceEditor from '~/components/admin/WorkspaceEditor.vue'
 
-definePageMeta({ layout: 'admin', middleware: ['auth', 'role'] })
+definePageMeta({ layout: 'admin', middleware: ['auth', 'role'], fluid: true })
 useSeoMeta({ title: 'Workspace — Admin — Gativus' })
 
 const { searchQuery, debouncedQuery, isTyping } = useDebounce('', 300)
@@ -188,7 +188,6 @@ const filteredTerms = computed(() => data.value?.items || [])
   display: flex;
   flex-direction: column;
   height: calc(100vh - 65px); /* 65px is the topbar height */
-  margin: -20px -20px -28px -20px; /* Counteract admin-content layout paddings */
   overflow: hidden;
   background: var(--gv-surface);
 }

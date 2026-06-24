@@ -139,7 +139,7 @@ const popoverStyle = ref<Record<string, string>>({
   left: '-9999px',
   top: '0px',
   width: '320px',
-  zIndex: '1000',
+  zIndex: '100000',
 })
 
 /**
@@ -278,7 +278,7 @@ function syncPopoverLayout() {
     overflow: maxHStr ? 'auto' : '',
     right: 'auto',
     bottom: 'auto',
-    zIndex: '1000',
+    zIndex: '100000',
   }
 
   popup.style.removeProperty('left')
@@ -333,7 +333,8 @@ function handleDocClick(e: MouseEvent) {
   if (termEl) {
     e.preventDefault()
     const slug = termEl.dataset.termSlug
-    const lang = termEl.dataset.termLang || undefined
+    const editorPane = termEl.closest('[data-editor-lang]') as HTMLElement | null
+    const lang = termEl.dataset.termLang || editorPane?.dataset.editorLang || undefined
     if (slug) showPopover(slug, termEl, e.clientX, e.clientY, lang)
     return
   }
@@ -445,7 +446,7 @@ onUnmounted(() => {
 <style scoped>
 .term-popover {
   position: fixed;
-  z-index: 1000;
+  z-index: 100000;
   max-width: calc(100vw - 24px);
   min-height: 0;
   -webkit-overflow-scrolling: touch;

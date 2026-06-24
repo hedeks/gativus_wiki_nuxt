@@ -20,7 +20,7 @@ const form = reactive({
   title_ru: '',
   slug: '',
   slug_ru: '',
-  parent_id: null as number | null,
+  parent_id: undefined as number | undefined,
   description: '',
   description_ru: '',
   icon: 'i-heroicons-folder',
@@ -33,7 +33,7 @@ watch(currentCategory, (cat) => {
   form.title_ru = cat.title_ru || ''
   form.slug = cat.slug || ''
   form.slug_ru = cat.slug_ru || ''
-  form.parent_id = cat.parent_id ?? null
+  form.parent_id = cat.parent_id ?? undefined
   form.description = cat.description || ''
   form.description_ru = cat.description_ru || ''
   form.icon = cat.icon || 'i-heroicons-folder'
@@ -53,7 +53,7 @@ async function saveCategory() {
   try {
     await $fetch(`/api/categories/${currentCategory.value.id}`, {
       method: 'PUT',
-      body: { ...form },
+      body: { ...form, parent_id: form.parent_id || null },
       headers: store.getAuthHeader()
     })
     await refresh()

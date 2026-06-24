@@ -26,7 +26,7 @@ const form = reactive({
   title_ru: '',
   slug: '',
   slug_ru: '',
-  parent_id: parentId.value as number | null,
+  parent_id: parentId.value as number | undefined,
   description: '',
   description_ru: '',
   icon: 'i-heroicons-folder',
@@ -34,7 +34,7 @@ const form = reactive({
 })
 
 watch(parentId, (value) => {
-  form.parent_id = value
+  form.parent_id = value ?? undefined
 })
 
 const saving = ref(false)
@@ -49,7 +49,7 @@ async function saveCategory() {
   try {
     await $fetch('/api/categories', {
       method: 'POST',
-      body: { ...form },
+      body: { ...form, parent_id: form.parent_id || null },
       headers: store.getAuthHeader()
     })
     toast.add({ title: 'Категория создана', color: 'green' })

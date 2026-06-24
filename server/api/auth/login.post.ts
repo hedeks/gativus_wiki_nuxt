@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
-import { User, UserLogin } from "~/types"
+import type { User, UserLogin } from "~/types"
 
 export default defineEventHandler(async (event) => {
     setHeaders(event, {

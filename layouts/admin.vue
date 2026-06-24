@@ -106,8 +106,11 @@
         </div>
       </header>
 
-      <main class="admin-content">
-        <div class="admin-content-inner gv-admin-page admin-gv-skin">
+      <main class="admin-content" :class="{ 'admin-content--fluid': route.meta.fluid }">
+        <div 
+          class="admin-content-inner admin-gv-skin" 
+          :class="route.meta.fluid ? 'admin-fluid-page' : 'gv-admin-page'"
+        >
           <slot />
         </div>
       </main>
@@ -532,11 +535,23 @@ function handleLogout() {
 
 .admin-content {
   flex: 1;
+}
+
+.admin-content:not(.admin-content--fluid) {
   padding: 20px 20px 28px;
+}
+
+.admin-content--fluid {
+  padding: 0;
 }
 
 .admin-content-inner {
   width: 100%;
+}
+
+.admin-fluid-page {
+  width: 100%;
+  max-width: 100%;
 }
 
 /* ─── Responsive ─── */
@@ -562,7 +577,7 @@ function handleLogout() {
     margin-left: 0;
   }
 
-  .admin-content {
+  .admin-content:not(.admin-content--fluid) {
     padding: 16px;
   }
 
@@ -582,7 +597,7 @@ function handleLogout() {
 }
 
 @media (max-width: 480px) {
-  .admin-content {
+  .admin-content:not(.admin-content--fluid) {
     padding: 12px;
   }
 }
@@ -594,14 +609,14 @@ function handleLogout() {
 
   .topbar-title {
     font-size: 11px;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.1;
   }
 
   .topbar-actions {
     gap: 4px;
   }
 
-  .admin-content {
+  .admin-content:not(.admin-content--fluid) {
     padding: 10px;
   }
 }

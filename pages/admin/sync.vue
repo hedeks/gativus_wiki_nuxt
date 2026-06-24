@@ -78,7 +78,7 @@ function removeFile() {
 }
 
 watch(() => langStore.currentLang, () => {
-  if (lastDump.value) buildGraphPreview(lastDump.value)
+  if (lastDump.value) previewGraphData.value = generateImportGraphPreview(lastDump.value, langStore.currentLang)
 })
 
 function formatFileSize(bytes: number): string {

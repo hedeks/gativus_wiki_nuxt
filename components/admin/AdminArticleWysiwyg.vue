@@ -757,19 +757,29 @@ defineExpose({
       <!-- Preview: read-only -->
       <div
         v-if="viewMode !== 'code' && !previewEditMode"
-        class="preview-pane article-prose"
-        v-html="activeHtmlContent"
-      />
+        class="preview-pane"
+      >
+        <div
+          class="preview-content article-prose prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert w-full prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold"
+          :data-editor-lang="activeLang"
+          v-html="activeHtmlContent"
+        />
+      </div>
       <!-- Preview: contenteditable -->
       <div
         v-if="viewMode !== 'code' && previewEditMode"
-        ref="previewRef"
-        class="preview-pane article-prose preview-pane--editable"
-        contenteditable="true"
-        spellcheck="false"
-        @input="onPreviewInput"
-        @contextmenu.prevent="onContextMenu"
-      />
+        class="preview-pane preview-pane--editable"
+      >
+        <div
+          ref="previewRef"
+          class="preview-content article-prose prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert w-full prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold"
+          :data-editor-lang="activeLang"
+          contenteditable="true"
+          spellcheck="false"
+          @input="onPreviewInput"
+          @contextmenu.prevent="onContextMenu"
+        />
+      </div>
     </div>
 
     <!-- History Panel -->
@@ -1145,12 +1155,25 @@ defineExpose({
   color: #4ade80;
 }
 
-.preview-pane--editable {
-  outline: none;
-  cursor: text;
-  border-left: 3px solid #86efac;
+.wysiwyg-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
-.dark .preview-pane--editable {
+
+.preview-pane--editable {
+  cursor: text;
+}
+
+.preview-pane--editable .preview-content {
+  border-left: 3px solid #86efac;
+  outline: none;
+}
+.dark .preview-pane--editable .preview-content {
   border-left-color: #166534;
 }
 
@@ -1365,12 +1388,43 @@ defineExpose({
 .preview-pane {
   width: 100%;
   height: 100%;
-  padding: 24px 32px;
+  padding: 0;
   overflow-y: auto;
-  background: #fff;
+  background: #fafafa;
 }
 .dark .preview-pane {
   background: #111113;
+}
+
+.preview-content {
+  width: 100%;
+  max-width: 1040px;
+  margin: 32px auto;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+  min-height: calc(100% - 64px);
+  box-sizing: border-box;
+}
+
+@media (min-width: 1024px) {
+  .preview-content {
+    padding: 40px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .preview-content {
+    max-width: 1140px;
+  }
+}
+
+.dark .preview-content {
+  background: #18181b;
+  border-color: #27272a;
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,0.25);
 }
 
 /* ?oC?oC?oC Presentation Upload ?oC?oC?oC */
@@ -1797,8 +1851,6 @@ defineExpose({
 
 /* ?oC?oC?oC Responsive ?oC?oC?oC */
 @media (max-width: 768px) {
-  .wysiwyg-container { display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; overflow: hidden; }
-
   .editor-body { flex-direction: column; }
   .editor-sidebar {
     width: 100%;

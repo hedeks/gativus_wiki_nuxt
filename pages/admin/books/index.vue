@@ -329,7 +329,7 @@ async function bulkDelete() {
   let ok = 0, fail = 0
   for (const b of targets) {
     try {
-      await $fetch(`/api/books/${b.slug}`, { method: 'DELETE', headers: store.getAuthHeader() })
+      await $fetch(`/api/books/${b.slug}`, { method: 'DELETE' as any, headers: store.getAuthHeader() })
       ok++
     } catch { fail++ }
   }
@@ -362,7 +362,7 @@ async function handleDelete() {
   deleting.value = true
   try {
     await $fetch(`/api/books/${bookToDelete.value.slug}`, {
-      method: 'DELETE',
+      method: 'DELETE' as any,
       headers: store.getAuthHeader(),
       query: deleteArticlesToo.value ? { delete_articles: 'true' } : undefined,
     })

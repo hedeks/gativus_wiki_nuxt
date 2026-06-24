@@ -26,9 +26,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const buf = Buffer.isBuffer(fileField.data)
-      ? fileField.data
-      : Buffer.from(fileField.data.buffer, fileField.data.byteOffset, fileField.data.byteLength)
+    const buf = fileField.data
 
     const parsed = await parseOdtBuffer(buf, 'articles')
     return { html: parsed.fullHtml }

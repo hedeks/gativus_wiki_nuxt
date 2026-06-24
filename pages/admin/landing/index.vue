@@ -452,26 +452,26 @@ const edit = reactive({
   sort_order: 0,
   is_published: true,
   block_type: 'richtext' as string,
-  anchor_id: '' as string | null,
-  neuron_label_en: '' as string | null,
-  neuron_label_ru: '' as string | null,
-  neuron_label_zh: '' as string | null,
-  kicker_en: '' as string | null,
-  kicker_ru: '' as string | null,
-  kicker_zh: '' as string | null,
-  title_en: '' as string | null,
-  title_ru: '' as string | null,
-  title_zh: '' as string | null,
-  subtitle_en: '' as string | null,
-  subtitle_ru: '' as string | null,
-  subtitle_zh: '' as string | null,
-  body_en: '' as string | null,
-  body_ru: '' as string | null,
-  body_zh: '' as string | null,
-  footnote_en: '' as string | null,
-  footnote_ru: '' as string | null,
-  footnote_zh: '' as string | null,
-  image_path: '' as string | null,
+  anchor_id: undefined as string | undefined,
+  neuron_label_en: undefined as string | undefined,
+  neuron_label_ru: undefined as string | undefined,
+  neuron_label_zh: undefined as string | undefined,
+  kicker_en: undefined as string | undefined,
+  kicker_ru: undefined as string | undefined,
+  kicker_zh: undefined as string | undefined,
+  title_en: undefined as string | undefined,
+  title_ru: undefined as string | undefined,
+  title_zh: undefined as string | undefined,
+  subtitle_en: undefined as string | undefined,
+  subtitle_ru: undefined as string | undefined,
+  subtitle_zh: undefined as string | undefined,
+  body_en: undefined as string | undefined,
+  body_ru: undefined as string | undefined,
+  body_zh: undefined as string | undefined,
+  footnote_en: undefined as string | undefined,
+  footnote_ru: undefined as string | undefined,
+  footnote_zh: undefined as string | undefined,
+  image_path: undefined as string | undefined,
   payload_json: '{}',
 })
 
@@ -576,26 +576,26 @@ function selectRow(row: LandingBlockRow) {
   edit.sort_order = row.sort_order
   edit.is_published = !!row.is_published
   edit.block_type = row.block_type
-  edit.anchor_id = row.anchor_id
-  edit.neuron_label_en = row.neuron_label_en
-  edit.neuron_label_ru = row.neuron_label_ru
-  edit.neuron_label_zh = row.neuron_label_zh
-  edit.kicker_en = row.kicker_en
-  edit.kicker_ru = row.kicker_ru
-  edit.kicker_zh = row.kicker_zh
-  edit.title_en = row.title_en
-  edit.title_ru = row.title_ru
-  edit.title_zh = row.title_zh
-  edit.subtitle_en = row.subtitle_en
-  edit.subtitle_ru = row.subtitle_ru
-  edit.subtitle_zh = row.subtitle_zh
-  edit.body_en = row.body_en
-  edit.body_ru = row.body_ru
-  edit.body_zh = row.body_zh
-  edit.footnote_en = row.footnote_en
-  edit.footnote_ru = row.footnote_ru
-  edit.footnote_zh = row.footnote_zh
-  edit.image_path = row.image_path
+  edit.anchor_id = row.anchor_id ?? undefined
+  edit.neuron_label_en = row.neuron_label_en ?? undefined
+  edit.neuron_label_ru = row.neuron_label_ru ?? undefined
+  edit.neuron_label_zh = row.neuron_label_zh ?? undefined
+  edit.kicker_en = row.kicker_en ?? undefined
+  edit.kicker_ru = row.kicker_ru ?? undefined
+  edit.kicker_zh = row.kicker_zh ?? undefined
+  edit.title_en = row.title_en ?? undefined
+  edit.title_ru = row.title_ru ?? undefined
+  edit.title_zh = row.title_zh ?? undefined
+  edit.subtitle_en = row.subtitle_en ?? undefined
+  edit.subtitle_ru = row.subtitle_ru ?? undefined
+  edit.subtitle_zh = row.subtitle_zh ?? undefined
+  edit.body_en = row.body_en ?? undefined
+  edit.body_ru = row.body_ru ?? undefined
+  edit.body_zh = row.body_zh ?? undefined
+  edit.footnote_en = row.footnote_en ?? undefined
+  edit.footnote_ru = row.footnote_ru ?? undefined
+  edit.footnote_zh = row.footnote_zh ?? undefined
+  edit.image_path = row.image_path ?? undefined
   edit.payload_json = row.payload_json || '{}'
 }
 
@@ -653,25 +653,25 @@ async function saveEdit() {
         is_published: edit.is_published,
         block_type: edit.block_type,
         anchor_id: edit.anchor_id || null,
-        neuron_label_en: edit.neuron_label_en,
-        neuron_label_ru: edit.neuron_label_ru,
-        neuron_label_zh: edit.neuron_label_zh,
-        kicker_en: edit.kicker_en,
-        kicker_ru: edit.kicker_ru,
-        kicker_zh: edit.kicker_zh,
-        title_en: edit.title_en,
-        title_ru: edit.title_ru,
-        title_zh: edit.title_zh,
-        subtitle_en: edit.subtitle_en,
-        subtitle_ru: edit.subtitle_ru,
-        subtitle_zh: edit.subtitle_zh,
-        body_en: edit.body_en,
-        body_ru: edit.body_ru,
-        body_zh: edit.body_zh,
-        footnote_en: edit.footnote_en,
-        footnote_ru: edit.footnote_ru,
-        footnote_zh: edit.footnote_zh,
-        image_path: edit.image_path,
+        neuron_label_en: edit.neuron_label_en || null,
+        neuron_label_ru: edit.neuron_label_ru || null,
+        neuron_label_zh: edit.neuron_label_zh || null,
+        kicker_en: edit.kicker_en || null,
+        kicker_ru: edit.kicker_ru || null,
+        kicker_zh: edit.kicker_zh || null,
+        title_en: edit.title_en || null,
+        title_ru: edit.title_ru || null,
+        title_zh: edit.title_zh || null,
+        subtitle_en: edit.subtitle_en || null,
+        subtitle_ru: edit.subtitle_ru || null,
+        subtitle_zh: edit.subtitle_zh || null,
+        body_en: edit.body_en || null,
+        body_ru: edit.body_ru || null,
+        body_zh: edit.body_zh || null,
+        footnote_en: edit.footnote_en || null,
+        footnote_ru: edit.footnote_ru || null,
+        footnote_zh: edit.footnote_zh || null,
+        image_path: edit.image_path || null,
         payload_json: payload,
       },
     })
