@@ -16,7 +16,34 @@ export default defineEventHandler(async (event) => {
         SELECT GROUP_CONCAT(category_id) 
         FROM book_categories 
         WHERE book_id = b.id
-      ) as category_ids
+      ) as category_ids,
+      (
+        SELECT CASE 
+          WHEN COUNT(p.id) = 0 THEN 0 
+          WHEN SUM(CASE WHEN p.odt_storage_path IS NOT NULL THEN 1 ELSE 0 END) = COUNT(p.id) THEN 1 
+          ELSE 0 
+        END
+        FROM odm_project_parts p
+        WHERE p.project_id = (SELECT id FROM odm_projects WHERE book_id = b.id ORDER BY id DESC LIMIT 1) AND p.is_enabled = 1
+      ) as all_translated_en,
+      (
+        SELECT CASE 
+          WHEN COUNT(p.id) = 0 THEN 0 
+          WHEN SUM(CASE WHEN p.odt_storage_path_ru IS NOT NULL THEN 1 ELSE 0 END) = COUNT(p.id) THEN 1 
+          ELSE 0 
+        END
+        FROM odm_project_parts p
+        WHERE p.project_id = (SELECT id FROM odm_projects WHERE book_id = b.id ORDER BY id DESC LIMIT 1) AND p.is_enabled = 1
+      ) as all_translated_ru,
+      (
+        SELECT CASE 
+          WHEN COUNT(p.id) = 0 THEN 0 
+          WHEN SUM(CASE WHEN p.odt_storage_path_zh IS NOT NULL THEN 1 ELSE 0 END) = COUNT(p.id) THEN 1 
+          ELSE 0 
+        END
+        FROM odm_project_parts p
+        WHERE p.project_id = (SELECT id FROM odm_projects WHERE book_id = b.id ORDER BY id DESC LIMIT 1) AND p.is_enabled = 1
+      ) as all_translated_zh
     FROM books b
     ORDER BY b.sort_order ASC, b.created_at ASC
   `).all() as any[]
@@ -33,6 +60,9 @@ export default defineEventHandler(async (event) => {
       count_en: b.article_count,
       count_ru: b.article_count,
       count_zh: b.article_count,
+      all_translated_en: Number(b.all_translated_en || 0) === 1,
+      all_translated_ru: Number(b.all_translated_ru || 0) === 1,
+      all_translated_zh: Number(b.all_translated_zh || 0) === 1,
       category_ids: b.category_ids ? b.category_ids.split(',').map(Number) : []
     }
   })

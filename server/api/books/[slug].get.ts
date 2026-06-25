@@ -41,6 +41,52 @@ export default defineEventHandler(async (event) => {
   const categoryRows = await db.prepare('SELECT category_id FROM book_categories WHERE book_id = ?').all(book.id) as any[]
   book.category_ids = categoryRows.map(r => r.category_id)
 
+  const odmProj = await db.prepare('SELECT id FROM odm_projects WHERE book_id = ? ORDER BY id DESC LIMIT 1').get(book.id) as { id: number } | undefined
+  book.odm_project_id = odmProj ? odmProj.id : null
+
+  book.all_translated_en = false
+  book.all_translated_ru = false
+  book.all_translated_zh = false
+
+  if (book.odm_project_id) {
+    const translationStatus = await db.prepare(`
+      SELECT
+        (
+          SELECT CASE 
+            WHEN COUNT(p.id) = 0 THEN 0 
+            WHEN SUM(CASE WHEN p.odt_storage_path IS NOT NULL THEN 1 ELSE 0 END) = COUNT(p.id) THEN 1 
+            ELSE 0 
+          END
+          FROM odm_project_parts p
+          WHERE p.project_id = ? AND p.is_enabled = 1
+        ) as all_translated_en,
+        (
+          SELECT CASE 
+            WHEN COUNT(p.id) = 0 THEN 0 
+            WHEN SUM(CASE WHEN p.odt_storage_path_ru IS NOT NULL THEN 1 ELSE 0 END) = COUNT(p.id) THEN 1 
+            ELSE 0 
+          END
+          FROM odm_project_parts p
+          WHERE p.project_id = ? AND p.is_enabled = 1
+        ) as all_translated_ru,
+        (
+          SELECT CASE 
+            WHEN COUNT(p.id) = 0 THEN 0 
+            WHEN SUM(CASE WHEN p.odt_storage_path_zh IS NOT NULL THEN 1 ELSE 0 END) = COUNT(p.id) THEN 1 
+            ELSE 0 
+          END
+          FROM odm_project_parts p
+          WHERE p.project_id = ? AND p.is_enabled = 1
+        ) as all_translated_zh
+    `).get(book.odm_project_id, book.odm_project_id, book.odm_project_id) as any
+
+    if (translationStatus) {
+      book.all_translated_en = Number(translationStatus.all_translated_en || 0) === 1
+      book.all_translated_ru = Number(translationStatus.all_translated_ru || 0) === 1
+      book.all_translated_zh = Number(translationStatus.all_translated_zh || 0) === 1
+    }
+  }
+
   const articles = await db.prepare(`
     SELECT id, slug, slug_ru, slug_zh,
            title, title_ru, title_zh,
