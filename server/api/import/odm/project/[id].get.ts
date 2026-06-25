@@ -26,12 +26,22 @@ async function enrichPartsWithPublishState(
     const ids = parseImportedIds(p.imported_article_ids as string | null)
     if (ids.length === 0) {
       p.articles_publish = null
+      p.has_translation_en = false
+      p.has_translation_ru = false
+      p.has_translation_zh = false
       continue
     }
     const ph = ids.map(() => '?').join(',')
     const rows = await db.prepare(`
-      SELECT is_published FROM articles WHERE id IN (${ph})
-    `).all(...ids) as { is_published: number }[]
+      SELECT is_published, html_content, html_content_ru, html_content_zh 
+      FROM articles WHERE id IN (${ph})
+    `).all(...ids) as { 
+      is_published: number 
+      html_content: string | null
+      html_content_ru: string | null
+      html_content_zh: string | null
+    }[]
+
     const n = rows.length
     const pub = rows.filter(r => r.is_published).length
     if (pub === 0)
@@ -40,6 +50,10 @@ async function enrichPartsWithPublishState(
       p.articles_publish = 'published'
     else
       p.articles_publish = 'mixed'
+
+    p.has_translation_en = rows.every(r => r.html_content && r.html_content.trim() !== '')
+    p.has_translation_ru = rows.every(r => r.html_content_ru && r.html_content_ru.trim() !== '')
+    p.has_translation_zh = rows.every(r => r.html_content_zh && r.html_content_zh.trim() !== '')
   }
 }
 

@@ -54,7 +54,19 @@ export default defineEventHandler(async (event) => {
         (
           SELECT CASE 
             WHEN COUNT(p.id) = 0 THEN 0 
-            WHEN SUM(CASE WHEN p.odt_storage_path IS NOT NULL THEN 1 ELSE 0 END) = COUNT(p.id) THEN 1 
+            WHEN SUM(
+              CASE 
+                WHEN p.imported_article_ids IS NOT NULL AND json_valid(p.imported_article_ids) = 1 AND EXISTS (
+                  SELECT 1 FROM json_each(p.imported_article_ids)
+                ) AND NOT EXISTS (
+                  SELECT 1 
+                  FROM json_each(p.imported_article_ids) je
+                  LEFT JOIN articles a ON a.id = je.value
+                  WHERE a.id IS NULL OR a.html_content IS NULL OR a.html_content = ''
+                ) THEN 1
+                ELSE 0 
+              END
+            ) = COUNT(p.id) THEN 1
             ELSE 0 
           END
           FROM odm_project_parts p
@@ -63,7 +75,19 @@ export default defineEventHandler(async (event) => {
         (
           SELECT CASE 
             WHEN COUNT(p.id) = 0 THEN 0 
-            WHEN SUM(CASE WHEN p.odt_storage_path_ru IS NOT NULL THEN 1 ELSE 0 END) = COUNT(p.id) THEN 1 
+            WHEN SUM(
+              CASE 
+                WHEN p.imported_article_ids IS NOT NULL AND json_valid(p.imported_article_ids) = 1 AND EXISTS (
+                  SELECT 1 FROM json_each(p.imported_article_ids)
+                ) AND NOT EXISTS (
+                  SELECT 1 
+                  FROM json_each(p.imported_article_ids) je
+                  LEFT JOIN articles a ON a.id = je.value
+                  WHERE a.id IS NULL OR a.html_content_ru IS NULL OR a.html_content_ru = ''
+                ) THEN 1
+                ELSE 0 
+              END
+            ) = COUNT(p.id) THEN 1
             ELSE 0 
           END
           FROM odm_project_parts p
@@ -72,7 +96,19 @@ export default defineEventHandler(async (event) => {
         (
           SELECT CASE 
             WHEN COUNT(p.id) = 0 THEN 0 
-            WHEN SUM(CASE WHEN p.odt_storage_path_zh IS NOT NULL THEN 1 ELSE 0 END) = COUNT(p.id) THEN 1 
+            WHEN SUM(
+              CASE 
+                WHEN p.imported_article_ids IS NOT NULL AND json_valid(p.imported_article_ids) = 1 AND EXISTS (
+                  SELECT 1 FROM json_each(p.imported_article_ids)
+                ) AND NOT EXISTS (
+                  SELECT 1 
+                  FROM json_each(p.imported_article_ids) je
+                  LEFT JOIN articles a ON a.id = je.value
+                  WHERE a.id IS NULL OR a.html_content_zh IS NULL OR a.html_content_zh = ''
+                ) THEN 1
+                ELSE 0 
+              END
+            ) = COUNT(p.id) THEN 1
             ELSE 0 
           END
           FROM odm_project_parts p

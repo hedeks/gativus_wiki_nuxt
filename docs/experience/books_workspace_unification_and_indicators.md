@@ -71,13 +71,25 @@
 
 ## 4. Автоматическая индикация перевода (Лампочки EN, RU, ZH)
 
-* **Алгоритм**: Книга считается полностью переведенной на конкретный язык, если у неё создан проект структуры и **для каждой включенной в импорт главы (`is_enabled = 1`) успешно загружен файл ODT перевода на этот язык**.
-* **Реализация бэкенда**: В SQL-запросы выгрузки книг добавлены подзапросы, сравнивающие общее число включенных глав книги с числом глав, у которых пути ODT-файлов не равны NULL:
+* **Алгоритм**: Книга считается полностью переведенной на конкретный язык, если у неё создан проект структуры и **для каждой включенной в импорт главы (`is_enabled = 1`) в базе данных есть непустой текст статьи на этом языке (html_content, html_content_ru, html_content_zh соответственно)**. Это гарантирует верную индикацию даже для собранных вручную книг, у которых ODT-файлы не загружались.
+* **Реализация бэкенда**: В SQL-запросы выгрузки книг добавлены подзапросы, проверяющие наличие перевода через `json_each` по массиву `imported_article_ids`:
   ```sql
   (
     SELECT CASE 
       WHEN COUNT(p.id) = 0 THEN 0 
-      WHEN SUM(CASE WHEN p.odt_storage_path_zh IS NOT NULL THEN 1 ELSE 0 END) = COUNT(p.id) THEN 1 
+      WHEN SUM(
+        CASE 
+          WHEN p.imported_article_ids IS NOT NULL AND json_valid(p.imported_article_ids) = 1 AND EXISTS (
+            SELECT 1 FROM json_each(p.imported_article_ids)
+          ) AND NOT EXISTS (
+            SELECT 1 
+            FROM json_each(p.imported_article_ids) je
+            LEFT JOIN articles a ON a.id = je.value
+            WHERE a.id IS NULL OR a.html_content_zh IS NULL OR a.html_content_zh = ''
+          ) THEN 1
+          ELSE 0 
+        END
+      ) = COUNT(p.id) THEN 1
       ELSE 0 
     END
     FROM odm_project_parts p

@@ -111,21 +111,21 @@ const allTranslatedEn = computed(() => {
   if (!parts.value || parts.value.length === 0) return false
   const enabledParts = parts.value.filter(p => p.is_enabled === 1)
   if (enabledParts.length === 0) return false
-  return enabledParts.every(p => !!p.odt_storage_path)
+  return enabledParts.every(p => !!p.has_translation_en)
 })
 
 const allTranslatedRu = computed(() => {
   if (!parts.value || parts.value.length === 0) return false
   const enabledParts = parts.value.filter(p => p.is_enabled === 1)
   if (enabledParts.length === 0) return false
-  return enabledParts.every(p => !!p.odt_storage_path_ru)
+  return enabledParts.every(p => !!p.has_translation_ru)
 })
 
 const allTranslatedZh = computed(() => {
   if (!parts.value || parts.value.length === 0) return false
   const enabledParts = parts.value.filter(p => p.is_enabled === 1)
   if (enabledParts.length === 0) return false
-  return enabledParts.every(p => !!p.odt_storage_path_zh)
+  return enabledParts.every(p => !!p.has_translation_zh)
 })
 
 // ODM Files refs
@@ -1354,7 +1354,7 @@ async function runBulkOdtImport() {
                         <button
                           type="button"
                           class="px-2 py-1 rounded-l text-[10px] font-bold uppercase"
-                          :class="part.odt_storage_path 
+                          :class="part.has_translation_en 
                             ? 'bg-emerald-500 text-white' 
                             : 'bg-gray-100 text-gray-500 hover:bg-sky-500 hover:text-white dark:bg-zinc-800 dark:text-zinc-400'"
                           @click="triggerPartOdtUpload(part.id, 'en')"
@@ -1363,7 +1363,7 @@ async function runBulkOdtImport() {
                           EN
                         </button>
                         <button
-                          v-if="part.odt_storage_path"
+                          v-if="part.has_translation_en"
                           type="button"
                           class="px-1.5 py-1 bg-emerald-600 text-white rounded-r hover:bg-red-500 hover:text-white transition-colors"
                           @click="clearSlotOdt(part.id, 'en')"
@@ -1379,16 +1379,16 @@ async function runBulkOdtImport() {
                         <button
                           type="button"
                           class="px-2 py-1 rounded-l text-[10px] font-bold uppercase"
-                          :class="part.odt_storage_path_ru 
+                          :class="part.has_translation_ru 
                             ? 'bg-sky-500 text-white' 
                             : 'bg-gray-100 text-gray-500 hover:bg-sky-500 hover:text-white dark:bg-zinc-800 dark:text-zinc-400'"
-                          :disabled="!part.odt_storage_path || uploadingPartId === part.id"
+                          :disabled="!part.has_translation_en || uploadingPartId === part.id"
                           @click="triggerPartOdtUpload(part.id, 'ru')"
                         >
                           RU
                         </button>
                         <button
-                          v-if="part.odt_storage_path_ru"
+                          v-if="part.has_translation_ru"
                           type="button"
                           class="px-1.5 py-1 bg-sky-600 text-white rounded-r hover:bg-red-500 hover:text-white transition-colors"
                           @click="clearSlotOdt(part.id, 'ru')"
@@ -1404,16 +1404,16 @@ async function runBulkOdtImport() {
                         <button
                           type="button"
                           class="px-2 py-1 rounded-l text-[10px] font-bold uppercase"
-                          :class="part.odt_storage_path_zh 
+                          :class="part.has_translation_zh 
                             ? 'bg-amber-500 text-white' 
                             : 'bg-gray-100 text-gray-500 hover:bg-sky-500 hover:text-white dark:bg-zinc-800 dark:text-zinc-400'"
-                          :disabled="!part.odt_storage_path || uploadingPartId === part.id"
+                          :disabled="!part.has_translation_en || uploadingPartId === part.id"
                           @click="triggerPartOdtUpload(part.id, 'zh')"
                         >
                           ZH
                         </button>
                         <button
-                          v-if="part.odt_storage_path_zh"
+                          v-if="part.has_translation_zh"
                           type="button"
                           class="px-1.5 py-1 bg-amber-600 text-white rounded-r hover:bg-red-500 hover:text-white transition-colors"
                           @click="clearSlotOdt(part.id, 'zh')"
