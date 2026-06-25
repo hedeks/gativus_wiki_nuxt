@@ -158,7 +158,6 @@ const navItems: NavItem[] = [
   { label: 'Книги', icon: 'i-heroicons-book-open', to: '/admin/books' },
   { label: 'Статьи', icon: 'i-heroicons-document-text', to: '/admin/articles' },
   { label: 'Импорт ODT', icon: 'i-heroicons-arrow-up-tray', to: '/admin/import' },
-  { label: 'Импорт ODM', icon: 'i-heroicons-document-duplicate', to: '/admin/import-odm' },
   { label: 'Глоссарий', icon: 'i-heroicons-document-magnifying-glass', to: '/admin/glossary' },
   { label: 'Категории', icon: 'i-heroicons-folder', to: '/admin/categories' },
   { label: 'Пользователи', icon: 'i-heroicons-users', to: '/admin/users' },
