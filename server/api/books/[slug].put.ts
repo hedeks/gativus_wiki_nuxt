@@ -30,7 +30,25 @@ export default defineEventHandler(async (event) => {
   if (body.description_ru !== undefined) { updates.push('description_ru = ?'); params.push(body.description_ru) }
   if (body.description_zh !== undefined) { updates.push('description_zh = ?'); params.push(body.description_zh) }
   if (body.cover_image !== undefined) { updates.push('cover_image = ?'); params.push(body.cover_image) }
-  if (body.sort_order !== undefined) { updates.push('sort_order = ?'); params.push(body.sort_order) }
+  let sort_order = body.sort_order !== undefined ? Number(body.sort_order) : null
+  if (body.sort_position !== undefined && body.sort_position !== '') {
+    const sort_position = body.sort_position
+    if (sort_position === 'at_end') {
+      const maxRow = await db.prepare('SELECT COALESCE(MAX(sort_order), 0) as max_sort FROM books').get() as { max_sort: number }
+      sort_order = maxRow.max_sort + 1
+    } else if (sort_position.startsWith('before_')) {
+      const targetId = Number(sort_position.replace('before_', ''))
+      const targetBook = await db.prepare('SELECT sort_order FROM books WHERE id = ?').get(targetId) as { sort_order: number } | undefined
+      if (targetBook) {
+        const k = targetBook.sort_order
+        await db.prepare('UPDATE books SET sort_order = sort_order + 1 WHERE sort_order >= ?').run(k)
+        sort_order = k
+      }
+    }
+  }
+
+  if (sort_order !== null) { updates.push('sort_order = ?'); params.push(sort_order) }
+  else if (body.sort_order !== undefined) { updates.push('sort_order = ?'); params.push(body.sort_order) }
 
   if (body.slug && body.slug !== existing.slug) {
     const newSlug = await ensureUniqueSlug(db, 'books', slugify(body.slug), existing.id)
