@@ -304,4 +304,33 @@ const heroDescription = computed(() => {
   margin-top: 1.5rem;
   justify-content: flex-start;
 }
+
+@media (max-width: 640px) {
+  .home-surface--hero {
+    padding: clamp(1.25rem, 3.5vh, 2rem) 1.25rem;
+  }
+
+  .home-hero-header {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .home-title {
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  .home-hero-top {
+    align-items: center;
+    text-align: center;
+  }
+
+  .home-lede {
+    text-align: center;
+  }
+
+  .home-actions {
+    justify-content: center;
+  }
+}
 </style>

@@ -53,7 +53,7 @@ function isExternalHref(h: string) {
 }
 
 .home-cta {
-  padding: clamp(3rem, 10vw, 6rem) 2rem;
+  padding: clamp(2rem, 8vw, 4rem) clamp(1rem, 5vw, 2.5rem);
   background: 
     radial-gradient(circle at top right, color-mix(in srgb, var(--gv-primary) 6%, transparent) 0%, transparent 50%),
     linear-gradient(165deg, var(--gv-surface-card) 0%, color-mix(in srgb, var(--gv-surface-card) 98%, var(--gv-primary)) 100%);

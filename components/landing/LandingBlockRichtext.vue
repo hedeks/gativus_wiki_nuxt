@@ -52,4 +52,13 @@ defineProps<{ block: LandingBlockResolved }>()
   font-style: italic;
   opacity: 0.8;
 }
+
+@media (max-width: 640px) {
+  .home-manifest-header {
+    padding: 1.25rem 1.25rem 0;
+  }
+  .home-manifest-body {
+    padding: 1rem 1.25rem 1.5rem;
+  }
+}
 </style>

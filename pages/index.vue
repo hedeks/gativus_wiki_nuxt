@@ -1,6 +1,5 @@
 <template>
   <div ref="landingRef" class="home gv-page">
-    <ParticlesBackground />
     <HomeScrollBackdrop
       v-if="!reducedMotion"
       :focus-index="activeFocusBlock"
@@ -15,12 +14,7 @@
       @scroll-to="scrollToBlock"
     />
 
-    <!-- Decorative Premium Glows -->
-    <div class="home-glows" aria-hidden="true">
-      <div class="home-glow home-glow--1"></div>
-      <div class="home-glow home-glow--2"></div>
-      <div class="home-glow home-glow--3"></div>
-    </div>
+
 
     <div class="home-stack">
       <section
@@ -164,62 +158,7 @@ definePageMeta({ layout: 'default' })
   overflow: hidden; /* Contain glows */
 }
 
-.home-glows {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  overflow: hidden;
-}
 
-.home-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(220px);
-  opacity: 0.04;
-  will-change: transform;
-}
-
-.dark .home-glow {
-  opacity: 0.02;
-}
-
-.home-glow--1 {
-  top: 5%;
-  right: -10%;
-  width: 60vw;
-  height: 60vw;
-  background: radial-gradient(circle, var(--gv-primary), transparent 70%);
-  animation: glow-float-1 25s ease-in-out infinite alternate;
-}
-
-.home-glow--2 {
-  top: 40%;
-  left: -15%;
-  width: 50vw;
-  height: 50vw;
-  background: radial-gradient(circle, color-mix(in srgb, var(--gv-primary) 60%, #818cf8), transparent 70%);
-  animation: glow-float-2 30s ease-in-out infinite alternate-reverse;
-}
-
-.home-glow--3 {
-  bottom: 10%;
-  right: -5%;
-  width: 45vw;
-  height: 45vw;
-  background: radial-gradient(circle, #0ea5e9, transparent 70%);
-  animation: glow-float-1 20s ease-in-out infinite alternate-reverse;
-}
-
-@keyframes glow-float-1 {
-  from { transform: translate(0, 0) scale(1); }
-  to { transform: translate(-5%, 10%) scale(1.1); }
-}
-
-@keyframes glow-float-2 {
-  from { transform: translate(0, 0) scale(1.1); }
-  to { transform: translate(10%, -5%) scale(1); }
-}
 
 @media (max-width: 1240px) {
   .home {

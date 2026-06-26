@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, nextTick } from 'vue'
 
 const config = {
   particles: {
@@ -108,32 +108,50 @@ const config = {
 }
 
 let scriptEl: HTMLScriptElement | null = null
+const instanceId = `particles-js-${Math.random().toString(36).substring(2, 9)}`
 
 onMounted(() => {
   const initParticles = () => {
     const pJS = (window as any).particlesJS
-    if (pJS) {
-      pJS('particles-js', config)
+    const el = document.getElementById(instanceId)
+    if (pJS && el) {
+      pJS(instanceId, config)
     }
   }
 
-  if ((window as any).particlesJS) {
-    initParticles()
-  } else {
-    // Dynamically load the particles script
-    scriptEl = document.createElement('script')
-    scriptEl.src = '/particles.min.js'
-    scriptEl.async = true
-    scriptEl.onload = initParticles
-    document.head.appendChild(scriptEl)
-  }
+  nextTick(() => {
+    if ((window as any).particlesJS) {
+      initParticles()
+    } else {
+      // Dynamically load the particles script
+      scriptEl = document.createElement('script')
+      scriptEl.src = '/particles.min.js'
+      scriptEl.async = true
+      scriptEl.onload = initParticles
+      document.head.appendChild(scriptEl)
+    }
+  })
 })
 
 onUnmounted(() => {
   if (scriptEl && scriptEl.parentNode) {
     scriptEl.parentNode.removeChild(scriptEl)
   }
-  const canvas = document.querySelector('#particles-js canvas')
+
+  // Safely stop particlesJS frame loop for this specific instance and splice it out
+  const pJSDom = (window as any).pJSDom
+  if (Array.isArray(pJSDom)) {
+    const idx = pJSDom.findIndex(item => item && item.el && item.el.id === instanceId)
+    if (idx !== -1) {
+      const item = pJSDom[idx]
+      if (item && item.pJS && item.pJS.fn && typeof item.pJS.fn.drawAnimFrame === 'number') {
+        cancelAnimationFrame(item.pJS.fn.drawAnimFrame)
+      }
+      pJSDom.splice(idx, 1)
+    }
+  }
+
+  const canvas = document.querySelector(`#${instanceId} canvas`)
   if (canvas) {
     canvas.remove()
   }
@@ -141,11 +159,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div id="particles-js" class="particles-bg" />
+  <div :id="instanceId" class="particles-bg" />
 </template>
 
 <style scoped>
-#particles-js {
+.particles-bg {
   position: fixed;
   top: 0;
   left: 0;
@@ -155,5 +173,17 @@ onUnmounted(() => {
   pointer-events: none;
   opacity: 0.8;
   background-color: transparent;
+  overflow: hidden;
+  /* Very gentle double radial glows */
+  background: 
+    radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--gv-primary) 3.5%, transparent) 0%, transparent 50%),
+    radial-gradient(circle at 20% 80%, color-mix(in srgb, #0ea5e9 1.5%, transparent) 0%, transparent 50%);
+}
+
+.dark .particles-bg {
+  /* Extremely dark subtle glows */
+  background: 
+    radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--gv-primary) 1.5%, transparent) 0%, transparent 50%),
+    radial-gradient(circle at 20% 80%, color-mix(in srgb, #0ea5e9 0.8%, transparent) 0%, transparent 50%);
 }
 </style>

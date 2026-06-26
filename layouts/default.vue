@@ -2,6 +2,7 @@
 
 <template>
   <div class="gv-public-layout mx-auto">
+    <ParticlesBackground />
     <theHeader />
     <main class="main flex flex-col w-full flex-1 items-center justify-items-center z-3">
       <slot />

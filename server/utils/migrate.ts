@@ -5,7 +5,7 @@
  */
 
 import type { Database } from 'db0'
-import { seedLandingBlocksIfEmpty, backfillMissingCanonicalLandingBlocks } from './seedLanding'
+import { seedLandingBlocksIfEmpty, backfillMissingCanonicalLandingBlocks, forceUpdateChineseTranslationsInDb } from './seedLanding'
 
 export async function runMigrations(db: Database) {
   console.log('[migrate] Running database migrations...')
@@ -704,8 +704,9 @@ export async function runMigrations(db: Database) {
   try {
     await seedLandingBlocksIfEmpty(db)
     await backfillMissingCanonicalLandingBlocks(db)
+    await forceUpdateChineseTranslationsInDb(db)
   } catch (e) {
-    console.warn('[migrate] landing_blocks seed skipped:', e)
+    console.warn('[migrate] landing_blocks seed/update skipped:', e)
   }
 
   console.log('[migrate] All migrations completed ✓')

@@ -22,7 +22,33 @@
             <div class="left-card-image">
               <b>{{ brainLabels.leftBold }}</b> {{ brainLabels.leftNormal }}
             </div>
+
+            <div class="brain-arrow-container brain-arrow-container--left" aria-hidden="true">
+              <svg viewBox="0 0 100 50" class="brain-arrow-svg" preserveAspectRatio="none">
+                <defs>
+                  <marker id="arrowhead-left" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
+                  </marker>
+                </defs>
+                <path class="arrow-path--desktop" d="M 5 15 Q 50 25 90 35" fill="none" stroke="currentColor" stroke-width="2.5" marker-end="url(#arrowhead-left)" />
+                <path class="arrow-path--mobile" d="M 50 5 L 50 40" fill="none" stroke="currentColor" stroke-width="2.5" marker-end="url(#arrowhead-left)" />
+              </svg>
+            </div>
+
             <img :src="brainImgPath" class="gativus-brain-img" alt="Brain Diagram" />
+
+            <div class="brain-arrow-container brain-arrow-container--right" aria-hidden="true">
+              <svg viewBox="0 0 100 50" class="brain-arrow-svg" preserveAspectRatio="none">
+                <defs>
+                  <marker id="arrowhead-right" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
+                  </marker>
+                </defs>
+                <path class="arrow-path--desktop" d="M 95 15 Q 50 25 10 35" fill="none" stroke="currentColor" stroke-width="2.5" marker-end="url(#arrowhead-right)" />
+                <path class="arrow-path--mobile" d="M 50 45 L 50 10" fill="none" stroke="currentColor" stroke-width="2.5" marker-end="url(#arrowhead-right)" />
+              </svg>
+            </div>
+
             <div class="right-card-image">
               <b>{{ brainLabels.rightBold }}</b> {{ brainLabels.rightNormal }}
             </div>
@@ -155,7 +181,7 @@ const t = computed(() => {
   return {
     detailKicker: props.block?.kicker || fallback.value.detailKicker,
     detailTitle: props.block?.title || fallback.value.detailTitle,
-    detailIntro: props.block?.subtitle || props.block?.body || fallback.value.detailIntro,
+    detailIntro: props.block?.subtitle || props.block?.body || '',
     
     gtomBrief: pickPayload(p?.gtom, 'brief', l) || fallback.value.gtomBrief,
     gtomQuote: pickPayload(p?.gtom, 'quote', l) || fallback.value.gtomQuote,
@@ -234,9 +260,9 @@ const gtomLevels = computed(() => {
   }
   if (l === 'zh') {
     return [
-      { num: '1', title: 'Spatial Consciousness', description: '在三维空间中的导航与定向。系统处理遗传预设目标并构建拓扑路径以达成它们。' },
-      { num: '2', title: 'Symbolic Consciousness', description: '在多维概念空间中的交互。每个概念有其向量与符号。大语言模型模拟此层，但符号操作不足以产生主体性。' },
-      { num: '3', title: 'Qualitative Consciousness', description: '形成复杂目标概念——美、正确、荣誉等。黑格尔式 Aufheben 算子将系统从计算器转变为具有自我完善意图的主体。' }
+      { num: '1', title: '空间意识', description: '在三维空间中的导航与定向。系统处理遗传预设目标并构建拓扑路径以达成它们。' },
+      { num: '2', title: '符号意识', description: '在多维概念空间中的交互。每个概念有其向量与符号。大语言模型模拟此层，但符号操作不足以产生主体性。' },
+      { num: '3', title: '定性意识', description: '形成复杂目标概念——美、正确、荣誉等。黑格尔式 Aufheben 算子将系统从计算器转变为具有自我完善意图的主体。' }
     ]
   }
   return [
@@ -656,7 +682,7 @@ const uiDict: Record<Lang, AboutStrings> = {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 20px;
 }
 
@@ -675,51 +701,69 @@ const uiDict: Record<Lang, AboutStrings> = {
   color: var(--gv-text-primary);
   text-align: center;
   position: relative;
+  z-index: 1;
 }
 
-.left-card-image::after {
-  content: " ";
-  position: absolute;
-  left: auto;
-  right: -55px;
-  top: -15px;
-  transform: rotate(60deg);
-  border-top: none;
-  border-right: 12px solid transparent;
-  border-left: 12px solid transparent;
-  border-bottom: 90px solid var(--gv-text-primary);
-  z-index: -1;
+.brain-arrow-container {
+  flex: 1 1 auto;
+  height: 50px;
+  min-width: 30px;
+  max-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gv-text-primary);
+  opacity: 0.6;
 }
 
-.right-card-image::after {
-  content: " ";
-  position: absolute;
-  left: -55px;
-  right: auto;
-  top: -15px;
-  transform: rotate(-60deg);
-  border-top: none;
-  border-right: 12px solid transparent;
-  border-left: 12px solid transparent;
-  border-bottom: 90px solid var(--gv-text-primary);
-  z-index: -1;
+.brain-arrow-container--left {
+  margin-right: -15px;
+}
+
+.brain-arrow-container--right {
+  margin-left: -15px;
+}
+
+.brain-arrow-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.arrow-path--mobile {
+  display: none !important;
 }
 
 .gativus-brain-img {
   height: clamp(150px, 20vw, 250px);
+  width: auto;
+  aspect-ratio: 1365 / 1600;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 @media (max-width: 768px) {
   .gativus-card-image {
     flex-direction: column;
     align-items: center;
+    flex-wrap: wrap !important;
+    gap: 12px;
   }
   .left-card-image, .right-card-image {
     width: 100%;
   }
-  .left-card-image::after, .right-card-image::after {
-    display: none;
+  .brain-arrow-container {
+    height: 40px;
+    width: 40px;
+    flex: 0 0 auto;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  .arrow-path--desktop {
+    display: none !important;
+  }
+  .arrow-path--mobile {
+    display: block !important;
   }
 }
 </style>

@@ -116,6 +116,19 @@
   background-size: contain;
 }
 
+@media (max-width: 640px) {
+  .home-h2 {
+    font-size: clamp(1.2rem, 5vw, 1.8rem) !important;
+    letter-spacing: 2px !important;
+    gap: 0 !important;
+    padding: 8px 0 !important;
+  }
+  .home-h2::before,
+  .home-h2::after {
+    display: none !important;
+  }
+}
+
 .home-kicker {
   font-family: 'Poppins', sans-serif;
   font-size: 14px;
@@ -175,9 +188,8 @@
 .home-sub, .home-about-intro, .home-about-p, .gativus-card-subtitle {
   font-size: 18px !important;
   line-height: 1.6 !important;
-  text-align: justify;
-  text-justify: inter-word;
-  text-indent: 47px;
+  text-align: left !important;
+  text-indent: 0 !important;
   color: var(--gv-text-secondary);
   margin-bottom: 2.5rem;
 }
@@ -305,7 +317,7 @@
   font-size: 13px !important;
   line-height: 1.5 !important;
   color: var(--gv-text-secondary) !important;
-  text-align: justify;
+  text-align: left !important;
   text-indent: 0 !important;
   margin: 0.5rem 0 0 !important;
 }
@@ -317,7 +329,6 @@
   background: var(--gv-surface-card) !important;
   box-shadow: var(--gv-shadow-sm) !important;
   overflow: hidden;
-  margin-bottom: 3rem;
   display: flex;
   flex-direction: column;
 }
@@ -436,7 +447,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 20px;
 }
 
@@ -454,10 +465,14 @@
   font-weight: 500;
   color: var(--gv-text-primary);
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .gativus-brain-img {
   height: clamp(150px, 20vw, 250px);
+  width: auto;
+  aspect-ratio: 1365 / 1600;
   object-fit: contain;
 }
 
@@ -538,7 +553,7 @@ u {
 .home-title::before,
 .home-title::after,
 .home-header-arrow {
-  opacity: 0.08 !important;
+  opacity: 0.6 !important;
 }
 
 /* Merged layout: Pillars inside the Hero surface card */
