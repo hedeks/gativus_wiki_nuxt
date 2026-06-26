@@ -18,6 +18,24 @@ import './assets/css/admin-about-cards.css'
 
 import { runPendingScrollAfterPageLeave } from '~/utils/pendingRouteScroll'
 
+useHead({
+  link: [
+    {
+      rel: 'preconnect',
+      href: 'https://fonts.googleapis.com'
+    },
+    {
+      rel: 'preconnect',
+      href: 'https://fonts.gstatic.com',
+      crossorigin: ''
+    },
+    {
+      rel: 'stylesheet',
+      href: 'https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap'
+    }
+  ]
+})
+
 const pageTransition = {
   name: 'fade',
   mode: 'out-in' as const,
@@ -176,17 +194,14 @@ a:hover {
 }
 
 .gv-hero-gradient {
-  background: linear-gradient(135deg, #0c4a6e, #0ea5e9, #0284c7, #0c4a6e);
-  background-size: 300% auto;
+  background: linear-gradient(135deg, #0c4a6e, #0ea5e9, #0284c7);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: gv-shine 15s linear infinite;
 }
 
 .dark .gv-hero-gradient {
-  background: linear-gradient(135deg, #7dd3fc, #38bdf8, #0ea5e9, #7dd3fc);
-  background-size: 300% auto;
+  background: linear-gradient(135deg, #7dd3fc, #38bdf8, #0ea5e9);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

@@ -17,6 +17,7 @@ const langStore = useLanguageStore()
       <h2 v-if="block.title" class="home-h2">
         {{ block.title }}
       </h2>
+      <img src="/images/two-arrows-down.svg" class="home-header-arrow" alt="" />
       <p v-if="block.body" class="home-sub">
         {{ block.body }}
       </p>
@@ -74,10 +75,10 @@ const langStore = useLanguageStore()
     radial-gradient(circle at top right, color-mix(in srgb, var(--wiki-accent) 4%, transparent) 0%, transparent 50%),
     linear-gradient(165deg, var(--gv-surface-card) 0%, color-mix(in srgb, var(--gv-surface-card) 98%, var(--wiki-accent)) 100%);
   border: 1px solid var(--gv-border-subtle);
-  border-radius: var(--gv-radius-container);
+  border-radius: 12px;
   backdrop-filter: blur(12px);
   overflow: hidden;
-  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   --wiki-accent: var(--gv-primary);
   z-index: 1;
 }
@@ -93,14 +94,14 @@ const langStore = useLanguageStore()
   inset: 0;
   background: color-mix(in srgb, var(--wiki-accent) 6%, transparent);
   opacity: 0;
-  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.2s ease;
   z-index: -1;
 }
 
 .home-wiki:hover {
-  transform: translateY(-6px);
+  transform: translateY(-4px);
   border-color: color-mix(in srgb, var(--wiki-accent) 30%, transparent);
-  box-shadow: 0 15px 30px color-mix(in srgb, var(--wiki-accent) 8%, transparent);
+  box-shadow: var(--gv-shadow-lg);
 }
 
 .home-wiki:hover::before {
@@ -117,7 +118,7 @@ const langStore = useLanguageStore()
   color: var(--wiki-accent, var(--gv-primary));
   border-radius: 10px;
   font-size: 20px;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s ease;
 }
 
 .home-wiki:hover .home-wiki-ic {
@@ -131,6 +132,7 @@ const langStore = useLanguageStore()
 
 .home-wiki-label {
   display: block;
+  font-family: 'Poppins', sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: var(--gv-text-primary);
@@ -141,5 +143,12 @@ const langStore = useLanguageStore()
   font-size: 13px;
   color: var(--gv-text-secondary);
   margin-top: 1px;
+}
+
+.home-header-arrow {
+  display: block;
+  margin: 0 auto 1.5rem;
+  height: auto;
+  width: 24px;
 }
 </style>

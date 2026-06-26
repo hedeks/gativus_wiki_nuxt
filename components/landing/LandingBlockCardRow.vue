@@ -11,6 +11,20 @@ const hovered = ref<string | null>(null)
 function cardKey(badge: string | undefined, i: number) {
   return badge || `card-${i}`
 }
+
+function cleanCardTitle(badge: string | undefined, title: string) {
+  if (!badge) return title
+  const regex = new RegExp(`^${badge}\\s*\\(([^)]+)\\)`, 'i')
+  const match = title.match(regex)
+  if (match && match[1]) {
+    return match[1]
+  }
+  if (title.toLowerCase().startsWith(badge.toLowerCase())) {
+    const stripped = title.substring(badge.length).replace(/^[:\s-]+/, '')
+    if (stripped) return stripped
+  }
+  return title
+}
 </script>
 
 <template>
@@ -22,6 +36,7 @@ function cardKey(badge: string | undefined, i: number) {
       <h2 v-if="block.title" class="home-h2">
         {{ block.title }}
       </h2>
+      <img src="/images/two-arrows-down.svg" class="home-header-arrow" alt="" />
     </div>
     
     <div class="home-pillar-row">
@@ -49,7 +64,7 @@ function cardKey(badge: string | undefined, i: number) {
         <div class="home-pillar-content">
           <span v-if="card.badge" class="home-pillar-badge">{{ card.badge }}</span>
           <h3 class="home-pillar-title">
-            {{ pickPayloadText(langStore.currentLang, card) }}
+            {{ cleanCardTitle(card.badge, pickPayloadText(langStore.currentLang, card)) }}
           </h3>
           <p class="home-pillar-desc">
             {{ pickPayloadDesc(langStore.currentLang, card) }}

@@ -4,13 +4,22 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: clamp(3rem, 8vw, 6.5rem);
+  gap: clamp(4rem, 10vw, 8rem);
 }
 
 .home-section {
   scroll-margin-top: calc(var(--header-height, 65px) + 2rem);
   perspective: 2000px;
   transform-style: preserve-3d;
+}
+
+@media (min-width: 1024px) {
+  .home-section {
+    min-height: calc(100vh - var(--header-height, 65px) - 6rem);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
 }
 
 /* Premium Entrance & Exit Animations */
@@ -21,9 +30,9 @@
   pointer-events: none;
   will-change: transform, opacity, filter;
   transition: 
-    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.6s ease;
+    opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.2s ease;
 }
 
 .home-section--leave-up .home-anim-target {
@@ -33,9 +42,9 @@
   pointer-events: none;
   will-change: transform, opacity, filter;
   transition: 
-    opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.5s ease;
+    opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.2s ease;
 }
 
 .home-section--enter .home-anim-target {
@@ -46,9 +55,9 @@
   backface-visibility: hidden;
   will-change: transform, opacity, filter;
   transition: 
-    opacity 1s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 1s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -62,37 +71,482 @@
   }
 }
 
-
-
-/* Kicker/Header for sections */
-.home-kicker {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: var(--gv-primary);
-  margin-bottom: 1rem;
-  display: block;
-  opacity: 0.8;
+/* Fonts & Base overrides for Homepage */
+.home, .home * {
+  font-family: 'Open Sans', sans-serif;
+  letter-spacing: 0.5px;
 }
 
+/* Titles and Kickers */
 .home-h2 {
-  font-size: clamp(1.5rem, 5vw, 2.35rem);
-  font-weight: 800;
-  margin-bottom: 2rem;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  font-family: 'Poppins', sans-serif !important;
+  font-size: clamp(1.8rem, 4vw, 2.5rem) !important;
+  font-weight: 500 !important;
+  letter-spacing: 6px !important;
+  text-transform: uppercase !important;
+  line-height: 1.2 !important;
+  border-top: 1px solid color-mix(in srgb, var(--gv-text-primary) 8%, transparent) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--gv-text-primary) 8%, transparent) !important;
+  padding: 12px 0 !important;
+  margin: 0 auto 2.5rem !important;
+  width: fit-content;
+  text-align: center;
   color: var(--gv-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
 }
 
-.home-sub {
-  font-size: 16px;
-  line-height: 1.6;
+.home-h2::before {
+  content: "";
+  display: inline-block;
+  width: clamp(30px, 6vw, 50px);
+  height: 20px;
+  background: url('/images/2-lines-to-right.svg') no-repeat center;
+  background-size: contain;
+}
+
+.home-h2::after {
+  content: "";
+  display: inline-block;
+  width: clamp(30px, 6vw, 50px);
+  height: 20px;
+  background: url('/images/2-lines-to-left.svg') no-repeat center;
+  background-size: contain;
+}
+
+.home-kicker {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: var(--gv-text-secondary);
+  text-align: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--gv-text-primary) 8%, transparent) !important;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  padding-bottom: 5px;
+}
+
+.home-title {
+  font-family: 'Poppins', sans-serif !important;
+  font-size: clamp(2.2rem, 5.5vh, 3.4rem) !important;
+  font-weight: 500 !important;
+  letter-spacing: 6px !important;
+  text-transform: none !important;
+  line-height: 1.2 !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: fit-content;
+  text-align: left !important;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 20px;
+  color: var(--gv-text-primary);
+  filter: drop-shadow(0 0 2px #bababa) !important;
+}
+
+.home-title::before,
+.home-title::after {
+  display: none !important;
+}
+
+.home-tagline {
+  font-family: 'Poppins', sans-serif !important;
+  font-size: clamp(14px, 2.5vw, 24px) !important;
+  font-weight: 400 !important;
+  letter-spacing: 5px !important;
+  text-transform: uppercase !important;
+  color: var(--gv-text-secondary);
+  text-align: center;
+  margin: 1rem auto 2.5rem !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--gv-text-primary) 8%, transparent) !important;
+  width: fit-content;
+  padding-bottom: 8px;
+}
+
+.home-sub, .home-about-intro, .home-about-p, .gativus-card-subtitle {
+  font-size: 18px !important;
+  line-height: 1.6 !important;
+  text-align: justify;
+  text-justify: inter-word;
+  text-indent: 47px;
   color: var(--gv-text-secondary);
   margin-bottom: 2.5rem;
-  max-width: 38rem;
 }
 
 .home-section--tail {
   padding-bottom: 4rem;
+}
+
+/* Card Row Styles (matching .wtg_view_item) */
+.home-pillar-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  justify-content: center;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+@media (min-width: 640px) {
+  .home-pillar-row {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .home-pillar-row {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.75rem;
+  }
+}
+
+.home-pillar-card {
+  position: relative;
+  padding: 1.25rem !important;
+  background: 
+    radial-gradient(circle at top right, color-mix(in srgb, var(--gv-primary) 5%, transparent) 0%, transparent 50%),
+    linear-gradient(165deg, var(--gv-surface-card) 0%, color-mix(in srgb, var(--gv-surface-card) 98%, var(--gv-primary)) 100%) !important;
+  border: 1px solid var(--gv-border-subtle) !important;
+  border-radius: var(--gv-radius-container) !important;
+  box-shadow: var(--gv-shadow-sm) !important;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+  z-index: 1;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.home-pillar-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, color-mix(in srgb, var(--gv-primary) 8%, transparent) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.home-pillar-card:hover {
+  transform: translateY(-4px) !important;
+  border-color: color-mix(in srgb, var(--gv-primary) 30%, transparent) !important;
+  box-shadow: 
+    0 15px 30px color-mix(in srgb, var(--gv-primary) 8%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.home-pillar-card:hover::after {
+  opacity: 1;
+}
+
+.home-pillar-media {
+  height: 100px !important;
+  background: var(--gv-surface-header) !important;
+  border-radius: var(--gv-radius-control) !important;
+  border: 1px solid var(--gv-border-subtle) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 0 !important;
+}
+
+.home-pillar-img {
+  width: 60% !important;
+  height: 60% !important;
+  object-fit: contain !important;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.dark .home-pillar-img {
+  filter: invert(1) brightness(1.2) !important;
+}
+
+.home-pillar-card:hover .home-pillar-img {
+  transform: scale(1.08) !important;
+}
+
+.home-pillar-badge {
+  font-family: 'Poppins', sans-serif;
+  font-size: 10px !important;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gv-primary);
+  margin-bottom: 0.25rem;
+  display: block;
+  text-align: left !important;
+}
+
+.home-pillar-title {
+  font-family: 'Poppins', sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: var(--gv-text-primary) !important;
+  text-align: left !important;
+  margin: 0 !important;
+}
+
+.home-pillar-desc {
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  color: var(--gv-text-secondary) !important;
+  text-align: justify;
+  text-indent: 0 !important;
+  margin: 0.5rem 0 0 !important;
+}
+
+/* About Section & NDDI (fit-content-gativus-network-card style) */
+.home-about-card, .gv-surface-card {
+  border: 1px solid var(--gv-border-subtle) !important;
+  border-radius: 15px !important;
+  background: var(--gv-surface-card) !important;
+  box-shadow: var(--gv-shadow-sm) !important;
+  overflow: hidden;
+  margin-bottom: 3rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.gv-card-header {
+  background: var(--gv-surface-header) !important;
+  border-bottom: 1px solid var(--gv-border-subtle) !important;
+  padding: 10px 20px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+}
+
+.home-about-card-title {
+  font-family: 'Poppins', sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: var(--gv-text-primary) !important;
+  margin: 0 !important;
+  text-align: left !important;
+  display: inline-block !important;
+}
+
+.home-about-badge {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.2em;
+  color: var(--gv-primary) !important;
+  margin-bottom: 0 !important;
+  background: color-mix(in srgb, var(--gv-primary) 10%, transparent) !important;
+  padding: 3px 10px !important;
+  border-radius: 6px !important;
+  display: inline-block !important;
+}
+
+.home-about-card-body {
+  padding: 30px !important;
+  background: var(--gv-surface-card) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* S-V-A cards container */
+.gtom-glln-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: space-between;
+  width: 100%;
+  margin: 20px 0;
+}
+
+.gtom-card {
+  flex: 1 1 30%;
+  min-width: 250px;
+  border: 1px solid var(--gv-border-subtle) !important;
+  padding: 20px !important;
+  border-radius: 9px !important;
+  box-shadow: var(--gv-shadow-sm) !important;
+  background: var(--gv-surface-header) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.3s ease;
+}
+
+.gtom-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--gv-shadow-md) !important;
+}
+
+.gtom-card p:first-of-type {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--gv-text-primary);
+  margin: 0;
+}
+
+.gtom-card p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--gv-text-secondary);
+  margin: 0;
+}
+
+.hr {
+  border: 0;
+  border-top: 1px solid var(--gv-border-subtle) !important;
+  margin: 8px 0;
+  width: 100%;
+}
+
+/* Consciousness / Neural Network Brain block */
+.gativus-card-image-block {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--gv-border-subtle) !important;
+  gap: 20px;
+  padding: 20px;
+  border-radius: 9px;
+  margin: 20px auto;
+  box-shadow: var(--gv-shadow-sm);
+  background: var(--gv-surface-card);
+  max-width: 900px;
+  width: 100%;
+}
+
+.gativus-card-image {
+  background-color: var(--gv-surface-header);
+  padding: 20px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.left-card-image,
+.right-card-image {
+  padding: 15px;
+  width: 28%;
+  min-width: 180px;
+  background-color: var(--gv-surface-card);
+  border-radius: 9px;
+  box-shadow: var(--gv-shadow-sm);
+  border: 1px solid var(--gv-border-subtle) !important;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gv-text-primary);
+  text-align: center;
+}
+
+.gativus-brain-img {
+  height: clamp(150px, 20vw, 250px);
+  object-fit: contain;
+}
+
+/* u elements in texts */
+u {
+  background-color: var(--gv-border-principal);
+  margin: 0;
+  display: inline-block;
+  line-height: 1.25;
+  font-family: "Consolas", monospace;
+  padding: 1px 5px;
+  text-decoration: none;
+  border-radius: 5px;
+  color: var(--gv-text-primary);
+}
+
+/* Ensure header and footer are on top of the particles background */
+.gv-header {
+  position: relative;
+  z-index: 50 !important;
+}
+
+.gativus-footer {
+  position: relative;
+  z-index: 10 !important;
+}
+
+/* Snappy 0.2s transitions for all main interactive elements on the homepage */
+.home-pillar-card, .home-wiki, .gtom-card, .home-about-level, .home-about-net-item, .home-about-stat {
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+/* Overriding LandingBlockRichtext (manifest) style to match our border and shadow layout */
+.home-manifest {
+  background: var(--gv-surface-card) !important;
+  border: 1px solid var(--gv-border-subtle) !important;
+  border-radius: 15px !important;
+  box-shadow: var(--gv-shadow-sm) !important;
+}
+
+/* Overriding LandingBlockLinkGrid (wiki links) style to match card borders */
+.home-wiki {
+  border: 1px solid var(--gv-border-subtle) !important;
+  border-radius: 15px !important;
+  box-shadow: var(--gv-shadow-sm) !important;
+}
+
+.home-wiki::before {
+  transition: opacity 0.2s ease !important;
+}
+
+.home-wiki:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: var(--gv-shadow-lg) !important;
+}
+
+/* LandingBlockCta style overrides */
+.home-cta {
+  border: 1px solid var(--gv-border-subtle) !important;
+  box-shadow: var(--gv-shadow-sm) !important;
+}
+.home-cta-title {
+  font-family: 'Poppins', sans-serif !important;
+  font-weight: 500 !important;
+  letter-spacing: 2px !important;
+  text-transform: uppercase !important;
+}
+.home-header-arrow {
+  display: block;
+  margin: 0 auto 1.5rem;
+  height: auto;
+  width: 24px;
+}
+
+/* Unify opacity of arrows and header line decorators */
+.home-h2::before,
+.home-h2::after,
+.home-title::before,
+.home-title::after,
+.home-header-arrow {
+  opacity: 0.08 !important;
+}
+
+/* Merged layout: Pillars inside the Hero surface card */
+.home-hero-divider {
+  display: none !important;
+}
+
+.home-hero-pillars {
+  width: 100%;
+  margin-top: clamp(1.5rem, 3.5vh, 2.5rem);
 }

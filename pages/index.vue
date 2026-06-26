@@ -1,5 +1,6 @@
 <template>
   <div ref="landingRef" class="home gv-page">
+    <ParticlesBackground />
     <HomeScrollBackdrop
       v-if="!reducedMotion"
       :focus-index="activeFocusBlock"
@@ -23,20 +24,21 @@
 
     <div class="home-stack">
       <section
-        v-for="(block, idx) in displayBlocks"
+        v-for="(block, idx) in filteredBlocks"
         :key="`${block.id}-${idx}`"
         :id="sectionDomId(block, idx)"
         :data-home-block="String(idx)"
         class="home-section"
         :class="[
           blockAnimClass(idx),
-          { 'home-section--tail': idx === displayBlocks.length - 1 },
+          { 'home-section--tail': idx === filteredBlocks.length - 1 },
         ]"
       >
         <component
           :is="landingBlockComponent(block.blockType)"
           :block="block"
           :reduced-motion="reducedMotion"
+          :card-row-block="block.blockType === 'hero' ? cardRowBlock : undefined"
         />
       </section>
     </div>
@@ -74,27 +76,64 @@ const displayBlocks = computed<LandingBlockResolved[]>(() => {
   return buildFallbackLandingBlocks(langStore.currentLang)
 })
 
-const blockCount = computed(() => displayBlocks.value.length)
+const cardRowBlock = computed(() => {
+  return displayBlocks.value.find(b => b.blockType === 'card_row')
+})
+
+const filteredBlocks = computed(() => {
+  return displayBlocks.value.filter(b => b.blockType !== 'card_row')
+})
+
+const blockCount = computed(() => filteredBlocks.value.length)
 
 const { landingRef, activeFocusBlock, blockAnimClass } = useLandingSectionObserver(blockCount)
 
 const reducedMotion = ref(false)
 
-const neuronLabels = computed(() => displayBlocks.value.map(b => b.neuronLabel ?? null))
+const neuronLabels = computed(() => filteredBlocks.value.map(b => b.neuronLabel ?? null))
 
 function sectionDomId(block: LandingBlockResolved, idx: number) {
   return block.anchorId?.trim() || `home-block-${idx}`
 }
 
 function scrollToBlock(i: number) {
-  const block = displayBlocks.value[i]
+  const block = filteredBlocks.value[i]
   if (!block)
     return
   const id = sectionDomId(block, i)
-  document.getElementById(id)?.scrollIntoView({
-    behavior: reducedMotion.value ? 'auto' : 'smooth',
-    block: 'start',
-  })
+  const element = document.getElementById(id)
+  if (!element)
+    return
+
+  if (reducedMotion.value) {
+    element.scrollIntoView({ behavior: 'auto', block: 'start' })
+    return
+  }
+
+  const headerOffset = 97
+  const rect = element.getBoundingClientRect()
+  const startY = window.pageYOffset || window.scrollY
+  const targetY = startY + rect.top - headerOffset
+  const difference = targetY - startY
+  const duration = 300 // fast 300ms scroll transition
+  let startTime: number | null = null
+
+  function scrollStep(timestamp: number) {
+    if (!startTime) startTime = timestamp
+    const elapsed = timestamp - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    
+    // Snappy cubic ease-out curve
+    const ease = 1 - Math.pow(1 - progress, 3)
+    
+    window.scrollTo(0, startY + difference * ease)
+    
+    if (progress < 1) {
+      window.requestAnimationFrame(scrollStep)
+    }
+  }
+
+  window.requestAnimationFrame(scrollStep)
 }
 
 const t = computed(() => landingUiForLang(langStore.currentLang))

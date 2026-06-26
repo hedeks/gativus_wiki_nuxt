@@ -3,6 +3,7 @@
     <div class="home-header-group">
       <p v-if="t.detailKicker" class="home-kicker">{{ t.detailKicker }}</p>
       <h2 v-if="t.detailTitle" class="home-h2">{{ t.detailTitle }}</h2>
+      <img src="/images/two-arrows-down.svg" class="home-header-arrow" alt="" />
       <p v-if="t.detailIntro" class="home-about-intro">{{ t.detailIntro }}</p>
     </div>
 
@@ -14,6 +15,20 @@
       </header>
       <div class="home-about-card-body">
         <p class="home-about-p">{{ t.gtomBrief }}</p>
+
+        <!-- Consciousness / Neural Network Brain block matching demo -->
+        <div class="gativus-card-image-block">
+          <div class="gativus-card-image">
+            <div class="left-card-image">
+              <b>{{ brainLabels.leftBold }}</b> {{ brainLabels.leftNormal }}
+            </div>
+            <img :src="brainImgPath" class="gativus-brain-img" alt="Brain Diagram" />
+            <div class="right-card-image">
+              <b>{{ brainLabels.rightBold }}</b> {{ brainLabels.rightNormal }}
+            </div>
+          </div>
+        </div>
+
         <div class="home-about-levels">
           <div
             v-for="level in gtomLevels"
@@ -161,6 +176,41 @@ const t = computed(() => {
     nddiTitle: pickPayload(p?.nddi, 'title', l) || fallback.value.nddiTitle,
     nddiBrief: pickPayload(p?.nddi, 'brief', l) || fallback.value.nddiBrief,
   }
+})
+
+// Localized brain diagrams text matching demo layout
+const brainLabels = computed(() => {
+  const l = langStore.currentLang
+  if (l === 'ru') {
+    return {
+      leftBold: 'Сознание:',
+      leftNormal: '(Качественное, Пространственное, Символическое)',
+      rightBold: 'Нейросеть:',
+      rightNormal: '(Клеточная, Спайковая и Параметрическая)'
+    }
+  }
+  if (l === 'zh') {
+    return {
+      leftBold: '意识:',
+      leftNormal: '(定性的, 空间的, 符号的)',
+      rightBold: '神经网络:',
+      rightNormal: '（细胞、脉冲和参数网络）'
+    }
+  }
+  return {
+    leftBold: 'Consciousness:',
+    leftNormal: '(Qualitative, Spatial, Symbolic)',
+    rightBold: 'Neural network:',
+    rightNormal: '(Cellular, Spike and Parameter Network)'
+  }
+})
+
+const brainImgPath = computed(() => {
+  if (typeof window !== 'undefined') {
+    // Resolve absolute URL dynamically to bypass router base path mapping completely
+    return `${window.location.origin}/images/brain-out.png`
+  }
+  return '/images/brain-out.png'
 })
 
 const gtomLevels = computed(() => {
@@ -311,7 +361,7 @@ const uiDict: Record<Lang, AboutStrings> = {
     gnetNodes: '托管在专用边缘设备（GATE）上的数字网络实体',
     gnetLinks: '基于 IPv6 通过互联网全局路由实现的突触连接',
     gnetQuote: 'GNET 的基础是现有 IPv6 基础设施，在不影响现行 RFC 标准的前提下提供唯一全局寻址与协议扩展。',
-    gateBrief: 'GATE 是用于存储、执行和保护神经网络节点的物理设备，基于现代计算机架构并支持横向扩展。',
+    gateBrief: 'GATE 是用于存储、执行和保护神经网络节点的物理设备，基于现代计算机架构并 support 横向扩展。',
     gateNeurons: '每设备人工神经元规模',
     gateIpv6: '每个节点的全局寻址',
     gateOss: '纯开源基础',
@@ -346,7 +396,6 @@ const uiDict: Record<Lang, AboutStrings> = {
   font-size: 16px;
   line-height: 1.6;
   color: var(--gv-text-secondary);
-  max-width: 40rem;
 }
 
 .scroll-target {
@@ -583,6 +632,94 @@ const uiDict: Record<Lang, AboutStrings> = {
 @media (max-width: 640px) {
   .home-about-card-body {
     padding: 1.25rem;
+  }
+}
+
+.gativus-card-image-block {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--gv-border-subtle);
+  gap: 20px;
+  padding: 20px;
+  border-radius: 9px;
+  margin: 10px auto 20px;
+  box-shadow: var(--gv-shadow-sm);
+  background: var(--gv-surface-card);
+  max-width: 900px;
+  width: 100%;
+}
+
+.gativus-card-image {
+  background-color: var(--gv-surface-header);
+  padding: 20px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.left-card-image,
+.right-card-image {
+  padding: 15px;
+  width: 28%;
+  min-width: 180px;
+  background-color: var(--gv-surface-card);
+  border-radius: 9px;
+  box-shadow: var(--gv-shadow-sm);
+  border: 1px solid var(--gv-border-subtle);
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gv-text-primary);
+  text-align: center;
+  position: relative;
+}
+
+.left-card-image::after {
+  content: " ";
+  position: absolute;
+  left: auto;
+  right: -55px;
+  top: -15px;
+  transform: rotate(60deg);
+  border-top: none;
+  border-right: 12px solid transparent;
+  border-left: 12px solid transparent;
+  border-bottom: 90px solid var(--gv-text-primary);
+  z-index: -1;
+}
+
+.right-card-image::after {
+  content: " ";
+  position: absolute;
+  left: -55px;
+  right: auto;
+  top: -15px;
+  transform: rotate(-60deg);
+  border-top: none;
+  border-right: 12px solid transparent;
+  border-left: 12px solid transparent;
+  border-bottom: 90px solid var(--gv-text-primary);
+  z-index: -1;
+}
+
+.gativus-brain-img {
+  height: clamp(150px, 20vw, 250px);
+  object-fit: contain;
+}
+
+@media (max-width: 768px) {
+  .gativus-card-image {
+    flex-direction: column;
+    align-items: center;
+  }
+  .left-card-image, .right-card-image {
+    width: 100%;
+  }
+  .left-card-image::after, .right-card-image::after {
+    display: none;
   }
 }
 </style>
