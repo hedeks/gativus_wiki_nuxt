@@ -1,49 +1,90 @@
-# Homepage Redesign, Mobile Responsiveness, and SVG Arrows Integration
+# Редизайн главной страницы, мобильная адаптивность и интеграция SVG-стрелок
 
-## Context & Overview
-In this session, we completed a visual and responsive overhaul of the Gativus homepage (landing page). This included resolving text alignment issues, fixing mobile viewport layout breaks, implementing dynamic SVG connectors for the brain diagram, restoring arrow visibility, and removing hardcoded layout fallbacks to give the database/admin panel full control over page content.
+## Сессия 2: Оптимизация отображения блоков Hero и Pillars в один экран и исправления для Firefox
 
----
+### Контекст и обзор
+В этой сессии мы оптимизировали совмещенные блоки «О проекте» (Hero) и «Три опоры» (Pillars), чтобы они выглядели премиально и полностью помещались на одном экране настольного компьютера (`100vh`) без вертикального скролла. Мы также устранили проблемы с производительностью отрисовки в Firefox и скорректировали внутренние и внешние отступы карточек.
 
-## Key Achievements & Solutions
+### Основные достижения и решения
 
-### 1. Homepage Text Left-Alignment & Margin Cleanup
-- **Problem**: Body paragraphs, descriptions, and pillar summaries used justified text (`text-align: justify`) and first-line indentation (`text-indent: 47px`), causing uneven word gaps and awkward indentations on desktop and mobile. Additionally, card components used double margins (`margin-bottom: 3rem;` plus container `gap`), inflating vertical gaps.
-- **Solution**:
-  - Updated [landing-home.css](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/assets/css/landing-home.css) to force `text-align: left !important` and `text-indent: 0 !important` on `.home-sub`, `.home-about-intro`, `.home-about-p`, `.gativus-card-subtitle`, and `.home-pillar-desc`.
-  - Removed `margin-bottom: 3rem;` from `.home-about-card` and `.gv-surface-card` classes, shifting vertical flow control entirely to the container's flex gap (`gap: clamp(1.5rem, 4vw, 3rem)`).
+#### 1. Единый контейнер под размер экрана (Single-Viewport)
+- **Проблема**: Объединенный блок Hero и карточки трех опор занимали слишком много места по вертикали, вызывая появление полосы прокрутки на стандартных экранах 1080p.
+- **Решение**:
+  - Логотип и заголовок "Gativus" (изменен регистр с верхнего "GATIVUS" на смешанный) выстроены в одну горизонтальную строку (`.home-hero-header`).
+  - Описание (tagline) и кнопки призыва к действию (CTA) выровнены по левому краю прямо под заголовком.
+  - Три карточки размещены горизонтально под CTA, разделительная линия `.home-hero-divider` скрыта, а верхний отступ настроен через адаптивное свойство `clamp(1.5rem, 3.5vh, 2.5rem)`.
+  - Внутренние отступы основного контейнера заменены на адаптивные, зависящие от высоты экрана: `clamp(1.75rem, 4.5vh, 2.75rem)`.
 
-### 2. Comprehensive Mobile Responsiveness
-- **Hero Block Overflow**: The logo and title on the Hero block (`.home-hero-header`) were forced into a horizontal row, overflowing narrow screen boundaries. Added a media query under `640px` in [LandingBlockHero.vue](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/components/landing/LandingBlockHero.vue) to wrap the header to `flex-direction: column`, centering the logo, title, intro text, and action buttons.
-- **Header Overflow (`.home-h2`)**: Section headers containing side-line SVG decorators and wide letter spacing (`6px`) broke layout margins on mobile. Added a media query in [landing-home.css](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/assets/css/landing-home.css) to hide `::before` and `::after` lines, reduce `letter-spacing` to `2px`, and scale font size down to `clamp(1.2rem, 5vw, 1.8rem)`.
-- **Card Padding**: Scaled horizontal paddings on the CTA block (`.home-cta`) and Manifest card (`.home-manifest`) down to `1.25rem` on mobile to prevent content squeezing.
+#### 2. Полупрозрачный эффект стекла (Glassmorphism)
+- **Проблема**: Границы и тень контейнера перекрывали анимированные фоновые частицы и выглядели слишком тяжеловесно.
+- **Решение**: Установили прозрачность фона контейнера на уровне `65%` с размытием `backdrop-filter: blur(4px) !important`, убрав рамки и тени, чтобы фоновые частицы оставались видимыми.
 
-### 3. Dynamic SVG Arrows (Brain Diagram)
-- **Problem**: The original arrows pointing from the "Consciousness" and "Neural Network" cards to the central brain graphic were constructed using static absolute-positioned CSS triangles. On resizing the window, the cards would separate, leaving the arrows hanging in empty space or overlapping the brain. On mobile, they disappeared.
-- **Solution**:
-  - Replaced CSS borders with inline flex-growing SVG elements in [HomeAboutDetail.vue](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/components/home/HomeAboutDetail.vue) template.
-  - Desktop view uses a curved path (`Q 50 25`) with SVG `marker-end` arrowhead pointing precisely to the left/right brain boundaries. Containers use `flex: 1 1 auto` to scale their width dynamically to match the gap.
-  - Mobile view (under `768px`) displays a vertical path (`L`) pointing down (from top card to brain) and up (from bottom card to brain) acting as vertical spacers.
-  - Set paths and fills to `currentColor` to dynamically support dark/light theme shifts.
+#### 3. Компактное расположение карточек и выравнивание по левому краю
+- **Проблема**: Карточки имели слишком большие внутренние отступы, внешние поля и шрифты, из-за чего они не помещались в экран и конфликтовали с выравниванием текста.
+- **Решение**:
+  - Вернули внутренние отступы карточек к компактным `1.25rem`, а высоту области изображения — к `100px`.
+  - Уменьшили размер шрифта: для бейджа карточки — `10px`, для заголовка — `16px`, для описания — `13px`.
+  - Настроили строгое выравнивание по левому краю для всех элементов внутри карточки (бейдж, заголовок, описание) для гармоничности с общим стилем.
+  - Задали жесткую сетку `repeat(3, 1fr)` при ширине экрана `≥1024px`, чтобы карточки не переносились на новые строки.
 
-### 4. Chrome Image Dimension Bug & Card Wrapping
-- **Problem**: Chrome rendered the `.gativus-brain-img` box much wider than the actual image because of missing width boundaries, causing the "Neural Network" card to wrap to a new line on narrower desktop viewports.
-- **Solution**:
-  - Applied `width: auto; aspect-ratio: 1365 / 1600;` on `.gativus-brain-img` in both [landing-home.css](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/assets/css/landing-home.css) and [HomeAboutDetail.vue](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/components/home/HomeAboutDetail.vue) to force Chrome to size the DOM element exactly to its visual bounds.
-  - Set `flex-wrap: nowrap;` on `.gativus-card-image` on desktop, restoring `flex-wrap: wrap !important` only on mobile.
-  - Added `-15px` horizontal margins to the SVG container boundaries so the arrowheads overlap the transparent borders of the brain PNG, pointing exactly to the brain graphic.
+#### 4. Оптимизация отрисовки в Firefox (Статические градиенты)
+- **Проблема**: Анимация сдвига градиентного текста (`background-clip: text` со смещением `background-position`) приводила к высокой нагрузке на процессор и лагам интерфейса в Firefox.
+- **Решение**: Убрали анимацию `gv-shine` из `.gv-hero-gradient` в [app.vue](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/app.vue), сделав градиент статичным и высокопроизводительным.
 
-### 5. Arrow & Decorator Opacity Adjustments
-- **Problem**: Header line decorators and the down-arrows were previously grouped in a low-opacity rule (`opacity: 0.08`), making them virtually invisible.
-- **Solution**: Grouped `.home-h2::before`, `.home-h2::after`, `.home-title::before`, `.home-title::after`, and `.home-header-arrow` to share a highly visible, elegant `opacity: 0.6 !important` styling.
+#### 5. Фильтрация дублирующихся аббревиатур в заголовках
+- **Проблема**: Названия карточек дублировали текст бейджа, например, «GTOM (Gativus Theory of Mind)» отображалось рядом с бейджем «GTOM».
+- **Решение**: Добавили функцию очистки `cleanCardTitle` в [LandingBlockHero.vue](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/components/landing/LandingBlockHero.vue) и [LandingBlockCardRow.vue](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/components/landing/LandingBlockCardRow.vue), которая автоматически удаляет аббревиатуру и скобки из заголовка, если она совпадает с текстом бейджа.
 
-### 6. About Intro Customization
-- **Problem**: The introduction text under the Architecture header had a hardcoded default fallback. If the fields were left empty in the database, the fallback text still rendered, making it impossible to hide the intro.
-- **Solution**: Removed `fallback.value.detailIntro` from the `detailIntro` computed key in [HomeAboutDetail.vue](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/components/home/HomeAboutDetail.vue). The block now falls back to an empty string (`''`), allowing administrators to hide the intro block by clearing the description in the database.
+#### 6. Быстрый и плавный скролл при навигации
+- **Проблема**: Стандартная плавная прокрутка браузера казалась слишком медленной и неотзывчивой.
+- **Решение**: Реализовали собственную функцию прокрутки через `requestAnimationFrame` с быстрым сглаживанием кубического безье (длительность 300мс) в [pages/index.vue](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/pages/index.vue).
 
 ---
 
-## Technical Recommendations & Lessons Learned
-1. **Flexbox Image Constraints in Chrome**: When using `height` and `object-fit: contain` on images inside a flex row, always declare `width: auto` and an explicit `aspect-ratio` to prevent Chrome from inflating the element's flex-basis to its raw intrinsic width.
-2. **Falsy Fallback Pitfalls**: Avoid using the `||` operator for optional fields that can be cleared by the user. Prefer nullish coalescing `??` or explicit `undefined`/`null` checks to allow empty strings (`""`) to be respected instead of being overridden by default text.
-3. **SVG Stacking Contexts**: Absolute elements inside components without a defined stacking context can fall behind adjacent flex siblings. Explicitly define `position: relative` and `z-index` on parents to keep SVG lines and markers visible over container backgrounds.
+## Сессия 1: Выравнивание макета, мобильная адаптивность и интеграция SVG-стрелок
+
+### Контекст и обзор
+В этой сессии мы выполнили редизайн и адаптацию главной страницы (landing page) Gativus. Это включало исправление выравнивания текстов, устранение переполнения макета на мобильных устройствах, реализацию динамических SVG-соединителей для диаграммы мозга, восстановление видимости стрелок и удаление жестко закодированных локальных текстов-заглушек для передачи полного управления содержимым через базу данных и панель администратора.
+
+### Основные достижения и решения
+
+#### 1. Выравнивание текста по левому краю и очистка отступов
+- **Проблема**: Абзацы текста, описания и сводки разделов использовали выравнивание по ширине (`text-align: justify`) и красную строку (`text-indent: 47px`), что создавало некрасивые пустоты и сдвиги на экранах разной ширины. Карточки также имели двойные отступы (`margin-bottom: 3rem` вместе с `gap` контейнера).
+- **Решение**:
+  - В файле [landing-home.css](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/assets/css/landing-home.css) принудительно задали `text-align: left !important` and `text-indent: 0 !important` для классов `.home-sub`, `.home-about-intro`, `.home-about-p`, `.gativus-card-subtitle` и `.home-pillar-desc`.
+  - Убрали `margin-bottom: 3rem;` у классов `.home-about-card` и `.gv-surface-card`, передав управление вертикальными интервалами общему свойству `gap` контейнера.
+
+#### 2. Адаптивность для мобильных устройств
+- **Переполнение блока Hero**: На узких экранах логотип и заголовок в шапке (`.home-hero-header`) выстраивались в ряд и выходили за пределы экрана. Добавили медиа-запрос для экранов `<640px` в [LandingBlockHero.vue](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/components/landing/LandingBlockHero.vue), переводящий шапку в режим `flex-direction: column` с центрированием всех элементов.
+- **Выход за границы заголовков (`.home-h2`)**: Декоративные линии по бокам заголовков и широкое межбуквенное расстояние (`6px`) деформировали макет на мобильных телефонах. В [landing-home.css](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/assets/css/landing-home.css) скрыли псевдоэлементы `::before` и `::after`, уменьшили `letter-spacing` до `2px` и уменьшили размер шрифта через `clamp`.
+- **Внутренние отступы**: Уменьшили боковые отступы у блока призыва к действию (`.home-cta`) и карточки Манифеста (`.home-manifest`) до `1.25rem` на мобильных экранах.
+
+#### 3. Динамические SVG-стрелки (Диаграмма мозга)
+- **Проблема**: Оригинальные стрелки, указывающие от карточек «Сознание» (Consciousness) и «Нейросеть» (Neural Network) к центральному изображению мозга, были сделаны в виде абсолютных CSS-треугольников. При изменении размера окна карточки сдвигались, а стрелки зависали в воздухе или налезали на картинку. На мобильных устройствах они пропадали.
+- **Решение**:
+  - Заменили CSS-рамки гибкими встроенными SVG-элементами в шаблоне [HomeAboutDetail.vue](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/components/home/HomeAboutDetail.vue).
+  - На настольных компьютерах используется изогнутая линия (`Q 50 25`) со специальным маркером наконечника `marker-end`, указывающая точно на границы мозга. Блоки растягиваются динамически, заполняя расстояние.
+  - На мобильных устройствах (`<768px`) линии меняются на вертикальные (`L`), указывающие сверху вниз (от верхней карточки к мозгу) и снизу вверх (от нижней карточки к мозгу).
+  - Свойства обводки и заливки установили в `currentColor`, чтобы они автоматически адаптировались под темную/светлую тему.
+
+#### 4. Ошибка размеров изображений в Chrome и перенос карточек
+- **Проблема**: Браузер Chrome некорректно рассчитывал ширину элемента `.gativus-brain-img` при отсутствии жестких границ, из-за чего правая карточка переносилась вниз даже на широких экранах.
+- **Решение**:
+  - Прописали `width: auto; aspect-ratio: 1365 / 1600;` для класса `.gativus-brain-img` в [landing-home.css](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/assets/css/landing-home.css) и [HomeAboutDetail.vue](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/components/home/HomeAboutDetail.vue), чтобы Chrome корректно вычислял физические пропорции изображения.
+  - Установили свойство `flex-wrap: nowrap;` для родительского `.gativus-card-image` на десктопах, разрешая перенос (`wrap`) только на мобильных экранах.
+  - Добавили отрицательный внешний отступ `-15px` для контейнеров SVG, чтобы стрелки накладывались поверх прозрачных краев картинки мозга, указывая точно на графическую часть.
+
+#### 5. Корректировка видимости стрелок и декораторов
+- **Проблема**: Декоративные линии заголовков и стрелки навигации имели слишком низкую прозрачность (`opacity: 0.08`), из-за чего сливались с фоном и были невидимы.
+- **Решение**: Сгруппировали классы `.home-h2::before`, `.home-h2::after`, `.home-title::before`, `.home-title::after` и `.home-header-arrow` в единое правило со стильным полупрозрачным значением `opacity: 0.6 !important`.
+
+#### 6. Настройка отображения вступления раздела "О проекте"
+- **Проблема**: Введение под заголовком архитектуры имело жестко прописанный в коде текст по умолчанию. Даже если поля в админ-панели были очищены, этот текст все равно выводился.
+- **Решение**: Удалили значение по умолчанию `fallback.value.detailIntro` из вычисляемого свойства `detailIntro` в [HomeAboutDetail.vue](file:///c:/Users/sv653/Desktop/coding/gativus-wiki-nuxt/components/home/HomeAboutDetail.vue). Теперь при пустых значениях в базе данных выводится пустая строка (`''`), что позволяет полностью скрывать блок вступления.
+
+---
+
+## Технические рекомендации и извлеченные уроки
+1. **Ограничения Flexbox для изображений в Chrome**: При использовании `height` и `object-fit: contain` для картинок внутри flex-строки всегда указывайте `width: auto` и точное соотношение сторон `aspect-ratio`. Это предотвратит раздувание Chrome исходной ширины элемента.
+2. **Опасность использования оператора ИЛИ (`||`) для пустых значений**: Не используйте `||` для полей, которые пользователь может стереть в базе данных. Пользуйтесь оператором нулевого слияния `??` или явной проверкой на `undefined`/`null`, чтобы пустая строка (`""`) сохранялась, а не перебивалась стандартным текстом.
+3. **Контекст наложения SVG (Stacking Context)**: Абсолютно позиционированные элементы внутри компонентов без явного слоя наложения могут уходить под соседние flex-блоки. Всегда задавайте `position: relative` и `z-index` родительским блокам, чтобы SVG-линии отображались поверх фонов.
