@@ -162,6 +162,7 @@ const navItems: NavItem[] = [
   { label: 'Категории', icon: 'i-heroicons-folder', to: '/admin/categories' },
   { label: 'Пользователи', icon: 'i-heroicons-users', to: '/admin/users' },
   { label: 'Синхронизация', icon: 'i-heroicons-cloud', to: '/admin/sync' },
+  { label: 'Файлы', icon: 'i-heroicons-folder-open', to: '/admin/files' },
 ]
 
 const pageTitle = computed(() => {
