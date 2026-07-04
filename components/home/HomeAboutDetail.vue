@@ -695,7 +695,7 @@ const uiDict: Record<Lang, AboutStrings> = {
   border-radius: 9px;
   box-shadow: var(--gv-shadow-sm);
   border: 1px solid var(--gv-border-subtle);
-  font-family: 'Poppins', sans-serif;
+  font-family: "Gill Sans", system-ui, -apple-system, sans-serif;
   font-size: 14px;
   font-weight: 500;
   color: var(--gv-text-primary);

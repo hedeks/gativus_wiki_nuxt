@@ -132,7 +132,7 @@ const langStore = useLanguageStore()
 
 .home-wiki-label {
   display: block;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Gill Sans", system-ui, -apple-system, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: var(--gv-text-primary);
