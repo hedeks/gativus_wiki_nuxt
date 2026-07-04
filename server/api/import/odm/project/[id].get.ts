@@ -33,14 +33,57 @@ async function enrichPartsWithPublishState(
     }
     const ph = ids.map(() => '?').join(',')
     const rows = await db.prepare(`
-      SELECT is_published, html_content, html_content_ru, html_content_zh 
+      SELECT id, is_published, title, title_ru, title_zh, html_content, html_content_ru, html_content_zh 
       FROM articles WHERE id IN (${ph})
     `).all(...ids) as { 
+      id: number
       is_published: number 
+      title: string | null
+      title_ru: string | null
+      title_zh: string | null
       html_content: string | null
       html_content_ru: string | null
       html_content_zh: string | null
     }[]
+
+    // Валидация скелета: если часть привязанных статей была удалена из БД
+    if (rows.length !== ids.length) {
+      if (rows.length === 0) {
+        // Ни одна статья больше не существует - сбрасываем главу
+        await db.prepare(`
+          UPDATE odm_project_parts 
+          SET status = 'pending', imported_article_ids = NULL,
+              odt_storage_path = NULL, odt_storage_path_ru = NULL, odt_storage_path_zh = NULL,
+              odt_original_name = NULL, odt_original_name_ru = NULL, odt_original_name_zh = NULL,
+              updated_at = datetime('now')
+          WHERE id = ?
+        `).run(p.id)
+        
+        p.status = 'pending'
+        p.imported_article_ids = null
+        p.odt_storage_path = null
+        p.odt_storage_path_ru = null
+        p.odt_storage_path_zh = null
+        p.odt_original_name = null
+        p.odt_original_name_ru = null
+        p.odt_original_name_zh = null
+        p.articles_publish = null
+        p.has_translation_en = false
+        p.has_translation_ru = false
+        p.has_translation_zh = false
+        continue
+      } else {
+        // Часть статей была удалена - обновляем список IDs в БД
+        const activeIds = rows.map(r => r.id)
+        const updatedIdsJson = JSON.stringify(activeIds)
+        await db.prepare(`
+          UPDATE odm_project_parts 
+          SET imported_article_ids = ?, updated_at = datetime('now') 
+          WHERE id = ?
+        `).run(updatedIdsJson, p.id)
+        p.imported_article_ids = updatedIdsJson
+      }
+    }
 
     const n = rows.length
     const pub = rows.filter(r => r.is_published).length
@@ -54,6 +97,16 @@ async function enrichPartsWithPublishState(
     p.has_translation_en = rows.every(r => r.html_content && r.html_content.trim() !== '')
     p.has_translation_ru = rows.every(r => r.html_content_ru && r.html_content_ru.trim() !== '')
     p.has_translation_zh = rows.every(r => r.html_content_zh && r.html_content_zh.trim() !== '')
+
+    // Fallback to article titles if missing in the project part
+    if (rows.length > 0) {
+      if ((p.display_title == null || String(p.display_title).trim() === '') && rows[0].title)
+        p.display_title = rows[0].title
+      if ((p.display_title_ru == null || String(p.display_title_ru).trim() === '') && rows[0].title_ru)
+        p.display_title_ru = rows[0].title_ru
+      if ((p.display_title_zh == null || String(p.display_title_zh).trim() === '') && rows[0].title_zh)
+        p.display_title_zh = rows[0].title_zh
+    }
   }
 }
 

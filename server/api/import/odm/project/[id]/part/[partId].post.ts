@@ -173,12 +173,8 @@ export default defineEventHandler(async (event) => {
 
   const buf = Buffer.from(fileField.data.buffer, fileField.data.byteOffset, fileField.data.byteLength)
 
-  const odtDir = join(process.cwd(), 'server', 'storage', 'odt')
-  if (!existsSync(odtDir))
-    mkdirSync(odtDir, { recursive: true })
   const originalName = fileField.filename || 'chapter.odt'
-  const odtPath = join(odtDir, `${Date.now()}-odm${projectId}-p${partId}-${lang}-${originalName}`)
-  writeFileSync(odtPath, buf as any)
+  const odtPath: string | null = null
 
   try {
     const fileLocale: OdtContentLocale = lang

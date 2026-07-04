@@ -55,15 +55,7 @@ export default defineEventHandler(async (event) => {
       articles = splitIntoArticles(parsed.fullHtml, shiftedSplitLevel as 'h1' | 'h2' | 'h3')
     }
 
-    // 3. Save original ODT file
-    const odtStorageDir = join(process.cwd(), 'server', 'storage', 'odt')
-    if (!existsSync(odtStorageDir)) {
-      mkdirSync(odtStorageDir, { recursive: true })
-    }
-    const originalFileName = fileField.filename || 'imported.odt'
-    const odtFileName = `${Date.now()}-${originalFileName}`
-    const odtPath = join(odtStorageDir, odtFileName)
-    writeFileSync(odtPath, new Uint8Array(fileField.data.buffer, fileField.data.byteOffset, fileField.data.byteLength))
+    const odtPath: string | null = null
 
     // 4. Get current max sort_order for the book
     let maxSortOrder = 0

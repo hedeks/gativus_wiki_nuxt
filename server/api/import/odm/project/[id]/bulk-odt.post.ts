@@ -187,8 +187,7 @@ export default defineEventHandler(async (event) => {
 
     const buf = Buffer.from(fileField.data.buffer, fileField.data.byteOffset, fileField.data.byteLength)
     const originalName = fileField.filename || 'chapter.odt'
-    const odtPath = join(odtDir, `${Date.now()}-bulk-p${part.id}-${lang}-${originalName}`)
-    writeFileSync(odtPath, buf as any)
+    const odtPath: string | null = null
 
     const fileLocale: OdtContentLocale = lang
     const headingLocale = headingLocaleOverride || (lang as HeadingLocale)
