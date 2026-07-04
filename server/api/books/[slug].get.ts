@@ -62,7 +62,7 @@ export default defineEventHandler(async (event) => {
                   SELECT 1 
                   FROM json_each(p.imported_article_ids) je
                   LEFT JOIN articles a ON a.id = je.value
-                  WHERE a.id IS NULL OR a.html_content IS NULL OR a.html_content = ''
+                  WHERE a.id IS NULL OR COALESCE(a.translation_valid_en, 1) = 0
                 ) THEN 1
                 ELSE 0 
               END
@@ -83,7 +83,7 @@ export default defineEventHandler(async (event) => {
                   SELECT 1 
                   FROM json_each(p.imported_article_ids) je
                   LEFT JOIN articles a ON a.id = je.value
-                  WHERE a.id IS NULL OR a.html_content_ru IS NULL OR a.html_content_ru = ''
+                  WHERE a.id IS NULL OR COALESCE(a.translation_valid_ru, 0) = 0
                 ) THEN 1
                 ELSE 0 
               END
@@ -104,7 +104,7 @@ export default defineEventHandler(async (event) => {
                   SELECT 1 
                   FROM json_each(p.imported_article_ids) je
                   LEFT JOIN articles a ON a.id = je.value
-                  WHERE a.id IS NULL OR a.html_content_zh IS NULL OR a.html_content_zh = ''
+                  WHERE a.id IS NULL OR COALESCE(a.translation_valid_zh, 0) = 0
                 ) THEN 1
                 ELSE 0 
               END

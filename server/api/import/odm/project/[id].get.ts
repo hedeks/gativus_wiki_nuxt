@@ -33,7 +33,8 @@ async function enrichPartsWithPublishState(
     }
     const ph = ids.map(() => '?').join(',')
     const rows = await db.prepare(`
-      SELECT id, is_published, title, title_ru, title_zh, html_content, html_content_ru, html_content_zh 
+      SELECT id, is_published, title, title_ru, title_zh, html_content, html_content_ru, html_content_zh,
+             translation_valid_en, translation_valid_ru, translation_valid_zh
       FROM articles WHERE id IN (${ph})
     `).all(...ids) as { 
       id: number
@@ -44,6 +45,9 @@ async function enrichPartsWithPublishState(
       html_content: string | null
       html_content_ru: string | null
       html_content_zh: string | null
+      translation_valid_en: number | null
+      translation_valid_ru: number | null
+      translation_valid_zh: number | null
     }[]
 
     // Валидация скелета: если часть привязанных статей была удалена из БД
@@ -94,9 +98,9 @@ async function enrichPartsWithPublishState(
     else
       p.articles_publish = 'mixed'
 
-    p.has_translation_en = rows.every(r => r.html_content && r.html_content.trim() !== '')
-    p.has_translation_ru = rows.every(r => r.html_content_ru && r.html_content_ru.trim() !== '')
-    p.has_translation_zh = rows.every(r => r.html_content_zh && r.html_content_zh.trim() !== '')
+    p.has_translation_en = rows.every(r => r.translation_valid_en !== null && r.translation_valid_en !== undefined ? Boolean(r.translation_valid_en) : true)
+    p.has_translation_ru = rows.every(r => Boolean(r.translation_valid_ru))
+    p.has_translation_zh = rows.every(r => Boolean(r.translation_valid_zh))
 
     // Fallback to article titles if missing in the project part
     if (rows.length > 0) {
