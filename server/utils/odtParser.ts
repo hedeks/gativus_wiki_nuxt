@@ -149,7 +149,8 @@ export async function parseOdtBuffer(
 
   const imageMap = new Map(images.map(img => [img.originalPath, img.savedPath]))
   const ctx: ConvertCtx = { styles, listStyles, numbering, imageMap, contentLocale, usedIds: new Map() }
-  const fullHtml = convertChildren(textNode, ctx)
+  const rawHtml = convertChildren(textNode, ctx)
+  const fullHtml = processFigurePlaceholders(rawHtml, images)
 
   return {
     fullHtml,
@@ -986,9 +987,26 @@ export function stripTitleIndexing(title: string): string {
  */
 export function extractFirstHeading(html: string): string | null {
   const match = html.match(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/i)
-  if (!match) return null
-  const cleanContent = match[1].replace(/<span[^>]*\bodt-heading-marker\b[^>]*>[\s\S]*?<\/span>/gi, '')
-  return stripTitleIndexing(stripHtml(cleanContent).trim())
+  if (match) {
+    const cleanContent = match[1].replace(/<span[^>]*\bodt-heading-marker\b[^>]*>[\s\S]*?<\/span>/gi, '')
+    return stripTitleIndexing(stripHtml(cleanContent).trim())
+  }
+
+  // Fallback: extract from the first non-empty short paragraph (<p> or <div>) that is less than 150 chars
+  const pMatches = html.matchAll(/<(p|div)[^>]*>(.*?)<\/1>/gi)
+  for (const pMatch of pMatches) {
+    const text = stripHtml(pMatch[2]).trim()
+    if (text && text.length > 0 && text.length < 150) {
+      // Exclude common figure captions, footnotes, or placeholders
+      const lower = text.toLowerCase()
+      if (lower.startsWith('[') || lower.startsWith('figure') || lower.startsWith('рисунок') || lower.startsWith('fig.') || lower.startsWith('рис.')) {
+        continue
+      }
+      return stripTitleIndexing(text)
+    }
+  }
+
+  return null
 }
 
 function renderSingleDrawNode(
@@ -1261,4 +1279,49 @@ function convertUnit(value: string): string {
     return `${Math.round(inch * 96)}px`
   }
   return value
+}
+
+/**
+ * Parses and replaces figure placeholders [ INSERT FIGURE N: Description ] with a proper image tag
+ * and a sanitized caption <p><strong>FIGURE N: Description</strong></p>.
+ */
+export function processFigurePlaceholders(html: string, images: { savedPath: string }[]): string {
+  let cleanHtml = html
+
+  // 1. Find all figure numbers mentioned in [ INSERT FIGURE N: ... ]
+  const placeholderRegex = /\[\s*INSERT\s+FIGURE\s+(\d+)\s*[\:\-–—]?\s*.*?\s*\]/gi
+  const matches = [...html.matchAll(placeholderRegex)]
+  
+  // Remove original <img> tags for images that are associated with placeholders to avoid duplication
+  for (const match of matches) {
+    const figNum = parseInt(match[1], 10)
+    const imgIndex = figNum - 1
+    const img = images[imgIndex]
+    if (img) {
+      const src = img.savedPath
+      const escapedSrc = src.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+      const imgRegex = new RegExp(`<img[^>]*src=["']${escapedSrc}["'][^>]*>`, 'gi')
+      cleanHtml = cleanHtml.replace(imgRegex, '')
+    }
+  }
+
+  // 2. Replace placeholders with figure tags and clean captions
+  const blockRegex = /<(p|blockquote)[^>]*>\s*(?:<strong>\s*)?\[\s*INSERT\s+FIGURE\s+(\d+)\s*[\:\-–—]?\s*(.*?)\s*\](?:\s*<\/strong>)?\s*<\/\1>/gi
+  
+  cleanHtml = cleanHtml.replace(blockRegex, (match, tag, figNumStr, description) => {
+    const figNum = parseInt(figNumStr, 10)
+    const imgIndex = figNum - 1
+    const img = images[imgIndex]
+    
+    // Clean any trailing dots, spaces, or closing braces/brackets inside description
+    let cleanDesc = description.trim()
+    
+    if (img) {
+      return `<img src="${img.savedPath}" alt="" />\n<${tag}><strong>FIGURE ${figNum}: ${cleanDesc}</strong></${tag}>`
+    } else {
+      return `<${tag}><strong>FIGURE ${figNum}: ${cleanDesc}</strong></${tag}>`
+    }
+  })
+
+  return cleanHtml
 }

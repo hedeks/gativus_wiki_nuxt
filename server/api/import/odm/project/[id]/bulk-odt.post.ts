@@ -68,6 +68,18 @@ export default defineEventHandler(async (event) => {
   const rawCs = csField ? parseInt(csField.data.toString('utf-8').trim()) : 1
   const chapterStart = Number.isFinite(rawCs) && rawCs >= 1 ? rawCs : 1
 
+  const mappingsField = formData.find(f => f.name === 'mappings')
+  const mappingsRaw = mappingsField ? mappingsField.data.toString('utf-8') : null
+  let mappings: { filename: string; partId: number; lang: Lang }[] | null = null
+  if (mappingsRaw) {
+    try {
+      mappings = JSON.parse(mappingsRaw)
+      console.log('[Bulk ODT] Mappings successfully parsed:', mappings)
+    } catch (e: any) {
+      console.error('[Bulk ODT] Error parsing mappings JSON:', mappingsRaw, e)
+    }
+  }
+
   // Part index → chapter number map
   const partChapterNum = new Map<number, number>()
 
@@ -102,36 +114,74 @@ export default defineEventHandler(async (event) => {
   const filesToProcess: { file: typeof odtFields[0]; part: typeof allParts[0]; lang: Lang }[] = []
   const skippedFiles: { filename: string; reason: string }[] = []
 
+  console.log('[Bulk ODT] Total ODT files to match:', odtFields.map(f => f.filename))
+  console.log('[Bulk ODT] Active parts structure in DB:', allParts.map(p => ({ id: p.id, sort_order: p.sort_order, display_title: p.display_title, status: p.status })))
+
   for (const file of odtFields) {
     const fileBn = basename(file.filename || '').toLowerCase()
     let matchedPart: typeof allParts[0] | null = null
     let matchedLang: Lang | null = null
 
-    for (const p of allParts) {
-      const bnEn = p.master_href_en ? basenameOf(p.master_href_en) : null
-      const bnRu = p.master_href_ru ? basenameOf(p.master_href_ru) : null
-      const bnZh = p.master_href_zh ? basenameOf(p.master_href_zh) : null
+    // 0. Попытка сопоставить по ручной карте mappings (если передана)
+    if (mappings) {
+      const match = mappings.find(m => m.filename.toLowerCase() === (file.filename || '').toLowerCase())
+      if (match) {
+        matchedPart = allParts.find(p => p.id === Number(match.partId))
+        matchedLang = match.lang
+        console.log(`[Bulk ODT] File ${file.filename} matched via manual mappings to partId: ${match.partId}, lang: ${match.lang}`)
+      }
+    }
 
-      if (bnEn && bnEn === fileBn) {
-        matchedPart = p
-        matchedLang = 'en'
-        break
+    // 1. Попытка точного соответствия по имени из ODM
+    if (!matchedPart) {
+      for (const p of allParts) {
+        const bnEn = p.master_href_en ? basenameOf(p.master_href_en) : null
+        const bnRu = p.master_href_ru ? basenameOf(p.master_href_ru) : null
+        const bnZh = p.master_href_zh ? basenameOf(p.master_href_zh) : null
+
+        if (bnEn && (bnEn === fileBn || fileBn === `${bnEn.replace(/\.odt$/, '')}_en.odt` || fileBn === `${bnEn.replace(/\.odt$/, '')}.en.odt`)) {
+          matchedPart = p
+          matchedLang = 'en'
+          break
+        }
+        if (bnRu && (bnRu === fileBn || fileBn === `${bnRu.replace(/\.odt$/, '')}_ru.odt` || fileBn === `${bnRu.replace(/\.odt$/, '')}.ru.odt` || fileBn.includes('_ru') || fileBn.includes('.ru.'))) {
+          matchedPart = p
+          matchedLang = 'ru'
+          break
+        }
+        if (bnZh && (bnZh === fileBn || fileBn === `${bnZh.replace(/\.odt$/, '')}_zh.odt` || fileBn === `${bnZh.replace(/\.odt$/, '')}.zh.odt` || fileBn.includes('_zh') || fileBn.includes('.zh.'))) {
+          matchedPart = p
+          matchedLang = 'zh'
+          break
+        }
       }
-      if (bnRu && bnRu === fileBn) {
-        matchedPart = p
-        matchedLang = 'ru'
-        break
+      if (matchedPart) {
+        console.log(`[Bulk ODT] File ${file.filename} matched via ODM filename to partId: ${matchedPart.id}, lang: ${matchedLang}`)
       }
-      if (bnZh && bnZh === fileBn) {
-        matchedPart = p
-        matchedLang = 'zh'
-        break
+    }
+
+    // 2. Позиционный fallback по номеру из названия файла
+    if (!matchedPart) {
+      const numMatch = fileBn.match(/\d+/)
+      if (numMatch) {
+        const order = parseInt(numMatch[0])
+        const found = allParts.find(p => p.sort_order === order)
+        if (found) {
+          matchedPart = found
+          matchedLang = (fileBn.includes('ru') || fileBn.includes('rus'))
+            ? 'ru'
+            : (fileBn.includes('zh') || fileBn.includes('chi') || fileBn.includes('cn'))
+              ? 'zh'
+              : 'en'
+          console.log(`[Bulk ODT] File ${file.filename} matched via sort_order fallback to partId: ${matchedPart.id}, lang: ${matchedLang}`)
+        }
       }
     }
 
     if (matchedPart && matchedLang) {
       filesToProcess.push({ file, part: matchedPart, lang: matchedLang })
     } else {
+      console.warn(`[Bulk ODT] File skipped - no match found in DB structure: ${file.filename}`)
       skippedFiles.push({
         filename: file.filename || 'unknown',
         reason: 'Имя файла не найдено в структуре ODM проекта',
@@ -180,10 +230,7 @@ export default defineEventHandler(async (event) => {
 
     if (!part) continue
 
-    if (lang !== 'en' && String(part.status) === 'pending') {
-      results.push({ partId: part.id, sortOrder: part.sort_order, lang, status: 'skipped', error: 'Сначала импортируйте EN версию слота' })
-      continue
-    }
+    // Allow RU/ZH even if EN is not imported yet
 
     const buf = Buffer.from(fileField.data.buffer, fileField.data.byteOffset, fileField.data.byteLength)
     const originalName = fileField.filename || 'chapter.odt'
@@ -249,6 +296,7 @@ export default defineEventHandler(async (event) => {
               `UPDATE articles SET
                 ${col} = ?,
                 ${exCol} = ?,
+                translation_valid_${lang} = 1,
                 ${displayTitleLocal ? `${titleCol} = ?, ${slugCol} = ?,` : ''}
                 updated_at = datetime('now')
                WHERE id = ?`,
@@ -289,7 +337,7 @@ export default defineEventHandler(async (event) => {
                  WHERE id = ?`,
               ).run(articleTitle, slugify(articleTitle), html, ex, articleIds[i])
             } else {
-              const displayTitleSub = isFirst ? displayTitleLocal : null
+              const displayTitleSub = isFirst ? displayTitleLocal : subArticles[i].title
               let slugVal: string | null = null
               if (displayTitleSub) {
                 slugVal = await ensureUniqueArticleAnySlug(db, slugify(displayTitleSub))
@@ -298,6 +346,7 @@ export default defineEventHandler(async (event) => {
                 `UPDATE articles SET
                   ${col} = ?,
                   ${exCol} = ?,
+                  translation_valid_${lang} = 1,
                   ${displayTitleSub ? `${titleCol} = ?, ${slugCol} = ?,` : ''}
                   updated_at = datetime('now')
                  WHERE id = ?`,
@@ -346,19 +395,20 @@ export default defineEventHandler(async (event) => {
 
         results.push({ partId: part.id, sortOrder: part.sort_order, lang, status: 'updated', articleIds })
       }
-      else if (String(part.status) === 'pending' && lang === 'en') {
-        // ─── Создаём статьи (только EN) ───
+      else if (String(part.status) === 'pending' || String(part.status) === 'error') {
+        // ─── Создаём статьи (для любого языка) ───
         const sortOrder = Number(part.sort_order)
         const parsed = await parseOdtBuffer(buf, { subDir: 'articles', numberingState, contentLocale: fileLocale })
 
         const titleEnOdt = extractFirstHeading(parsed.fullHtml)
-        const titleEn = titleEnOdt || String(part.display_title || '').trim() || defaultOdmChapterTitle(sortOrder, fileLocale)
+        const titleEn = titleEnOdt || String(part.display_title || '').trim() || defaultOdmChapterTitle(sortOrder, 'en')
         const titleRu = part.display_title_ru ? String(part.display_title_ru).trim() || null : null
         const titleZh = part.display_title_zh ? String(part.display_title_zh).trim() || null : null
+        const titleLocal = titleEnOdt || (lang === 'ru' ? titleRu : (lang === 'zh' ? titleZh : null)) || defaultOdmChapterTitle(sortOrder, lang)
 
         let articles: ReturnType<typeof splitIntoArticles>
         if (splitLevel === 'none') {
-          const title = extractFirstHeading(parsed.fullHtml) || titleEn
+          const title = titleEnOdt || titleLocal
           articles = [{ title, slug: slugify(title), html: parsed.fullHtml, excerpt: generateExcerpt(parsed.fullHtml) }]
         }
         else {
@@ -366,8 +416,14 @@ export default defineEventHandler(async (event) => {
           articles = splitIntoArticles(parsed.fullHtml, shifted as 'h2' | 'h3')
         }
 
-        if (articles.length > 0)
-          articles[0] = { ...articles[0], title: titleEn, slug: slugify(titleEn) }
+        if (articles.length > 0) {
+          const first = articles[0]
+          articles[0] = {
+            ...first,
+            title: lang === 'en' ? titleEn : first.title,
+            slug: slugify(lang === 'en' ? titleEn : first.title)
+          }
+        }
 
         let maxSortOrder = 0
         const maxResult = await db.prepare(
@@ -380,42 +436,62 @@ export default defineEventHandler(async (event) => {
         for (let i = 0; i < articles.length; i++) {
           const article = articles[i]
           const isFirst = i === 0
-          const insTitle = isFirst ? titleEn : article.title
-          const insTitleRu = isFirst ? titleRu : null
-          const insTitleZh = isFirst ? titleZh : null
-
-          const slug = await ensureUniqueArticleAnySlug(db, slugify(isFirst ? titleEn : article.title))
-          let slugRu: string | null = null
-          let slugZh: string | null = null
-          if (isFirst && insTitleRu) slugRu = await ensureUniqueArticleAnySlug(db, slugify(insTitleRu))
-          if (isFirst && insTitleZh) slugZh = await ensureUniqueArticleAnySlug(db, slugify(insTitleZh))
 
           const articleSortOrder = maxSortOrder + sortOrder * 100 + i + 1
-          let processedHtml = linkTermsInHtml(article.html, termsMaps.en).html
+          let processedHtml = linkTermsInHtml(article.html, lang === 'en' ? termsMaps.en : (lang === 'ru' ? termsMaps.ru : termsMaps.zh)).html
           if (headingLocale) processedHtml = reindexHeadingMarkers(processedHtml, chapterNum, headingLocale).html
           const excerpt = generateExcerpt(processedHtml)
 
-          // html_content всегда заполняем (первичный контент)
-          const htmlRu = null
-          const htmlZh = null
-          const exRu = null
-          const exZh = null
+          // Determine titles and slugs
+          let baseTitle = isFirst ? titleEn : `Subchapter ${i + 1}`
+          let baseSlug = await ensureUniqueArticleAnySlug(db, slugify(baseTitle))
+
+          let insTitleRu: string | null = null
+          let insSlugRu: string | null = null
+          let insHtmlRu: string | null = null
+          let insExRu: string | null = null
+
+          let insTitleZh: string | null = null
+          let insSlugZh: string | null = null
+          let insHtmlZh: string | null = null
+          let insExZh: string | null = null
+
+          if (lang === 'en') {
+            baseTitle = isFirst ? titleEn : article.title
+            baseSlug = await ensureUniqueArticleAnySlug(db, slugify(baseTitle))
+          } else if (lang === 'ru') {
+            insTitleRu = isFirst ? titleLocal : article.title
+            insSlugRu = await ensureUniqueArticleAnySlug(db, slugify(insTitleRu))
+            insHtmlRu = processedHtml
+            insExRu = excerpt
+          } else if (lang === 'zh') {
+            insTitleZh = isFirst ? titleLocal : article.title
+            insSlugZh = await ensureUniqueArticleAnySlug(db, slugify(insTitleZh))
+            insHtmlZh = processedHtml
+            insExZh = excerpt
+          }
+
+          const baseHtml = lang === 'en' ? processedHtml : ''
+          const baseExcerpt = lang === 'en' ? excerpt : ''
 
           await db.prepare(`
             INSERT INTO articles (slug, slug_ru, slug_zh, title, title_ru, title_zh,
               html_content, html_content_ru, html_content_zh,
               raw_odt_path, book_id, category_id, sort_order,
-              excerpt, excerpt_ru, excerpt_zh, created_by, is_published)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+              excerpt, excerpt_ru, excerpt_zh, created_by, is_published,
+              translation_valid_ru, translation_valid_zh)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
           `).run(
-            slug, slugRu, slugZh,
-            insTitle, insTitleRu, insTitleZh,
-            processedHtml, htmlRu, htmlZh,
+            baseSlug, insSlugRu, insSlugZh,
+            baseTitle, insTitleRu, insTitleZh,
+            baseHtml, insHtmlRu, insHtmlZh,
             odtPath,
             project.book_id, project.category_id,
             articleSortOrder,
-            excerpt, exRu, exZh,
+            baseExcerpt, insExRu, insExZh,
             auth.id,
+            lang === 'ru' ? 1 : 0,
+            lang === 'zh' ? 1 : 0
           )
 
           const inserted = await db.prepare('SELECT last_insert_rowid() as id').get() as { id: number }
@@ -430,28 +506,50 @@ export default defineEventHandler(async (event) => {
         }
 
         const outState = parsed.numberingState ? cloneNumberingState(parsed.numberingState) : { listCounters: {} }
-        carryNumberingState.en = outState
+        carryNumberingState[lang] = outState
+
+        const suffix = lang === 'en' ? '' : `_${lang}`
+        const colPath = `odt_storage_path${suffix}`
+        const colName = `odt_original_name${suffix}`
+        const colNumIn = `numbering_state_in_json${suffix}`
+        const colNumOut = `numbering_state_out_json${suffix}`
+        const displayTitleCol = lang === 'en' ? 'display_title' : (lang === 'ru' ? 'display_title_ru' : 'display_title_zh')
+        const finalDisplayTitle = lang === 'en' ? titleEn : titleLocal
 
         await db.prepare(`
           UPDATE odm_project_parts SET
-            odt_storage_path = ?,
-            odt_original_name = ?,
-            numbering_state_in_json = ?,
-            numbering_state_out_json = ?,
+            ${colPath} = ?,
+            ${colName} = ?,
+            ${colNumIn} = ?,
+            ${colNumOut} = ?,
             imported_article_ids = ?,
             status = 'imported',
-            display_title = ?,
+            display_title = COALESCE(display_title, ?),
+            ${finalDisplayTitle ? `${displayTitleCol} = ?,` : ''}
             updated_at = datetime('now')
           WHERE id = ?
-        `).run(odtPath, originalName, numberingStateInJson, JSON.stringify(outState), JSON.stringify(importedIds), titleEn, part.id)
+        `).run(
+          ...[
+            odtPath,
+            originalName,
+            numberingStateInJson,
+            JSON.stringify(outState),
+            JSON.stringify(importedIds),
+            defaultOdmChapterTitle(sortOrder, 'en'),
+            ...(finalDisplayTitle ? [finalDisplayTitle] : []),
+            part.id
+          ]
+        )
 
         results.push({ partId: part.id, sortOrder: part.sort_order, lang, status: 'created', articleIds: importedIds })
       }
       else {
+        console.warn(`[Bulk ODT] File skipped due to unsupported slot status: ${part.status} (partId: ${part.id})`)
         results.push({ partId: part.id, sortOrder: part.sort_order, lang, status: 'skipped', error: `Статус слота: ${part.status}` })
       }
     }
     catch (e: any) {
+      console.error('[Bulk ODT] Error processing file inside import loop:', item.file.filename, e)
       results.push({ partId: part.id, sortOrder: part.sort_order, lang, status: 'skipped', error: e?.message || 'Ошибка импорта' })
     }
   }

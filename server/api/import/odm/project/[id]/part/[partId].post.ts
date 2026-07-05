@@ -12,6 +12,7 @@ import { slugify, ensureUniqueArticleAnySlug } from '~/server/utils/slugify'
 import { requireRole } from '~/server/utils/requireRole'
 import { cascadeResetOdmSlotsFrom, cascadeResetOdmSlotsTranslationFrom, parseOdmImportedArticleIds } from '~/server/utils/odmSlotReset'
 import { buildTermsMaps, linkTermsInHtml, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
+import { reindexHeadingMarkers, type HeadingLocale } from '~/server/utils/reindexHeadingMarkers'
 
 function parseNumberingJson(raw: string | null): NumberingState | undefined {
   if (!raw) return undefined
@@ -138,19 +139,20 @@ export default defineEventHandler(async (event) => {
   if (!row)
     throw createError({ statusCode: 404, statusMessage: 'Слот не найден' })
 
-  if (lang === 'en' && String(row.status) !== 'pending') {
+  const isPendingOrError = String(row.status) === 'pending' || String(row.status) === 'error'
+
+  if (lang === 'en' && !isPendingOrError) {
     throw createError({
       statusCode: 400,
-      statusMessage: `Слот в состоянии «${row.status}». Для новой загрузки EN нужен статус «ожидание».`,
+      statusMessage: `Слот в состоянии «${row.status}». Для новой загрузки EN нужен статус «ожидание» или «ошибка».`,
     })
   }
 
-  if (lang !== 'en' && String(row.status) !== 'imported') {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Сначала необходимо загрузить английскую версию (EN .odt) для этой главы.',
-    })
-  }
+  const rawHl = query.heading_locale || formData?.find(f => f.name === 'heading_locale')?.data.toString('utf-8')
+  const headingLocaleOverride: HeadingLocale | null = (rawHl === 'ru' || rawHl === 'en' || rawHl === 'zh' || rawHl === 'none')
+    ? rawHl as HeadingLocale
+    : null
+  const headingLocale = headingLocaleOverride || (lang as HeadingLocale)
 
   const fileField = formData?.find(f => f.name === 'file')
   if (!fileField?.data)
@@ -161,7 +163,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Для слота нужен .odt (фрагмент книги)' })
 
   const sortOrder = Number(row.sort_order)
-  const stateCol = lang === 'en' ? 'numbering_state_out_json' : `numbering_state_out_json_${lang}`
+  const suffix = lang === 'en' ? '' : `_${lang}`
+  const stateCol = `numbering_state_out_json${suffix}`
   const prevRow = await db.prepare(`
     SELECT ${stateCol} as state_json FROM odm_project_parts
     WHERE project_id = ? AND sort_order < ? AND status = 'imported'
@@ -224,7 +227,7 @@ export default defineEventHandler(async (event) => {
       throw new Error('Проект ODM не привязан к книге — импорт слота невозможен')
     const categoryId = row.category_id != null ? Number(row.category_id) : null
 
-    if (lang === 'en') {
+    if (isPendingOrError) {
       let maxSortOrder = 0
       if (bookId) {
         const maxResult = await db.prepare(
@@ -236,44 +239,78 @@ export default defineEventHandler(async (event) => {
       const importedIds: number[] = []
       const termsMaps = await buildTermsMaps(db)
 
+      const titleOdt = extractFirstHeading(parsed.fullHtml)
+      const titleLocal = titleOdt || (lang === 'ru' ? titleRu : (lang === 'zh' ? titleZh : null)) || defaultOdmChapterTitle(sortOrder, lang)
+
       for (let i = 0; i < articles.length; i++) {
         const article = articles[i]
         const isFirst = i === 0
-        const insTitle = isFirst ? displayTitle : article.title
-        const insTitleRu = isFirst ? titleRu : null
-        const insTitleZh = isFirst ? titleZh : null
-
-        const basePrimary = slugify(isFirst ? displayTitle : article.title)
-        const slug = await ensureUniqueArticleAnySlug(db, basePrimary)
-
-        let slugRu: string | null = null
-        let slugZh: string | null = null
-        if (isFirst && insTitleRu)
-          slugRu = await ensureUniqueArticleAnySlug(db, slugify(insTitleRu))
-        if (isFirst && insTitleZh)
-          slugZh = await ensureUniqueArticleAnySlug(db, slugify(insTitleZh))
 
         const articleSortOrder = maxSortOrder + sortOrder * 100 + i + 1
-        const processedHtml = linkTermsInHtml(article.html, termsMaps.en).html
+        let processedHtml = linkTermsInHtml(article.html, lang === 'en' ? termsMaps.en : (lang === 'ru' ? termsMaps.ru : termsMaps.zh)).html
+        if (headingLocale) processedHtml = reindexHeadingMarkers(processedHtml, sortOrder, headingLocale).html
         const excerpt = generateExcerpt(processedHtml)
 
+        // Determine titles and slugs
+        let baseTitle = isFirst ? titleEn : `Subchapter ${i + 1}`
+        let baseSlug = await ensureUniqueArticleAnySlug(db, slugify(baseTitle))
+
+        let insTitleRu: string | null = null
+        let insSlugRu: string | null = null
+        let insHtmlRu: string | null = null
+        let insExRu: string | null = null
+
+        let insTitleZh: string | null = null
+        let insSlugZh: string | null = null
+        let insHtmlZh: string | null = null
+        let insExZh: string | null = null
+
+        if (lang === 'en') {
+          baseTitle = isFirst ? displayTitle : article.title
+          baseSlug = await ensureUniqueArticleAnySlug(db, slugify(baseTitle))
+        } else if (lang === 'ru') {
+          insTitleRu = isFirst ? titleLocal : article.title
+          insSlugRu = await ensureUniqueArticleAnySlug(db, slugify(insTitleRu))
+          insHtmlRu = processedHtml
+          insExRu = excerpt
+        } else if (lang === 'zh') {
+          insTitleZh = isFirst ? titleLocal : article.title
+          insSlugZh = await ensureUniqueArticleAnySlug(db, slugify(insTitleZh))
+          insHtmlZh = processedHtml
+          insExZh = excerpt
+        }
+
+        const baseHtml = lang === 'en' ? processedHtml : ''
+        const baseExcerpt = lang === 'en' ? excerpt : ''
+
         await db.prepare(`
-          INSERT INTO articles (slug, slug_ru, slug_zh, title, title_ru, title_zh, html_content, raw_odt_path, book_id, category_id, sort_order, excerpt, created_by, is_published)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+          INSERT INTO articles (
+            slug, slug_ru, slug_zh, title, title_ru, title_zh,
+            html_content, html_content_ru, html_content_zh,
+            raw_odt_path, book_id, category_id, sort_order, excerpt, excerpt_ru, excerpt_zh,
+            created_by, is_published, translation_valid_ru, translation_valid_zh
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         `).run(
-          slug,
-          slugRu,
-          slugZh,
-          insTitle,
+          baseSlug,
+          insSlugRu,
+          insSlugZh,
+          baseTitle,
           insTitleRu,
           insTitleZh,
-          processedHtml,
+          baseHtml,
+          insHtmlRu,
+          insHtmlZh,
           odtPath,
           bookId,
           categoryId,
           articleSortOrder,
-          excerpt,
+          baseExcerpt,
+          insExRu,
+          insExZh,
           auth.id,
+          lang === 'ru' ? 1 : 0,
+          lang === 'zh' ? 1 : 0
         )
 
         const inserted = await db.prepare(`SELECT last_insert_rowid() as id`).get() as { id: number }
@@ -283,32 +320,44 @@ export default defineEventHandler(async (event) => {
         await db.prepare(`
           INSERT INTO article_revisions (article_id, html_content, revision_num, change_summary, created_by)
           VALUES (?, ?, 1, ?, ?)
-        `).run(articleId, processedHtml, 'Импорт ODM (слой книги)', auth.id)
+        `).run(articleId, processedHtml, `Imported ${lang.toUpperCase()} version`, auth.id)
 
         await syncArticleTermsFromArticleRow(db, articleId, termsMaps)
       }
 
       const outState = parsed.numberingState ? cloneNumberingState(parsed.numberingState) : { listCounters: {} }
 
+      const colPath = `odt_storage_path${suffix}`
+      const colName = `odt_original_name${suffix}`
+      const colNumIn = `numbering_state_in_json${suffix}`
+      const colNumOut = `numbering_state_out_json${suffix}`
+
+      const displayTitleCol = lang === 'en' ? 'display_title' : (lang === 'ru' ? 'display_title_ru' : 'display_title_zh')
+      const finalDisplayTitle = lang === 'en' ? displayTitle : titleLocal
+
       await db.prepare(`
         UPDATE odm_project_parts SET
-          odt_storage_path = ?,
-          odt_original_name = ?,
-          numbering_state_in_json = ?,
-          numbering_state_out_json = ?,
+          ${colPath} = ?,
+          ${colName} = ?,
+          ${colNumIn} = ?,
+          ${colNumOut} = ?,
           imported_article_ids = ?,
           status = 'imported',
-          display_title = ?,
+          display_title = COALESCE(display_title, ?),
+          ${finalDisplayTitle ? `${displayTitleCol} = ?,` : ''}
           updated_at = datetime('now')
         WHERE id = ?
       `).run(
-        odtPath,
-        originalName,
-        numberingStateInJson,
-        JSON.stringify(outState),
-        JSON.stringify(importedIds),
-        displayTitle,
-        partId,
+        ...[
+          odtPath,
+          originalName,
+          numberingStateInJson,
+          JSON.stringify(outState),
+          JSON.stringify(importedIds),
+          defaultOdmChapterTitle(sortOrder, 'en'),
+          ...(finalDisplayTitle ? [finalDisplayTitle] : []),
+          partId,
+        ]
       )
 
       return {
@@ -324,42 +373,63 @@ export default defineEventHandler(async (event) => {
         throw new Error('Связанные статьи не найдены в этом слоте')
 
       const termsMaps = await buildTermsMaps(db)
-      const col = lang === 'ru' ? 'html_content_ru' : 'html_content_zh'
-      const exCol = lang === 'ru' ? 'excerpt_ru' : 'excerpt_zh'
-      const titleCol = lang === 'ru' ? 'title_ru' : 'title_zh'
-      const slugCol = lang === 'ru' ? 'slug_ru' : 'slug_zh'
+      const col = `html_content${suffix}`
+      const exCol = `excerpt${suffix}`
+      const titleCol = lang === 'en' ? 'title' : `title_${lang}`
+      const slugCol = lang === 'en' ? 'slug' : `slug_${lang}`
 
       const titleOdt = extractFirstHeading(parsed.fullHtml)
-      const localizedTitle = titleOdt || (lang === 'ru' ? titleRu : titleZh)
+      const localizedTitle = titleOdt || (lang === 'en' ? row.display_title : (lang === 'ru' ? titleRu : titleZh))
 
       for (let i = 0; i < Math.min(importedIds.length, articles.length); i++) {
         const article = articles[i]
         const articleId = importedIds[i]
         const isFirst = i === 0
 
-        const processedHtml = linkTermsInHtml(article.html, lang === 'ru' ? termsMaps.ru : termsMaps.zh).html
+        let processedHtml = linkTermsInHtml(article.html, lang === 'en' ? termsMaps.en : (lang === 'ru' ? termsMaps.ru : termsMaps.zh)).html
+        if (headingLocale) processedHtml = reindexHeadingMarkers(processedHtml, sortOrder, headingLocale).html
         const excerpt = generateExcerpt(processedHtml)
 
+        const displayTitleSub = isFirst ? localizedTitle : article.title
         let slugVal: string | null = null
-        if (isFirst && localizedTitle) {
-          slugVal = await ensureUniqueArticleAnySlug(db, slugify(localizedTitle))
+        if (displayTitleSub) {
+          slugVal = await ensureUniqueArticleAnySlug(db, slugify(displayTitleSub))
         }
 
-        await db.prepare(`
-          UPDATE articles SET
-            ${col} = ?,
-            ${exCol} = ?,
-            ${isFirst && localizedTitle ? `${titleCol} = ?, ${slugCol} = ?,` : ''}
-            updated_at = datetime('now')
-          WHERE id = ?
-        `).run(
-          ...[
-            processedHtml,
-            excerpt,
-            ...(isFirst && localizedTitle ? [localizedTitle, slugVal] : []),
-            articleId,
-          ],
-        )
+        if (lang === 'en') {
+          await db.prepare(`
+            UPDATE articles SET
+              html_content = ?,
+              excerpt = ?,
+              ${displayTitleSub ? 'title = ?, slug = ?,' : ''}
+              updated_at = datetime('now')
+            WHERE id = ?
+          `).run(
+            ...[
+              processedHtml,
+              excerpt,
+              ...(displayTitleSub ? [displayTitleSub, slugVal] : []),
+              articleId,
+            ],
+          )
+        } else {
+          await db.prepare(`
+            UPDATE articles SET
+              ${col} = ?,
+              ${exCol} = ?,
+              translation_valid_${lang} = 1,
+              ${displayTitleSub ? `${titleCol} = ?, ${slugCol} = ?,` : ''}
+              updated_at = datetime('now')
+            WHERE id = ?
+          `).run(
+            ...[
+              processedHtml,
+              excerpt,
+              ...(displayTitleSub ? [displayTitleSub, slugVal] : []),
+              articleId,
+            ],
+          )
+        }
 
         const revNum = await db.prepare(
           'SELECT COALESCE(MAX(revision_num), 0) + 1 as n FROM article_revisions WHERE article_id = ?',
@@ -375,23 +445,31 @@ export default defineEventHandler(async (event) => {
 
       const outState = parsed.numberingState ? cloneNumberingState(parsed.numberingState) : { listCounters: {} }
 
-      const displayTitleCol = lang === 'ru' ? 'display_title_ru' : 'display_title_zh'
+      const colPath = `odt_storage_path${suffix}`
+      const colName = `odt_original_name${suffix}`
+      const colNumIn = `numbering_state_in_json${suffix}`
+      const colNumOut = `numbering_state_out_json${suffix}`
+      const displayTitleCol = lang === 'en' ? 'display_title' : (lang === 'ru' ? 'display_title_ru' : 'display_title_zh')
+      const finalDisplayTitle = lang === 'en' ? (titleOdt || row.display_title) : localizedTitle
+
       await db.prepare(`
         UPDATE odm_project_parts SET
-          odt_storage_path_${lang} = ?,
-          odt_original_name_${lang} = ?,
-          numbering_state_in_json_${lang} = ?,
-          numbering_state_out_json_${lang} = ?,
-          ${localizedTitle ? `${displayTitleCol} = ?,` : ''}
+          ${colPath} = ?,
+          ${colName} = ?,
+          ${colNumIn} = ?,
+          ${colNumOut} = ?,
+          ${finalDisplayTitle ? `${displayTitleCol} = ?,` : ''}
           updated_at = datetime('now')
         WHERE id = ?
       `).run(
-        odtPath,
-        originalName,
-        numberingStateInJson,
-        JSON.stringify(outState),
-        ...(localizedTitle ? [localizedTitle] : []),
-        partId,
+        ...[
+          odtPath,
+          originalName,
+          numberingStateInJson,
+          JSON.stringify(outState),
+          ...(finalDisplayTitle ? [finalDisplayTitle] : []),
+          partId,
+        ]
       )
 
       return {
