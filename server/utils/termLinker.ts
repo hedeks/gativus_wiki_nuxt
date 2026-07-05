@@ -206,6 +206,29 @@ function tryTermMatchAt(
   if (!m?.[1]) return null
   const originalWord = m[1]
   const end = start + originalWord.length
+  
+  // Calculate suffix length
+  const suffixLen = originalWord.length - phrase.length
+  
+  // Apply constraints on suffix length to avoid false positives (e.g., CONT -> contour, MOVE -> movement)
+  const isAllCapsLatin = /^[A-Z0-9\-_]+$/.test(phrase)
+  const isPureLatin = /^[a-zA-Z0-9\-_'\s]+$/.test(phrase)
+
+  if (isAllCapsLatin) {
+    // Abbreviations: strict match or plural suffix 's' / 'S' (suffix length <= 1)
+    if (suffixLen > 1) return null
+    if (suffixLen === 1) {
+      const suffixChar = originalWord.slice(phrase.length)
+      if (suffixChar !== 's' && suffixChar !== 'S') return null
+    }
+  } else if (isPureLatin) {
+    // English words: allow suffixes up to 3 characters (e.g. s, es, ed, ing, 's)
+    if (suffixLen > 3) return null
+  } else {
+    // Russian words (case inflections): allow suffixes up to 3 characters
+    if (suffixLen > 3) return null
+  }
+
   if (end < text.length && WORD_BOUNDARY_AFTER.test(text[end]!)) return null
   return { end, originalWord }
 }

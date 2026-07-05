@@ -766,11 +766,14 @@ function handleBulkFiles(files: FileList | File[]) {
   bulkFiles.value = odts
 }
 
-const bulkMatchedFiles = computed(() => {
-  return bulkFiles.value.map(file => {
+const manualMappings = ref<Record<string, { partId: number | null; lang: 'en' | 'ru' | 'zh' }>>({})
+
+watch(bulkFiles, () => {
+  const newMappings: Record<string, { partId: number | null; lang: 'en' | 'ru' | 'zh' }> = {}
+  for (const file of bulkFiles.value) {
     const fileBn = file.name.toLowerCase()
     let matchedPart: any = null
-    let matchedLang: 'en' | 'ru' | 'zh' | null = null
+    let matchedLang: 'en' | 'ru' | 'zh' = 'en'
 
     for (const p of parts.value) {
       const bnEn = p.master_href_en ? p.master_href_en.replace(/\\/g, '/').split('/').pop()?.toLowerCase() : null
@@ -782,27 +785,47 @@ const bulkMatchedFiles = computed(() => {
         matchedLang = 'en'
         break
       }
-      if (bnRu && (bnRu === fileBn || fileBn.includes('_ru') || fileBn.includes('.ru.'))) {
+      if (bnRu && (bnRu === fileBn || fileBn === `${bnRu.replace(/\.odt$/, '')}_ru.odt` || fileBn === `${bnRu.replace(/\.odt$/, '')}.ru.odt` || fileBn.includes('_ru') || fileBn.includes('.ru.'))) {
         matchedPart = p
         matchedLang = 'ru'
         break
       }
-      if (bnZh && (bnZh === fileBn || fileBn.includes('_zh') || fileBn.includes('.zh.'))) {
+      if (bnZh && (bnZh === fileBn || fileBn === `${bnZh.replace(/\.odt$/, '')}_zh.odt` || fileBn === `${bnZh.replace(/\.odt$/, '')}.zh.odt` || fileBn.includes('_zh') || fileBn.includes('.zh.'))) {
         matchedPart = p
         matchedLang = 'zh'
         break
       }
     }
 
-    // fallback matching by order name (e.g. part-1 matching chapter-1)
     if (!matchedPart) {
       const numMatch = fileBn.match(/\d+/)
       if (numMatch) {
         const order = parseInt(numMatch[0])
-        matchedPart = parts.value.find(p => p.sort_order === order)
-        matchedLang = fileBn.includes('ru') ? 'ru' : fileBn.includes('zh') ? 'zh' : 'en'
+        const found = parts.value.find(p => p.sort_order === order)
+        if (found) {
+          matchedPart = found
+          matchedLang = (fileBn.includes('ru') || fileBn.includes('rus'))
+            ? 'ru'
+            : (fileBn.includes('zh') || fileBn.includes('cn'))
+              ? 'zh'
+              : 'en'
+        }
       }
     }
+
+    newMappings[file.name] = {
+      partId: matchedPart ? matchedPart.id : null,
+      lang: matchedLang
+    }
+  }
+  manualMappings.value = newMappings
+}, { immediate: true, deep: true })
+
+const bulkMatchedFiles = computed(() => {
+  return bulkFiles.value.map(file => {
+    const map = manualMappings.value[file.name]
+    const matchedPart = map?.partId ? parts.value.find(p => p.id === map.partId) : null
+    const matchedLang = map?.lang || null
 
     return {
       file,
@@ -818,7 +841,7 @@ const hasUnmatchedBulkFiles = computed(() => bulkMatchedFiles.value.some(m => !m
 async function runBulkOdtImport() {
   if (!projectId.value || !bulkFiles.value.length) return
   if (hasUnmatchedBulkFiles.value) {
-    if (!confirm('Некоторые файлы не удалось сопоставить со структурой. Они будут пропущены. Продолжить?')) {
+    if (!confirm('Некоторые файлы не сопоставлены со структурой. Они будут пропущены. Продолжить?')) {
       return
     }
   }
@@ -833,6 +856,16 @@ async function runBulkOdtImport() {
       fd.append('files', f, f.name)
     }
 
+    // Собираем ручные мапинги
+    const mappingsList = Object.entries(manualMappings.value)
+      .filter(([_, map]) => map.partId !== null)
+      .map(([filename, map]) => ({
+        filename,
+        partId: map.partId,
+        lang: map.lang
+      }))
+    fd.append('mappings', JSON.stringify(mappingsList))
+
     const res = await $fetch<any>(`/api/import/odm/project/${projectId.value}/bulk-odt`, {
       method: 'POST',
       headers: store.getAuthHeader(),
@@ -841,8 +874,8 @@ async function runBulkOdtImport() {
 
     bulkFiles.value = []
     toast.add({
-      title: 'Массовый импорт завершен',
-      description: `Создано: ${res.created} · Обновлено: ${res.updated} · Пропущено: ${res.skipped}`,
+      title: 'Импорт ODT файлов завершен',
+      description: `Создано: ${res.created} | Обновлено: ${res.updated} | Пропущено: ${res.skipped}`,
       color: 'green'
     })
     await fetchProjectDetails()
@@ -1228,19 +1261,54 @@ async function runBulkOdtImport() {
             </div>
 
             <!-- Matched Files List -->
-            <div v-if="bulkMatchedFiles.length > 0" class="space-y-2">
-              <div v-for="m in bulkMatchedFiles" :key="m.filename" class="flex items-center justify-between p-2 rounded bg-gray-50 dark:bg-zinc-800/30 text-xs">
-                <span class="font-mono text-[10px] truncate max-w-[200px]" :title="m.filename">{{ m.filename }}</span>
-                <div class="flex items-center gap-2 shrink-0">
-                  <span v-if="m.matchedPart" class="text-green-500 font-bold">
-                    Сопоставлено: #{{ m.matchedPart.sort_order }} ({{ m.matchedLang?.toUpperCase() }})
+            <div v-if="bulkMatchedFiles.length > 0" class="space-y-2 max-h-[300px] overflow-y-auto p-1">
+              <div v-for="m in bulkMatchedFiles" :key="m.filename" class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-gray-50 dark:bg-zinc-800/30 text-xs border border-gray-150 dark:border-zinc-800/50">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                  <UIcon name="i-heroicons-document-text" class="text-lg text-sky-500 shrink-0" />
+                  <span class="font-mono text-[11px] truncate text-gray-700 dark:text-gray-300" :title="m.filename">{{ m.filename }}</span>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-3 shrink-0" v-if="manualMappings[m.filename]">
+                  <!-- Селектор главы -->
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-gray-400 font-bold uppercase">Глава:</span>
+                    <select 
+                      v-model="manualMappings[m.filename].partId" 
+                      class="text-xs bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg px-2 py-1 text-gray-700 dark:text-gray-300 focus:ring-1 focus:ring-sky-500 focus:outline-none"
+                    >
+                      <option :value="null">Пропустить файл</option>
+                      <option v-for="p in parts" :key="p.id" :value="p.id">
+                        #{{ p.sort_order }}: {{ p.display_title || 'Без названия' }}
+                      </option>
+                    </select>
+                  </div>
+
+                  <!-- Селектор языка -->
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-gray-400 font-bold uppercase">Язык:</span>
+                    <select 
+                      v-model="manualMappings[m.filename].lang" 
+                      class="text-xs bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg px-2 py-1 text-gray-700 dark:text-gray-300 focus:ring-1 focus:ring-sky-500 focus:outline-none"
+                    >
+                      <option value="en">🇬🇧 EN</option>
+                      <option value="ru">🇷🇺 RU</option>
+                      <option value="zh">🇨🇳 ZH</option>
+                    </select>
+                  </div>
+
+                  <span v-if="m.matchedPart" class="text-emerald-500 dark:text-emerald-400 font-bold flex items-center gap-1">
+                    <UIcon name="i-heroicons-check-circle" />
+                    Сопоставлен
                   </span>
-                  <span v-else class="text-red-500 font-bold">Не сопоставлен</span>
+                  <span v-else class="text-amber-500 dark:text-amber-400 font-bold flex items-center gap-1">
+                    <UIcon name="i-heroicons-minus-circle" />
+                    Будет пропущен
+                  </span>
                 </div>
               </div>
 
-              <div class="flex justify-end gap-3 pt-2">
-                <GvButton color="gray" variant="ghost" size="xs" @click="bulkFiles = []">Сбросить</GvButton>
+              <div class="flex justify-end gap-3 pt-4">
+                <GvButton color="gray" variant="ghost" size="xs" @click="bulkFiles = []">Сбросить список</GvButton>
                 <GvButton color="sky" size="xs" :loading="bulkUploading" @click="runBulkOdtImport">Запустить импорт ({{ bulkFiles.length }})</GvButton>
               </div>
             </div>
@@ -1382,7 +1450,7 @@ async function runBulkOdtImport() {
                           :class="part.has_translation_ru 
                             ? 'bg-sky-500 text-white' 
                             : 'bg-gray-100 text-gray-500 hover:bg-sky-500 hover:text-white dark:bg-zinc-800 dark:text-zinc-400'"
-                          :disabled="!part.has_translation_en || uploadingPartId === part.id"
+                          :disabled="uploadingPartId === part.id"
                           @click="triggerPartOdtUpload(part.id, 'ru')"
                         >
                           RU
@@ -1407,7 +1475,7 @@ async function runBulkOdtImport() {
                           :class="part.has_translation_zh 
                             ? 'bg-amber-500 text-white' 
                             : 'bg-gray-100 text-gray-500 hover:bg-sky-500 hover:text-white dark:bg-zinc-800 dark:text-zinc-400'"
-                          :disabled="!part.has_translation_en || uploadingPartId === part.id"
+                          :disabled="uploadingPartId === part.id"
                           @click="triggerPartOdtUpload(part.id, 'zh')"
                         >
                           ZH

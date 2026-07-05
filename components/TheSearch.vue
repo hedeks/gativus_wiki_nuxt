@@ -276,9 +276,9 @@ function onCmdKOpenSearch(e: KeyboardEvent) {
 function syncShortcutHotkeyListener(enabled: boolean) {
   if (!import.meta.client)
     return
-  window.removeEventListener('keydown', onCmdKOpenSearch)
+  window.removeEventListener('keydown', onCmdKOpenSearch, true)
   if (enabled)
-    window.addEventListener('keydown', onCmdKOpenSearch)
+    window.addEventListener('keydown', onCmdKOpenSearch, true)
 }
 
 watch(
