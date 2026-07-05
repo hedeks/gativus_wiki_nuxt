@@ -324,13 +324,6 @@ function isIosBrowser(): boolean {
 const initViewer = async () => {
   if (!import.meta.client) return
 
-  // iOS: all browsers use WKWebView — native viewer is most reliable
-  if (isIosBrowser()) {
-    useNativeViewer.value = true
-    loading.value = false
-    return
-  }
-
   loading.value = true
   error.value = false
   try {
