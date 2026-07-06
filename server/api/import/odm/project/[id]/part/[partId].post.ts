@@ -4,7 +4,8 @@
  */
 
 import { mkdirSync, existsSync, writeFileSync } from 'fs'
-import { join } from 'path'
+import { join, basename } from 'path'
+import AdmZip from 'adm-zip'
 import type { NumberingState, OdtContentLocale } from '~/server/utils/odtParser'
 import { parseOdtBuffer, splitIntoArticles, extractFirstHeading, generateExcerpt, cloneNumberingState } from '~/server/utils/odtParser'
 import { defaultOdmChapterTitle } from '~/server/utils/odmParser'
@@ -179,12 +180,81 @@ export default defineEventHandler(async (event) => {
   const originalName = fileField.filename || 'chapter.odt'
   const odtPath: string | null = null
 
+  // Вспомогательная функция для извлечения картинок (дублирует логику из odtParser.ts)
+  const extractImagesLocal = (zip: AdmZip, subDir: string): { originalPath: string; savedPath: string }[] => {
+    const results: { originalPath: string; savedPath: string }[] = []
+    const uploadDir = join(process.cwd(), 'server', 'storage', 'uploads', subDir)
+    if (!existsSync(uploadDir)) {
+      mkdirSync(uploadDir, { recursive: true })
+    }
+    const entries = zip.getEntries()
+    for (const entry of entries) {
+      if (entry.entryName.startsWith('Pictures/') && !entry.isDirectory) {
+        const fileName = `${Date.now()}-${basename(entry.entryName)}`
+        const savePath = join(uploadDir, fileName)
+        const data = entry.getData()
+        writeFileSync(savePath, new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
+        results.push({
+          originalPath: entry.entryName,
+          savedPath: `/api/uploads/${subDir}/${fileName}`,
+        })
+      }
+    }
+    return results
+  }
+
+  // Извлекаем картинки из загружаемого ODT
+  let fileImages: { originalPath: string; savedPath: string }[] = []
+  try {
+    const zip = new AdmZip(buf)
+    fileImages = extractImagesLocal(zip, 'articles')
+  } catch (e) {
+    console.error('[Part Import] Error pre-extracting images:', e)
+  }
+
+  // Свежая загрузка картинок из БД для связанных статей
+  const articleIds: number[] = (() => {
+    try { return JSON.parse(row.imported_article_ids || '[]') as number[] }
+    catch { return [] }
+  })()
+
+  const dbImages: { originalPath: string; savedPath: string }[] = []
+  if (articleIds.length > 0) {
+    const rows = await db.prepare(
+      `SELECT html_content, html_content_ru, html_content_zh FROM articles WHERE id IN (${articleIds.map(() => '?').join(',')})`
+    ).all(...articleIds) as any[]
+    
+    for (const r of rows) {
+      const htmls = [r.html_content, r.html_content_ru, r.html_content_zh]
+      for (const html of htmls) {
+        if (html) {
+          const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi
+          let m
+          while ((m = imgRegex.exec(html)) !== null) {
+            const savedPath = m[1]
+            if (!dbImages.some(img => img.savedPath === savedPath)) {
+              dbImages.push({ originalPath: '', savedPath })
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const combinedImages = [...fileImages]
+  for (const dbImg of dbImages) {
+    if (!combinedImages.some(img => img.savedPath === dbImg.savedPath)) {
+      combinedImages.push(dbImg)
+    }
+  }
+
   try {
     const fileLocale: OdtContentLocale = lang
     const parsed = await parseOdtBuffer(buf, {
       subDir: 'articles',
       numberingState,
       contentLocale: fileLocale,
+      images: combinedImages
     })
 
     const splitLevel = String(row.split_level || 'none')

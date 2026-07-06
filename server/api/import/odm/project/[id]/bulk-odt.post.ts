@@ -6,6 +6,7 @@
 
 import { mkdirSync, existsSync, writeFileSync } from 'fs'
 import { join, basename } from 'path'
+import AdmZip from 'adm-zip'
 import type { NumberingState, OdtContentLocale } from '~/server/utils/odtParser'
 import { parseOdtBuffer, splitIntoArticles, extractFirstHeading, generateExcerpt, cloneNumberingState } from '~/server/utils/odtParser'
 import { defaultOdmChapterTitle } from '~/server/utils/odmParser'
@@ -202,6 +203,51 @@ export default defineEventHandler(async (event) => {
   const odtDir = join(process.cwd(), 'server', 'storage', 'odt')
   if (!existsSync(odtDir)) mkdirSync(odtDir, { recursive: true })
 
+  // Вспомогательная функция для извлечения картинок (дублирует логику из odtParser.ts)
+  const extractImagesLocal = (zip: AdmZip, subDir: string): { originalPath: string; savedPath: string }[] => {
+    const results: { originalPath: string; savedPath: string }[] = []
+    const uploadDir = join(process.cwd(), 'server', 'storage', 'uploads', subDir)
+    if (!existsSync(uploadDir)) {
+      mkdirSync(uploadDir, { recursive: true })
+    }
+    const entries = zip.getEntries()
+    for (const entry of entries) {
+      if (entry.entryName.startsWith('Pictures/') && !entry.isDirectory) {
+        const fileName = `${Date.now()}-${basename(entry.entryName)}`
+        const savePath = join(uploadDir, fileName)
+        const data = entry.getData()
+        writeFileSync(savePath, new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
+        results.push({
+          originalPath: entry.entryName,
+          savedPath: `/api/uploads/${subDir}/${fileName}`,
+        })
+      }
+    }
+    return results
+  }
+
+  // ─── Извлекаем картинки из всех загруженных ODT файлов и группируем по partId ───
+  const requestImagesByPartId = new Map<number, { originalPath: string; savedPath: string }[]>()
+  for (const item of filesToProcess) {
+    const fileField = item.file
+    const buf = Buffer.from(fileField.data.buffer, fileField.data.byteOffset, fileField.data.byteLength)
+    try {
+      const zip = new AdmZip(buf)
+      const extracted = extractImagesLocal(zip, 'articles')
+      if (extracted.length > 0) {
+        const existing = requestImagesByPartId.get(item.part.id) || []
+        for (const ext of extracted) {
+          if (!existing.some(e => e.originalPath === ext.originalPath)) {
+            existing.push(ext)
+          }
+        }
+        requestImagesByPartId.set(item.part.id, existing)
+      }
+    } catch (e) {
+      console.error(`[Bulk ODT] Error pre-extracting images from ${fileField.filename}:`, e)
+    }
+  }
+
   const splitLevel = String(project.split_level || 'none')
   const results: { partId: number; sortOrder: number; lang: Lang; status: 'created' | 'updated' | 'skipped'; articleIds?: number[]; error?: string }[] = []
   const termsMaps = await buildTermsMaps(db)
@@ -250,20 +296,57 @@ export default defineEventHandler(async (event) => {
     const numberingState = carryNumberingState[lang] ?? parseNumberingJson(prevRow?.state_json ?? null)
     const numberingStateInJson = numberingState ? JSON.stringify(numberingState) : null
 
+    // Собираем картинки из БД и запроса
+    const partImages = requestImagesByPartId.get(part.id) || []
+    const articleIds: number[] = (() => {
+      try { return JSON.parse(part.imported_article_ids || '[]') as number[] }
+      catch { return [] }
+    })()
+
+    const dbImages: { originalPath: string; savedPath: string }[] = []
+    if (articleIds.length > 0) {
+      const rows = await db.prepare(
+        `SELECT html_content, html_content_ru, html_content_zh FROM articles WHERE id IN (${articleIds.map(() => '?').join(',')})`
+      ).all(...articleIds) as any[]
+      
+      for (const r of rows) {
+        const htmls = [r.html_content, r.html_content_ru, r.html_content_zh]
+        for (const html of htmls) {
+          if (html) {
+            const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi
+            let m
+            while ((m = imgRegex.exec(html)) !== null) {
+              const savedPath = m[1]
+              if (!dbImages.some(img => img.savedPath === savedPath)) {
+                dbImages.push({ originalPath: '', savedPath })
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const combinedImages = [...partImages]
+    for (const dbImg of dbImages) {
+      if (!combinedImages.some(img => img.savedPath === dbImg.savedPath)) {
+        combinedImages.push(dbImg)
+      }
+    }
+
     try {
       if (String(part.status) === 'imported') {
         // ─── Обновляем существующие статьи ───
-        const articleIds: number[] = (() => {
-          try { return JSON.parse(part.imported_article_ids || '[]') as number[] }
-          catch { return [] }
-        })()
-
         if (articleIds.length === 0) {
           results.push({ partId: part.id, sortOrder: part.sort_order, lang, status: 'skipped', error: 'Нет связанных статей' })
           continue
         }
 
-        const parsed = await parseOdtBuffer(buf, { subDir: 'articles', numberingState, contentLocale: fileLocale })
+        const parsed = await parseOdtBuffer(buf, {
+          subDir: 'articles',
+          numberingState,
+          contentLocale: fileLocale,
+          images: combinedImages
+        })
         const col = htmlCol(lang)
         const exCol = excerptCol(lang)
         const titleCol = lang === 'ru' ? 'title_ru' : 'title_zh'
@@ -398,7 +481,12 @@ export default defineEventHandler(async (event) => {
       else if (String(part.status) === 'pending' || String(part.status) === 'error') {
         // ─── Создаём статьи (для любого языка) ───
         const sortOrder = Number(part.sort_order)
-        const parsed = await parseOdtBuffer(buf, { subDir: 'articles', numberingState, contentLocale: fileLocale })
+        const parsed = await parseOdtBuffer(buf, {
+          subDir: 'articles',
+          numberingState,
+          contentLocale: fileLocale,
+          images: combinedImages
+        })
 
         const titleEnOdt = extractFirstHeading(parsed.fullHtml)
         const titleEn = titleEnOdt || String(part.display_title || '').trim() || defaultOdmChapterTitle(sortOrder, 'en')

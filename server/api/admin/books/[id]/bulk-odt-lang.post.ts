@@ -17,6 +17,7 @@
 
 import { join, basename } from 'path'
 import { mkdirSync, existsSync, writeFileSync } from 'fs'
+import AdmZip from 'adm-zip'
 import type { OdtContentLocale } from '~/server/utils/odtParser'
 import { parseOdtBuffer, generateExcerpt, extractFirstHeading } from '~/server/utils/odtParser'
 import { slugify, ensureUniqueArticleAnySlug } from '~/server/utils/slugify'
@@ -138,7 +139,71 @@ export default defineEventHandler(async (event) => {
       const odtPath = join(odtDir, `${Date.now()}-book${bookId}-a${article.id}-${originalName}`)
       writeFileSync(odtPath, buf as any)
 
-      const parsed = await parseOdtBuffer(buf, { subDir: 'articles', contentLocale })
+      // Вспомогательная функция для извлечения картинок (дублирует логику из odtParser.ts)
+      const extractImagesLocal = (zip: AdmZip, subDir: string): { originalPath: string; savedPath: string }[] => {
+        const results: { originalPath: string; savedPath: string }[] = []
+        const uploadDir = join(process.cwd(), 'server', 'storage', 'uploads', subDir)
+        if (!existsSync(uploadDir)) {
+          mkdirSync(uploadDir, { recursive: true })
+        }
+        const entries = zip.getEntries()
+        for (const entry of entries) {
+          if (entry.entryName.startsWith('Pictures/') && !entry.isDirectory) {
+            const fileName = `${Date.now()}-${basename(entry.entryName)}`
+            const savePath = join(uploadDir, fileName)
+            const data = entry.getData()
+            writeFileSync(savePath, new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
+            results.push({
+              originalPath: entry.entryName,
+              savedPath: `/api/uploads/${subDir}/${fileName}`,
+            })
+          }
+        }
+        return results
+      }
+
+      // Извлекаем картинки из загружаемого ODT
+      let fileImages: { originalPath: string; savedPath: string }[] = []
+      try {
+        const zip = new AdmZip(buf)
+        fileImages = extractImagesLocal(zip, 'articles')
+      } catch (e) {
+        console.error('[Bulk ODT Lang] Error pre-extracting images:', e)
+      }
+
+      // Свежая загрузка картинок из БД для этой статьи
+      const dbImages: { originalPath: string; savedPath: string }[] = []
+      const row = await db.prepare(
+        `SELECT html_content, html_content_ru, html_content_zh FROM articles WHERE id = ?`
+      ).get(article.id) as any
+      if (row) {
+        const htmls = [row.html_content, row.html_content_ru, row.html_content_zh]
+        for (const htmlText of htmls) {
+          if (htmlText) {
+            const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi
+            let m
+            while ((m = imgRegex.exec(htmlText)) !== null) {
+              const savedPath = m[1]
+              if (!dbImages.some(img => img.savedPath === savedPath)) {
+                dbImages.push({ originalPath: '', savedPath })
+              }
+            }
+          }
+        }
+      }
+
+      const combinedImages = [...fileImages]
+      for (const dbImg of dbImages) {
+        if (!combinedImages.some(img => img.savedPath === dbImg.savedPath)) {
+          combinedImages.push(dbImg)
+        }
+      }
+
+      const parsed = await parseOdtBuffer(buf, {
+        subDir: 'articles',
+        contentLocale,
+        images: combinedImages
+      })
       let html = linkTermsInHtml(parsed.fullHtml, lang === 'en' ? termsMaps.en : (lang === 'ru' ? termsMaps.ru : termsMaps.zh)).html
 
       if (headingLocale) {
