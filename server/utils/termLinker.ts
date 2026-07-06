@@ -9,50 +9,84 @@
  * - Skips matches inside raw tags and inside any <a>…</a> (including non–wiki-term links)
  */
 
-export async function buildTermsMaps(db: any): Promise<{ en: Map<string, { id: number, slug: string }>, ru: Map<string, { id: number, slug: string }>, zh: Map<string, { id: number, slug: string }>, all: Map<string, { id: number, slug: string }> }> {
+export interface TermMeta {
+  id: number
+  slug: string
+  originalTitle: string
+}
+
+export async function buildTermsMaps(db: any): Promise<{
+  en: Map<string, TermMeta>
+  ru: Map<string, TermMeta>
+  zh: Map<string, TermMeta>
+  all: Map<string, TermMeta>
+}> {
   const terms = await db.prepare(`
     SELECT id, slug, title, title_ru, title_zh, aliases, aliases_ru, aliases_zh FROM terms
   `).all() as any[]
-  const en = new Map<string, { id: number, slug: string }>()
-  const ru = new Map<string, { id: number, slug: string }>()
-  const zh = new Map<string, { id: number, slug: string }>()
-  const all = new Map<string, { id: number, slug: string }>()
+  const en = new Map<string, TermMeta>()
+  const ru = new Map<string, TermMeta>()
+  const zh = new Map<string, TermMeta>()
+  const all = new Map<string, TermMeta>()
 
-  const add = (map: Map<string, { id: number, slug: string }>, phrase: string | null | undefined, data: { id: number, slug: string }) => {
+  const add = (
+    map: Map<string, TermMeta>,
+    phrase: string | null | undefined,
+    data: { id: number, slug: string },
+    originalTitle: string
+  ) => {
     const k = phrase?.trim().toLowerCase()
-    if (k) map.set(k, data)
+    if (k) map.set(k, { ...data, originalTitle })
   }
 
   for (const term of terms || []) {
     const data = { id: term.id, slug: term.slug } // Везде используем английский (основной) слаг для ссылки
     
     // EN
-    add(en, term.title, data)
-    add(en, term.slug, data)
+    add(en, term.title, data, term.title || '')
+    add(en, term.slug, data, term.title || '')
     if (term.aliases) {
-      try { JSON.parse(term.aliases).forEach((a: string) => add(en, a, data)) } catch {}
+      try {
+        JSON.parse(term.aliases).forEach((a: string) => add(en, a, data, a))
+      } catch {}
     }
     
     // RU
-    add(ru, term.title_ru, data)
+    add(ru, term.title_ru, data, term.title_ru || '')
     if (term.aliases_ru) {
-      try { JSON.parse(term.aliases_ru).forEach((a: string) => add(ru, a, data)) } catch {}
+      try {
+        JSON.parse(term.aliases_ru).forEach((a: string) => add(ru, a, data, a))
+      } catch {}
     }
     
     // ZH
-    add(zh, term.title_zh, data)
+    add(zh, term.title_zh, data, term.title_zh || '')
     if (term.aliases_zh) {
-      try { JSON.parse(term.aliases_zh).forEach((a: string) => add(zh, a, data)) } catch {}
+      try {
+        JSON.parse(term.aliases_zh).forEach((a: string) => add(zh, a, data, a))
+      } catch {}
     }
     
     // Для обратной совместимости, если где-то нужен общий мап:
-    add(all, term.title, data)
-    add(all, term.title_ru, data)
-    add(all, term.title_zh, data)
-    add(all, term.slug, data)
-    if (term.aliases) try { JSON.parse(term.aliases).forEach((a: string) => add(all, a, data)) } catch {}
-    if (term.aliases_ru) try { JSON.parse(term.aliases_ru).forEach((a: string) => add(all, a, data)) } catch {}
-    if (term.aliases_zh) try { JSON.parse(term.aliases_zh).forEach((a: string) => add(all, a, data)) } catch {}
+    add(all, term.title, data, term.title || '')
+    add(all, term.title_ru, data, term.title_ru || '')
+    add(all, term.title_zh, data, term.title_zh || '')
+    add(all, term.slug, data, term.title || '')
+    if (term.aliases) {
+      try {
+        JSON.parse(term.aliases).forEach((a: string) => add(all, a, data, a))
+      } catch {}
+    }
+    if (term.aliases_ru) {
+      try {
+        JSON.parse(term.aliases_ru).forEach((a: string) => add(all, a, data, a))
+      } catch {}
+    }
+    if (term.aliases_zh) {
+      try {
+        JSON.parse(term.aliases_zh).forEach((a: string) => add(all, a, data, a))
+      } catch {}
+    }
   }
 
   return { en, ru, zh, all }
@@ -162,7 +196,7 @@ function stripOrphanGlossaryFragments(html: string): string {
  * Replace term occurrences in HTML with <a class="wiki-term"> links.
  * Считает число вхождений на термин (mention_count для графа).
  */
-export function linkTermsInHtml(html: string, termsMap: Map<string, { id: number, slug: string }>): {
+export function linkTermsInHtml(html: string, termsMap: Map<string, TermMeta>): {
   html: string
   linkedTermIds: number[]
   mentionCountByTermId: Map<number, number>
@@ -197,6 +231,7 @@ function tryTermMatchAt(
   start: number,
   phrase: string,
   suffixRange: string,
+  originalTitle?: string,
 ): { end: number, originalWord: string } | null {
   if (!phrase) return null
   if (start > 0 && WORD_BOUNDARY_BEFORE.test(text[start - 1]!)) return null
@@ -211,7 +246,9 @@ function tryTermMatchAt(
   const suffixLen = originalWord.length - phrase.length
   
   // Apply constraints on suffix length to avoid false positives (e.g., CONT -> contour, MOVE -> movement)
-  const isAllCapsLatin = /^[A-Z0-9\-_]+$/.test(phrase)
+  // Use originalTitle to check if the term is written in ALL CAPS Latin (abbreviation)
+  const casingToCheck = originalTitle || phrase
+  const isAllCapsLatin = /^[A-Z0-9\-_]+$/.test(casingToCheck)
   const isPureLatin = /^[a-zA-Z0-9\-_'\s]+$/.test(phrase)
 
   if (isAllCapsLatin) {
@@ -236,7 +273,7 @@ function tryTermMatchAt(
 function linkPlainTextSegment(
   segment: string,
   phrases: string[],
-  termsMap: Map<string, { id: number, slug: string }>,
+  termsMap: Map<string, TermMeta>,
   mentionCountByTermId: Map<number, number>,
 ): string {
   const suffixRange = 'a-zA-Z0-9\\u0400-\\u04FF\\-'
@@ -257,7 +294,7 @@ function linkPlainTextSegment(
     for (const phrase of phrases) {
       const meta = termsMap.get(phrase)
       if (!meta) continue
-      const hit = tryTermMatchAt(segment, i, phrase, suffixRange)
+      const hit = tryTermMatchAt(segment, i, phrase, suffixRange, meta.originalTitle)
       if (!hit) continue
       if (!best
         || hit.end > best.end
