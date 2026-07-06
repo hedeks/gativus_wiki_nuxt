@@ -33,6 +33,8 @@ export interface ParseOdtOptions {
   numberingState?: NumberingState
   /** Язык подписи глав в нумерации заголовков (первый уровень: Глава / Chapter / 第N章). Пусто — как в файле ODT. */
   contentLocale?: OdtContentLocale
+  /** Предоставленный список картинок (если уже извлечены или берутся из другого источника) */
+  images?: { originalPath: string; savedPath: string }[]
 }
 
 export interface ParsedOdt {
@@ -94,19 +96,22 @@ export async function parseOdtBuffer(
   let subDir = 'articles'
   let initialNumbering: NumberingState | undefined
   let contentLocale: OdtContentLocale | undefined
+  let providedImages: { originalPath: string; savedPath: string }[] | undefined
+
   if (typeof optionsOrSubDir === 'string')
     subDir = optionsOrSubDir
   else if (optionsOrSubDir) {
     subDir = optionsOrSubDir.subDir ?? 'articles'
     initialNumbering = optionsOrSubDir.numberingState
     contentLocale = optionsOrSubDir.contentLocale
+    providedImages = optionsOrSubDir.images
   }
 
   const zip = new AdmZip(buffer)
   const entries = zip.getEntries()
 
-  // 1. Extract and save images
-  const images = extractImages(zip, entries, subDir)
+  // 1. Extract and save images (only if not provided)
+  const images = providedImages ?? extractImages(zip, entries, subDir)
 
   // 2. Parse content.xml
   const contentEntry = zip.getEntry('content.xml')
@@ -1281,20 +1286,18 @@ function convertUnit(value: string): string {
   return value
 }
 
-/**
- * Parses and replaces figure placeholders [ INSERT FIGURE N: Description ] with a proper image tag
- * and a sanitized caption <p><strong>FIGURE N: Description</strong></p>.
- */
 export function processFigurePlaceholders(html: string, images: { savedPath: string }[]): string {
   let cleanHtml = html
 
-  // 1. Find all figure numbers mentioned in [ INSERT FIGURE N: ... ]
-  const placeholderRegex = /\[\s*INSERT\s+FIGURE\s+(\d+)\s*[\:\-–—]?\s*.*?\s*\]/gi
+  // 1. Find all figure numbers mentioned in placeholders
+  // Multilingual regex: supports action verbs (INSERT/ВСТАВИТЬ/插入) and figure keywords (FIGURE/FIG/РИСУНОК/РИС/插图/图片/图)
+  const placeholderRegex = /\[\s*(?:INSERT|ВСТАВИТЬ|插入)?\s*(?:FIGURE|FIG|РИСУНОК|РИС|插图|图片|图)\s*(\d+)?\s*[\:\-–—：]?\s*([\s\S]*?)\s*\]/gi
   const matches = [...html.matchAll(placeholderRegex)]
   
   // Remove original <img> tags for images that are associated with placeholders to avoid duplication
+  let matchIdx = 0;
   for (const match of matches) {
-    const figNum = parseInt(match[1], 10)
+    const figNum = match[1] ? parseInt(match[1], 10) : (matchIdx + 1);
     const imgIndex = figNum - 1
     const img = images[imgIndex]
     if (img) {
@@ -1303,18 +1306,22 @@ export function processFigurePlaceholders(html: string, images: { savedPath: str
       const imgRegex = new RegExp(`<img[^>]*src=["']${escapedSrc}["'][^>]*>`, 'gi')
       cleanHtml = cleanHtml.replace(imgRegex, '')
     }
+    matchIdx++
   }
 
   // 2. Replace placeholders with figure tags and clean captions
-  const blockRegex = /<(p|blockquote)[^>]*>\s*(?:<strong>\s*)?\[\s*INSERT\s+FIGURE\s+(\d+)\s*[\:\-–—]?\s*(.*?)\s*\](?:\s*<\/strong>)?\s*<\/\1>/gi
+  // Supports block tags, formatting tags (strong, span) inside and around the brackets.
+  const blockRegex = /<(p|blockquote)[^>]*>(?:\s*|<[^>]+>)*\[\s*(?:INSERT|ВСТАВИТЬ|插入)?\s*(?:FIGURE|FIG|РИСУНОК|РИС|插图|图片|图)\s*(\d+)?\s*[\:\-–—：]?\s*([\s\S]*?)\s*\](?:\s*|<[^>]+>)*<\/\1>/gi
   
+  let blockMatchIdx = 0;
   cleanHtml = cleanHtml.replace(blockRegex, (match, tag, figNumStr, description) => {
-    const figNum = parseInt(figNumStr, 10)
+    const figNum = figNumStr ? parseInt(figNumStr, 10) : (blockMatchIdx + 1);
     const imgIndex = figNum - 1
     const img = images[imgIndex]
+    blockMatchIdx++
     
-    // Clean any trailing dots, spaces, or closing braces/brackets inside description
-    let cleanDesc = description.trim()
+    // Clean any span tags and trailing/leading spaces inside description
+    let cleanDesc = description.replace(/<\/?span[^>]*>/gi, '').trim()
     
     if (img) {
       return `<img src="${img.savedPath}" alt="" />\n<${tag}><strong>FIGURE ${figNum}: ${cleanDesc}</strong></${tag}>`
