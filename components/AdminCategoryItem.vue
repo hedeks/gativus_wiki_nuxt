@@ -4,7 +4,7 @@ const props = defineProps<{
   depth?: number
 }>()
 
-const emits = defineEmits(['delete', 'create-child', 'move-up', 'move-down'])
+const emits = defineEmits(['delete', 'create-child', 'move-up', 'move-down', 'edit'])
 
 const d = computed(() => props.depth || 0)
 const hasChildren = computed(() => props.category.children && props.category.children.length > 0)
@@ -71,7 +71,7 @@ const toggle = () => {
           variant="ghost"
           square
           icon="i-heroicons-pencil-square"
-          :to="`/admin/categories/${category.id}/edit`"
+          @click.prevent="$emit('edit', category)"
           title="Редактировать"
         />
         <GvButton
@@ -96,6 +96,7 @@ const toggle = () => {
         @create-child="$emit('create-child', $event)"
         @move-up="$emit('move-up', $event)"
         @move-down="$emit('move-down', $event)"
+        @edit="$emit('edit', $event)"
       />
     </div>
   </div>

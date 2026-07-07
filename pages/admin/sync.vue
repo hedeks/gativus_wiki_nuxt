@@ -1,17 +1,24 @@
 <script setup lang="ts">
+import { ref, computed, watch } from 'vue'
 import { useLanguageStore } from '~/stores/language'
+
 const langStore = useLanguageStore()
+
 definePageMeta({
   layout: 'admin',
-  middleware: ['auth']
+  middleware: ['auth'],
+  fluid: true
 })
 
-useHead({ title: 'Синхронизация Графа — Gativus Admin' })
+useHead({ title: 'Синхронизация Графа — Workspace — Gativus Admin' })
 
 const store = userStore()
 const toast = useToast()
 
-// State
+// Workspace Tab State
+const activeTab = ref<'export' | 'import'>('export')
+
+// Sync States
 const isDragging = ref(false)
 const selectedFile = ref<File | null>(null)
 const isImportLoading = ref(false)
@@ -70,7 +77,6 @@ function handleFile(file: File) {
   reader.readAsText(file)
 }
 
-
 function removeFile() {
   selectedFile.value = null
   lastDump.value = null
@@ -78,7 +84,9 @@ function removeFile() {
 }
 
 watch(() => langStore.currentLang, () => {
-  if (lastDump.value) previewGraphData.value = generateImportGraphPreview(lastDump.value, langStore.currentLang)
+  if (lastDump.value) {
+    previewGraphData.value = generateImportGraphPreview(lastDump.value, langStore.currentLang)
+  }
 })
 
 function formatFileSize(bytes: number): string {
@@ -90,8 +98,6 @@ function formatFileSize(bytes: number): string {
 // Download JSON Dump
 async function exportGraph() {
   try {
-    // Initiate normal browser download using a temporary link
-    // so we get the attachment name properly from Content-Disposition
     const url = '/api/admin/sync/export'
     const headers = new Headers(store.getAuthHeader() as HeadersInit)
     
@@ -100,7 +106,6 @@ async function exportGraph() {
     const response = await fetch(url, { headers })
     if (!response.ok) throw new Error('Ошибка скачивания файла')
 
-    // Get filename from header if possible
     const contentDisposition = response.headers.get('Content-Disposition')
     let filename = 'gativus-backup.json'
     if (contentDisposition) {
@@ -149,570 +154,297 @@ async function runImport() {
 </script>
 
 <template>
-  <div class="admin-page-stack sync-page">
-    <section class="admin-dash-hero">
-      <div class="hero-title-container">
-        <img src="/images/121px-Logo.jpg" alt="Gativus" class="hero-logo" />
-        <div class="hero-text">
-          <p class="gv-admin-eyebrow">ADMIN</p>
-          <h1 class="hero-title gv-hero-gradient uppercase">Синхронизация</h1>
-          <p class="hero-lead">Экспорт и импорт дампа графа (JSON)</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section-card">
-      <header class="card-header">
-        <span class="card-badge">OUT</span>
-        <h2 class="card-header-title">Экспорт базы</h2>
-      </header>
-      <div class="card-body">
-        <div class="export-card">
-          <UIcon name="i-heroicons-cloud-arrow-down" class="export-icon" />
-          <div class="export-info">
-            <h3>Экспорт Базы</h3>
-            <p>Скачать полную копию графа знаний и контента статей в виде файла.</p>
+  <div class="gv-workspace-page">
+    <div class="workspace-grid grid grid-cols-12 gap-0">
+      
+      <!-- Left Pane: Operations (3/12) -->
+      <div class="workspace-list col-span-3 flex flex-col border-r border-gray-200 dark:border-gray-800 min-h-0 bg-white dark:bg-[#111113]">
+        <header class="workspace-list-header flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#161618] border-b border-gray-200 dark:border-gray-800 shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-500">
+              <UIcon name="i-heroicons-arrow-path" class="text-xl" />
+            </div>
+            <div>
+              <h1 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Workspace</h1>
+              <p class="text-[10px] text-gray-500 font-medium">Синхронизация</p>
+            </div>
           </div>
-          <GvButton
+        </header>
+
+        <div class="operations-menu flex-1 overflow-y-auto p-2 space-y-1">
+          <button 
             type="button"
-            color="sky"
-            size="lg"
-            icon="i-heroicons-arrow-down-tray"
-            @click="exportGraph"
+            class="operation-item"
+            :class="{ 'operation-item--active': activeTab === 'export' }"
+            @click="activeTab = 'export'"
           >
-            Сгенерировать дамп
-          </GvButton>
+            <UIcon name="i-heroicons-cloud-arrow-down" class="text-lg" />
+            <span>Экспорт базы</span>
+          </button>
+          
+          <button 
+            type="button"
+            class="operation-item"
+            :class="{ 'operation-item--active': activeTab === 'import' }"
+            @click="activeTab = 'import'"
+          >
+            <UIcon name="i-heroicons-cloud-arrow-up" class="text-lg" />
+            <span>Импорт JSON</span>
+          </button>
         </div>
       </div>
-    </section>
 
-    <div class="divider">
-      <span>ИЛИ</span>
-    </div>
-
-    <section class="section-card">
-      <header class="card-header">
-        <span class="card-badge">IN</span>
-        <h2 class="card-header-title">Импорт JSON</h2>
-      </header>
-      <div class="card-body">
-        <!-- Import Section Drop Zone -->
-        <div
-          v-if="!selectedFile"
-          class="drop-zone"
-          :class="{ 'drop-zone--active': isDragging }"
-          @dragover="onDragOver"
-          @dragleave="onDragLeave"
-          @drop="onDrop"
-        >
-          <div class="drop-zone-inner">
-            <UIcon name="i-heroicons-cloud-arrow-up" class="drop-zone-icon" />
-            <p class="drop-zone-text">Перетащите резервную копию базы (.json) сюда</p>
-            <p class="drop-zone-hint">для импорта</p>
-            <input
-              ref="syncJsonInputRef"
-              type="file"
-              accept=".json"
-              class="sr-only"
-              @change="onFileSelect"
-            >
+      <!-- Right Pane: Actions & Preview (9/12) -->
+      <div class="workspace-editor-pane col-span-9 bg-[#fafafa] dark:bg-[#161618] flex flex-col relative overflow-hidden min-h-0 border-l border-gray-200 dark:border-gray-800">
+        
+        <!-- EXPORT CONTENT -->
+        <div v-if="activeTab === 'export'" class="workspace-editor-scroll flex-1 overflow-y-auto p-8 bg-white dark:bg-[#111113]">
+          <div class="max-w-xl mx-auto py-12 flex flex-col items-center text-center gap-6">
+            <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+              <UIcon name="i-heroicons-cloud-arrow-down" class="text-4xl" />
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-wider">Экспорт базы</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
+                Сгенерировать и скачать полную копию графа знаний, категорий и контента статей в виде единого JSON-файла резервной копии.
+              </p>
+            </div>
             <GvButton
               type="button"
-              variant="outline"
-              color="gray"
-              size="md"
-              icon="i-heroicons-folder-open"
-              @click="syncJsonInputRef?.click()"
+              color="sky"
+              size="lg"
+              icon="i-heroicons-arrow-down-tray"
+              class="px-8 py-3 rounded-xl mt-4"
+              @click="exportGraph"
             >
-              Выбрать файл JSON
+              Сгенерировать дамп
             </GvButton>
           </div>
         </div>
 
-        <!-- Selected File -->
-        <div v-if="selectedFile && !importResult" class="file-card">
-      <div class="file-card-info">
-        <div class="file-icon-wrap">
-          <UIcon name="i-heroicons-document-text" class="file-icon" />
-        </div>
-        <div class="file-details">
-          <span class="file-name">{{ selectedFile.name }}</span>
-          <span class="file-size">{{ formatFileSize(selectedFile.size) }}</span>
-        </div>
-        <GvButton
-          type="button"
-          unstyled
-          chromeless
-          square
-          class="file-remove"
-          icon="i-heroicons-x-mark"
-          aria-label="Удалить файл"
-          @click="removeFile"
-        />
-      </div>
+        <!-- IMPORT CONTENT -->
+        <div v-if="activeTab === 'import'" class="workspace-editor-scroll flex-1 overflow-y-auto p-6 bg-white dark:bg-[#111113]">
+          <div class="max-w-4xl mx-auto space-y-6">
+            <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Импорт JSON</h3>
+            
+            <div v-if="!selectedFile">
+              <!-- Drop Zone -->
+              <div
+                class="drop-zone"
+                :class="{ 'drop-zone--active': isDragging }"
+                @dragover="onDragOver"
+                @dragleave="onDragLeave"
+                @drop="onDrop"
+                @click="syncJsonInputRef?.click()"
+              >
+                <div class="drop-zone-inner py-12">
+                  <UIcon name="i-heroicons-cloud-arrow-up" class="drop-zone-icon text-5xl text-gray-400" />
+                  <p class="drop-zone-text text-base font-bold text-gray-700 dark:text-gray-300 mt-3">Перетащите резервную копию базы (.json) сюда</p>
+                  <p class="drop-zone-hint text-xs text-gray-400">или кликните для выбора на компьютере</p>
+                  <input
+                    ref="syncJsonInputRef"
+                    type="file"
+                    accept=".json"
+                    class="sr-only"
+                    @change="onFileSelect"
+                  >
+                  <GvButton
+                    type="button"
+                    variant="outline"
+                    color="gray"
+                    size="sm"
+                    icon="i-heroicons-folder-open"
+                    class="mt-4"
+                    @click.stop="syncJsonInputRef?.click()"
+                  >
+                    Выбрать файл
+                  </GvButton>
+                </div>
+              </div>
+            </div>
 
-      <div class="import-warning">
-        Внимание: Загрузка перезапишет существующие статьи с совпадающими ключами.
-      </div>
+            <!-- Selected File Content -->
+            <div v-else-if="selectedFile && !importResult" class="space-y-6">
+              <div class="file-card p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-[#fafafa] dark:bg-[#161618] flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-500">
+                    <UIcon name="i-heroicons-document-text" class="text-xl" />
+                  </div>
+                  <div>
+                    <span class="file-name block font-bold text-sm text-gray-900 dark:text-white">{{ selectedFile.name }}</span>
+                    <span class="file-size text-xs text-gray-500">{{ formatFileSize(selectedFile.size) }}</span>
+                  </div>
+                </div>
+                <GvButton
+                  type="button"
+                  color="red"
+                  variant="ghost"
+                  square
+                  icon="i-heroicons-trash"
+                  title="Удалить файл"
+                  @click="removeFile"
+                />
+              </div>
 
-      <!-- Live Preview Render -->
-      <div class="preview-graph-card" v-if="previewGraphData.nodes.length > 0">
-        <h4 class="preview-graph-title">Предпросмотр Графа Связей</h4>
-        <div class="preview-graph-stats">
-          Узлов: <b>{{ previewGraphData.nodes.length }}</b> / Связей: <b>{{ previewGraphData.links.length }}</b>
-        </div>
-        <div class="preview-graph-container">
-          <KnowledgeGraphVisualizer :graphData="previewGraphData" :pending="false" :enableNavigation="false" />
-        </div>
-      </div>
+              <div class="import-warning p-4 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/20 text-xs text-red-700 dark:text-red-300">
+                Внимание: Загрузка перезапишет существующие статьи с совпадающими ключами.
+              </div>
 
-      <!-- Actions -->
-      <div class="import-actions">
-        <GvButton
-          type="button"
-          color="sky"
-          size="lg"
-          icon="i-heroicons-arrow-up-tray"
-          :loading="isImportLoading"
-          :disabled="!selectedFile"
-          @click="runImport"
-        >
-          Загрузить дамп
-        </GvButton>
+              <!-- Live Preview Render -->
+              <div class="preview-graph-card rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden bg-[#fafafa] dark:bg-[#161618]" v-if="previewGraphData.nodes.length > 0">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
+                  <h4 class="preview-graph-title text-sm font-bold text-gray-900 dark:text-white">Предпросмотр Графа Связей</h4>
+                  <div class="preview-graph-stats text-xs text-gray-500">
+                    Узлов: <b>{{ previewGraphData.nodes.length }}</b> / Связей: <b>{{ previewGraphData.links.length }}</b>
+                  </div>
+                </div>
+                <div class="preview-graph-container h-[350px] w-full bg-[#fdfdfd] dark:bg-[#111113]">
+                  <KnowledgeGraphVisualizer :graphData="previewGraphData" :pending="false" :enableNavigation="false" />
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="import-actions flex justify-end gap-3">
+                <GvButton
+                  type="button"
+                  color="gray"
+                  variant="ghost"
+                  @click="removeFile"
+                >
+                  Отмена
+                </GvButton>
+                <GvButton
+                  type="button"
+                  color="sky"
+                  icon="i-heroicons-arrow-up-tray"
+                  :loading="isImportLoading"
+                  @click="runImport"
+                >
+                  Загрузить дамп
+                </GvButton>
+              </div>
+            </div>
+
+            <!-- Import Result -->
+            <div v-else-if="importResult" class="max-w-xl mx-auto py-12 flex flex-col items-center text-center gap-6">
+              <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                <UIcon name="i-heroicons-check-circle" class="text-4xl" />
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Импорт завершен</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">{{ importResult.message }}</p>
+              </div>
+              <GvButton
+                type="button"
+                variant="outline"
+                color="gray"
+                size="md"
+                icon="i-heroicons-arrow-path"
+                @click="removeFile"
+              >
+                Готово
+              </GvButton>
+            </div>
+
+          </div>
+        </div>
+
       </div>
     </div>
-      </div>
-    </section>
-
-    <!-- Import Result -->
-    <section v-if="importResult" class="section-card">
-      <div class="card-body">
-      <div class="result-card">
-        <div class="result-icon-wrap">
-          <UIcon name="i-heroicons-check-circle" class="result-icon" />
-        </div>
-        <h2 class="result-title">{{ importResult.message }}</h2>
-        <div class="result-actions">
-          <GvButton
-            type="button"
-            variant="outline"
-            color="gray"
-            size="md"
-            icon="i-heroicons-arrow-path"
-            @click="removeFile"
-          >
-            Готово
-          </GvButton>
-        </div>
-      </div>
-      </div>
-    </section>
   </div>
 </template>
 
 <style scoped>
-.sync-page {
-  max-width: 900px;
-}
-
-.sync-header {
-  margin-bottom: 24px;
-}
-
-.sync-title {
-  font-size: 26px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin: 0;
-}
-
-.dark .sync-title {
-  color: #e5e5e5;
-}
-
-.sync-subtitle {
-  color: #888;
-  font-size: 14px;
-  margin: 4px 0 0;
-}
-
-.export-card {
+.gv-workspace-page {
   display: flex;
-  align-items: center;
-  gap: 20px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 24px;
+  flex-direction: column;
+  height: calc(100vh - 65px); /* 65px is the topbar height */
+  overflow: hidden;
+  background: var(--gv-surface);
 }
 
-.dark .export-card {
-  background: #1e1e21;
-  border-color: #2a2a2e;
-}
-
-.export-icon {
-  width: 48px;
-  height: 48px;
-  color: #10b981;
-  flex-shrink: 0;
-}
-
-.export-info {
+.workspace-grid {
+  height: 100%;
   flex: 1;
 }
 
-.export-info h3 {
-  margin: 0 0 4px;
-  font-size: 18px;
-  color: #1a1a1a;
+.workspace-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-.dark .export-info h3 {
-  color: #e5e5e5;
+.operations-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.export-info p {
-  margin: 0;
-  font-size: 14px;
-  color: #888;
-}
-
-.divider {
+.operation-item {
+  width: 100%;
   display: flex;
   align-items: center;
-  text-align: center;
-  color: #9ca3af;
-  margin: 32px 0;
-  font-size: 12px;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 600;
+  color: var(--gv-text-secondary);
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
 }
 
-.divider::before,
-.divider::after {
-  content: '';
+.operation-item:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+.dark .operation-item:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.operation-item--active {
+  background: rgba(14, 165, 233, 0.05) !important;
+  color: #0ea5e9 !important;
+}
+.dark .operation-item--active {
+  background: rgba(14, 165, 233, 0.1) !important;
+}
+
+.workspace-editor-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.workspace-editor-scroll {
+  overflow-y: auto;
   flex: 1;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.dark .divider::before,
-.dark .divider::after {
-  border-bottom-color: #2a2a2e;
-}
-
-.divider span {
-  padding: 0 16px;
-  text-transform: uppercase;
 }
 
 /* ─── Drop Zone ─── */
 .drop-zone {
-  border: 2px dashed #d1d5db;
+  border: 2px dashed var(--gv-border-subtle);
   border-radius: 16px;
-  padding: 48px 24px;
   text-align: center;
   transition: all 0.2s ease;
   cursor: pointer;
   background: #fafafa;
 }
-
-.drop-zone--active {
-  border-color: var(--gv-primary);
-  background: #eef2ff;
-}
-
 .dark .drop-zone {
-  border-color: #333;
   background: #1a1a1d;
 }
 
-.dark .drop-zone--active {
-  border-color: var(--gv-primary);
-  background: #1e1b4b;
+.drop-zone--active {
+  border-color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.05);
 }
 
 .drop-zone-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-}
-
-.drop-zone-icon {
-  width: 48px;
-  height: 48px;
-  color: #9ca3af;
-}
-
-.dark .drop-zone-icon {
-  color: #555;
-}
-
-.drop-zone--active .drop-zone-icon {
-  color: var(--gv-primary);
-}
-
-.drop-zone-text {
-  font-size: 16px;
-  font-weight: 600;
-  color: #555;
-  margin: 0;
-}
-
-.dark .drop-zone-text {
-  color: #aaa;
-}
-
-.drop-zone-hint {
-  font-size: 13px;
-  color: #999;
-  margin: 0;
-}
-
-/* ─── File Card ─── */
-.file-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 20px;
-}
-
-.dark .file-card {
-  background: #1e1e21;
-  border-color: #2a2a2e;
-}
-
-/* ─── Preview Graph ─── */
-.preview-graph-card {
-  margin-top: 16px;
-  margin-bottom: 24px;
-  background: #fafafa;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  overflow: hidden;
-  padding: 0;
-}
-
-.dark .preview-graph-card {
-  background: #18181b;
-  border-color: #2a2a2e;
-}
-
-.preview-graph-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  padding: 12px 16px 4px;
-  margin: 0;
-}
-
-.dark .preview-graph-title {
-  color: #eee;
-}
-
-.preview-graph-stats {
-  font-size: 12px;
-  color: #888;
-  padding: 0 16px 12px;
-}
-
-.preview-graph-container {
-  height: 400px;
-  width: 100%;
-  border-top: 1px solid #e5e7eb;
-  background: #fdfdfd;
-}
-
-.dark .preview-graph-container {
-  border-top-color: #2a2a2e;
-  background: #111113;
-}
-
-
-
-.file-card-info {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f0f0f2;
-}
-
-.dark .file-card-info {
-  border-bottom-color: #2a2a2e;
-}
-
-.file-icon-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: #eef2ff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.dark .file-icon-wrap {
-  background: #1e1b4b;
-}
-
-.file-icon {
-  width: 22px;
-  height: 22px;
-  color: var(--gv-primary);
-}
-
-.file-details {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.file-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a1a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dark .file-name {
-  color: #e5e5e5;
-}
-
-.file-size {
-  font-size: 12px;
-  color: #888;
-}
-
-:deep(.file-remove) {
-  padding: 6px;
-  border-radius: 8px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: #999;
-  transition: all 0.2s;
-}
-
-:deep(.file-remove:hover) {
-  background: #fef2f2;
-  color: #ef4444;
-}
-
-.dark :deep(.file-remove:hover) {
-  background: #2a1a1a;
-  color: #f87171;
-}
-
-.import-warning {
-  font-size: 13px;
-  color: #dc2626;
-  background: #fef2f2;
-  padding: 10px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  border: 1px solid #fecaca;
-}
-
-.dark .import-warning {
-  background: #3f1515;
-  color: #f87171;
-  border-color: #5c1e1e;
-}
-
-/* ─── Actions ─── */
-.import-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.result-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-}
-
-/* ─── Result ─── */
-.result-section {
-  margin-top: 24px;
-}
-
-.result-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 32px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.dark .result-card {
-  background: #1e1e21;
-  border-color: #2a2a2e;
-}
-
-.result-icon-wrap {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: #ecfdf5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dark .result-icon-wrap {
-  background: #064e3b;
-}
-
-.result-icon {
-  width: 28px;
-  height: 28px;
-  color: #10b981;
-}
-
-.result-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin: 0;
-}
-
-.dark .result-title {
-  color: #e5e5e5;
-}
-
-@media (max-width: 768px) {
-  .sync-page {
-    max-width: 100%;
-  }
-
-  .export-card {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 16px;
-  }
-
-  .preview-graph-container {
-    height: 320px;
-  }
-
-  .import-actions :deep(.gv-btn),
-  .result-actions :deep(.gv-btn) {
-    width: 100%;
-    justify-content: center;
-  }
+  gap: 8px;
 }
 </style>
