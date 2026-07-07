@@ -170,4 +170,19 @@ export interface AdminDashboardStats {
   meta: {
     lastArticleUpdatedAt: string | null
   }
+  untranslatedArticlesRu: AuditItem[]
+  untranslatedArticlesZh: AuditItem[]
+  untranslatedTermsRu: AuditItem[]
+  untranslatedTermsZh: AuditItem[]
+  orphanTerms: AuditItem[]
+  orphanArticles: AuditItem[]
+  draftArticles: AuditItem[]
+  recentArticles: { id: number; title: string; title_ru: string | null; title_zh: string | null; slug: string; updated_at: string }[]
+  recentTerms: { id: number; title: string; title_ru: string | null; title_zh: string | null; slug: string; updated_at: string }[]
+}
+
+export interface AuditItem {
+  id: number
+  title: string
+  slug: string
 }

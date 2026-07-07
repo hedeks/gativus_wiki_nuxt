@@ -32,6 +32,15 @@ export default defineEventHandler(async (event) => {
     edgesTermToArticle,
     edgesArticleTermRows,
     lastArticleRow,
+    untranslatedArticlesRuList,
+    untranslatedArticlesZhList,
+    untranslatedTermsRuList,
+    untranslatedTermsZhList,
+    orphanTermsList,
+    orphanArticlesList,
+    draftArticlesList,
+    recentArticlesRows,
+    recentTermsRows,
   ] = await Promise.all([
     db.prepare('SELECT COUNT(*) as count FROM articles').get(),
     db.prepare(
@@ -57,6 +66,15 @@ export default defineEventHandler(async (event) => {
     db.prepare(
       'SELECT MAX(updated_at) as updated_at FROM articles'
     ).get(),
+    db.prepare('SELECT id, title, slug FROM articles WHERE is_published = 1 AND is_term_article = 0 AND COALESCE(translation_valid_ru, 0) = 0').all(),
+    db.prepare('SELECT id, title, slug FROM articles WHERE is_published = 1 AND is_term_article = 0 AND COALESCE(translation_valid_zh, 0) = 0').all(),
+    db.prepare('SELECT id, title, slug FROM terms WHERE COALESCE(translation_valid_ru, 0) = 0').all(),
+    db.prepare('SELECT id, title, slug FROM terms WHERE COALESCE(translation_valid_zh, 0) = 0').all(),
+    db.prepare('SELECT id, title, slug FROM terms WHERE id NOT IN (SELECT DISTINCT term_id FROM article_terms)').all(),
+    db.prepare('SELECT id, title, slug FROM articles WHERE is_published = 1 AND is_term_article = 0 AND category_id IS NULL AND book_id IS NULL').all(),
+    db.prepare('SELECT id, title, slug FROM articles WHERE is_published = 0').all(),
+    db.prepare('SELECT id, title, title_ru, title_zh, slug, updated_at FROM articles WHERE is_term_article = 0 ORDER BY updated_at DESC, id DESC LIMIT 5').all(),
+    db.prepare('SELECT id, title, title_ru, title_zh, slug, updated_at FROM terms ORDER BY updated_at DESC, id DESC LIMIT 5').all(),
   ])
 
   const cArticlesTotal = count(articlesTotal as { count?: unknown })
@@ -97,6 +115,15 @@ export default defineEventHandler(async (event) => {
       lastArticleUpdatedAt:
         (lastArticleRow as { updated_at?: string | null })?.updated_at ?? null,
     },
+    untranslatedArticlesRu: untranslatedArticlesRuList as any,
+    untranslatedArticlesZh: untranslatedArticlesZhList as any,
+    untranslatedTermsRu: untranslatedTermsRuList as any,
+    untranslatedTermsZh: untranslatedTermsZhList as any,
+    orphanTerms: orphanTermsList as any,
+    orphanArticles: orphanArticlesList as any,
+    draftArticles: draftArticlesList as any,
+    recentArticles: recentArticlesRows as any,
+    recentTerms: recentTermsRows as any,
   }
 
   return payload
