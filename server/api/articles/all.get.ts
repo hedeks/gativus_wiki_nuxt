@@ -54,6 +54,7 @@ export default defineEventHandler(async (event) => {
         b.title_zh AS book_title_zh,
         c.title AS category_title,
         c.title_ru AS category_title_ru,
+        c.title_zh AS category_title_zh,
         c.icon AS category_icon,
         c.color AS category_color,
         c.slug AS category_slug
@@ -94,9 +95,9 @@ export default defineEventHandler(async (event) => {
       category_title: resolveLocalized(
         a.category_title,
         a.category_title_ru,
-        undefined,
+        a.category_title_zh,
         isRu,
-        false
+        isZh
       ),
       category_icon: a.category_icon || null,
       category_color: a.category_color || null,

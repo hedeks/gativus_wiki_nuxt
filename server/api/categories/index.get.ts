@@ -13,18 +13,35 @@ export default defineEventHandler(async (event) => {
 
   // Fetch all categories ordered by sort_order
   const categories = await db.prepare(`
-    SELECT id, slug, slug_ru, title, title_ru, parent_id, description, description_ru, icon, sort_order 
+    SELECT id, slug, slug_ru, slug_zh, title, title_ru, title_zh, parent_id, description, description_ru, description_zh, icon, sort_order 
     FROM categories
     ORDER BY sort_order ASC, title ASC
   `).all() as any[]
 
   const isRu = lang === 'ru'
-  const mappedCategories = categories.map(cat => ({
-    ...cat,
-    title: (isRu && cat.title_ru) ? cat.title_ru : cat.title,
-    slug: (isRu && cat.slug_ru) ? cat.slug_ru : cat.slug,
-    description: (isRu && cat.description_ru) ? cat.description_ru : cat.description
-  }))
+  const isZh = lang === 'zh'
+  const mappedCategories = categories.map(cat => {
+    let title = cat.title
+    let slug = cat.slug
+    let description = cat.description
+
+    if (isRu) {
+      title = cat.title_ru || cat.title
+      slug = cat.slug_ru || cat.slug
+      description = cat.description_ru || cat.description
+    } else if (isZh) {
+      title = cat.title_zh || cat.title
+      slug = cat.slug_zh || cat.slug
+      description = cat.description_zh || cat.description
+    }
+
+    return {
+      ...cat,
+      title,
+      slug,
+      description
+    }
+  })
 
   if (!isTree) {
     return mappedCategories

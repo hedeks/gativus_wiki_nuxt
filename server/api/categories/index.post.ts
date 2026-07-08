@@ -29,20 +29,27 @@ export default defineEventHandler(async (event) => {
     slug_ru = await ensureUniqueSlug(db, 'categories', slugify(body.slug_ru))
   }
 
+  let slug_zh = null
+  if (body.slug_zh) {
+    slug_zh = await ensureUniqueSlug(db, 'categories', slugify(body.slug_zh))
+  }
+
   const {
     title,
     title_ru = null,
+    title_zh = null,
     parent_id = null,
     description = '',
     description_ru = null,
+    description_zh = null,
     icon = 'i-heroicons-folder',
     sort_order = 0
   } = body
 
   await db.prepare(`
-    INSERT INTO categories (slug, slug_ru, title, title_ru, parent_id, description, description_ru, icon, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(slug, slug_ru, title, title_ru, parent_id, description, description_ru, icon, sort_order)
+    INSERT INTO categories (slug, slug_ru, slug_zh, title, title_ru, title_zh, parent_id, description, description_ru, description_zh, icon, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(slug, slug_ru, slug_zh, title, title_ru, title_zh, parent_id, description, description_ru, description_zh, icon, sort_order)
 
   const inserted = await db.prepare('SELECT last_insert_rowid() as id').get() as any
 

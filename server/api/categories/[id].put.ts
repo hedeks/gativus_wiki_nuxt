@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Check if exists
-  const existing = await db.prepare('SELECT id, slug, slug_ru, title, title_ru, description, description_ru, icon, sort_order, parent_id FROM categories WHERE id = ?').get(id) as any
+  const existing = await db.prepare('SELECT id, slug, slug_ru, slug_zh, title, title_ru, title_zh, description, description_ru, description_zh, icon, sort_order, parent_id FROM categories WHERE id = ?').get(id) as any
   if (!existing) {
     throw createError({ statusCode: 404, statusMessage: 'Category not found' })
   }
@@ -38,12 +38,19 @@ export default defineEventHandler(async (event) => {
     slug_ru = body.slug_ru ? await ensureUniqueSlug(db, 'categories', slugify(body.slug_ru), parseInt(id)) : null
   }
 
+  let slug_zh = existing.slug_zh
+  if (body.slug_zh !== undefined && body.slug_zh !== existing.slug_zh) {
+    slug_zh = body.slug_zh ? await ensureUniqueSlug(db, 'categories', slugify(body.slug_zh), parseInt(id)) : null
+  }
+
   const {
     title = existing.title,
     title_ru = existing.title_ru,
+    title_zh = existing.title_zh,
     parent_id = existing.parent_id,
     description = existing.description,
     description_ru = existing.description_ru,
+    description_zh = existing.description_zh,
     icon = existing.icon,
     sort_order = existing.sort_order
   } = body
@@ -58,15 +65,18 @@ export default defineEventHandler(async (event) => {
     SET 
       slug = ?, 
       slug_ru = ?,
+      slug_zh = ?,
       title = ?, 
       title_ru = ?,
+      title_zh = ?,
       parent_id = ?, 
       description = ?, 
       description_ru = ?,
+      description_zh = ?,
       icon = ?, 
       sort_order = ?
     WHERE id = ?
-  `).run(slug, slug_ru, title, title_ru, parent_id, description, description_ru, icon, sort_order, id)
+  `).run(slug, slug_ru, slug_zh, title, title_ru, title_zh, parent_id, description, description_ru, description_zh, icon, sort_order, id)
 
   return {
     message: 'Category updated successfully',
