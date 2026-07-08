@@ -319,76 +319,85 @@
             />
           </div>
 
-          <template v-if="selectedNode.type === 'term' && termPopupLoading">
-            <div class="graph-popup__title-text graph-popup__title-text--loading-preview">
-              {{ selectedNode.title }}
-            </div>
-            <div class="graph-popup__skeleton" aria-hidden="true">
-              <div class="graph-popup__sk-line graph-popup__sk-line--sm" />
-              <div class="graph-popup__sk-line graph-popup__sk-line--lg" />
-              <div class="graph-popup__sk-media" />
-              <div class="graph-popup__sk-chips">
-                <span class="graph-popup__sk-chip" />
-                <span class="graph-popup__sk-chip" />
-                <span class="graph-popup__sk-chip" />
-              </div>
-              <div class="graph-popup__sk-line" />
-              <div class="graph-popup__sk-line" />
-              <div class="graph-popup__sk-line graph-popup__sk-line--md" />
-            </div>
-          </template>
-          <template v-else-if="selectedNode.type === 'term'">
-            <div
-              v-if="termPopupDetail?.category_title"
-              class="graph-popup__category"
-              :style="termPopupDetail.category_color ? { color: termPopupDetail.category_color } : {}"
+          <div class="graph-popup__wrapper-inner" :style="nodePopupStyle">
+            <Transition
+              name="fade"
+              @before-leave="onPopupBeforeLeave"
+              @enter="onPopupEnter"
+              @after-enter="onPopupAfterEnter"
             >
-              <UIcon
-                v-if="termPopupDetail.category_icon"
-                :name="termPopupDetail.category_icon"
-                class="graph-popup__cat-icon"
-              />
-              {{ termPopupDetail.category_title }}
-            </div>
-            <div class="graph-popup__title-text">{{ termPopupDetail?.title || selectedNode.title }}</div>
-            <div v-if="termPopupDetail?.image_url || termPopupDetail?.video_url" class="graph-popup__media">
-              <img
-                v-if="termPopupDetail.image_url"
-                :src="termPopupDetail.image_url"
-                class="graph-popup__media-preview"
-                alt=""
-              >
-              <video
-                v-else-if="termPopupDetail.video_url"
-                :src="termPopupDetail.video_url"
-                class="graph-popup__media-preview"
-                muted
-                autoplay
-                loop
-                playsinline
-              />
-            </div>
-            <div v-if="termPopupDetail?.aliases?.length" class="graph-popup__aliases">
-              <span
-                v-for="alias in termPopupDetail.aliases.slice(0, 3)"
-                :key="alias"
-                class="graph-popup__alias-chip"
-              >{{ alias }}</span>
-            </div>
-            <p
-              v-if="termPopupDetail?.definition || selectedNode.description"
-              class="graph-popup__definition"
-              v-html="renderInlineMarkup(termPopupDetail?.definition || selectedNode.description || '')"
-            />
-          </template>
-          <template v-else>
-            <div class="graph-popup__title-text">{{ selectedNode.title }}</div>
-            <p
-              v-if="selectedNode.description"
-              class="graph-popup__definition"
-              v-html="renderInlineMarkup(selectedNode.description)"
-            />
-          </template>
+              <div v-if="selectedNode.type === 'term' && termPopupLoading" class="graph-popup__body">
+                <div class="graph-popup__title-text graph-popup__title-text--loading-preview">
+                  {{ selectedNode.title }}
+                </div>
+                <div class="graph-popup__skeleton" aria-hidden="true">
+                  <div class="graph-popup__sk-line graph-popup__sk-line--sm" />
+                  <div class="graph-popup__sk-line graph-popup__sk-line--lg" />
+                  <div class="graph-popup__sk-media" />
+                  <div class="graph-popup__sk-chips">
+                    <span class="graph-popup__sk-chip" />
+                    <span class="graph-popup__sk-chip" />
+                    <span class="graph-popup__sk-chip" />
+                  </div>
+                  <div class="graph-popup__sk-line" />
+                  <div class="graph-popup__sk-line" />
+                  <div class="graph-popup__sk-line graph-popup__sk-line--md" />
+                </div>
+              </div>
+              <div v-else-if="selectedNode.type === 'term'" class="graph-popup__body">
+                <div
+                  v-if="termPopupDetail?.category_title"
+                  class="graph-popup__category"
+                  :style="termPopupDetail.category_color ? { color: termPopupDetail.category_color } : {}"
+                >
+                  <UIcon
+                    v-if="termPopupDetail.category_icon"
+                    :name="termPopupDetail.category_icon"
+                    class="graph-popup__cat-icon"
+                  />
+                  {{ termPopupDetail.category_title }}
+                </div>
+                <div class="graph-popup__title-text">{{ termPopupDetail?.title || selectedNode.title }}</div>
+                <div v-if="termPopupDetail?.image_url || termPopupDetail?.video_url" class="graph-popup__media">
+                  <img
+                    v-if="termPopupDetail.image_url"
+                    :src="termPopupDetail.image_url"
+                    class="graph-popup__media-preview"
+                    alt=""
+                  >
+                  <video
+                    v-else-if="termPopupDetail.video_url"
+                    :src="termPopupDetail.video_url"
+                    class="graph-popup__media-preview"
+                    muted
+                    autoplay
+                    loop
+                    playsinline
+                  />
+                </div>
+                <div v-if="termPopupDetail?.aliases?.length" class="graph-popup__aliases">
+                  <span
+                    v-for="alias in termPopupDetail.aliases.slice(0, 3)"
+                    :key="alias"
+                    class="graph-popup__alias-chip"
+                  >{{ alias }}</span>
+                </div>
+                <p
+                  v-if="termPopupDetail?.definition || selectedNode.description"
+                  class="graph-popup__definition"
+                  v-html="renderInlineMarkup(termPopupDetail?.definition || selectedNode.description || '')"
+                />
+              </div>
+              <div v-else class="graph-popup__body">
+                <div class="graph-popup__title-text">{{ selectedNode.title }}</div>
+                <p
+                  v-if="selectedNode.description"
+                  class="graph-popup__definition"
+                  v-html="renderInlineMarkup(selectedNode.description)"
+                />
+              </div>
+            </Transition>
+          </div>
 
           <div class="graph-popup__footer">
             <span
@@ -700,6 +709,44 @@ function clientToPointerHost(clientX: number, clientY: number): { x: number, y: 
 
 const termPopupDetail = ref<any>(null)
 const termPopupLoading = ref(false)
+
+const nodePopupStyle = ref<Record<string, string>>({})
+let oldNodePopupHeight = 0
+
+function onPopupBeforeLeave(el: Element) {
+  const htmlEl = el as HTMLElement
+  oldNodePopupHeight = htmlEl.offsetHeight
+  nodePopupStyle.value.height = `${oldNodePopupHeight}px`
+  nodePopupStyle.value.overflow = 'hidden'
+}
+
+function onPopupEnter(el: Element, done: () => void) {
+  const htmlEl = el as HTMLElement
+  if (oldNodePopupHeight > 0) {
+    const origHeightStyle = htmlEl.style.height
+    htmlEl.style.height = 'auto'
+    const newHeight = htmlEl.offsetHeight
+    htmlEl.style.height = origHeightStyle
+    
+    void htmlEl.offsetHeight // reflow
+    
+    nodePopupStyle.value.transition = 'height 0.2s cubic-bezier(0.19, 1, 0.22, 1)'
+    nodePopupStyle.value.height = `${newHeight}px`
+    nodePopupStyle.value.overflow = 'hidden'
+    
+    setTimeout(done, 210)
+  } else {
+    done()
+  }
+}
+
+function onPopupAfterEnter(el: Element) {
+  delete nodePopupStyle.value.height
+  delete nodePopupStyle.value.transition
+  delete nodePopupStyle.value.overflow
+  oldNodePopupHeight = 0
+}
+
 /** Актуальная матрица зума для clamp попапов (сразу при каждом событии d3-zoom). */
 let graphLiveZoomTransform: d3.ZoomTransform = d3.zoomIdentity
 /** Vue-совместимо: синхронизация не чаще одного кадра — меньше нагрузки, чем ref на каждом RAW-событии. */
@@ -4018,4 +4065,25 @@ watch([focusNodeId, focusDepth], () => {
     margin: auto 4px;
   }
 }
+
+.graph-popup__wrapper-inner {
+  position: relative;
+  width: 100%;
+}
+.graph-popup__body {
+  width: 100%;
+}
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+.fade-leave-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
 </style>

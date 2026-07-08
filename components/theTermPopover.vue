@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <Transition name="popover" @after-enter="onPopoverAfterEnter">
+    <Transition name="popover">
       <div
         v-if="visible && term"
         ref="popoverEl"
@@ -9,63 +9,83 @@
         :aria-busy="loading"
         @click.stop
       >
-        <template v-if="loading">
-          <div
-            class="popover-title-skel popover-skel-line popover-skel-line--lg"
-            aria-hidden="true"
-          />
-          <div class="popover-category popover-skel-line popover-skel-line--sm" aria-hidden="true" />
-          <div class="popover-media popover-skel-media" />
-          <div class="popover-skel-chips">
-            <span class="popover-skel-chip" />
-            <span class="popover-skel-chip" />
-          </div>
-          <div class="popover-definition popover-skel-line" />
-          <div class="popover-definition popover-skel-line popover-skel-line--md" />
-        </template>
-
-        <template v-else>
-          <div
-            v-if="term.category_title"
-            class="popover-category"
-            :style="term.category_color ? { color: term.category_color } : {}"
-          >
-            <UIcon v-if="term.category_icon" :name="term.category_icon" class="cat-icon" />
-            {{ term.category_title }}
-          </div>
-
-          <div class="popover-title">{{ term.title }}</div>
-
-          <div v-if="term.image_url || term.video_url" class="popover-media">
-            <img v-if="term.image_url" :src="term.image_url" class="media-preview" alt="">
-            <video
-              v-else-if="term.video_url"
-              :src="term.video_url"
-              class="media-preview"
-              muted
-              autoplay
-              loop
-              playsinline
+        <Transition
+          name="fade"
+          @before-leave="onBeforeLeave"
+          @before-enter="onBeforeEnter"
+          @enter="onEnter"
+          @after-enter="onAfterEnter"
+        >
+          <div v-if="loading" key="loading" class="popover-wrapper-inner">
+            <div
+              class="popover-title-skel popover-skel-line popover-skel-line--lg"
+              aria-hidden="true"
             />
+            <div class="popover-category popover-skel-line popover-skel-line--sm" aria-hidden="true" />
+            <div class="popover-media popover-skel-media" />
+            <div class="popover-skel-chips">
+              <span class="popover-skel-chip" />
+              <span class="popover-skel-chip" />
+            </div>
+            <div class="popover-definition popover-skel-line" />
+            <div class="popover-definition popover-skel-line popover-skel-line--md" />
+            
+            <div class="popover-footer-loading">
+              <span class="popover-loading">
+                <UIcon name="i-heroicons-arrow-path" class="spin-icon" />
+                {{ t.loading }}
+              </span>
+            </div>
           </div>
 
-          <div v-if="term.aliases?.length" class="popover-aliases">
-            <span v-for="alias in term.aliases.slice(0, 3)" :key="alias" class="alias-chip">{{ alias }}</span>
+          <div v-else key="content" class="popover-wrapper-inner">
+            <div
+              v-if="term.category_title || term.type"
+              class="popover-category"
+              :style="categoryStyle"
+            >
+              <UIcon v-if="term.category_icon" :name="term.category_icon" class="cat-icon" />
+              <UIcon v-else-if="term.type === 'book'" name="i-heroicons-book-open" class="cat-icon" />
+              <UIcon v-else-if="term.type === 'article'" name="i-heroicons-document-text" class="cat-icon" />
+              <UIcon v-else name="i-heroicons-academic-cap" class="cat-icon" />
+              {{ term.category_title || (term.type === 'book' ? t.bookLabel : term.type === 'article' ? t.articleLabel : t.termLabel) }}
+            </div>
+
+            <div class="popover-title">{{ term.title }}</div>
+
+            <div v-if="term.image_url || term.video_url" class="popover-media">
+              <img v-if="term.image_url" :src="term.image_url" class="media-preview" alt="">
+              <video
+                v-else-if="term.video_url"
+                :src="term.video_url"
+                class="media-preview"
+                muted
+                autoplay
+                loop
+                playsinline
+              />
+            </div>
+
+            <div v-if="term.aliases?.length" class="popover-aliases">
+              <span v-for="alias in term.aliases.slice(0, 3)" :key="alias" class="alias-chip">{{ alias }}</span>
+            </div>
+
+            <p v-if="loadError" class="popover-definition popover-definition--error">{{ t.loadError }}</p>
+            <p v-else-if="term.definition" class="popover-definition" v-html="renderInlineMarkup(term.definition)" />
+            
+            <div v-if="term.slug" class="popover-footer">
+              <NuxtLink v-if="term.type === 'book'" :to="`/books/${term.slug}`" class="popover-link" :style="{ '--link-hover-color': linkHoverColor }" @click="close">
+                {{ t.openBook }}
+              </NuxtLink>
+              <NuxtLink v-else-if="term.type === 'article'" :to="`/articles/${term.slug}`" class="popover-link" :style="{ '--link-hover-color': linkHoverColor }" @click="close">
+                {{ t.openArticle }}
+              </NuxtLink>
+              <NuxtLink v-else :to="`/glossary/${term.slug}`" class="popover-link" :style="{ '--link-hover-color': linkHoverColor }" @click="close">
+                {{ t.openArticle }}
+              </NuxtLink>
+            </div>
           </div>
-
-          <p v-if="loadError" class="popover-definition popover-definition--error">{{ t.loadError }}</p>
-          <p v-else-if="term.definition" class="popover-definition" v-html="renderInlineMarkup(term.definition)" />
-        </template>
-
-        <div class="popover-footer">
-          <span v-if="loading" class="popover-loading">
-            <UIcon name="i-heroicons-arrow-path" class="spin-icon" />
-            {{ t.loading }}
-          </span>
-          <NuxtLink v-if="term.slug" :to="`/glossary/${term.slug}`" class="popover-link" @click="close">
-            {{ t.openArticle }}
-          </NuxtLink>
-        </div>
+        </Transition>
       </div>
     </Transition>
   </Teleport>
@@ -82,13 +102,14 @@ import {
   viewportScreenBox,
 } from '~/utils/anchoredPopupPlacement'
 
-interface TermData {
+interface KnowledgeData {
   id: number
   slug: string
   title: string
-  aliases: string[]
-  definition: string
-  has_article: boolean
+  type: 'term' | 'book' | 'article'
+  aliases?: string[]
+  definition?: string
+  has_article?: boolean
   category_title?: string
   category_slug?: string
   category_icon?: string
@@ -99,37 +120,79 @@ interface TermData {
 
 const langStore = useLanguageStore()
 
-const uiDict: Record<string, { loading: string; openArticle: string; loadError: string }> = {
+const uiDict: Record<string, { 
+  loading: string; 
+  openArticle: string; 
+  openBook: string;
+  loadError: string;
+  bookLabel: string;
+  articleLabel: string;
+  termLabel: string;
+}> = {
   en: {
     loading: 'Loading...',
     openArticle: 'Open article →',
-    loadError: 'Could not load term details.',
+    openBook: 'Open book →',
+    loadError: 'Could not load details.',
+    bookLabel: 'Book',
+    articleLabel: 'Article',
+    termLabel: 'Term',
   },
   ru: {
     loading: 'Загрузка...',
     openArticle: 'Открыть статью →',
-    loadError: 'Не удалось загрузить данные термина.',
+    openBook: 'Открыть книгу →',
+    loadError: 'Не удалось загрузить данные.',
+    bookLabel: 'Книга',
+    articleLabel: 'Статья',
+    termLabel: 'Термин',
   },
   zh: {
     loading: '加载中...',
     openArticle: '打开条目 →',
-    loadError: '无法加载术语详情。',
+    openBook: '打开图书 →',
+    loadError: '无法加载详情。',
+    bookLabel: '图书',
+    articleLabel: '文章',
+    termLabel: '词条',
   },
 }
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+
+const categoryStyle = computed(() => {
+  if (!term.value) return {}
+  if (term.value.category_color) {
+    return { color: term.value.category_color }
+  }
+  if (term.value.type === 'book') {
+    return { color: '#6366f1' } // Indigo Gativus
+  }
+  if (term.value.type === 'article') {
+    return { color: '#8b5cf6' } // Violet Gativus
+  }
+  // Для термина по умолчанию (если нет категории)
+  return { color: '#0ea5e9' } // Sky Gativus
+})
+
+const linkHoverColor = computed(() => {
+  if (!term.value) return '#0ea5e9'
+  if (term.value.type === 'book') return '#6366f1'
+  if (term.value.type === 'article') return '#8b5cf6'
+  return term.value.category_color || '#0ea5e9'
+})
 
 
 /** Координаты клика в системе клиента (viewport) — единственный якорь позиции попапа. */
 const pointerClient = ref<{ x: number, y: number } | null>(null)
 const lastAnchorEl = ref<HTMLElement | null>(null)
 
-const cache = new Map<string, TermData>()
+const cache = new Map<string, KnowledgeData>()
 
 const visible = ref(false)
 const loading = ref(false)
 const loadError = ref(false)
-const term = ref<TermData | null>(null)
+const term = ref<KnowledgeData | null>(null)
 
 const popoverEl = ref<HTMLElement>()
 const route = useRoute()
@@ -147,7 +210,7 @@ const popoverStyle = ref<Record<string, string>>({
  * чтобы высокий скелетон не раздувал «виртуальный» прямоугольник и не уносил попап вверх.
  */
 
-function syncPopoverLayout() {
+function syncPopoverLayout(overrideHeight?: number) {
   const popup = popoverEl.value
   if (!popup || !visible.value || !pointerClient.value) return
 
@@ -161,7 +224,7 @@ function syncPopoverLayout() {
   popup.style.overflowY = ''
   void popup.offsetHeight
 
-  const rawNaturalH = popup.getBoundingClientRect().height
+  const rawNaturalH = overrideHeight !== undefined ? overrideHeight : popup.getBoundingClientRect().height
   const viewportStrip = screenBottom - screenTop
   /** Высота, которая реально помещается в окно; скелетон часто выше — иначе pickPopupRectFromPoint считает «ящик» огромным и уводит попап далеко вверх от курсора. */
   const viewportCap = Math.max(160, Math.floor(viewportStrip - gap * 4))
@@ -189,7 +252,8 @@ function syncPopoverLayout() {
   void popup.offsetHeight
 
   let r = popup.getBoundingClientRect()
-  const hRefined = Math.min(r.height, viewportCap, adjacentCap)
+  const actualHeightForRefinement = overrideHeight !== undefined ? overrideHeight : r.height
+  const hRefined = Math.min(actualHeightForRefinement, viewportCap, adjacentCap)
   ;({ left, top } = pickPopupRectFromPoint(
     cx,
     cy,
@@ -206,7 +270,7 @@ function syncPopoverLayout() {
   if (rawNaturalH > viewportCap) {
     maxHStr = `${viewportCap}px`
   }
-  else if (top + r.height > screenBottom - pad) {
+  else if (top + actualHeightForRefinement > screenBottom - pad) {
     maxHStr = `${Math.max(120, Math.floor(screenBottom - pad - top))}px`
   }
 
@@ -229,8 +293,9 @@ function syncPopoverLayout() {
 
   if (screenRight <= screenLeft || screenBottom <= screenTop) {
     r = popup.getBoundingClientRect()
+    const finalH = overrideHeight !== undefined ? overrideHeight : r.height
     left += winLeft + pad + Math.max(0, (winW - 2 * pad - r.width) / 2) - r.left
-    top += winTop + pad + Math.max(0, (winH - 2 * pad - r.height) / 2) - r.top
+    top += winTop + pad + Math.max(0, (winH - 2 * pad - finalH) / 2) - r.top
     popup.style.left = `${left}px`
     popup.style.top = `${top}px`
     void popup.offsetHeight
@@ -254,13 +319,15 @@ function syncPopoverLayout() {
 
   for (let pass = 0; pass < 8; pass++) {
     r = popup.getBoundingClientRect()
+    const finalH = overrideHeight !== undefined ? overrideHeight : r.height
+    const rBottom = top + finalH
     let moved = false
-    if (r.top < screenTop) {
-      top += screenTop - r.top
+    if (top < screenTop) {
+      top += screenTop - top
       moved = true
     }
-    if (r.bottom > screenBottom) {
-      top -= r.bottom - screenBottom
+    if (rBottom > screenBottom) {
+      top -= rBottom - screenBottom
       moved = true
     }
     if (!moved) break
@@ -269,6 +336,7 @@ function syncPopoverLayout() {
   }
 
   popoverStyle.value = {
+    ...popoverStyle.value,
     position: 'fixed',
     left: `${left}px`,
     top: `${top}px`,
@@ -281,12 +349,7 @@ function syncPopoverLayout() {
     zIndex: '100000',
   }
 
-  popup.style.removeProperty('left')
-  popup.style.removeProperty('top')
-  popup.style.removeProperty('width')
-  popup.style.removeProperty('max-height')
-  popup.style.removeProperty('overflow-y')
-  popup.style.removeProperty('position')
+
 }
 
 function onPopoverAfterEnter() {
@@ -328,14 +391,25 @@ watch(visible, (v) => {
 
 function handleDocClick(e: MouseEvent) {
   const target = e.target as HTMLElement
-  const termEl = target.closest('.wiki-term') as HTMLElement | null
+  const anchor = target.closest('.wiki-term, .wiki-book, .wiki-article') as HTMLElement | null
 
-  if (termEl) {
+  if (anchor) {
     e.preventDefault()
-    const slug = termEl.dataset.termSlug
-    const editorPane = termEl.closest('[data-editor-lang]') as HTMLElement | null
-    const lang = termEl.dataset.termLang || editorPane?.dataset.editorLang || undefined
-    if (slug) showPopover(slug, termEl, e.clientX, e.clientY, lang)
+    let type: 'term' | 'book' | 'article' = 'term'
+    let slug = ''
+    if (anchor.classList.contains('wiki-book')) {
+      type = 'book'
+      slug = anchor.dataset.bookSlug || ''
+    } else if (anchor.classList.contains('wiki-article')) {
+      type = 'article'
+      slug = anchor.dataset.articleSlug || ''
+    } else {
+      type = 'term'
+      slug = anchor.dataset.termSlug || ''
+    }
+    const editorPane = anchor.closest('[data-editor-lang]') as HTMLElement | null
+    const lang = anchor.dataset.termLang || anchor.dataset.bookLang || anchor.dataset.articleLang || editorPane?.dataset.editorLang || undefined
+    if (slug) showPopover(slug, type, anchor, e.clientX, e.clientY, lang)
     return
   }
 
@@ -346,15 +420,15 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') close()
 }
 
-function placeholderTerm(slug: string, anchor: HTMLElement): TermData {
+function placeholderTerm(slug: string, type: 'term' | 'book' | 'article', anchor: HTMLElement): KnowledgeData {
   const title = (anchor.textContent || '').trim() || slug
   return {
     id: 0,
     slug,
     title,
+    type,
     aliases: [],
     definition: '',
-    has_article: false,
     category_title: undefined,
     category_slug: undefined,
     category_icon: undefined,
@@ -364,46 +438,126 @@ function placeholderTerm(slug: string, anchor: HTMLElement): TermData {
   }
 }
 
-async function showPopover(slug: string, anchor: HTMLElement, clientX: number, clientY: number, customLang?: string) {
+let oldHeight = 0
+
+function onBeforeLeave(el: HTMLElement) {
+  const popup = popoverEl.value
+  if (popup) {
+    oldHeight = popup.offsetHeight
+    popoverStyle.value.height = `${oldHeight}px`
+    popoverStyle.value.transition = 'none'
+  }
+}
+
+function onBeforeEnter(el: HTMLElement) {
+  // Не сбрасываем стили здесь, чтобы избежать мгновенных прыжков
+}
+
+function onEnter(el: HTMLElement, done: () => void) {
+  const popup = popoverEl.value
+  if (popup && oldHeight > 0) {
+    const origHeightStyle = popup.style.height
+    popup.style.height = 'auto'
+    const newHeight = popup.offsetHeight
+    popup.style.height = origHeightStyle
+    
+    void popup.offsetHeight
+    
+    popoverStyle.value.transition = 'height 0.2s cubic-bezier(0.19, 1, 0.22, 1), left 0.2s cubic-bezier(0.19, 1, 0.22, 1), top 0.2s cubic-bezier(0.19, 1, 0.22, 1)'
+    popoverStyle.value.height = `${newHeight}px`
+    popoverStyle.value.overflow = 'hidden'
+    syncPopoverLayout(newHeight)
+    
+    setTimeout(done, 210)
+  } else {
+    done()
+  }
+}
+
+function onAfterEnter(el: HTMLElement) {
+  if (popoverStyle.value) {
+    delete popoverStyle.value.height
+    delete popoverStyle.value.transition
+    delete popoverStyle.value.overflow
+  }
+}
+
+async function showPopover(slug: string, type: 'term' | 'book' | 'article', anchor: HTMLElement, clientX: number, clientY: number, customLang?: string) {
+  if (visible.value) {
+    visible.value = false
+    await new Promise(resolve => setTimeout(resolve, 80))
+  }
+
   loadError.value = false
   pointerClient.value = { x: clientX, y: clientY }
   lastAnchorEl.value = anchor
-  term.value = placeholderTerm(slug, anchor)
-  positionPopover()
+  term.value = placeholderTerm(slug, type, anchor)
   visible.value = true
   loading.value = true
 
   const langToFetch = customLang || langStore.currentLang
-  const cacheKey = `${slug}_${langToFetch}`
+  const cacheKey = `${type}_${slug}_${langToFetch}`
 
-  if (process.client) await nextTick()
+  if (process.client) {
+    await nextTick()
+    positionPopover()
+  }
 
   if (cache.has(cacheKey)) {
     term.value = cache.get(cacheKey)!
     loading.value = false
     loadError.value = false
-    positionPopover()
-    nextTick(() => syncPopoverLayout())
     return
   }
 
   try {
-    const data = await $fetch<any>(`/api/terms/${slug}`, {
-      query: { lang: langToFetch },
-    })
-    const mapped: TermData = {
-      id: data.id,
-      slug: data.slug,
-      title: data.title,
-      aliases: data.aliases || [],
-      definition: data.definition,
-      has_article: Boolean(data.term_article_id),
-      category_title: data.category_title,
-      category_slug: data.category_slug,
-      category_icon: data.category_icon,
-      category_color: data.category_color,
-      image_url: data.image_url,
-      video_url: data.video_url,
+    let mapped: KnowledgeData
+    if (type === 'book') {
+      const data = await $fetch<any>(`/api/books/${slug}`, {
+        query: { lang: langToFetch },
+      })
+      mapped = {
+        id: data.id,
+        slug: data.slug,
+        title: data.title,
+        type: 'book',
+        definition: data.description || '',
+        image_url: data.cover_image || undefined,
+        category_title: undefined, 
+      }
+    } else if (type === 'article') {
+      const data = await $fetch<any>(`/api/articles/${slug}`, {
+        query: { lang: langToFetch },
+      })
+      mapped = {
+        id: data.id,
+        slug: data.slug,
+        title: data.title,
+        type: 'article',
+        definition: data.excerpt || '',
+        category_title: data.category_title || undefined,
+        category_icon: data.category_icon || undefined,
+        category_color: data.category_color || undefined,
+      }
+    } else {
+      const data = await $fetch<any>(`/api/terms/${slug}`, {
+        query: { lang: langToFetch },
+      })
+      mapped = {
+        id: data.id,
+        slug: data.slug,
+        title: data.title,
+        type: 'term',
+        aliases: data.aliases || [],
+        definition: data.definition,
+        has_article: Boolean(data.term_article_id),
+        category_title: data.category_title,
+        category_slug: data.category_slug,
+        category_icon: data.category_icon,
+        category_color: data.category_color,
+        image_url: data.image_url,
+        video_url: data.video_url,
+      }
     }
     cache.set(cacheKey, mapped)
     term.value = mapped
@@ -412,12 +566,14 @@ async function showPopover(slug: string, anchor: HTMLElement, clientX: number, c
     loadError.value = true
   } finally {
     loading.value = false
-    if (pointerClient.value) positionPopover()
-    nextTick(() => syncPopoverLayout())
   }
 }
 
 function close() {
+  if (popoverStyle.value) {
+    delete popoverStyle.value.height
+    delete popoverStyle.value.transition
+  }
   visible.value = false
   term.value = null
   loadError.value = false
@@ -637,6 +793,14 @@ onUnmounted(() => {
   gap: 10px;
 }
 
+.popover-footer-loading {
+  display: flex;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--gv-border-principal);
+  margin-top: 2px;
+}
+
 .popover-loading {
   display: flex;
   align-items: center;
@@ -668,26 +832,52 @@ onUnmounted(() => {
 }
 
 .popover-link:hover {
-  color: var(--gv-primary);
+  color: var(--link-hover-color, var(--gv-primary));
 }
 
 :global(.dark) .popover-link:hover {
-  color: var(--gv-primary);
+  color: var(--link-hover-color, var(--gv-primary));
 }
 
 .popover-enter-active {
-  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.15s cubic-bezier(0.19, 1, 0.22, 1), transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   transform-origin: center;
 }
 
 .popover-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.25, 1, 0.5, 1);
-  transform-origin: center;
+  transition: opacity 0.1s ease-out;
 }
 
-.popover-enter-from,
-.popover-leave-to {
+.popover-enter-from {
   opacity: 0;
   transform: scale(0.94) translateY(4px);
+}
+
+.popover-leave-to {
+  opacity: 0;
+}
+
+.popover-wrapper-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.fade-enter-active {
+  transition: opacity 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.fade-leave-active {
+  transition: opacity 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
