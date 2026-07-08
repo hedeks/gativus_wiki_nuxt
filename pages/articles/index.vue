@@ -182,11 +182,26 @@ const categoriesList = computed(() => categories.value || [])
 
 const activeFilterCount = computed(() => (activeCategory.value !== null ? 1 : 0))
 
+function getSubcategoryIds(catId: number, flatCategories: any[]): number[] {
+  const ids = [catId]
+  const children = flatCategories.filter((c: any) => c.parent_id === catId)
+  for (const child of children) {
+    ids.push(...getSubcategoryIds(child.id, flatCategories))
+  }
+  return ids
+}
+
+const activeCategoryIds = computed(() => {
+  if (activeCategory.value === null) return []
+  return getSubcategoryIds(activeCategory.value, categoriesList.value || [])
+})
+
 const filteredArticles = computed(() => {
   const list = allArticles.value || []
   let result = list
   if (activeCategory.value !== null) {
-    result = result.filter((a: any) => a.category_id === activeCategory.value)
+    const allowedIds = activeCategoryIds.value
+    result = result.filter((a: any) => a.category_id !== null && allowedIds.includes(a.category_id))
   }
   result = filterBySearch(result, debouncedQuery.value, ['title', 'excerpt'])
   return result

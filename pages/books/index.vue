@@ -251,11 +251,26 @@ const { data: categories } = await useFetch<any[]>('/api/categories', {
   query: computed(() => ({ lang: langStore.currentLang })),
 })
 
+function getSubcategoryIds(catId: number, flatCategories: any[]): number[] {
+  const ids = [catId]
+  const children = flatCategories.filter((c: any) => c.parent_id === catId)
+  for (const child of children) {
+    ids.push(...getSubcategoryIds(child.id, flatCategories))
+  }
+  return ids
+}
+
+const activeCategoryIds = computed(() => {
+  if (activeCategory.value === null) return []
+  return getSubcategoryIds(activeCategory.value, categories.value || [])
+})
+
 const filteredBooks = computed(() => {
   if (!allBooks.value) return []
   let result = allBooks.value
   if (activeCategory.value !== null) {
-    result = result.filter((b: any) => b.category_ids?.includes(activeCategory.value))
+    const allowedIds = activeCategoryIds.value
+    result = result.filter((b: any) => b.category_ids?.some((id: number) => allowedIds.includes(id)))
   }
   result = filterBySearch(result, debouncedQuery.value, ['title', 'description'])
   return result
