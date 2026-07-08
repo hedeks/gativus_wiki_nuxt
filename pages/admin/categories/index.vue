@@ -93,7 +93,8 @@
             <UForm :state="form" @submit="saveCategory" class="space-y-5">
               <UTabs :items="[
                 { key: 'ru', label: 'Русский (RU)', icon: 'i-heroicons-language' },
-                { key: 'en', label: 'English (EN)', icon: 'i-heroicons-globe-alt' }
+                { key: 'en', label: 'English (EN)', icon: 'i-heroicons-globe-alt' },
+                { key: 'zh', label: 'Chinese (ZH)', icon: 'i-heroicons-globe-alt' }
               ]">
                 <template #item="{ item }">
                   <div v-if="item.key === 'ru'" class="space-y-4 py-2">
@@ -105,6 +106,17 @@
                     </UFormGroup>
                     <UFormGroup label="Описание (RU)">
                       <UTextarea v-model="form.description_ru" autoresize />
+                    </UFormGroup>
+                  </div>
+                  <div v-else-if="item.key === 'zh'" class="space-y-4 py-2">
+                    <UFormGroup label="Название (ZH)">
+                      <UInput v-model="form.title_zh" />
+                    </UFormGroup>
+                    <UFormGroup label="Slug (ZH)">
+                      <UInput v-model="form.slug_zh" />
+                    </UFormGroup>
+                    <UFormGroup label="Описание (ZH)">
+                      <UTextarea v-model="form.description_zh" autoresize />
                     </UFormGroup>
                   </div>
                   <div v-else class="space-y-4 py-2">
@@ -190,7 +202,7 @@ const filteredTree = computed(() => {
   const visit = (nodes: any[]): any[] => nodes
     .map((node) => {
       const children = visit(node.children || [])
-      const selfMatch = [node.title, node.title_ru, node.slug, node.slug_ru]
+      const selfMatch = [node.title, node.title_ru, node.title_zh, node.slug, node.slug_ru, node.slug_zh]
         .some((v) => String(v || '').toLowerCase().includes(q))
       if (!q && !selfMatch && !children.length) return { ...node, children }
       if (!q || selfMatch || children.length) return { ...node, children }
@@ -210,11 +222,14 @@ const saving = ref(false)
 const form = reactive({
   title: '',
   title_ru: '',
+  title_zh: '',
   slug: '',
   slug_ru: '',
+  slug_zh: '',
   parent_id: undefined as number | undefined,
   description: '',
   description_ru: '',
+  description_zh: '',
   icon: 'i-heroicons-folder',
   sort_order: 0
 })
@@ -232,11 +247,14 @@ function startCreate(parentId: number | null = null) {
   editingCategoryId.value = null
   form.title = ''
   form.title_ru = ''
+  form.title_zh = ''
   form.slug = ''
   form.slug_ru = ''
+  form.slug_zh = ''
   form.parent_id = parentId ?? undefined
   form.description = ''
   form.description_ru = ''
+  form.description_zh = ''
   form.icon = 'i-heroicons-folder'
   form.sort_order = 0
 }
@@ -246,11 +264,14 @@ function startEdit(cat: any) {
   editingCategoryId.value = cat.id
   form.title = cat.title || ''
   form.title_ru = cat.title_ru || ''
+  form.title_zh = cat.title_zh || ''
   form.slug = cat.slug || ''
   form.slug_ru = cat.slug_ru || ''
+  form.slug_zh = cat.slug_zh || ''
   form.parent_id = cat.parent_id ?? undefined
   form.description = cat.description || ''
   form.description_ru = cat.description_ru || ''
+  form.description_zh = cat.description_zh || ''
   form.icon = cat.icon || 'i-heroicons-folder'
   form.sort_order = cat.sort_order || 0
 }

@@ -196,6 +196,68 @@ useHead({ title: computed(() => `${title.value || (isEditing.value ? 'Редак
 
 const isSaving = ref(false)
 const showTermModal = ref(false)
+const showBookModal = ref(false)
+const showArticleModal = ref(false)
+
+function insertBook(book: any) {
+  if (!editorRef.value) return
+  editorRef.value.pushHistory?.(`Книга: ${book.title}`)
+  const bookTag = `<a class="wiki-book" data-book-slug="${book.slug}">${book.title}</a>`
+
+  if (editorRef.value.previewEditMode) {
+    editorRef.value.insertHtmlAtCursor?.(bookTag)
+    return
+  }
+
+  const el = editorRef.value.textareaRef
+  if (!el) return
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  const text = el.value
+  const selectedText = text.substring(start, end) || book.title
+  const insertion = `<a class="wiki-book" data-book-slug="${book.slug}">${selectedText}</a>`
+
+  el.value = text.substring(0, start) + insertion + text.substring(end)
+  
+  if (activeTab.value === 'en') htmlContent.value = el.value
+  else if (activeTab.value === 'ru') htmlContentRu.value = el.value
+  else if (activeTab.value === 'zh') htmlContentZh.value = el.value
+
+  nextTick(() => {
+    el.focus()
+    el.setSelectionRange(start + insertion.length, start + insertion.length)
+  })
+}
+
+function insertArticle(article: any) {
+  if (!editorRef.value) return
+  editorRef.value.pushHistory?.(`Статья: ${article.title}`)
+  const articleTag = `<a class="wiki-article" data-article-slug="${article.slug}">${article.title}</a>`
+
+  if (editorRef.value.previewEditMode) {
+    editorRef.value.insertHtmlAtCursor?.(articleTag)
+    return
+  }
+
+  const el = editorRef.value.textareaRef
+  if (!el) return
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  const text = el.value
+  const selectedText = text.substring(start, end) || article.title
+  const insertion = `<a class="wiki-article" data-article-slug="${article.slug}">${selectedText}</a>`
+
+  el.value = text.substring(0, start) + insertion + text.substring(end)
+  
+  if (activeTab.value === 'en') htmlContent.value = el.value
+  else if (activeTab.value === 'ru') htmlContentRu.value = el.value
+  else if (activeTab.value === 'zh') htmlContentZh.value = el.value
+
+  nextTick(() => {
+    el.focus()
+    el.setSelectionRange(start + insertion.length, start + insertion.length)
+  })
+}
 
 function insertTerm(term: any) {
   if (!editorRef.value) return
@@ -399,7 +461,7 @@ async function save() {
     <div class="editor-body">
       <!-- Sidebar meta -->
       <aside class="editor-sidebar">
-        <UTabs :items="[{ label: '🇬🇧 EN', slot: 'en' }, { label: '🇷🇺 RU', slot: 'ru' }, { label: '🇨🇳 ZH', slot: 'zh' }]" @change="activeTab = ['en', 'ru', 'zh'][$event]" class="w-full mb-4">
+        <UTabs :items="[{ label: '🇬🇧 EN', slot: 'en' }, { label: '🇷🇺 RU', slot: 'ru' }, { label: '🇨🇳 ZH', slot: 'zh' }]" @change="activeTab = ['en', 'ru', 'zh'][$event] as 'en' | 'ru' | 'zh'" class="w-full mb-4">
           <template #en>
             <div class="space-y-4 pt-2">
               <div class="meta-group">
@@ -552,12 +614,20 @@ async function save() {
           :active-lang="activeTab"
           :article-id="isEditing ? Number(articleId) : undefined"
           @show-term-modal="showTermModal = true"
+          @show-book-modal="showBookModal = true"
+          @show-article-modal="showArticleModal = true"
         />
       </div>
     </div>
 
     <!-- Modal for glossary terms -->
-    <AdminTermSelectorModal v-model="showTermModal" @select="insertTerm" />
+    <TermSelectorModal v-model="showTermModal" @select="insertTerm" />
+
+    <!-- Modal for books -->
+    <BookSelectorModal v-model="showBookModal" @select="insertBook" />
+
+    <!-- Modal for articles -->
+    <ArticleSelectorModal v-model="showArticleModal" :exclude-id="isEditing ? Number(articleId) : undefined" @select="insertArticle" />
   </div>
 </template>
 
@@ -575,7 +645,7 @@ async function save() {
 .editor-page--fullscreen {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 1000 !important;
+  z-index: 40 !important;
   width: 100vw !important;
   height: 100vh !important;
   background: #fff;
@@ -615,7 +685,7 @@ async function save() {
   padding: 6px;
   border-radius: 8px;
   color: #888;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 .back-btn:hover {
   background: #f3f4f6;

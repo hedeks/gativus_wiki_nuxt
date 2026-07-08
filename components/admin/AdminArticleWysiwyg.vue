@@ -12,6 +12,8 @@ const htmlZh = defineModel<string>('zh', { default: '' })
 
 const emit = defineEmits<{
   (e: 'show-term-modal'): void
+  (e: 'show-book-modal'): void
+  (e: 'show-article-modal'): void
 }>()
 
 const store = userStore()
@@ -83,8 +85,41 @@ watch(viewMode, (val) => {
 })
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const savedRange = ref<Range | null>(null)
+
+function saveSelection() {
+  if (!previewEditMode.value) return
+  const sel = window.getSelection()
+  if (sel && sel.rangeCount > 0) {
+    savedRange.value = sel.getRangeAt(0).cloneRange()
+  } else {
+    savedRange.value = null
+  }
+}
+
+function openTermModal() {
+  saveSelection()
+  emit('show-term-modal')
+}
+
+function openBookModal() {
+  saveSelection()
+  emit('show-book-modal')
+}
+
+function openArticleModal() {
+  saveSelection()
+  emit('show-article-modal')
+}
 
 function insertHtmlAtCursor(html: string) {
+  if (previewEditMode.value && savedRange.value) {
+    const sel = window.getSelection()
+    if (sel) {
+      sel.removeAllRanges()
+      sel.addRange(savedRange.value)
+    }
+  }
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0) return
   const range = sel.getRangeAt(0)
@@ -100,6 +135,7 @@ function insertHtmlAtCursor(html: string) {
   }
   const html2 = previewRef.value?.innerHTML || ''
   updateActiveHtml(html2)
+  savedRange.value = null
 }
 
 function insertTag(tag: string, closingTag?: string) {
@@ -659,7 +695,9 @@ defineExpose({
           <button @click="insertTag('strong')" title="Жирный"><UIcon name="i-heroicons-bold" /></button>
           <button @click="insertTag('em')" title="Курсив"><UIcon name="i-heroicons-italic" /></button>
           <button @click="insertTag('a')" title="Ссылка"><UIcon name="i-heroicons-link" /></button>
-          <button @click="emit('show-term-modal')" title="Связать с термином"><UIcon name="i-heroicons-book-open" class="text-sky-500" /></button>
+          <button @click="openTermModal" title="Связать с термином"><UIcon name="i-heroicons-academic-cap" class="text-sky-500" /></button>
+          <button @click="openBookModal" title="Связать с книгой"><UIcon name="i-heroicons-book-open" class="text-indigo-500" /></button>
+          <button @click="openArticleModal" title="Связать со статьей"><UIcon name="i-heroicons-document-text" class="text-violet-500" /></button>
         </div>
         <div class="toolbar-sep"></div>
         <div class="toolbar-group">
@@ -925,8 +963,14 @@ defineExpose({
         <button @mousedown.prevent @click="applyFormat('s')" title="Зачёркивание"><s>S</s></button>
         <button @mousedown.prevent @click="applyFormat('code')" title="Код"><UIcon name="i-heroicons-code-bracket" /></button>
         <div class="float-sep"></div>
-        <button @mousedown.prevent @click="emit('show-term-modal')" title="Термин">
-          <UIcon name="i-heroicons-book-open" class="text-sky-500" />
+        <button @mousedown.prevent @click="openTermModal" title="Термин">
+          <UIcon name="i-heroicons-academic-cap" class="text-sky-500" />
+        </button>
+        <button @mousedown.prevent @click="openBookModal" title="Книга">
+          <UIcon name="i-heroicons-book-open" class="text-indigo-500" />
+        </button>
+        <button @mousedown.prevent @click="openArticleModal" title="Статья">
+          <UIcon name="i-heroicons-document-text" class="text-violet-500" />
         </button>
       </div>
     </Teleport>
@@ -977,7 +1021,7 @@ defineExpose({
   padding: 6px;
   border-radius: 8px;
   color: #888;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 .back-btn:hover { background: #f3f4f6; color: #1a1a1a; }
 .dark .back-btn:hover { background: #252528; color: #e5e5e5; }
@@ -1085,7 +1129,7 @@ defineExpose({
   font-weight: 500;
   color: #555;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 .toggle-preview:hover, .history-btn:hover {
   background: #f3f4f6;
@@ -1110,7 +1154,7 @@ defineExpose({
   font-size: 13px;
   font-weight: 500;
   color: #555;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 .translate-prompt-btn:hover {
   background: #f0f9ff;
@@ -1139,7 +1183,7 @@ defineExpose({
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 .save-btn:hover { background: var(--gv-primary-hover); }
 .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -1223,7 +1267,7 @@ defineExpose({
   font-size: 13px;
   color: #1a1a1a;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.15s;
 }
 .meta-input:focus { border-color: var(--gv-primary); }
 .dark .meta-input {
@@ -1308,7 +1352,7 @@ defineExpose({
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 .toolbar-group button:hover {
   background: #eef2ff;
@@ -1463,7 +1507,7 @@ defineExpose({
   font-size: 12px;
   font-weight: 600;
   color: #555;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 .pres-upload-btn:hover { background: #e5e7eb; }
 .dark .pres-upload-btn { background: #252528; color: #aaa; }
