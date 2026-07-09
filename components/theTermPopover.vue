@@ -39,16 +39,21 @@
           </div>
 
           <div v-else key="content" class="popover-wrapper-inner">
+            <!-- Type Badge (Matches Knowledge Graph colors) -->
+            <div v-if="term.type" class="popover-type-badge" :style="{ color: typeColor }">
+              <UIcon :name="typeIcon" class="cat-icon" />
+              {{ typeLabel }}
+            </div>
+
+            <!-- Category Label -->
             <div
-              v-if="term.category_title || term.type"
+              v-if="term.category_title"
               class="popover-category"
               :style="categoryStyle"
             >
               <UIcon v-if="term.category_icon" :name="term.category_icon" class="cat-icon" />
-              <UIcon v-else-if="term.type === 'book'" name="i-heroicons-book-open" class="cat-icon" />
-              <UIcon v-else-if="term.type === 'article'" name="i-heroicons-document-text" class="cat-icon" />
-              <UIcon v-else name="i-heroicons-academic-cap" class="cat-icon" />
-              {{ term.category_title || (term.type === 'book' ? t.bookLabel : term.type === 'article' ? t.articleLabel : t.termLabel) }}
+              <UIcon v-else name="i-heroicons-tag" class="cat-icon" />
+              {{ term.category_title }}
             </div>
 
             <div class="popover-title">{{ term.title }}</div>
@@ -160,19 +165,35 @@ const uiDict: Record<string, {
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 
+const typeColor = computed(() => {
+  if (!term.value) return '#10b981'
+  if (term.value.type === 'book') return '#0ea5e9' // Sky
+  if (term.value.type === 'article') return '#6366f1' // Indigo
+  if (term.value.type === 'term') return '#10b981' // Emerald
+  return '#94a3b8'
+})
+
+const typeIcon = computed(() => {
+  if (!term.value) return 'i-heroicons-academic-cap'
+  if (term.value.type === 'book') return 'i-heroicons-book-open'
+  if (term.value.type === 'article') return 'i-heroicons-document-text'
+  return 'i-heroicons-academic-cap'
+})
+
+const typeLabel = computed(() => {
+  if (!term.value) return t.value.termLabel
+  if (term.value.type === 'book') return t.value.bookLabel
+  if (term.value.type === 'article') return t.value.articleLabel
+  return t.value.termLabel
+})
+
 const categoryStyle = computed(() => {
   if (!term.value) return {}
   if (term.value.category_color) {
     return { color: term.value.category_color }
   }
-  if (term.value.type === 'book') {
-    return { color: '#6366f1' } // Indigo Gativus
-  }
-  if (term.value.type === 'article') {
-    return { color: '#8b5cf6' } // Violet Gativus
-  }
-  // Для термина по умолчанию (если нет категории)
-  return { color: '#0ea5e9' } // Sky Gativus
+  // Для тега категории по умолчанию используем нейтральный или красный, если это category
+  return { color: '#ef4444' } // Red, как category в графе
 })
 
 const linkHoverColor = computed(() => {
@@ -699,6 +720,7 @@ onUnmounted(() => {
   }
 }
 
+.popover-type-badge,
 .popover-category {
   display: flex;
   align-items: center;

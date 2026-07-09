@@ -817,7 +817,7 @@ const focusNodeId = ref<string | null>(null)
 watch(() => props.initialFocusNodeId, (newId) => {
   focusNodeId.value = newId || null
 }, { immediate: true })
-const focusDepth = ref(2)
+const focusDepth = ref(1)
 const isFocusMode = computed(() => focusNodeId.value !== null)
 const focusNodeTitle = computed(() =>
   props.graphData?.nodes?.find((n: any) => n.id === focusNodeId.value)?.title || ''
@@ -1101,7 +1101,7 @@ function graphPopupHostPosition(
   anchorXHost: number,
   anchorYHost: number,
   gap: number,
-): { leftHost: number; topHost: number } {
+) {
   const hr = host.getBoundingClientRect()
   const cx = hr.left + anchorXHost
   const cy = hr.top + anchorYHost
@@ -1152,132 +1152,26 @@ function graphPopupHostPosition(
     screenBottom,
   ))
 
+  let maxHStr = ''
+  if (rawNaturalH > viewportCap) {
+    maxHStr = `${viewportCap}px`
+  } else if (topClient + hRefined > screenBottom - 8) {
+    maxHStr = `${Math.max(120, Math.floor(screenBottom - 8 - topClient))}px`
+  }
+
   leftHost = leftClient - hr.left
   topHost = topClient - hr.top
 
-  el.style.removeProperty('left')
-  el.style.removeProperty('top')
-
-  return { leftHost, topHost }
-}
-
-function clampPopupInHost(popup: HTMLElement, host: HTMLElement, left: number, top: number) {
-  const pad = 8
-  popup.style.maxHeight = ''
-  popup.style.overflowY = ''
-  const c = host.getBoundingClientRect()
-  const vv = typeof window !== 'undefined' ? window.visualViewport : null
-  const winW = vv?.width ?? window.innerWidth
-  const winH = vv?.height ?? window.innerHeight
-  const winLeft = vv?.offsetLeft ?? 0
-  const winTop = vv?.offsetTop ?? 0
-
-  const screenLeft = winLeft + pad
-  const screenTop = winTop + pad
-  const screenRight = winLeft + winW - pad
-  const screenBottom = winTop + winH - pad
-
-  const boundLeft = Math.max(c.left + pad, screenLeft)
-  const boundTop = Math.max(c.top + pad, screenTop)
-  const boundRight = Math.min(c.right - pad, screenRight)
-  const boundBottom = Math.min(c.bottom - pad, screenBottom)
-
-  let l = left
-  let t = top
-
-  const apply = () => {
-    popup.style.left = `${l}px`
-    popup.style.top = `${t}px`
-  }
-
-  apply()
-  let r = popup.getBoundingClientRect()
-
-  // Нет пересечения хоста с экраном — центрируем в видимой области
-  if (boundRight <= boundLeft || boundBottom <= boundTop) {
-    l += screenLeft + Math.max(0, (winW - 2 * pad - r.width) / 2) - r.left
-    t += screenTop + Math.max(0, (winH - 2 * pad - r.height) / 2) - r.top
-    apply()
-    r = popup.getBoundingClientRect()
+  el.style.left = `${leftHost}px`
+  el.style.top = `${topHost}px`
+  if (maxHStr) {
+    el.style.maxHeight = maxHStr
+    el.style.overflowY = 'auto'
   } else {
-    const spanX = boundRight - boundLeft
-    const spanY = boundBottom - boundTop
-
-    if (r.width <= spanX) {
-      if (r.left < boundLeft) l += boundLeft - r.left
-      apply()
-      r = popup.getBoundingClientRect()
-      if (r.right > boundRight) l -= r.right - boundRight
-    } else {
-      l += boundLeft - r.left
-    }
-
-    apply()
-    r = popup.getBoundingClientRect()
-
-    if (r.height <= spanY) {
-      if (r.top < boundTop) t += boundTop - r.top
-      apply()
-      r = popup.getBoundingClientRect()
-      if (r.bottom > boundBottom) t -= r.bottom - boundBottom
-    }
-    else {
-      const capY = Math.max(1, Math.floor(spanY))
-      popup.style.maxHeight = `${capY}px`
-      popup.style.overflowY = 'auto'
-      apply()
-      r = popup.getBoundingClientRect()
-      if (r.top < boundTop) t += boundTop - r.top
-      apply()
-      r = popup.getBoundingClientRect()
-      if (r.bottom > boundBottom) t -= r.bottom - boundBottom
-    }
-
-    apply()
+    el.style.maxHeight = ''
+    el.style.overflowY = ''
   }
-
-  // Финально не даём уйти за пределы экрана (погрешность; попап шире/выше коридора)
-  for (let pass = 0; pass < 6; pass++) {
-    r = popup.getBoundingClientRect()
-    let moved = false
-    if (r.left < screenLeft) {
-      l += screenLeft - r.left
-      moved = true
-    }
-    if (r.right > screenRight) {
-      l -= r.right - screenRight
-      moved = true
-    }
-    if (r.top < screenTop) {
-      t += screenTop - r.top
-      moved = true
-    }
-    if (r.bottom > screenBottom) {
-      t -= r.bottom - screenBottom
-      moved = true
-    }
-    apply()
-    if (!moved) break
-  }
-
-  /** Как у theTermPopover: верхняя граница по высоте окна и скролл внутри при очень высоком скелетоне / контенте. */
-  const viewportCapPx = Math.max(160, Math.floor(screenBottom - screenTop - 24))
-  r = popup.getBoundingClientRect()
-  if (r.height > viewportCapPx - 2) {
-    popup.style.maxHeight = `${viewportCapPx}px`
-    popup.style.overflowY = 'auto'
-    apply()
-    void popup.offsetHeight
-    r = popup.getBoundingClientRect()
-    if (r.bottom > screenBottom) {
-      t -= r.bottom - screenBottom
-      apply()
-    }
-    if (r.top < screenTop) {
-      t += screenTop - r.top
-      apply()
-    }
-  }
+  void el.offsetHeight
 }
 
 function graphPopupClampNeeded(): boolean {
@@ -1305,8 +1199,7 @@ function applyGraphPopupClamp() {
         hx = graphLiveZoomTransform.applyX(selectedNode.value.x)
         hy = graphLiveZoomTransform.applyY(selectedNode.value.y)
       }
-      const { leftHost, topHost } = graphPopupHostPosition(el, host, hx, hy, 15)
-      clampPopupInHost(el, host, leftHost, topHost)
+      graphPopupHostPosition(el, host, hx, hy, 15)
     }
   }
 
@@ -1327,8 +1220,7 @@ function applyGraphPopupClamp() {
         hx = graphLiveZoomTransform.applyX(midX)
         hy = graphLiveZoomTransform.applyY(midY)
       }
-      const { leftHost, topHost } = graphPopupHostPosition(el, host, hx, hy, ANCHORED_POPUP_GAP_PX)
-      clampPopupInHost(el, host, leftHost, topHost)
+      graphPopupHostPosition(el, host, hx, hy, ANCHORED_POPUP_GAP_PX)
     }
   }
 }
@@ -1912,16 +1804,25 @@ function renderDagEgoGraph(
     const layerNodes = layerGroups.get(li)!
     const baseY = startY + rank * layerSpacing
     const n = layerNodes.length
-    // Each sub-row (even / odd) spans the full width independently → 2× horizontal spacing
-    const row0Count = Math.ceil(n / 2)   // even indices: 0,2,4…
-    const row1Count = Math.floor(n / 2)  // odd  indices: 1,3,5…
+    // Each sub-row spans independently. Fix for mobile squashing:
+    const row0Count = Math.ceil(n / 2)
+    const row1Count = Math.floor(n / 2)
     layerNodes.forEach((node: any, i: number) => {
       const isOdd = i % 2 === 1
       const posInRow = Math.floor(i / 2)
       const rowCount = isOdd ? row1Count : row0Count
-      node.x = padX + ((posInRow + 1) / (rowCount + 1)) * (width - padX * 2)
+      // Minimum 100px per node
+      const effectiveWidth = Math.max(width - padX * 2, rowCount * 100)
+      const startX = (width - effectiveWidth) / 2 // center the row
+      node.x = startX + ((posInRow + 1) / (rowCount + 1)) * effectiveWidth
       node.y = baseY + (isOdd ? stagger : 0)
-      node._labelBelow = !isOdd  // even (row 0) → label below, odd (row 1) → label above
+      
+      // Alternating labels in "chessboard" pattern to prevent overlap
+      if (isOdd) {
+        node._labelBelow = posInRow % 2 !== 0
+      } else {
+        node._labelBelow = posInRow % 2 === 0
+      }
     })
   })
 
@@ -1985,7 +1886,7 @@ function renderDagEgoGraph(
     })
 
   dagNodeGrp.append('circle')
-    .attr('r', (d: any) => nodeGlyphRadius(d) * (d.id === rootId ? 1.7 : 1))
+    .attr('r', (d: any) => nodeGlyphRadius(d) * (d.id === rootId ? 2.2 : 1))
     .attr('fill', (d: any) => {
       if (d.type === 'book') return 'url(#grad-book)'
       if (d.type === 'category') return 'url(#grad-category)'
@@ -1994,45 +1895,45 @@ function renderDagEgoGraph(
       return '#94a3b8'
     })
     .style('stroke', 'var(--node-stroke)')
-    .attr('stroke-width', (d: any) => d.id === rootId ? 3 : 2)
+    .attr('stroke-width', (d: any) => d.id === rootId ? 4 : 2)
 
   // Focal node: outer solid ring
   dagNodeGrp.filter((d: any) => d.id === rootId)
     .append('circle')
-    .attr('r', (d: any) => nodeGlyphRadius(d) * 1.7 + 10)
+    .attr('r', (d: any) => nodeGlyphRadius(d) * 2.2 + 14)
     .attr('fill', 'none')
     .attr('stroke', (d: any) => getNodeColor(d))
-    .attr('stroke-width', 2)
-    .attr('stroke-opacity', 0.45)
+    .attr('stroke-width', 3)
+    .attr('stroke-opacity', 0.5)
     .style('pointer-events', 'none')
 
   // Focal node: inner dashed ring
   dagNodeGrp.filter((d: any) => d.id === rootId)
     .append('circle')
-    .attr('r', (d: any) => nodeGlyphRadius(d) * 1.7 + 5)
+    .attr('r', (d: any) => nodeGlyphRadius(d) * 2.2 + 7)
     .attr('fill', 'none')
     .attr('stroke', (d: any) => getNodeColor(d))
-    .attr('stroke-width', 2.5)
-    .attr('stroke-opacity', 0.9)
-    .attr('stroke-dasharray', '5,3')
+    .attr('stroke-width', 3.5)
+    .attr('stroke-opacity', 1)
+    .attr('stroke-dasharray', '6,4')
     .style('pointer-events', 'none')
 
   // Labels
   dagNodeGrp.append('text')
     .attr('class', 'kg-node-label')
     .attr('dy', (d: any) => {
-      const r = nodeGlyphRadius(d) * (d.id === rootId ? 1.7 : 1)
-      if (d.id === rootId) return -(r + 8)
+      const r = nodeGlyphRadius(d) * (d.id === rootId ? 2.2 : 1)
+      if (d.id === rootId) return -(r + 22) // pushed higher to avoid rings and overlap
       return d._labelBelow ? (r + 14) : -(r + 10)
     })
     .attr('text-anchor', 'middle')
     .text((d: any) => d.title)
-    .attr('font-size', (d: any) => d.id === rootId ? '13px' : d.type === 'category' ? '12px' : '10.5px')
-    .attr('font-weight', (d: any) => d.id === rootId ? '700' : d.type === 'category' ? '600' : '500')
+    .attr('font-size', (d: any) => d.id === rootId ? '16px' : d.type === 'category' ? '12px' : '10.5px')
+    .attr('font-weight', (d: any) => d.id === rootId ? '800' : d.type === 'category' ? '600' : '500')
     .style('fill', 'var(--gv-text-primary)')
     .style('pointer-events', 'none')
     .style('stroke', 'var(--text-halo)')
-    .attr('stroke-width', 3)
+    .attr('stroke-width', (d: any) => d.id === rootId ? 5 : 3)
     .style('paint-order', 'stroke fill')
 }
 
@@ -2359,8 +2260,7 @@ const initGraph = () => {
     linkBundles.selectAll<SVGPathElement, any>('path')
       .attr('d', bezierPath)
 
-    node
-      .attr('transform', (d: any) => `translate(${d.x},${d.y})`)
+    node.attr('transform', (d: any) => `translate(${d.x},${d.y})`)
 
     if (graphPopupClampNeeded())
       requestGraphPopupClamp()
@@ -3490,8 +3390,13 @@ watch([focusNodeId, focusDepth], () => {
   width: 100%;
   height: 100%;
   cursor: grab;
-  contain: layout paint;
+  outline: none;
+  user-select: none;
+  position: relative;
+  z-index: 2;
 }
+
+
 
 .graph-svg:active {
   cursor: grabbing;
