@@ -85,6 +85,10 @@ const props = defineProps<{
 </style>
 
 <style>
+.knowledge-index[data-accent='category'] {
+  --gv-primary: #dc2626;
+  --gv-primary-hover: #b91c1c;
+}
 .knowledge-index[data-accent='book'] {
   --gv-primary: #0284c7;
   --gv-primary-hover: #0369a1;

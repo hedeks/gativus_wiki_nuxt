@@ -8,7 +8,7 @@ export const ONTOLOGY_COLORS = {
   term: '#10b981',
 } as const
 
-export type KnowledgeEntityVariant = 'book' | 'article' | 'term'
+export type KnowledgeEntityVariant = 'book' | 'article' | 'term' | 'category'
 
 /** Category → child: dashed (virtual). Book/Article → child: solid (structural). */
 export type CategoryLinkKind = 'virtual' | 'structural'
@@ -20,6 +20,7 @@ export const KNOWLEDGE_INDEX_ACCENT: Record<
   KnowledgeIndexAccent,
   { primary: string; primaryHover: string; rgb: string }
 > = {
+  category: { primary: '#dc2626', primaryHover: '#b91c1c', rgb: '239, 68, 68' },
   book: { primary: '#0284c7', primaryHover: '#0369a1', rgb: '14, 165, 233' },
   article: { primary: '#4f46e5', primaryHover: '#4338ca', rgb: '99, 102, 241' },
   term: { primary: '#059669', primaryHover: '#047857', rgb: '16, 185, 129' },
