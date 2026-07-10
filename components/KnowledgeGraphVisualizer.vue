@@ -1054,7 +1054,7 @@ const selectedNodePath = computed(() => {
   if (node.type === 'term') return `/glossary/${node.slug}`
   if (node.type === 'article') return `/articles/${node.slug}`
   if (node.type === 'book') return `/books/${node.slug}`
-  if (node.type === 'category') return `/categories/${node.slug}`
+  if (node.type === 'category') return `/categories?slug=${node.slug}`
   return null
 })
 
