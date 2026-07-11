@@ -135,6 +135,33 @@ function openExportModal(mode: 'selected' | 'filter') {
   isExportModalOpen.value = true
 }
 
+const isBulkCategoryModalOpen = ref(false)
+const selectedBulkCategoryId = ref('')
+const isApplyingBulkCategory = ref(false)
+
+async function applyBulkCategory() {
+  if (selectedIds.value.size === 0) return
+  isApplyingBulkCategory.value = true
+  try {
+    const res = await $fetch<any>('/api/admin/books/bulk-category', {
+      method: 'POST',
+      headers: store.getAuthHeader(),
+      body: {
+        ids: Array.from(selectedIds.value),
+        category_id: selectedBulkCategoryId.value ? parseInt(selectedBulkCategoryId.value) : null
+      }
+    })
+    toast.add({ title: 'Успех', description: `Обновлено книг: ${res.count}`, color: 'green' })
+    isBulkCategoryModalOpen.value = false
+    selectedIds.value.clear()
+    refresh()
+  } catch (e: any) {
+    toast.add({ title: 'Ошибка', description: e.data?.message || e.message, color: 'red' })
+  } finally {
+    isApplyingBulkCategory.value = false
+  }
+}
+
 async function runExport() {
   const query = new URLSearchParams()
   query.set('include_articles', String(exportIncludeArticles.value))
@@ -363,6 +390,9 @@ function getCategoryTitle(id: number) {
             <button type="button" @click="openExportModal('selected')" class="text-sky-500 hover:text-sky-700 flex items-center gap-1 font-bold">
               <UIcon name="i-heroicons-arrow-down-tray" /> Экспорт ({{ selectedIds.size }})
             </button>
+            <button type="button" @click="isBulkCategoryModalOpen = true; selectedBulkCategoryId = ''" class="text-indigo-500 hover:text-indigo-700 flex items-center gap-1 font-bold">
+              <UIcon name="i-heroicons-tag" /> Категория ({{ selectedIds.size }})
+            </button>
             <button type="button" @click="bulkDelete" class="text-red-500 hover:text-red-700 flex items-center gap-1 font-bold">
               <UIcon name="i-heroicons-trash" /> Удалить ({{ selectedIds.size }})
             </button>
@@ -511,6 +541,26 @@ function getCategoryTitle(id: number) {
         <div class="mt-6 flex justify-end gap-3">
           <GvButton type="button" color="gray" variant="soft" @click="isExportModalOpen = false">Отмена</GvButton>
           <GvButton type="button" color="sky" icon="i-heroicons-arrow-down-tray" @click="runExport">Выгрузить JSON</GvButton>
+        </div>
+      </div>
+    </UModal>
+
+    <!-- Bulk Category Modal -->
+    <UModal v-model="isBulkCategoryModalOpen" :ui="{ width: 'sm:max-w-md' }">
+      <div class="p-6 bg-white dark:bg-[#1c1c1e] rounded-xl shadow-2xl border border-gray-150 dark:border-zinc-800">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Назначить категорию</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+          Выбрано книг: <strong>{{ selectedIds.size }}</strong>. Будет обновлена их категория.
+        </p>
+        
+        <select v-model="selectedBulkCategoryId" class="filter-select gv-admin-filter-select w-full mt-2">
+          <option value="">Без категории (Очистить)</option>
+          <option v-for="cat in categoriesList" :key="cat.id" :value="String(cat.id)">{{ cat.title }}</option>
+        </select>
+        
+        <div class="mt-6 flex justify-end gap-3">
+          <GvButton type="button" color="gray" variant="soft" @click="isBulkCategoryModalOpen = false">Отмена</GvButton>
+          <GvButton type="button" color="sky" icon="i-heroicons-check" @click="applyBulkCategory" :loading="isApplyingBulkCategory">Применить</GvButton>
         </div>
       </div>
     </UModal>
