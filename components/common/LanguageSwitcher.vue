@@ -164,19 +164,6 @@ function chooseLang (code: typeof langs[number]['code'], close: () => void) {
   color: var(--gv-primary);
 }
 
-@media (max-width: 360px) {
-  .gv-lang-select__control--compact {
-    padding: 6px 8px;
-    gap: 4px;
-    font-size: 11px;
-  }
-
-  .gv-lang-select__leading-icon {
-    width: 16px;
-    height: 16px;
-  }
-}
-
 .gv-lang-select__list {
   list-style: none;
   margin: 0;

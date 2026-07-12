@@ -584,7 +584,7 @@ onUnmounted(() => {
 }
 
 /* Language switcher */
-.gv-header__actions--desktop :deep(.gv-lang-select__control) {
+.gv-header__actions :deep(.gv-lang-select__control) {
   min-height: 34px;
   padding: 5px 10px;
   border-radius: var(--gv-radius-control);
@@ -593,13 +593,13 @@ onUnmounted(() => {
   box-shadow: none;
 }
 
-.gv-header__actions--desktop :deep(.gv-lang-select__control:hover) {
+.gv-header__actions :deep(.gv-lang-select__control:hover) {
   background: color-mix(in srgb, var(--gv-primary) 8%, transparent);
   border-color: transparent;
   box-shadow: none;
 }
 
-.gv-header__actions--desktop :deep(.gv-lang-select__control--open) {
+.gv-header__actions :deep(.gv-lang-select__control--open) {
   background: color-mix(in srgb, var(--gv-primary) 12%, transparent);
   border-color: transparent;
   box-shadow: none;
