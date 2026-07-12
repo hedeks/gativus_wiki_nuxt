@@ -28,6 +28,7 @@ const syncJsonInputRef = ref<HTMLInputElement | null>(null)
 
 // Preview State
 const previewGraphData = ref<any>({ nodes: [], links: [] })
+const previewAssetsData = ref<string[]>([])
 
 // File handling
 function onDragOver(e: DragEvent) {
@@ -55,26 +56,32 @@ function onFileSelect(e: Event) {
   }
 }
 
-function handleFile(file: File) {
-  if (!file.name.endsWith('.json')) {
-    toast.add({ title: 'Неверный формат', description: 'Загрузите JSON файл дампа графа', color: 'red' })
+async function handleFile(file: File) {
+  if (!file.name.endsWith('.json') && !file.name.endsWith('.zip')) {
+    toast.add({ title: 'Неверный формат', description: 'Загрузите ZIP или JSON файл', color: 'red' })
     return
   }
   selectedFile.value = file
-  importResult.value = null
   previewGraphData.value = { nodes: [], links: [] }
+  previewAssetsData.value = []
   
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    try {
-      const dump = JSON.parse(e.target?.result as string)
-      lastDump.value = dump
-      previewGraphData.value = generateImportGraphPreview(dump, langStore.currentLang)
-    } catch (err) {
-      toast.add({ title: 'Ошибка парсинга JSON', description: 'Файл поврежден', color: 'red' })
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const result = await $fetch<any>('/api/admin/sync/preview', {
+      method: 'POST',
+      body: formData,
+      headers: store.getAuthHeader()
+    })
+    
+    if (result.success && result.dump) {
+      lastDump.value = result.dump
+      previewGraphData.value = generateImportGraphPreview(result.dump, langStore.currentLang)
+      previewAssetsData.value = result.assets || []
     }
+  } catch (err: any) {
+    toast.add({ title: 'Ошибка предпросмотра', description: err?.data?.message || err.message, color: 'red' })
   }
-  reader.readAsText(file)
 }
 
 function removeFile() {
@@ -189,7 +196,7 @@ async function runImport() {
             @click="activeTab = 'import'"
           >
             <UIcon name="i-heroicons-cloud-arrow-up" class="text-lg" />
-            <span>Импорт JSON</span>
+            <span>Импорт (ZIP/JSON)</span>
           </button>
         </div>
       </div>
@@ -206,7 +213,7 @@ async function runImport() {
             <div>
               <h3 class="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-wider">Экспорт базы</h3>
               <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
-                Сгенерировать и скачать полную копию графа знаний, категорий и контента статей в виде единого JSON-файла резервной копии.
+                Сгенерировать и скачать полную копию графа знаний, категорий и контента статей в виде единого ZIP или JSON файла резервной копии.
               </p>
             </div>
             <GvButton
@@ -225,7 +232,7 @@ async function runImport() {
         <!-- IMPORT CONTENT -->
         <div v-if="activeTab === 'import'" class="workspace-editor-scroll flex-1 overflow-y-auto p-6 bg-white dark:bg-[#111113]">
           <div class="max-w-4xl mx-auto space-y-6">
-            <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Импорт JSON</h3>
+            <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Импорт (ZIP/JSON)</h3>
             
             <div v-if="!selectedFile">
               <!-- Drop Zone -->
@@ -239,12 +246,12 @@ async function runImport() {
               >
                 <div class="drop-zone-inner py-12">
                   <UIcon name="i-heroicons-cloud-arrow-up" class="drop-zone-icon text-5xl text-gray-400" />
-                  <p class="drop-zone-text text-base font-bold text-gray-700 dark:text-gray-300 mt-3">Перетащите резервную копию базы (.json) сюда</p>
+                  <p class="drop-zone-text text-base font-bold text-gray-700 dark:text-gray-300 mt-3">Перетащите резервную копию базы (.zip или .json) сюда</p>
                   <p class="drop-zone-hint text-xs text-gray-400">или кликните для выбора на компьютере</p>
                   <input
                     ref="syncJsonInputRef"
                     type="file"
-                    accept=".json"
+                    accept=".zip,.json"
                     class="sr-only"
                     @change="onFileSelect"
                   >
@@ -298,8 +305,14 @@ async function runImport() {
                     Узлов: <b>{{ previewGraphData.nodes.length }}</b> / Связей: <b>{{ previewGraphData.links.length }}</b>
                   </div>
                 </div>
-                <div class="preview-graph-container h-[350px] w-full bg-[#fdfdfd] dark:bg-[#111113]">
+                <div class="preview-graph-container h-[400px] overflow-hidden w-full bg-[#fdfdfd] dark:bg-[#111113]">
                   <KnowledgeGraphVisualizer :graphData="previewGraphData" :pending="false" :enableNavigation="false" />
+                </div>
+                <div class="relative z-10 p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111113]" v-if="previewAssetsData.length > 0">
+                  <h4 class="text-xs font-bold text-gray-900 dark:text-white mb-2">Ассеты в архиве ({{ previewAssetsData.length }}):</h4>
+                  <div class="max-h-[150px] overflow-y-auto text-xs font-mono text-gray-500 dark:text-gray-400">
+                    <div v-for="asset in previewAssetsData" :key="asset" class="truncate">{{ asset }}</div>
+                  </div>
                 </div>
               </div>
 

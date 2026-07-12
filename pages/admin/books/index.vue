@@ -21,6 +21,7 @@ const toolsModalMessage = ref('')
 
 const isImportPreviewModalOpen = ref(false)
 const importPreviewData = ref<any>({ nodes: [], links: [] })
+const importPreviewAssets = ref<string[]>([])
 const importFileToConfirm = ref<File | null>(null)
 
 const isExportModalOpen = ref(false)
@@ -186,7 +187,7 @@ async function runExport() {
     if (!response.ok) throw new Error('Ошибка скачивания файла')
 
     const contentDisposition = response.headers.get('Content-Disposition')
-    let filename = 'export.json'
+    let filename = 'export.zip'
     if (contentDisposition) {
       const match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/) || contentDisposition.match(/filename="?([^"]+)"?/)
       if (match) filename = decodeURIComponent(match[1])
@@ -243,24 +244,31 @@ async function onImportFileSelect(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files && input.files.length > 0) {
     const file = input.files[0]
-    if (!file.name.endsWith('.json')) {
-      toast.add({ title: 'Неверный формат', description: 'Загрузите JSON файл', color: 'red' })
+    if (!file.name.endsWith('.json') && !file.name.endsWith('.zip')) {
+      toast.add({ title: 'Неверный формат', description: 'Загрузите ZIP или JSON файл', color: 'red' })
       return
     }
     
     importFileToConfirm.value = file
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      try {
-        const dump = JSON.parse(e.target?.result as string)
-        importPreviewData.value = generateImportGraphPreview(dump)
+    importPreviewAssets.value = []
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await $fetch<any>('/api/admin/sync/preview', {
+        method: 'POST',
+        body: formData,
+        headers: store.getAuthHeader()
+      })
+      if (res.success && res.dump) {
+        importPreviewData.value = generateImportGraphPreview(res.dump)
+        importPreviewAssets.value = res.assets || []
         isImportPreviewModalOpen.value = true
-      } catch (err) {
-        toast.add({ title: 'Ошибка', description: 'Неверный формат JSON', color: 'red' })
       }
-      if (importJsonInputRef.value) importJsonInputRef.value.value = ''
+    } catch (err: any) {
+      toast.add({ title: 'Ошибка предпросмотра', description: err?.data?.message || err.message, color: 'red' })
     }
-    reader.readAsText(file)
+    if (importJsonInputRef.value) importJsonInputRef.value.value = ''
   }
 }
 
@@ -327,7 +335,7 @@ function getCategoryTitle(id: number) {
             <UDropdown :items="[
               [
                 { label: 'Создать книгу', icon: 'i-heroicons-plus', click: startCreate },
-                { label: 'Импорт из JSON', icon: 'i-heroicons-arrow-up-tray', click: () => { importJsonInputRef?.click() } }
+                { label: 'Импорт из ZIP/JSON', icon: 'i-heroicons-arrow-up-tray', click: () => { importJsonInputRef?.click() } }
               ]
             ]">
               <GvButton type="button" color="sky" size="xs" icon="i-heroicons-plus" trailing-icon="i-heroicons-chevron-down-20-solid">Новый</GvButton>
@@ -337,7 +345,7 @@ function getCategoryTitle(id: number) {
           <input
             ref="importJsonInputRef"
             type="file"
-            accept=".json"
+            accept=".zip,.json"
             class="sr-only"
             @change="onImportFileSelect"
           >
@@ -540,7 +548,7 @@ function getCategoryTitle(id: number) {
         
         <div class="mt-6 flex justify-end gap-3">
           <GvButton type="button" color="gray" variant="soft" @click="isExportModalOpen = false">Отмена</GvButton>
-          <GvButton type="button" color="sky" icon="i-heroicons-arrow-down-tray" @click="runExport">Выгрузить JSON</GvButton>
+          <GvButton type="button" color="sky" icon="i-heroicons-arrow-down-tray" @click="runExport">Выгрузить архив</GvButton>
         </div>
       </div>
     </UModal>
@@ -581,6 +589,13 @@ function getCategoryTitle(id: number) {
             :enableNavigation="false"
             :disableLod="true"
           />
+        </div>
+
+        <div class="relative z-10 p-3 bg-gray-50 dark:bg-zinc-800/50 rounded-lg border border-gray-200 dark:border-gray-800 mt-4 shrink-0" v-if="importPreviewAssets.length > 0">
+          <h4 class="text-xs font-bold text-gray-900 dark:text-white mb-2">Ассеты в архиве ({{ importPreviewAssets.length }}):</h4>
+          <div class="max-h-[100px] overflow-y-auto text-xs font-mono text-gray-500 dark:text-gray-400">
+            <div v-for="asset in importPreviewAssets" :key="asset" class="truncate">{{ asset }}</div>
+          </div>
         </div>
         
         <div class="mt-6 flex justify-end gap-3 shrink-0">
