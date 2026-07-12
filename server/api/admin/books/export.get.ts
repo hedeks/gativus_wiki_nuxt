@@ -1,6 +1,10 @@
+import AdmZip from 'adm-zip'
+import { join } from 'path'
+import { existsSync } from 'fs'
+
 /**
  * GET /api/admin/books/export
- * Экспорт выбранных книг (и опционально их статей) в JSON (версия 1.3).
+ * Экспорт выбранных книг (и опционально их статей) в ZIP архив (с JSON внутри).
  */
 
 export default defineEventHandler(async (event) => {
@@ -146,21 +150,69 @@ export default defineEventHandler(async (event) => {
   }
 
   const ts = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 16)
-  let filename = `gativus-books-export-${ts}.json`
+  let filename = `gativus-books-export-${ts}.zip`
   if (booksRaw.length === 1) {
-    filename = `book-${books[0].slug}-${ts}.json`
+    filename = `book-${books[0].slug}-${ts}.zip`
   } else if (idsParam) {
-    filename = `books-selected-${booksRaw.length}-${ts}.json`
+    filename = `books-selected-${booksRaw.length}-${ts}.zip`
   } else if (query.search) {
     const safeSearch = (query.search as string).replace(/[^a-z0-9а-яё]/gi, '_').substring(0, 20)
-    filename = `books-search-${safeSearch}-${ts}.json`
+    filename = `books-search-${safeSearch}-${ts}.zip`
   } else {
-    filename = `books-filtered-${booksRaw.length}-${ts}.json`
+    filename = `books-filtered-${booksRaw.length}-${ts}.zip`
   }
+
+  const zip = new AdmZip()
+  zip.addFile('data.json', Buffer.from(JSON.stringify(dump, null, 2), 'utf-8'))
+
+  const addedPaths = new Set<string>()
+
+  const addAssetToZip = (assetPath: string | null | undefined) => {
+    if (!assetPath) return
+    if (addedPaths.has(assetPath)) return
+    
+    if (assetPath.startsWith('/api/uploads/')) {
+      const relative = assetPath.substring('/api/uploads/'.length)
+      const physical = join(process.cwd(), 'server', 'storage', 'uploads', relative)
+      
+      if (existsSync(physical)) {
+        addedPaths.add(assetPath)
+        const folderParts = relative.split('/')
+        folderParts.pop() // remove filename
+        const folderInArchive = folderParts.length > 0 ? `assets/${folderParts.join('/')}` : 'assets'
+        zip.addLocalFile(physical, folderInArchive)
+      }
+    }
+  }
+
+  for (const b of books) {
+    addAssetToZip(b.cover_image)
+  }
+
+  if (dump.articles) {
+    for (const a of dump.articles) {
+      addAssetToZip(a.presentation_path)
+      addAssetToZip(a.presentation_path_ru)
+      addAssetToZip(a.presentation_path_zh)
+      addAssetToZip(a.raw_odt_path)
+      
+      const contents = [a.html_content, a.html_content_ru, a.html_content_zh]
+      for (const c of contents) {
+        if (!c) continue
+        const matches = c.matchAll(/src="(\/api\/uploads\/[^"]+)"/g)
+        for (const m of matches) {
+          addAssetToZip(m[1])
+        }
+      }
+    }
+  }
+
+  const zipBuffer = zip.toBuffer()
 
   const encodedFilename = encodeURIComponent(filename)
   setResponseHeader(event, 'Content-Disposition', `attachment; filename="${encodedFilename}"`)
-  setResponseHeader(event, 'Content-Type', 'application/json')
+  setResponseHeader(event, 'Content-Type', 'application/zip')
+  setResponseHeader(event, 'Content-Length', zipBuffer.length.toString())
   
-  return dump
+  return zipBuffer
 })

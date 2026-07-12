@@ -1,6 +1,10 @@
+import AdmZip from 'adm-zip'
+import { join } from 'path'
+import { existsSync, mkdirSync, writeFileSync } from 'fs'
+
 /**
  * POST /api/admin/sync/import
- * Imports a JSON Knowledge Graph dump and reconstructs the database structure.
+ * Imports a JSON or ZIP Knowledge Graph dump and reconstructs the database structure.
  * Replaces or upserts based on slugs.
  */
 
@@ -18,11 +22,50 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Field "file" not found' })
   }
 
-  let dump
-  try {
-    dump = JSON.parse(fileField.data.toString('utf-8'))
-  } catch (err) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid JSON file' })
+  let dump: any
+
+  if (fileField.filename?.endsWith('.zip')) {
+    try {
+      const zip = new AdmZip(fileField.data)
+      const zipEntries = zip.getEntries()
+      
+      const jsonEntry = zipEntries.find(e => e.entryName === 'data.json')
+      if (!jsonEntry) {
+        throw new Error('data.json не найден внутри ZIP-архива')
+      }
+      dump = JSON.parse(jsonEntry.getData().toString('utf-8'))
+      
+      const uploadsDir = join(process.cwd(), 'server', 'storage', 'uploads')
+      if (!existsSync(uploadsDir)) {
+        mkdirSync(uploadsDir, { recursive: true })
+      }
+      
+      // Extract assets
+      let assetsCount = 0
+      for (const entry of zipEntries) {
+        if (!entry.isDirectory && entry.entryName.startsWith('assets/')) {
+          const relativePath = entry.entryName.substring('assets/'.length)
+          const targetPath = join(uploadsDir, relativePath)
+          
+          const targetDir = join(targetPath, '..')
+          if (!existsSync(targetDir)) {
+            mkdirSync(targetDir, { recursive: true })
+          }
+          
+          writeFileSync(targetPath, entry.getData())
+          assetsCount++
+        }
+      }
+      console.log(`[sync] Extracted ${assetsCount} assets from ZIP.`)
+    } catch (err: any) {
+      throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: `Ошибка при чтении ZIP: ${err.message}` })
+    }
+  } else {
+    try {
+      dump = JSON.parse(fileField.data.toString('utf-8'))
+    } catch (err) {
+      throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Невалидный JSON файл' })
+    }
   }
 
   if (!['1.1', '1.2', '1.3'].includes(dump.version)) {

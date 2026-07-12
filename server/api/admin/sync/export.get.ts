@@ -1,6 +1,10 @@
+import AdmZip from 'adm-zip'
+import { join } from 'path'
+import { existsSync } from 'fs'
+
 /**
  * GET /api/admin/sync/export
- * Экспорт структуры вики в JSON (версия дампа см. поле `version`).
+ * Экспорт структуры вики в ZIP архив (с JSON внутри).
  */
 
 export default defineEventHandler(async (event) => {
@@ -143,9 +147,19 @@ export default defineEventHandler(async (event) => {
     article_mentions: mentionsRaw
   }
 
+  const zip = new AdmZip()
+  zip.addFile('data.json', Buffer.from(JSON.stringify(dump, null, 2), 'utf-8'))
+
+  const uploadsDir = join(process.cwd(), 'server', 'storage', 'uploads')
+  if (existsSync(uploadsDir)) {
+    zip.addLocalFolder(uploadsDir, 'assets')
+  }
+
+  const zipBuffer = zip.toBuffer()
+
   // Set response headers to prompt file download
-  setResponseHeader(event, 'Content-Disposition', `attachment; filename="gativus-backup-${new Date().toISOString().split('T')[0]}.json"`)
-  setResponseHeader(event, 'Content-Type', 'application/json')
+  setResponseHeader(event, 'Content-Disposition', `attachment; filename="gativus-backup-${new Date().toISOString().split('T')[0]}.zip"`)
+  setResponseHeader(event, 'Content-Type', 'application/zip')
   
-  return dump
+  return zipBuffer
 })
