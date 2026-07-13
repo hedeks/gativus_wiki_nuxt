@@ -20,7 +20,7 @@ const isSignup = ref(false)
 const errorMain = ref<string | null>(null)
 const isLoading = ref(false)
 
-const pageTitle = computed(() => (isSignup.value ? 'Регистрация' : 'Вход'))
+const pageTitle = computed(() => 'Вход')
 useHead({
   title: pageTitle,
 })
@@ -33,39 +33,6 @@ watch([email, password, loginName], () => {
   errorMain.value = null
 })
 
-async function signUp(): Promise<void> {
-  isLoading.value = true
-  errorMain.value = null
-  try {
-    const data = await $fetch<{ res: { user: User, access_token: string } }>('/api/auth/register', {
-      method: 'POST',
-      body: {
-        email: email.value.trim(),
-        password: password.value,
-        login: loginName.value.trim(),
-      },
-    })
-    const user = data.res.user
-    if (user) {
-      store.setUser(user, data.res.access_token)
-      toast.add({
-        title: `Аккаунт создан! Добро пожаловать, ${user.login}`,
-        ui: {
-          background: 'bg-white dark:bg-zinc-900',
-          progress: { background: 'bg-sky-600 dark:bg-sky-400' },
-        },
-      })
-      await navigateTo('/profile')
-    }
-  } catch (err: unknown) {
-    const msg = err && typeof err === 'object' && 'data' in err
-      ? (err as { data?: { message?: string } }).data?.message
-      : undefined
-    errorMain.value = msg || 'Ошибка регистрации'
-  } finally {
-    isLoading.value = false
-  }
-}
 
 async function loginFunc(): Promise<void> {
   isLoading.value = true
@@ -101,14 +68,7 @@ async function loginFunc(): Promise<void> {
 }
 
 async function onSubmit(): Promise<void> {
-  if (isSignup.value)
-    await signUp()
-  else
-    await loginFunc()
-}
-
-function toggleSignup(): void {
-  isSignup.value = !isSignup.value
+  await loginFunc()
 }
 </script>
 
@@ -119,10 +79,10 @@ function toggleSignup(): void {
     >
       <div class="auth-card-head border-b border-zinc-200/70 dark:border-zinc-800 px-6 py-5 bg-[var(--gv-surface-header)]">
         <h1 class="text-xl font-bold tracking-tight text-[var(--gv-text-primary)]">
-          {{ isSignup ? 'Регистрация' : 'Вход' }}
+          Вход
         </h1>
         <p class="text-sm text-[var(--gv-text-secondary)] mt-1">
-          {{ isSignup ? 'Создайте аккаунт для доступа к материалам.' : 'Войдите, чтобы открыть профиль и закрытые разделы.' }}
+          Войдите, чтобы открыть профиль и закрытые разделы.
         </p>
       </div>
 
@@ -140,18 +100,6 @@ function toggleSignup(): void {
           >
         </label>
 
-        <label v-if="isSignup" class="auth-field">
-          <span class="auth-label">Логин</span>
-          <input
-            v-model="loginName"
-            type="text"
-            name="login"
-            autocomplete="username"
-            required
-            class="auth-input"
-            placeholder="Уникальное имя"
-          >
-        </label>
 
         <label class="auth-field">
           <span class="auth-label">Пароль</span>
@@ -159,7 +107,7 @@ function toggleSignup(): void {
             v-model="password"
             type="password"
             name="password"
-            :autocomplete="isSignup ? 'new-password' : 'current-password'"
+            autocomplete="current-password"
             required
             class="auth-input"
             placeholder="••••••••"
@@ -184,18 +132,12 @@ function toggleSignup(): void {
           class="mt-2 shadow-lg shadow-sky-500/15"
           :loading="isLoading"
         >
-          {{ isSignup ? 'Зарегистрироваться' : 'Войти' }}
+          Войти
         </GvButton>
       </form>
 
-      <div class="auth-card-foot px-6 py-4 border-t border-zinc-200/70 dark:border-zinc-800">
-        <button
-          type="button"
-          class="auth-toggle"
-          @click="toggleSignup"
-        >
-          {{ isSignup ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться' }}
-        </button>
+      <div class="auth-card-foot px-6 py-4 border-t border-zinc-200/70 dark:border-zinc-800 text-center">
+        <span class="text-sm text-[var(--gv-text-secondary)]">Регистрация временно закрыта.</span>
       </div>
     </div>
 
