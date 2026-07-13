@@ -42,6 +42,7 @@ export interface ParsedOdt {
   articles: ParsedArticleResult[]
   images: { originalPath: string; savedPath: string }[]
   numberingState?: NumberingState
+  metadata?: { title?: string; description?: string }
 }
 
 interface StyleInfo {
@@ -139,6 +140,30 @@ export async function parseOdtBuffer(
       if (!styles.has(key)) styles.set(key, val)
     })
   }
+  
+  // 3.5. Parse meta.xml for metadata
+  let metadata: { title?: string; description?: string } | undefined
+  const metaEntry = zip.getEntry('meta.xml')
+  if (metaEntry) {
+    try {
+      const metaXml = metaEntry.getData().toString('utf-8')
+      const metaDoc = new DOMParser().parseFromString(metaXml, 'text/xml') as any
+      const titles = metaDoc.getElementsByTagName('dc:title')
+      const descriptions = metaDoc.getElementsByTagName('dc:description')
+      
+      if (titles?.length > 0 || descriptions?.length > 0) {
+        metadata = {}
+        if (titles?.length > 0 && titles[0].textContent) {
+          metadata.title = titles[0].textContent
+        }
+        if (descriptions?.length > 0 && descriptions[0].textContent) {
+          metadata.description = descriptions[0].textContent
+        }
+      }
+    } catch (e) {
+      // Ignore meta.xml parsing errors
+    }
+  }
 
   // 4. Find the document body
   const body = doc.getElementsByTagName('office:body')[0]
@@ -162,6 +187,7 @@ export async function parseOdtBuffer(
     articles: [],
     images,
     numberingState: cloneNumberingState(numbering),
+    metadata
   }
 }
 

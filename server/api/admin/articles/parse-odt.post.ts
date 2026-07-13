@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
     const buf = fileField.data
 
     const parsed = await parseOdtBuffer(buf, 'articles')
-    return { html: parsed.fullHtml }
+    return { html: parsed.fullHtml, metadata: parsed.metadata }
   } catch (err: any) {
     throw createError({ statusCode: 422, statusMessage: `Ошибка парсинга ODT: ${err.message}` })
   }

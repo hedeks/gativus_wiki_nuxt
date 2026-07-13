@@ -14,6 +14,7 @@ const emit = defineEmits<{
   (e: 'show-term-modal'): void
   (e: 'show-book-modal'): void
   (e: 'show-article-modal'): void
+  (e: 'odt-parsed', metadata: any): void
 }>()
 
 const store = userStore()
@@ -552,13 +553,19 @@ async function importOdt(e: Event) {
     const formData = new FormData()
     formData.append('file', input.files[0])
 
-    const result = await $fetch<{ html: string }>('/api/admin/articles/parse-odt', {
+    const result = await $fetch<{ html: string; metadata?: any }>('/api/admin/articles/parse-odt', {
       method: 'POST',
       body: formData,
       headers: store.getAuthHeader(),
     })
 
     updateActiveHtml(result.html)
+    
+    if (result.metadata && (result.metadata.title || result.metadata.description)) {
+      if (confirm(`В файле найдены мета-теги (Название: ${result.metadata.title || 'нет'}). Применить их к статье?`)) {
+        emit('odt-parsed', result.metadata)
+      }
+    }
 
     pushHistory(`ODT → ${props.activeLang.toUpperCase()}`)
     toast.add({ title: 'ODT импортирован', description: `Вкладка ${props.activeLang.toUpperCase()} обновлена`, color: 'green' })

@@ -257,9 +257,12 @@ export default defineEventHandler(async (event) => {
       images: combinedImages
     })
 
+    const metaTitle = parsed.metadata?.title?.trim()
+    const metaDesc = parsed.metadata?.description?.trim()
+
     const splitLevel = String(row.split_level || 'none')
     const titleEnOdt = extractFirstHeading(parsed.fullHtml)
-    const titleEn = titleEnOdt || String(row.display_title || '').trim() || defaultOdmChapterTitle(sortOrder, 'en')
+    const titleEn = metaTitle || titleEnOdt || String(row.display_title || '').trim() || defaultOdmChapterTitle(sortOrder, 'en')
     const titleRuRaw = row.display_title_ru != null ? String(row.display_title_ru).trim() : ''
     const titleZhRaw = row.display_title_zh != null ? String(row.display_title_zh).trim() : ''
     const titleRu = titleRuRaw || null
@@ -270,12 +273,13 @@ export default defineEventHandler(async (event) => {
     let articles: ReturnType<typeof splitIntoArticles>
 
     if (splitLevel === 'none') {
-      const title = extractFirstHeading(parsed.fullHtml) || displayTitle
+      const title = metaTitle || extractFirstHeading(parsed.fullHtml) || displayTitle
+      const excerpt = metaDesc || generateExcerpt(parsed.fullHtml)
       articles = [{
         title,
         slug: slugify(title),
         html: parsed.fullHtml,
-        excerpt: generateExcerpt(parsed.fullHtml),
+        excerpt,
       }]
     }
     else {
@@ -289,6 +293,7 @@ export default defineEventHandler(async (event) => {
         ...first,
         title: displayTitle,
         slug: slugify(displayTitle),
+        excerpt: metaDesc || first.excerpt,
       }
     }
 

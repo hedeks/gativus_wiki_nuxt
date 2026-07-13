@@ -405,6 +405,25 @@ async function save() {
 
   isSaving.value = false
 }
+
+function handleOdtParsed(metadata: any) {
+  if (activeTab.value === 'en') {
+    if (metadata.title) title.value = metadata.title
+    if (metadata.description) excerptEn.value = metadata.description
+  } else if (activeTab.value === 'ru') {
+    if (metadata.title) {
+      titleRu.value = metadata.title
+      if (!title.value) title.value = `Untranslated: ${metadata.title}`
+    }
+    if (metadata.description) excerptRu.value = metadata.description
+  } else if (activeTab.value === 'zh') {
+    if (metadata.title) {
+      titleZh.value = metadata.title
+      if (!title.value) title.value = `Untranslated: ${metadata.title}`
+    }
+    if (metadata.description) excerptZh.value = metadata.description
+  }
+}
 </script>
 
 <template>
@@ -616,6 +635,7 @@ async function save() {
           @show-term-modal="showTermModal = true"
           @show-book-modal="showBookModal = true"
           @show-article-modal="showArticleModal = true"
+          @odt-parsed="handleOdtParsed"
         />
       </div>
     </div>
