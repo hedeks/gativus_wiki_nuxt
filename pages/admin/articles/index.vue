@@ -25,7 +25,6 @@
             <UDropdown :items="[
               [
                 { label: 'Создать статью', icon: 'i-heroicons-plus', click: startCreate },
-                { label: 'Импорт из ODT', icon: 'i-heroicons-document-text', to: '/admin/import' },
                 { label: 'Импорт из ZIP/JSON', icon: 'i-heroicons-arrow-up-tray', click: () => { importJsonInputRef?.click() } }
               ]
             ]">
