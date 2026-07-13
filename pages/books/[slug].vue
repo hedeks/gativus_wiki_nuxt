@@ -88,7 +88,10 @@
             >
               <div class="chapter-index" aria-hidden="true">{{ Number(index) + 1 }}</div>
               <div class="chapter-body">
-                <h3 class="chapter-title">{{ article.title }}</h3>
+                <div class="flex items-center gap-2">
+                  <h3 class="chapter-title">{{ article.title }}</h3>
+                  <span v-if="article.is_published === 0 || article.is_published === false" class="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-amber-500/20 shrink-0">Неопубликованное</span>
+                </div>
                 <p
                   v-if="article.excerpt"
                   class="chapter-excerpt line-clamp-1"

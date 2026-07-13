@@ -3,9 +3,14 @@
  * Get a book with its articles. Public.
  */
 
+import { isEditorOrAbove } from '~/server/utils/requireRole'
+
 export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const slug = getRouterParam(event, 'slug')
+  
+  const auth = event.context.auth as { role: string } | null
+  const isEditor = isEditorOrAbove(auth?.role)
 
   if (!slug) {
     throw createError({ statusCode: 400, statusMessage: 'Slug is required' })
@@ -123,15 +128,20 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const articles = await db.prepare(`
+  let queryArticles = `
     SELECT id, slug, slug_ru, slug_zh,
            title, title_ru, title_zh,
            excerpt, excerpt_ru, excerpt_zh,
            sort_order, is_published, created_at, updated_at
     FROM articles
-    WHERE book_id = ? AND is_published = 1
-    ORDER BY sort_order ASC
-  `).all(book.id) as any[]
+    WHERE book_id = ?
+  `
+  if (!isEditor) {
+    queryArticles += ` AND is_published = 1 `
+  }
+  queryArticles += ` ORDER BY sort_order ASC`
+
+  const articles = await db.prepare(queryArticles).all(book.id) as any[]
 
   return {
     ...book,
