@@ -1,34 +1,18 @@
 <template>
-  <div
-    class="knowledge-graph-visualizer"
-    :class="{
-      'knowledge-graph-visualizer--frameless': frameless,
-      'knowledge-graph-visualizer--canvas-locked': canvasInteractionLocked,
-    }"
-  >
+  <div class="knowledge-graph-visualizer" :class="{
+    'knowledge-graph-visualizer--frameless': frameless,
+    'knowledge-graph-visualizer--canvas-locked': canvasInteractionLocked,
+  }">
     <div ref="graphViewport" class="graph-viewport">
       <div class="kg-graph-canvas-stack">
-        <div
-          ref="graphContainer"
-          class="graph-container"
-          :class="{ 'graph-container--frameless': frameless }"
-        >
+        <div ref="graphContainer" class="graph-container" :class="{ 'graph-container--frameless': frameless }">
           <svg ref="svgRef" class="graph-svg"></svg>
         </div>
         <transition name="kg-init-overlay-fade">
-          <div
-            v-if="graphInitializingOverlay"
-            class="kg-graph-init-overlay"
-            aria-live="polite"
-            aria-busy="true"
-          >
+          <div v-if="graphInitializingOverlay" class="kg-graph-init-overlay" aria-live="polite" aria-busy="true">
             <div class="kg-graph-init-card">
               <p class="kg-graph-init-title">{{ t.initializing }}</p>
-              <div
-                class="kg-graph-init-bar"
-                role="progressbar"
-                :aria-valuetext="t.initializing"
-              >
+              <div class="kg-graph-init-bar" role="progressbar" :aria-valuetext="t.initializing">
                 <div class="kg-graph-init-bar-fill" />
               </div>
             </div>
@@ -47,451 +31,311 @@
           <p>{{ t.empty }}</p>
         </div>
 
-      <!-- Top: hero (страница графа) + контролы в одной карточке ДС -->
-      <div
-        class="graph-actions-container kg-glass-surface"
-        :class="{
+        <!-- Top: hero (страница графа) + контролы в одной карточке ДС -->
+        <div class="graph-actions-container kg-glass-surface" :class="{
           'graph-actions-container--frameless': frameless,
           'graph-actions-container--mobile-compact': graphActionsMobileCompact,
-        }"
-        @wheel.stop
-        @mousewheel.stop
-      >
-        <div v-show="graphActionsMobileCompact" class="graph-actions-compact">
-          <span class="graph-actions-compact-label">{{ frameless ? t.graphHeroTitle : t.toolbarCompactLabel }}</span>
-          <GvButton
-            type="button"
-            unstyled
-            chromeless
-            square
-            class="action-btn graph-actions-compact-open"
-            icon="i-heroicons-bars-3"
-            :title="t.toolbarExpand"
-            :aria-label="t.toolbarExpand"
-            @click="isMobileToolbarExpanded = true"
-          />
-        </div>
-
-        <div v-show="!graphActionsMobileCompact" class="graph-actions-expanded">
-          <header v-if="frameless" class="kg-graph-hero" aria-label="Introduction">
-            <h1 class="kg-graph-headline">
-              <span class="kg-graph-title uppercase">{{ t.graphHeroTitle }}</span>
-              <span class="kg-graph-sep" aria-hidden="true" />
-              <span class="kg-graph-brand gv-hero-gradient uppercase">Gativus</span>
-            </h1>
-          </header>
-
-          <div class="graph-actions-toolbar">
-            <div v-if="isMobileChrome" class="graph-actions-toolbar-collapse-row">
-              <GvButton
-                type="button"
-                unstyled
-                chromeless
-                square
-                class="action-btn"
-                icon="i-heroicons-chevron-up"
-                :title="t.toolbarCollapse"
-                :aria-label="t.toolbarCollapse"
-                @click="isMobileToolbarExpanded = false"
-              />
-            </div>
-            <div class="custom-search-wrapper">
-            <UIcon name="i-heroicons-magnifying-glass" class="search-icon" />
-            <input
-              ref="searchInputRef"
-              v-model="searchQuery"
-              type="text"
-              :placeholder="t.search"
-              class="custom-search-input"
-              autocomplete="off"
-              @input="handleSearch"
-            >
-            <GvButton
-              v-show="searchQuery"
-              type="button"
-              unstyled
-              chromeless
-              square
-              class="clear-search-btn"
-              icon="i-heroicons-x-mark"
-              title="Clear"
-              aria-label="Clear search"
-              @click="clearSearch"
-            />
+        }" @wheel.stop @mousewheel.stop>
+          <div v-show="graphActionsMobileCompact" class="graph-actions-compact">
+            <span class="graph-actions-compact-label">{{ frameless ? t.graphHeroTitle : t.toolbarCompactLabel }}</span>
+            <GvButton type="button" unstyled chromeless square class="action-btn graph-actions-compact-open"
+              icon="i-heroicons-bars-3" :title="t.toolbarExpand" :aria-label="t.toolbarExpand"
+              @click="isMobileToolbarExpanded = true" />
           </div>
 
-          <div class="control-divider control-divider--toolbar"></div>
+          <div v-show="!graphActionsMobileCompact" class="graph-actions-expanded">
+            <header v-if="frameless" class="kg-graph-hero" aria-label="Introduction">
+              <h1 class="kg-graph-headline">
+                <span class="kg-graph-title uppercase">{{ t.graphHeroTitle }}</span>
+                <span class="kg-graph-sep" aria-hidden="true" />
+                <span class="kg-graph-brand gv-hero-gradient uppercase">Gativus</span>
+              </h1>
+            </header>
 
-          <!-- Filters -->
-          <div class="custom-popover-wrapper">
-            <GvButton
-              type="button"
-              unstyled
-              chromeless
-              square
-              class="action-btn"
-              :class="{ active: isFilterMenuOpen }"
-              icon="i-heroicons-funnel"
-              :title="t.filters"
-              @click="isFilterMenuOpen = !isFilterMenuOpen"
-            />
+            <div class="graph-actions-toolbar">
+              <div v-if="isMobileChrome" class="graph-actions-toolbar-collapse-row">
+                <GvButton type="button" unstyled chromeless square class="action-btn" icon="i-heroicons-chevron-up"
+                  :title="t.toolbarCollapse" :aria-label="t.toolbarCollapse" @click="isMobileToolbarExpanded = false" />
+              </div>
+              <div class="custom-search-wrapper">
+                <UIcon name="i-heroicons-magnifying-glass" class="search-icon" />
+                <input ref="searchInputRef" v-model="searchQuery" type="text" :placeholder="t.search"
+                  class="custom-search-input" autocomplete="off" @input="handleSearch">
+                <GvButton v-show="searchQuery" type="button" unstyled chromeless square class="clear-search-btn"
+                  icon="i-heroicons-x-mark" title="Clear" aria-label="Clear search" @click="clearSearch" />
+              </div>
 
-            <transition name="menu-slide">
-              <div v-if="isFilterMenuOpen" class="custom-popover-panel">
-                <div class="filter-menu-header">{{ t.filters }}</div>
-                <div class="filter-menu-list">
-                  <div
-                    v-for="(label, key) in filterLabels"
-                    :key="key"
-                    class="filter-line"
-                    @click="activeFilters[key] = !activeFilters[key]"
-                  >
-                    <span class="filter-label-text">{{ label }}</span>
-                    <div class="custom-switch" :class="{ checked: activeFilters[key] }">
-                      <div class="switch-handle"></div>
+              <div class="control-divider control-divider--toolbar"></div>
+
+              <!-- Filters -->
+              <div class="custom-popover-wrapper">
+                <GvButton type="button" unstyled chromeless square class="action-btn"
+                  :class="{ active: isFilterMenuOpen }" icon="i-heroicons-funnel" :title="t.filters"
+                  @click="isFilterMenuOpen = !isFilterMenuOpen" />
+
+                <transition name="menu-slide">
+                  <div v-if="isFilterMenuOpen" class="custom-popover-panel">
+                    <div class="filter-menu-header">{{ t.filters }}</div>
+                    <div class="filter-menu-list">
+                      <div v-for="(label, key) in filterLabels" :key="key" class="filter-line"
+                        @click="activeFilters[key] = !activeFilters[key]">
+                        <span class="filter-label-text">{{ label }}</span>
+                        <div class="custom-switch" :class="{ checked: activeFilters[key] }">
+                          <div class="switch-handle"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="filter-menu-footer">
+                      <GvButton type="button" unstyled chromeless class="footer-btn primary"
+                        @click="setAllFilters(true)">{{ t.all }}</GvButton>
+                      <div class="divider-small"></div>
+                      <GvButton type="button" unstyled chromeless class="footer-btn" @click="setAllFilters(false)">{{
+                        t.none }}</GvButton>
                     </div>
                   </div>
-                </div>
-                <div class="filter-menu-footer">
-                  <GvButton type="button" unstyled chromeless class="footer-btn primary" @click="setAllFilters(true)">{{ t.all }}</GvButton>
-                  <div class="divider-small"></div>
-                  <GvButton type="button" unstyled chromeless class="footer-btn" @click="setAllFilters(false)">{{ t.none }}</GvButton>
-                </div>
+                </transition>
               </div>
-            </transition>
-          </div>
 
-          <div class="control-divider control-divider--toolbar"></div>
+              <div class="control-divider control-divider--toolbar"></div>
 
-          <LanguageSwitcher compact class="lang-switcher-wrap" />
+              <LanguageSwitcher compact class="lang-switcher-wrap" />
 
-          <div class="control-divider control-divider--toolbar"></div>
+              <div class="control-divider control-divider--toolbar"></div>
 
-          <!-- Fullscreen -->
-          <GvButton
-            type="button"
-            unstyled
-            chromeless
-            square
-            class="action-btn"
-            :title="isFullscreen ? 'Exit' : 'Fullscreen'"
-            @click="toggleFullscreen"
-          >
-            <UIcon :name="isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'" />
-          </GvButton>
-          </div>
-        </div>
-      </div>
-
-      <!-- LOD indicator: shown when not all types are visible -->
-      <transition name="kg-lod-fade">
-        <div v-if="!isFocusMode && currentLodLevel < 3" class="kg-lod-indicator kg-glass-surface" @wheel.stop @mousewheel.stop>
-          <span class="kg-lod-dot" :class="currentLodLevel >= 0 ? 'kg-lod-dot--cat' : ''" title="Categories" />
-          <span class="kg-lod-dot" :class="currentLodLevel >= 1 ? 'kg-lod-dot--book' : ''" title="Books" />
-          <span class="kg-lod-dot" :class="currentLodLevel >= 2 ? 'kg-lod-dot--art' : ''" title="Articles" />
-          <span class="kg-lod-dot" :class="currentLodLevel >= 3 ? 'kg-lod-dot--term' : ''" title="Terms" />
-          <span class="kg-lod-label">{{ t.zoomForMore }}</span>
-        </div>
-      </transition>
-
-      <!-- Ego-mode bar: shown when focus mode is active -->
-      <transition name="kg-ego-bar-fade">
-        <div v-if="isFocusMode" class="kg-ego-bar kg-glass-surface" @wheel.stop @mousewheel.stop>
-          <UIcon name="i-heroicons-viewfinder-circle" class="kg-ego-bar__icon" />
-          <span class="kg-ego-bar__label">{{ focusNodeTitle }}</span>
-          <div class="kg-depth-switcher">
-            <button
-              v-for="d in [1, 2]"
-              :key="d"
-              type="button"
-              class="kg-depth-btn"
-              :class="{ 'kg-depth-btn--active': focusDepth === d }"
-              :title="`Depth ${d}`"
-              @click="focusDepth = d"
-            >{{ d }}</button>
-          </div>
-          <GvButton
-            type="button"
-            unstyled
-            chromeless
-            square
-            class="action-btn kg-ego-bar__exit"
-            icon="i-heroicons-x-mark"
-            :title="t.exitFocus"
-            :aria-label="t.exitFocus"
-            @click="exitFocusMode"
-          />
-        </div>
-      </transition>
-
-      <div class="kg-graph-ui-cluster" @wheel.stop @mousewheel.stop>
-        <div class="custom-zoom-controls kg-glass-surface">
-          <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-plus" title="+" @click="zoomIn" />
-          <div class="divider-hor"></div>
-          <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-minus" title="-" @click="zoomOut" />
-          <div class="divider-hor"></div>
-          <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-arrows-right-left" :title="t.reset" @click="zoomFit" />
-        </div>
-      </div>
-
-      <aside
-        v-if="!pending && graphData?.nodes?.length"
-        class="graph-stats-panel kg-glass-surface"
-        :class="{ 'graph-stats-panel--collapsed': isStatsCollapsed }"
-        :aria-label="t.statsTitle"
-      >
-        <button
-          type="button"
-          class="graph-stats-toggle"
-          :aria-expanded="!isStatsCollapsed"
-          :title="isStatsCollapsed ? t.statsExpand : t.statsCollapse"
-          @click="isStatsCollapsed = !isStatsCollapsed"
-        >
-          <span class="graph-stats-heading">{{ t.statsTitle }}</span>
-          <UIcon
-            :name="isStatsCollapsed ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
-            class="graph-stats-chevron"
-            aria-hidden="true"
-          />
-        </button>
-        <div v-show="!isStatsCollapsed" class="graph-stats-body">
-          <div class="graph-stats-summary">
-            <div class="graph-stats-pill">
-              <span class="graph-stats-pill-label">{{ t.statsNodes }}</span>
-              <span class="graph-stats-pill-value tabular-nums">{{ visibleGraphStats.nodesTotal }}</span>
-            </div>
-            <div class="graph-stats-pill">
-              <span class="graph-stats-pill-label">{{ t.statsLinks }}</span>
-              <span class="graph-stats-pill-value tabular-nums">{{ visibleGraphStats.linksTotal }}</span>
+              <!-- Fullscreen -->
+              <GvButton type="button" unstyled chromeless square class="action-btn"
+                :title="isFullscreen ? 'Exit' : 'Fullscreen'" @click="toggleFullscreen">
+                <UIcon :name="isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'" />
+              </GvButton>
             </div>
           </div>
-          <div class="graph-stats-section">{{ t.statsByType }}</div>
-          <ul class="graph-stats-list" role="list">
-            <li v-for="row in statsTypeRows" :key="row.key" class="graph-stats-line" role="listitem">
-              <span class="graph-stats-line-left">
-                <span class="dot" :class="row.dotClass" aria-hidden="true" />
-                <span>{{ row.label }}</span>
-              </span>
-              <span class="tabular-nums graph-stats-count">{{ row.count }}</span>
-            </li>
-          </ul>
-          <template v-if="statsLinkRows.length">
-            <div class="graph-stats-section">{{ t.statsLinkTypes }}</div>
-            <ul class="graph-stats-list graph-stats-list--compact" role="list">
-              <li v-for="row in statsLinkRows" :key="row.key" class="graph-stats-line" role="listitem">
-                <span class="graph-stats-link-label">{{ row.label }}</span>
+        </div>
+
+        <!-- LOD indicator: shown when not all types are visible -->
+        <transition name="kg-lod-fade">
+          <div v-if="!isFocusMode && currentLodLevel < 3" class="kg-lod-indicator kg-glass-surface" @wheel.stop
+            @mousewheel.stop>
+            <span class="kg-lod-dot" :class="currentLodLevel >= 0 ? 'kg-lod-dot--cat' : ''" title="Categories" />
+            <span class="kg-lod-dot" :class="currentLodLevel >= 1 ? 'kg-lod-dot--book' : ''" title="Books" />
+            <span class="kg-lod-dot" :class="currentLodLevel >= 2 ? 'kg-lod-dot--art' : ''" title="Articles" />
+            <span class="kg-lod-dot" :class="currentLodLevel >= 3 ? 'kg-lod-dot--term' : ''" title="Terms" />
+            <span class="kg-lod-label">{{ t.zoomForMore }}</span>
+          </div>
+        </transition>
+
+        <!-- Ego-mode bar: shown when focus mode is active -->
+        <transition name="kg-ego-bar-fade">
+          <div v-if="isFocusMode" class="kg-ego-bar kg-glass-surface" @wheel.stop @mousewheel.stop>
+            <UIcon name="i-heroicons-viewfinder-circle" class="kg-ego-bar__icon" />
+            <span class="kg-ego-bar__label">{{ focusNodeTitle }}</span>
+            <div class="kg-depth-switcher">
+              <button v-for="d in [1, 2]" :key="d" type="button" class="kg-depth-btn"
+                :class="{ 'kg-depth-btn--active': focusDepth === d }" :title="`Depth ${d}`" @click="focusDepth = d">{{ d
+                }}</button>
+            </div>
+            <GvButton type="button" unstyled chromeless square class="action-btn kg-ego-bar__exit"
+              icon="i-heroicons-x-mark" :title="t.exitFocus" :aria-label="t.exitFocus" @click="exitFocusMode" />
+          </div>
+        </transition>
+
+        <div class="kg-graph-ui-cluster" @wheel.stop @mousewheel.stop>
+          <div class="custom-zoom-controls kg-glass-surface">
+            <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-plus" title="+"
+              @click="zoomIn" />
+            <div class="divider-hor"></div>
+            <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-minus" title="-"
+              @click="zoomOut" />
+            <div class="divider-hor"></div>
+            <GvButton type="button" unstyled chromeless square class="zoom-btn" icon="i-heroicons-arrows-right-left"
+              :title="t.reset" @click="zoomFit" />
+          </div>
+        </div>
+
+        <aside v-if="!pending && graphData?.nodes?.length" class="graph-stats-panel kg-glass-surface"
+          :class="{ 'graph-stats-panel--collapsed': isStatsCollapsed }" :aria-label="t.statsTitle">
+          <button type="button" class="graph-stats-toggle" :aria-expanded="!isStatsCollapsed"
+            :title="isStatsCollapsed ? t.statsExpand : t.statsCollapse" @click="isStatsCollapsed = !isStatsCollapsed">
+            <span class="graph-stats-heading">{{ t.statsTitle }}</span>
+            <UIcon :name="isStatsCollapsed ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
+              class="graph-stats-chevron" aria-hidden="true" />
+          </button>
+          <div v-show="!isStatsCollapsed" class="graph-stats-body">
+            <div class="graph-stats-summary">
+              <div class="graph-stats-pill">
+                <span class="graph-stats-pill-label">{{ t.statsNodes }}</span>
+                <span class="graph-stats-pill-value tabular-nums">{{ visibleGraphStats.nodesTotal }}</span>
+              </div>
+              <div class="graph-stats-pill">
+                <span class="graph-stats-pill-label">{{ t.statsLinks }}</span>
+                <span class="graph-stats-pill-value tabular-nums">{{ visibleGraphStats.linksTotal }}</span>
+              </div>
+            </div>
+            <div class="graph-stats-section">{{ t.statsByType }}</div>
+            <ul class="graph-stats-list" role="list">
+              <li v-for="row in statsTypeRows" :key="row.key" class="graph-stats-line" role="listitem">
+                <span class="graph-stats-line-left">
+                  <span class="dot" :class="row.dotClass" aria-hidden="true" />
+                  <span>{{ row.label }}</span>
+                </span>
                 <span class="tabular-nums graph-stats-count">{{ row.count }}</span>
               </li>
             </ul>
-          </template>
-        </div>
-      </aside>
-
-      <!-- Node detail: как theTermPopover для терминов + адаптив -->
-      <transition name="pop">
-        <div
-          v-if="selectedNode && !nodePopupPanelClosed"
-          class="graph-popup graph-popup-node"
-          :aria-busy="selectedNode.type === 'term' && termPopupLoading"
-          @mousedown.stop
-          @wheel.stop
-          @mousewheel.stop
-        >
-          <div class="graph-popup__top">
-            <div class="graph-popup__head">
-              <UIcon
-                :name="getNodeIcon(selectedNode)"
-                :style="{ color: getNodeColor(selectedNode) }"
-                class="graph-popup__head-icon"
-              />
-              <span class="graph-popup__type-label">{{ getTypeLabel(selectedNode.type) }}</span>
-            </div>
-            <GvButton
-              type="button"
-              unstyled
-              chromeless
-              square
-              class="action-btn graph-popup__close"
-              icon="i-heroicons-x-mark"
-              :title="t.popupClose"
-              :aria-label="t.popupClose"
-              @click="closeNodePopupPanel"
-            />
+            <template v-if="statsLinkRows.length">
+              <div class="graph-stats-section">{{ t.statsLinkTypes }}</div>
+              <ul class="graph-stats-list graph-stats-list--compact" role="list">
+                <li v-for="row in statsLinkRows" :key="row.key" class="graph-stats-line" role="listitem">
+                  <span class="graph-stats-link-label">{{ row.label }}</span>
+                  <span class="tabular-nums graph-stats-count">{{ row.count }}</span>
+                </li>
+              </ul>
+            </template>
           </div>
+        </aside>
 
-          <div class="graph-popup__wrapper-inner" :style="nodePopupStyle">
-            <Transition
-              name="fade"
-              @before-leave="onPopupBeforeLeave"
-              @enter="onPopupEnter"
-              @after-enter="onPopupAfterEnter"
-            >
-              <div v-if="selectedNode.type === 'term' && termPopupLoading" class="graph-popup__body">
-                <div class="graph-popup__title-text graph-popup__title-text--loading-preview">
-                  {{ selectedNode.title }}
-                </div>
-                <div class="graph-popup__skeleton" aria-hidden="true">
-                  <div class="graph-popup__sk-line graph-popup__sk-line--sm" />
-                  <div class="graph-popup__sk-line graph-popup__sk-line--lg" />
-                  <div class="graph-popup__sk-media" />
-                  <div class="graph-popup__sk-chips">
-                    <span class="graph-popup__sk-chip" />
-                    <span class="graph-popup__sk-chip" />
-                    <span class="graph-popup__sk-chip" />
+        <!-- Node detail: как theTermPopover для терминов + адаптив -->
+        <transition name="pop">
+          <div v-if="selectedNode && !nodePopupPanelClosed" class="graph-popup graph-popup-node"
+            :aria-busy="selectedNode.type === 'term' && termPopupLoading" @mousedown.stop @wheel.stop @mousewheel.stop>
+            <div class="graph-popup__top">
+              <div class="graph-popup__head">
+                <UIcon :name="getNodeIcon(selectedNode)" :style="{ color: getNodeColor(selectedNode) }"
+                  class="graph-popup__head-icon" />
+                <span class="graph-popup__type-label">{{ getTypeLabel(selectedNode.type) }}</span>
+              </div>
+              <GvButton type="button" unstyled chromeless square class="action-btn graph-popup__close"
+                icon="i-heroicons-x-mark" :title="t.popupClose" :aria-label="t.popupClose"
+                @click="closeNodePopupPanel" />
+            </div>
+
+            <div class="graph-popup__wrapper-inner" :style="nodePopupStyle">
+              <Transition name="fade" @before-leave="onPopupBeforeLeave" @enter="onPopupEnter"
+                @after-enter="onPopupAfterEnter">
+                <div v-if="selectedNode.type === 'term' && termPopupLoading" class="graph-popup__body">
+                  <div class="graph-popup__title-text graph-popup__title-text--loading-preview">
+                    {{ selectedNode.title }}
                   </div>
-                  <div class="graph-popup__sk-line" />
-                  <div class="graph-popup__sk-line" />
-                  <div class="graph-popup__sk-line graph-popup__sk-line--md" />
+                  <div class="graph-popup__skeleton" aria-hidden="true">
+                    <div class="graph-popup__sk-line graph-popup__sk-line--sm" />
+                    <div class="graph-popup__sk-line graph-popup__sk-line--lg" />
+                    <div class="graph-popup__sk-media" />
+                    <div class="graph-popup__sk-chips">
+                      <span class="graph-popup__sk-chip" />
+                      <span class="graph-popup__sk-chip" />
+                      <span class="graph-popup__sk-chip" />
+                    </div>
+                    <div class="graph-popup__sk-line" />
+                    <div class="graph-popup__sk-line" />
+                    <div class="graph-popup__sk-line graph-popup__sk-line--md" />
+                  </div>
                 </div>
-              </div>
-              <div v-else-if="selectedNode.type === 'term'" class="graph-popup__body">
-                <div
-                  v-if="termPopupDetail?.category_title"
-                  class="graph-popup__category"
-                  :style="termPopupDetail.category_color ? { color: termPopupDetail.category_color } : {}"
-                >
-                  <UIcon
-                    v-if="termPopupDetail.category_icon"
-                    :name="termPopupDetail.category_icon"
-                    class="graph-popup__cat-icon"
-                  />
-                  {{ termPopupDetail.category_title }}
+                <div v-else-if="selectedNode.type === 'term'" class="graph-popup__body">
+                  <div v-if="termPopupDetail?.category_title" class="graph-popup__category"
+                    :style="termPopupDetail.category_color ? { color: termPopupDetail.category_color } : {}">
+                    <UIcon v-if="termPopupDetail.category_icon" :name="termPopupDetail.category_icon"
+                      class="graph-popup__cat-icon" />
+                    {{ termPopupDetail.category_title }}
+                  </div>
+                  <div class="graph-popup__title-text">{{ termPopupDetail?.title || selectedNode.title }}</div>
+                  <div v-if="termPopupDetail?.image_url || termPopupDetail?.video_url" class="graph-popup__media">
+                    <img v-if="termPopupDetail.image_url" :src="termPopupDetail.image_url"
+                      class="graph-popup__media-preview" alt="">
+                    <video v-else-if="termPopupDetail.video_url" :src="termPopupDetail.video_url"
+                      class="graph-popup__media-preview" muted autoplay loop playsinline />
+                  </div>
+                  <div v-if="termPopupDetail?.aliases?.length" class="graph-popup__aliases">
+                    <span v-for="alias in termPopupDetail.aliases.slice(0, 3)" :key="alias"
+                      class="graph-popup__alias-chip">{{
+                      alias }}</span>
+                  </div>
+                  <p v-if="termPopupDetail?.definition || selectedNode.description" class="graph-popup__definition"
+                    v-html="renderInlineMarkup(termPopupDetail?.definition || selectedNode.description || '')" />
                 </div>
-                <div class="graph-popup__title-text">{{ termPopupDetail?.title || selectedNode.title }}</div>
-                <div v-if="termPopupDetail?.image_url || termPopupDetail?.video_url" class="graph-popup__media">
-                  <img
-                    v-if="termPopupDetail.image_url"
-                    :src="termPopupDetail.image_url"
-                    class="graph-popup__media-preview"
-                    alt=""
-                  >
-                  <video
-                    v-else-if="termPopupDetail.video_url"
-                    :src="termPopupDetail.video_url"
-                    class="graph-popup__media-preview"
-                    muted
-                    autoplay
-                    loop
-                    playsinline
-                  />
+                <div v-else class="graph-popup__body">
+                  <div class="graph-popup__title-text">{{ selectedNode.title }}</div>
+                  <p v-if="selectedNode.description" class="graph-popup__definition"
+                    v-html="renderInlineMarkup(selectedNode.description)" />
                 </div>
-                <div v-if="termPopupDetail?.aliases?.length" class="graph-popup__aliases">
-                  <span
-                    v-for="alias in termPopupDetail.aliases.slice(0, 3)"
-                    :key="alias"
-                    class="graph-popup__alias-chip"
-                  >{{ alias }}</span>
-                </div>
-                <p
-                  v-if="termPopupDetail?.definition || selectedNode.description"
-                  class="graph-popup__definition"
-                  v-html="renderInlineMarkup(termPopupDetail?.definition || selectedNode.description || '')"
-                />
-              </div>
-              <div v-else class="graph-popup__body">
-                <div class="graph-popup__title-text">{{ selectedNode.title }}</div>
-                <p
-                  v-if="selectedNode.description"
-                  class="graph-popup__definition"
-                  v-html="renderInlineMarkup(selectedNode.description)"
-                />
-              </div>
-            </Transition>
-          </div>
-
-          <div class="graph-popup__footer">
-            <span
-              v-if="selectedNode.type === 'term' && termPopupLoading"
-              class="graph-popup__loading graph-popup__loading--footer"
-            >
-              <UIcon name="i-heroicons-arrow-path" class="graph-popup__spin" />
-              {{ t.loadingDetail }}
-            </span>
-            <button
-              v-if="!isFocusMode || selectedNode.id !== focusNodeId"
-              type="button"
-              class="graph-popup__focus-btn"
-              @click.stop="enterFocusMode(selectedNode.id)"
-            >
-              <UIcon name="i-heroicons-viewfinder-circle" class="graph-popup__focus-btn-icon" />
-              {{ t.focusMode }}
-            </button>
-            <NuxtLink
-              v-if="enableNavigation && selectedNodePath"
-              :to="selectedNodePath"
-              class="graph-popup__link"
-              @click.stop
-            >{{ t.openEntity }}</NuxtLink>
-          </div>
-        </div>
-      </transition>
-
-      <!-- Link popup -->
-      <transition name="pop">
-        <div
-          v-if="selectedLink && !linkPopupPanelClosed"
-          class="graph-popup link-popup graph-popup-link"
-          @mousedown.stop
-          @wheel.stop
-          @mousewheel.stop
-        >
-          <div class="link-popup-accent" :style="{
-            borderColor: getNodeColor(getLinkHierarchy(selectedLink).child),
-            borderLeftStyle: getLinkHierarchy(selectedLink).parent.type === 'category' ? 'dashed' : 'solid'
-          }"></div>
-
-          <div class="graph-popup__top graph-popup__top--link">
-            <div class="graph-popup__head">
-              <span class="tooltip-type">{{ relLabels[selectedLink.type] || 'Relationship' }}</span>
+              </Transition>
             </div>
-            <GvButton
-              type="button"
-              unstyled
-              chromeless
-              square
-              class="action-btn graph-popup__close"
-              icon="i-heroicons-x-mark"
-              :title="t.popupClose"
-              :aria-label="t.popupClose"
-              @click="closeLinkPopupPanel"
-            />
-          </div>
 
-          <div class="link-hierarchy">
-            <div class="hierarchy-item parent">
-              <UIcon :name="getNodeIcon(getLinkHierarchy(selectedLink).parent)" class="h-icon opacity-50" />
-              <div class="h-info">
-                <span class="h-label">{{ t.context }}</span>
-                <span class="h-name">{{ getLinkHierarchy(selectedLink).parent.title }}</span>
+            <div class="graph-popup__footer">
+              <span v-if="selectedNode.type === 'term' && termPopupLoading"
+                class="graph-popup__loading graph-popup__loading--footer">
+                <UIcon name="i-heroicons-arrow-path" class="graph-popup__spin" />
+                {{ t.loadingDetail }}
+              </span>
+              <button v-if="contextUpNode" type="button" class="graph-popup__focus-btn" @click.stop="goContextUp()">
+                <UIcon name="i-heroicons-arrow-up" class="graph-popup__focus-btn-icon"
+                  style="color: var(--gv-primary);" />
+                Вверх
+              </button>
+              <button v-if="contextDownNode" type="button" class="graph-popup__focus-btn" @click.stop="goContextDown()">
+                <UIcon name="i-heroicons-arrow-down" class="graph-popup__focus-btn-icon"
+                  style="color: var(--gv-primary);" />
+                Вниз
+              </button>
+              <button v-if="!isFocusMode || selectedNode.id !== focusNodeId" type="button"
+                class="graph-popup__focus-btn" @click.stop="enterFocusMode(selectedNode.id)">
+                <UIcon name="i-heroicons-viewfinder-circle" class="graph-popup__focus-btn-icon" />
+                {{ t.focusMode }}
+              </button>
+              <NuxtLink v-if="enableNavigation && selectedNodePath" :to="selectedNodePath" class="graph-popup__link"
+                @click.stop>{{ t.openEntity }}</NuxtLink>
+            </div>
+          </div>
+        </transition>
+
+        <!-- Link popup -->
+        <transition name="pop">
+          <div v-if="selectedLink && !linkPopupPanelClosed" class="graph-popup link-popup graph-popup-link"
+            @mousedown.stop @wheel.stop @mousewheel.stop>
+            <div class="link-popup-accent" :style="{
+              borderColor: getNodeColor(getLinkHierarchy(selectedLink).child),
+              borderLeftStyle: getLinkHierarchy(selectedLink).parent.type === 'category' ? 'dashed' : 'solid'
+            }"></div>
+
+            <div class="graph-popup__top graph-popup__top--link">
+              <div class="graph-popup__head">
+                <span class="tooltip-type">{{ relLabels[selectedLink.type] || 'Relationship' }}</span>
+              </div>
+              <GvButton type="button" unstyled chromeless square class="action-btn graph-popup__close"
+                icon="i-heroicons-x-mark" :title="t.popupClose" :aria-label="t.popupClose"
+                @click="closeLinkPopupPanel" />
+            </div>
+
+            <div class="link-hierarchy">
+              <div class="hierarchy-item parent">
+                <UIcon :name="getNodeIcon(getLinkHierarchy(selectedLink).parent)" class="h-icon opacity-50" />
+                <div class="h-info">
+                  <span class="h-label">{{ t.context }}</span>
+                  <span class="h-name">{{ getLinkHierarchy(selectedLink).parent.title }}</span>
+                </div>
+              </div>
+
+              <div class="hierarchy-separator">
+                <div class="sep-line" :style="{ background: getNodeColor(getLinkHierarchy(selectedLink).child) }"></div>
+              </div>
+
+              <div class="hierarchy-item child">
+                <UIcon :name="getNodeIcon(getLinkHierarchy(selectedLink).child)" class="h-icon"
+                  :style="{ color: getNodeColor(getLinkHierarchy(selectedLink).child) }" />
+                <div class="h-info">
+                  <span class="h-label">{{ t.object }}</span>
+                  <span class="h-name" :style="{ color: getNodeColor(getLinkHierarchy(selectedLink).child) }">
+                    {{ getLinkHierarchy(selectedLink).child.title }}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div class="hierarchy-separator">
-              <div class="sep-line" :style="{ background: getNodeColor(getLinkHierarchy(selectedLink).child) }"></div>
-            </div>
-
-            <div class="hierarchy-item child">
-              <UIcon :name="getNodeIcon(getLinkHierarchy(selectedLink).child)" class="h-icon"
-                :style="{ color: getNodeColor(getLinkHierarchy(selectedLink).child) }" />
-              <div class="h-info">
-                <span class="h-label">{{ t.object }}</span>
-                <span class="h-name" :style="{ color: getNodeColor(getLinkHierarchy(selectedLink).child) }">
-                  {{ getLinkHierarchy(selectedLink).child.title }}
-                </span>
-              </div>
-            </div>
+            <p class="link-description">{{ relDescriptions[selectedLink.type] || 'Description' }}</p>
+            <p v-if="mentionCountForSelectedLink != null" class="link-mentions">
+              {{ t.mentions }}: <strong class="tabular-nums">{{ mentionCountForSelectedLink }}</strong>
+            </p>
           </div>
+        </transition>
 
-          <p class="link-description">{{ relDescriptions[selectedLink.type] || 'Description' }}</p>
-          <p
-            v-if="mentionCountForSelectedLink != null"
-            class="link-mentions"
-          >
-            {{ t.mentions }}: <strong class="tabular-nums">{{ mentionCountForSelectedLink }}</strong>
-          </p>
-        </div>
-      </transition>
-
+        <FeaturedStoriesPanel :stories="availableStories" @play="playStory" />
       </div>
     </div>
   </div>
@@ -502,6 +346,7 @@ import { shallowRef } from 'vue'
 import * as d3 from 'd3'
 import { useMediaQuery } from '@vueuse/core'
 import { useLanguageStore } from '~/stores/language'
+import FeaturedStoriesPanel from '~/components/FeaturedStoriesPanel.vue'
 import { renderInlineMarkup } from '~/utils/renderInlineMarkup'
 import {
   ANCHORED_POPUP_GAP_PX,
@@ -513,6 +358,14 @@ const langStore = useLanguageStore()
 const graphViewport = ref<HTMLElement | null>(null)
 const graphContainer = ref<HTMLElement | null>(null)
 const svgRef = ref<SVGElement | null>(null)
+
+type StoryState = 'IDLE' | 'STORY_START' | 'TRANSITIONING' | 'PLAYING_NODE' | 'PAUSED' | 'STORY_END' | 'CONTEXT_MODE'
+const storyState = ref<StoryState>('IDLE')
+const storyPath = ref<any[]>([])
+const storyCurrentIndex = ref(0)
+const storyCustomMessages = ref<Record<number, string>>({})
+const availableStories = ref<any[]>([])
+
 
 const uiDict: Record<string, any> = {
   en: {
@@ -707,6 +560,174 @@ function clientToPointerHost(clientX: number, clientY: number): { x: number, y: 
   return { x: clientX - hr.left, y: clientY - hr.top }
 }
 
+
+const contextUpNode = computed(() => {
+  if (!selectedNode.value) return null
+  const links = props.graphData?.links || []
+  const nodes = props.graphData?.nodes || []
+
+  const findLinkedNode = (targetType: string) => {
+    for (const l of links) {
+      const sid = typeof l.source === 'object' ? l.source.id : l.source
+      const tid = typeof l.target === 'object' ? l.target.id : l.target
+      if (sid === selectedNode.value.id) {
+        const n = nodes.find((n: any) => n.id === tid)
+        if (n?.type === targetType) return n
+      }
+      if (tid === selectedNode.value.id) {
+        const n = nodes.find((n: any) => n.id === sid)
+        if (n?.type === targetType) return n
+      }
+    }
+    return null
+  }
+
+  if (selectedNode.value.type === 'term') return findLinkedNode('article')
+  if (selectedNode.value.type === 'article') return findLinkedNode('book')
+  if (selectedNode.value.type === 'book') return findLinkedNode('category')
+  return null
+})
+
+const contextDownNode = computed(() => {
+  if (!selectedNode.value) return null
+  const links = props.graphData?.links || []
+  const nodes = props.graphData?.nodes || []
+
+  const findLinkedNode = (targetType: string) => {
+    for (const l of links) {
+      const sid = typeof l.source === 'object' ? l.source.id : l.source
+      const tid = typeof l.target === 'object' ? l.target.id : l.target
+      if (sid === selectedNode.value.id) {
+        const n = nodes.find((n: any) => n.id === tid)
+        if (n?.type === targetType) return n
+      }
+      if (tid === selectedNode.value.id) {
+        const n = nodes.find((n: any) => n.id === sid)
+        if (n?.type === targetType) return n
+      }
+    }
+    return null
+  }
+
+  if (selectedNode.value.type === 'category') return findLinkedNode('book')
+  if (selectedNode.value.type === 'book') return findLinkedNode('article')
+  if (selectedNode.value.type === 'article') return findLinkedNode('term')
+  return null
+})
+
+
+async function fetchStories() {
+  try {
+    const res = await $fetch('/api/public/storytelling')
+    availableStories.value = res as any[]
+  } catch (e) {
+    console.error('Failed to fetch stories', e)
+  }
+}
+onMounted(() => {
+  fetchStories()
+})
+function playStory(story: any) {
+  const nodes = props.graphData?.nodes || []
+  const path = (story.nodes_path || []).map((id: string) => nodes.find((n: any) => n.id === id)).filter(Boolean)
+  if (path.length > 0) {
+    storyPath.value = path
+    storyCustomMessages.value = story.custom_messages || {}
+    storyState.value = 'STORY_START'
+    storyCurrentIndex.value = 0
+    selectedNode.value = path[0]
+    nextTick(() => {
+      initGraph() // Re-render as Ego Graph
+      setTimeout(() => zoomToNode(path[0].id), 50)
+    })
+  }
+}
+
+function zoomToNode(nodeId: string) {
+  if (!svgRef.value || !zoomHandler || !graphContainer.value) return
+  const svg = d3.select(svgRef.value)
+  const rect = graphContainer.value.getBoundingClientRect()
+  const width = rect.width
+  const height = rect.height
+
+  const nGroup = svg.selectAll('.node-group').filter((d: any) => d.id === nodeId)
+  if (nGroup.empty()) return
+  const n = nGroup.datum() as any
+  if (n.x == null || n.y == null) return
+
+  const scale = 1.5
+  // Shift X so the node isn't covered by the right popup
+  const centerX = width / 2 - (isMobileChrome.value ? 0 : 180)
+  const centerY = height / 2
+
+  const tx = centerX - n.x * scale
+  const ty = centerY - n.y * scale
+
+  svg.transition().duration(500)
+    .call(zoomHandler.transform, d3.zoomIdentity.translate(tx, ty).scale(scale))
+
+  // Position the popup exactly over the node's new on-screen location
+  nodePopupPointerHost.value = { x: centerX, y: centerY }
+  nodePopupPanelClosed.value = false
+}
+
+function goContextUp() {
+  const up = contextUpNode.value
+  if (up) startInteractiveContext([selectedNode.value, up], 'Вверх: к контексту')
+}
+
+function goContextDown() {
+  const down = contextDownNode.value
+  if (down) startInteractiveContext([selectedNode.value, down], 'Вниз: к деталям')
+}
+
+function startInteractiveContext(path: any[], title: string) {
+  storyPath.value = path
+  storyState.value = 'CONTEXT_MODE'
+  storyCurrentIndex.value = 1
+  zoomToNode(path[1].id)
+  selectedNode.value = path[1]
+}
+
+function stopStory() {
+  const wasPlaying = storyState.value === 'STORY_START' || storyState.value === 'PLAYING_NODE'
+  storyState.value = 'IDLE'
+  storyPath.value = []
+  storyCurrentIndex.value = 0
+  if (wasPlaying) {
+    nextTick(() => initGraph()) // Restore normal graph
+  }
+}
+
+function nextStoryStep() {
+  if (storyState.value === 'IDLE') return
+  if (storyCurrentIndex.value < storyPath.value.length - 1) {
+    if (storyState.value === 'STORY_START') storyState.value = 'PLAYING_NODE'
+    storyCurrentIndex.value++
+    const n = storyPath.value[storyCurrentIndex.value]
+    zoomToNode(n.id)
+    selectedNode.value = n
+  } else {
+    stopStory()
+  }
+}
+
+// Global keydown listener
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', (e) => {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+    if (storyState.value !== 'IDLE') {
+      if (e.key === 'Escape') {
+        stopStory()
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault()
+        nextStoryStep()
+      }
+    }
+  })
+}
+
+
 const termPopupDetail = ref<any>(null)
 const termPopupLoading = ref(false)
 
@@ -727,13 +748,13 @@ function onPopupEnter(el: Element, done: () => void) {
     htmlEl.style.height = 'auto'
     const newHeight = htmlEl.offsetHeight
     htmlEl.style.height = origHeightStyle
-    
+
     void htmlEl.offsetHeight // reflow
-    
+
     nodePopupStyle.value.transition = 'height 0.2s cubic-bezier(0.19, 1, 0.22, 1)'
     nodePopupStyle.value.height = `${newHeight}px`
     nodePopupStyle.value.overflow = 'hidden'
-    
+
     setTimeout(done, 210)
   } else {
     done()
@@ -837,10 +858,10 @@ function getLodLevel(k: number): number {
 
 function applyLOD(k: number) {
   if (!svgRef.value || isFocusMode.value) return
-  
+
   const nodeCount = props.graphData?.nodes?.length || 0
   const isLodDisabled = props.disableLod || nodeCount < 100
-  
+
   const level = isLodDisabled ? 3 : getLodLevel(k)
   currentLodLevel.value = level
 
@@ -1120,7 +1141,202 @@ function graphPopupHostPosition(
   const adjacentCap = Math.max(availBelow, availAbove, 140)
   const hPlacement = Math.min(rawNaturalH, viewportCap, adjacentCap)
 
-  let { left: leftClient, top: topClient } = pickPopupRectFromPoint(
+  let { left: leftClient, top: topClient, placeBelow: initialPlaceBelow } = pickPopupRectFromPoint(
+    cx,
+    cy,
+    w,
+    hPlacement,
+    gap,
+    screenLeft,
+  if (parent.type === 'category' && child.type === 'category') return 1.5
+  return 1
+}
+
+/** Радиус круга узла — единый источник для hitbox/collide */
+function nodeGlyphRadius(d: any): number {
+  if (d.type === 'book') return 14
+  if (d.type === 'category') return Math.max(8, 14 - (d.depth || 0) * 3)
+  if (d.type === 'article') return 8
+  return 6
+}
+
+/**
+ * Радиус для forceCollide: чуть больше глифа + оценка половины ширины подписи,
+ * чтобы подписи реже наезжали друг на друга без сильного «раздувания» графа.
+ */
+function nodeCollisionRadius(d: any): number {
+  const r = nodeGlyphRadius(d)
+  const len = String(d.title ?? '').length
+  const labelPad = Math.min(110, Math.max(20, len * 4.8))
+  return r + labelPad + 8
+}
+
+/** На сколько px шире видимую линию делаем невидимый hit-line (тонкий клубок без «ложных» попаданий). */
+function linkHitStrokeWidthPx(d: any): number {
+  return Math.max(getLinkBaseWidth(d) + 2, 3)
+}
+
+/** Zoom / focus tween easing. */
+const KG_BOUNCE_OUT = d3.easeBounceOut
+const KG_GRAPH_BOUNCE_MS = 520
+
+function graphPrefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+const updateHighlights = () => {
+  if (!svgRef.value) return
+
+  const focusNode = selectedNode.value
+  const focusLink = selectedLink.value
+  const neighbors = focusNode ? getNeighbors(focusNode) : null
+  const linkEndpointIds = focusLink
+    ? [normalizeLinkEndpointId(focusLink.source), normalizeLinkEndpointId(focusLink.target)]
+    : null
+
+  const layer = d3.select(svgRef.value)
+
+  // 1. Update Nodes — поджим только при выделении по клику
+  layer.selectAll('.node-group')
+    .style('opacity', (n: any) => {
+      let v: number
+      if (focusLink && linkEndpointIds) {
+        v = linkEndpointIds.includes(n.id) ? 1 : 0.08
+      }
+      else if (focusNode) {
+        const isNeighbor = neighbors?.includes(n.id)
+        v = isNeighbor ? 1 : 0.05
+      }
+      else {
+        v = 1
+      }
+      return String(v)
+    })
+
+  // 2. Update Links — то же без hover-слоёв CSS
+  layer.selectAll('.visual-link')
+    .style('opacity', (l: any) => {
+      let v: number
+      if (focusLink) {
+        v = isSameLink(l, focusLink) ? 1 : 0.05
+      }
+      else if (focusNode) {
+        const isConnected = l.source.id === focusNode.id || l.target.id === focusNode.id
+        v = isConnected ? 1 : 0.02
+      }
+      else {
+        v = 0.4
+      }
+      return String(v)
+    })
+    .attr('stroke-width', (l: any) => {
+      const baseWidth = getLinkBaseWidth(l)
+      if (focusLink && isSameLink(l, focusLink)) return baseWidth * 2
+      return baseWidth
+    })
+}
+
+// Manifest CSS cubic-bezier(0.705, 0.010, 0.000, 0.915) approximation for D3
+// This is a "slow build-up, fast middle, very slow finish" type of curve
+const designSystemEase = (t: number) => {
+  // Cubic Bezier approximation formula
+  // For (0.705, 0.01, 0, 0.915)
+  const x1 = 0.705, y1 = 0.01, x2 = 0, y2 = 0.915
+  // Since x2 is 0 and x1 is large, it's a very specific curve.
+  // Let's use a simpler power-based approximation that feels similar:
+  // It starts slow and peaks late.
+  return Math.pow(t, 2.5) * (1.5 - 0.5 * t) // Roughly approximates the feel
+}
+
+// Поджим графа / рёбер только пока есть выделение по клику (или строка поиска → выбранный узел)
+// applyLOD перезапускаем тоже — чтобы найденный узел сразу стал виден при любом уровне зума
+watch([selectedNode, selectedLink], () => {
+  updateHighlights()
+  applyLOD(graphLiveZoomTransform.k)
+})
+
+watch(() => langStore.currentLang, async () => {
+  cancelPendingSearchFocusZoom()
+  selectedNode.value = null
+  selectedLink.value = null
+  isFilterMenuOpen.value = false
+  await nextTick()
+  initGraph()
+})
+
+const selectedNodePath = computed(() => {
+  const node = selectedNode.value
+  if (!node?.slug) return null
+  if (node.type === 'term') return `/glossary/${node.slug}`
+  if (node.type === 'article') return `/articles/${node.slug}`
+  if (node.type === 'book') return `/books/${node.slug}`
+  if (node.type === 'category') return `/categories?slug=${node.slug}`
+  return null
+})
+
+const closeNodePopupPanel = (e?: MouseEvent) => {
+  e?.stopPropagation()
+  nodePopupPanelClosed.value = true
+}
+
+const closeLinkPopupPanel = (e?: MouseEvent) => {
+  e?.stopPropagation()
+  linkPopupPanelClosed.value = true
+}
+
+watch([selectedNode, () => langStore.currentLang], async ([node]) => {
+  termPopupDetail.value = null
+  if (!process.client || !node || node.type !== 'term' || !node.slug) {
+    termPopupLoading.value = false
+    return
+  }
+  termPopupLoading.value = true
+  try {
+    termPopupDetail.value = await $fetch(`/api/terms/${encodeURIComponent(node.slug)}`, {
+      query: { lang: langStore.currentLang },
+    })
+  }
+  catch {
+    termPopupDetail.value = null
+  }
+  finally {
+    termPopupLoading.value = false
+  }
+}, { immediate: true })
+
+/** Удерживаем попап в пересечении .graph-viewport с видимой областью окна (прокрутка страницы, dynamic toolbar). */
+let graphPopupClampRaf = 0
+
+/**
+ * Позиция попапа в координатах хоста (.graph-viewport): квадранты от точки якоря, как у theTermPopover.
+ * Высота для pickPopupRectFromPoint ограничивается окном и зоной у точки — иначе высокий скелетон уносит карточку вверх.
+ */
+function graphPopupHostPosition(
+  el: HTMLElement,
+  host: HTMLElement,
+  anchorXHost: number,
+  anchorYHost: number,
+  gap: number,
+) {
+  const hr = host.getBoundingClientRect()
+  const cx = hr.left + anchorXHost
+  const cy = hr.top + anchorYHost
+  const { screenLeft, screenRight, screenTop, screenBottom } = viewportScreenBox()
+
+  el.style.maxHeight = ''
+  el.style.overflowY = ''
+  void el.offsetHeight
+
+  const w = el.getBoundingClientRect().width
+  const rawNaturalH = el.getBoundingClientRect().height
+  const viewportStrip = screenBottom - screenTop
+  const viewportCap = Math.max(160, Math.floor(viewportStrip - gap * 4))
+  const availBelow = Math.max(0, screenBottom - cy - gap * 2)
+  const availAbove = Math.max(0, cy - screenTop - gap * 2)
+  const adjacentCap = Math.max(availBelow, availAbove, 140)
+  const hPlacement = Math.min(rawNaturalH, viewportCap, adjacentCap)
+
+  let { left: leftClient, top: topClient, placeBelow: initialPlaceBelow } = pickPopupRectFromPoint(
     cx,
     cy,
     w,
@@ -1133,45 +1349,24 @@ function graphPopupHostPosition(
   )
 
   let leftHost = leftClient - hr.left
-  let topHost = topClient - hr.top
+  if (!initialPlaceBelow) {
+    const bottomHost = hr.height - ((topClient - hr.top) + hPlacement)
+    el.style.bottom = `${bottomHost}px`
+    el.style.top = 'auto'
+  } else {
+    const topHost = topClient - hr.top
+    el.style.top = `${topHost}px`
+    el.style.bottom = 'auto'
+  }
   el.style.left = `${leftHost}px`
-  el.style.top = `${topHost}px`
   void el.offsetHeight
 
   const r = el.getBoundingClientRect()
   const hRefined = Math.min(r.height, viewportCap, adjacentCap)
-  ;({ left: leftClient, top: topClient } = pickPopupRectFromPoint(
-    cx,
-    cy,
-    w,
-    hRefined,
-    gap,
-    screenLeft,
-    screenRight,
-    screenTop,
-    screenBottom,
-  ))
-
-  let maxHStr = ''
-  if (rawNaturalH > viewportCap) {
-    maxHStr = `${viewportCap}px`
-  } else if (topClient + hRefined > screenBottom - 8) {
-    maxHStr = `${Math.max(120, Math.floor(screenBottom - 8 - topClient))}px`
-  }
-
-  leftHost = leftClient - hr.left
-  topHost = topClient - hr.top
-
-  el.style.left = `${leftHost}px`
-  el.style.top = `${topHost}px`
-  if (maxHStr) {
-    el.style.maxHeight = maxHStr
-    el.style.overflowY = 'auto'
-  } else {
-    el.style.maxHeight = ''
-    el.style.overflowY = ''
-  }
-  void el.offsetHeight
+  let placeBelow = true
+  el.style.overflowY = ''
+}
+void el.offsetHeight
 }
 
 function graphPopupClampNeeded(): boolean {
@@ -1816,7 +2011,7 @@ function renderDagEgoGraph(
       const startX = (width - effectiveWidth) / 2 // center the row
       node.x = startX + ((posInRow + 1) / (rowCount + 1)) * effectiveWidth
       node.y = baseY + (isOdd ? stagger : 0)
-      
+
       // Alternating labels in "chessboard" pattern to prevent overlap
       if (isOdd) {
         node._labelBelow = posInRow % 2 !== 0
@@ -2055,6 +2250,23 @@ const initGraph = () => {
     return
   }
 
+  // Storytelling Mode: DAG layout for custom routes
+  if (storyState.value === 'STORY_START' || storyState.value === 'PLAYING_NODE') {
+    const pathIds = new Set(storyPath.value.map(n => n.id))
+    nodes = allNodes.filter((n: any) => pathIds.has(n.id))
+    links = allLinks.filter((l: any) => {
+      const sourceId = typeof l.source === 'object' ? l.source.id : l.source
+      const targetId = typeof l.target === 'object' ? l.target.id : l.target
+      return pathIds.has(sourceId) && pathIds.has(targetId)
+    })
+    egoNodeIds.value = pathIds // Hide LOD/fade
+    renderDagEgoGraph(g, nodes, links, storyPath.value[0].id, width, height)
+    applyLOD(graphLiveZoomTransform.k)
+    updateHighlights()
+    nextTick(emitLayoutStable)
+    return
+  }
+
   // Горизонтальные кластеры слева направо (как в легенде): красные категории → синие книги → фиолетовые статьи → зелёные термины.
   const CLUSTER_MARGIN_FRAC = 0.07
   const marginPx = width * CLUSTER_MARGIN_FRAC
@@ -2080,17 +2292,17 @@ const initGraph = () => {
   const yBandCenter = (type: string): number => {
     const bands: Record<string, number> = {
       category: 0.14,
-      book:     0.37,
-      article:  0.63,
-      term:     0.83,
+      book: 0.37,
+      article: 0.63,
+      term: 0.83,
     }
     return (bands[type] ?? 0.5) * height
   }
 
   for (const d of nodes) {
     const cx = laneCenterX((d as any).type)
-    ;(d as any).x = cx + (Math.random() - 0.5) * innerW * 0.07
-    ;(d as any).y = yBandCenter((d as any).type) + (Math.random() - 0.5) * height * 0.10
+      ; (d as any).x = cx + (Math.random() - 0.5) * innerW * 0.07
+      ; (d as any).y = yBandCenter((d as any).type) + (Math.random() - 0.5) * height * 0.10
   }
 
   simulation = d3.forceSimulation(nodes)
@@ -2152,52 +2364,52 @@ const initGraph = () => {
 
         grp
           .append('path')
-        .attr('class', 'visual-link')
-        .style('fill', 'none')
-        .style('pointer-events', 'none')
-        .attr('stroke-opacity', 0.4)
-        .attr('stroke-width', (d: any) => getLinkBaseWidth(d))
-        .attr('stroke-dasharray', (d: any) => {
-          const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
-          const sLevel = typeLevels[d.source.type] ?? 99
-          const tLevel = typeLevels[d.target.type] ?? 99
-          const parent = sLevel <= tLevel ? d.source : d.target
-          if (parent.type === 'category') return '4,4'
-          return 'none'
-        })
-        .attr('stroke', (d: any) => {
-          const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
-          const sLevel = typeLevels[d.source.type] ?? 99
-          const tLevel = typeLevels[d.target.type] ?? 99
-          const child = sLevel > tLevel ? d.source : d.target
-          const colors: Record<string, string> = {
-            book: '#0ea5e9',
-            article: '#6366f1',
-            category: '#ef4444',
-            term: '#10b981'
-          }
-          return colors[child.type] || '#94a3b8'
-        })
+          .attr('class', 'visual-link')
+          .style('fill', 'none')
+          .style('pointer-events', 'none')
+          .attr('stroke-opacity', 0.4)
+          .attr('stroke-width', (d: any) => getLinkBaseWidth(d))
+          .attr('stroke-dasharray', (d: any) => {
+            const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
+            const sLevel = typeLevels[d.source.type] ?? 99
+            const tLevel = typeLevels[d.target.type] ?? 99
+            const parent = sLevel <= tLevel ? d.source : d.target
+            if (parent.type === 'category') return '4,4'
+            return 'none'
+          })
+          .attr('stroke', (d: any) => {
+            const typeLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
+            const sLevel = typeLevels[d.source.type] ?? 99
+            const tLevel = typeLevels[d.target.type] ?? 99
+            const child = sLevel > tLevel ? d.source : d.target
+            const colors: Record<string, string> = {
+              book: '#0ea5e9',
+              article: '#6366f1',
+              category: '#ef4444',
+              term: '#10b981'
+            }
+            return colors[child.type] || '#94a3b8'
+          })
 
-      grp.append('path')
-        .attr('class', 'link-hit')
-        .style('fill', 'none')
-        .attr('stroke', 'transparent')
-        .attr('stroke-width', (d: any) => linkHitStrokeWidthPx(d))
-        .style('pointer-events', 'auto')
-        .style('cursor', 'pointer')
-        .on('click', (event: any, d: any) => {
-          selectedNode.value = null
-          selectedLink.value = d
-          linkPopupPointerHost.value = clientToPointerHost(event.clientX, event.clientY)
-          linkPopupPanelClosed.value = false
-          event.stopPropagation()
-        })
+        grp.append('path')
+          .attr('class', 'link-hit')
+          .style('fill', 'none')
+          .attr('stroke', 'transparent')
+          .attr('stroke-width', (d: any) => linkHitStrokeWidthPx(d))
+          .style('pointer-events', 'auto')
+          .style('cursor', 'pointer')
+          .on('click', (event: any, d: any) => {
+            selectedNode.value = null
+            selectedLink.value = d
+            linkPopupPointerHost.value = clientToPointerHost(event.clientX, event.clientY)
+            linkPopupPanelClosed.value = false
+            event.stopPropagation()
+          })
 
-      return grp
-    },
-    update => update,
-  )
+        return grp
+      },
+      update => update,
+    )
 
   const node = g.append('g')
     .selectAll('.node-group')
@@ -2445,10 +2657,21 @@ watch([focusNodeId, focusDepth], () => {
   background: rgba(255, 255, 255, 0.15);
 }
 
-.kg-lod-dot--cat  { background: #ef4444; }
-.kg-lod-dot--book { background: #0ea5e9; }
-.kg-lod-dot--art  { background: #6366f1; }
-.kg-lod-dot--term { background: #10b981; }
+.kg-lod-dot--cat {
+  background: #ef4444;
+}
+
+.kg-lod-dot--book {
+  background: #0ea5e9;
+}
+
+.kg-lod-dot--art {
+  background: #6366f1;
+}
+
+.kg-lod-dot--term {
+  background: #10b981;
+}
 
 .kg-lod-label {
   font-size: 11px;
@@ -3299,14 +3522,12 @@ watch([focusNodeId, focusDepth], () => {
   height: 100%;
   width: 40%;
   border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--gv-primary) 45%, transparent),
-    var(--gv-primary),
-    color-mix(in srgb, var(--gv-primary) 45%, transparent),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      color-mix(in srgb, var(--gv-primary) 45%, transparent),
+      var(--gv-primary),
+      color-mix(in srgb, var(--gv-primary) 45%, transparent),
+      transparent);
   animation: kg-graph-init-shimmer 1.38s cubic-bezier(0.45, 0, 0.2, 1) infinite;
 }
 
@@ -3337,6 +3558,7 @@ watch([focusNodeId, focusDepth], () => {
   0% {
     transform: translateX(-115%);
   }
+
   100% {
     transform: translateX(320%);
   }
@@ -3506,12 +3728,10 @@ watch([focusNodeId, focusDepth], () => {
 .graph-popup__sk-media,
 .graph-popup__sk-chip {
   border-radius: 8px;
-  background: linear-gradient(
-    90deg,
-    var(--gv-surface-header) 0%,
-    color-mix(in srgb, var(--gv-surface-header) 55%, var(--gv-border-principal)) 45%,
-    var(--gv-surface-header) 100%
-  );
+  background: linear-gradient(90deg,
+      var(--gv-surface-header) 0%,
+      color-mix(in srgb, var(--gv-surface-header) 55%, var(--gv-border-principal)) 45%,
+      var(--gv-surface-header) 100%);
   background-size: 220% 100%;
   animation: graph-popup-skel 1.15s ease-in-out infinite;
 }
@@ -3603,8 +3823,13 @@ watch([focusNodeId, focusDepth], () => {
   overflow: hidden;
 }
 
-.graph-popup__definition :deep(strong) { font-weight: 700; }
-.graph-popup__definition :deep(em) { font-style: italic; }
+.graph-popup__definition :deep(strong) {
+  font-weight: 700;
+}
+
+.graph-popup__definition :deep(em) {
+  font-style: italic;
+}
 
 .graph-popup__footer {
   display: flex;
@@ -3872,6 +4097,7 @@ watch([focusNodeId, focusDepth], () => {
 }
 
 @media (max-width: 768px) {
+
   .kg-graph-title,
   .kg-graph-brand {
     font-size: clamp(2rem, 6.5vw, 2.25rem);
@@ -3975,15 +4201,21 @@ watch([focusNodeId, focusDepth], () => {
   position: relative;
   width: 100%;
 }
+
 .graph-popup__body {
   width: 100%;
 }
-.fade-enter-active, .fade-leave-active {
+
+.fade-enter-active,
+.fade-leave-active {
   transition: opacity 0.2s cubic-bezier(0.19, 1, 0.22, 1);
 }
-.fade-enter-from, .fade-leave-to {
+
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
+
 .fade-leave-active {
   position: absolute;
   top: 0;
@@ -3991,4 +4223,35 @@ watch([focusNodeId, focusDepth], () => {
   pointer-events: none;
 }
 
+@media (max-width: 768px) {
+  .graph-popup__wrapper {
+    width: min(280px, calc(100vw - 32px)) !important;
+    max-width: 280px !important;
+    padding: 10px 12px 12px !important;
+  }
+
+  .graph-popup__title-text {
+    font-size: 14px !important;
+  }
+
+  .graph-popup__definition {
+    font-size: 12px !important;
+    -webkit-line-clamp: 4 !important;
+    line-clamp: 4 !important;
+  }
+
+  .graph-popup__head-icon {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .graph-popup__cat-label {
+    font-size: 10px !important;
+  }
+
+  .graph-popup__focus-btn {
+    font-size: 11px !important;
+    padding: 3px 8px !important;
+  }
+}
 </style>
