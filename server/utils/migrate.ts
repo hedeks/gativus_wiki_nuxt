@@ -189,6 +189,28 @@ export async function runMigrations(db: Database) {
     )
   `)
 
+  // ─── 9b. Story Routes (Authoring Tool) ───
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS story_routes (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      title           TEXT NOT NULL,
+      description     TEXT,
+      nodes_path      TEXT,
+      custom_messages TEXT,
+      created_at      DATETIME DEFAULT (datetime('now')),
+      created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL
+    )
+  `)
+
+  // ─── 9c. Context Templates (Interactive Guide) ───
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS context_templates (
+      id              TEXT PRIMARY KEY,
+      template_text   TEXT NOT NULL,
+      updated_at      DATETIME DEFAULT (datetime('now'))
+    )
+  `)
+
   // ─── 10. Robust Migration Checks (for existing databases) ───
   const tables = ['users', 'categories', 'terms', 'books', 'articles']
   for (const table of tables) {
