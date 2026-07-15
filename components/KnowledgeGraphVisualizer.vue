@@ -98,6 +98,16 @@
 
               <div class="control-divider control-divider--toolbar"></div>
 
+                            <div class="control-divider control-divider--toolbar"></div>
+
+              <!-- Excursions -->
+              <GvButton type="button" unstyled chromeless square class="action-btn"
+                :class="{ active: isExcursionsModalOpen }"
+                icon="i-heroicons-sparkles" :title="t.guidedTours || '���������'"
+                @click="isExcursionsModalOpen = !isExcursionsModalOpen" />
+
+              <div class="control-divider control-divider--toolbar"></div>
+
               <LanguageSwitcher compact class="lang-switcher-wrap" />
 
               <div class="control-divider control-divider--toolbar"></div>
@@ -194,8 +204,23 @@
 
         <!-- Node detail: как theTermPopover для терминов + адаптив -->
         <transition name="pop">
-          <div v-if="selectedNode && !nodePopupPanelClosed" class="graph-popup graph-popup-node"
+          <div v-if="selectedNode && !nodePopupPanelClosed" class="graph-popup graph-popup-node relative !p-6 !pb-8"
             :aria-busy="selectedNode.type === 'term' && termPopupLoading" @mousedown.stop @wheel.stop @mousewheel.stop>
+            
+            <!-- Context Navigation Arrows -->
+            <button v-if="contextUpNode" type="button" class="absolute -top-1 left-1/2 -translate-x-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextUp()" title="Вверх (↑)">
+              <UIcon name="i-heroicons-chevron-up" class="w-5 h-5" />
+            </button>
+            <button v-if="contextDownNode" type="button" class="absolute -bottom-1 left-1/2 -translate-x-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextDown()" title="Вниз (↓)">
+              <UIcon name="i-heroicons-chevron-down" class="w-5 h-5" />
+            </button>
+            <button v-if="contextLeftNode" type="button" class="absolute -left-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextLeft()" title="Влево (←)">
+              <UIcon name="i-heroicons-chevron-left" class="w-5 h-5" />
+            </button>
+            <button v-if="contextRightNode" type="button" class="absolute -right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextRight()" title="Вправо (→)">
+              <UIcon name="i-heroicons-chevron-right" class="w-5 h-5" />
+            </button>
+            
             <div class="graph-popup__top">
               <div class="graph-popup__head">
                 <UIcon :name="getNodeIcon(selectedNode)" :style="{ color: getNodeColor(selectedNode) }"
@@ -258,29 +283,60 @@
               </Transition>
             </div>
 
+                        <!-- Custom Excursion Message -->
+            <transition name="fade">
+              <div v-if="storyState !== 'IDLE' && storyCustomMessages[storyCurrentIndex]" class="text-[13px] mt-2 mb-2 text-sky-900 dark:text-sky-100 bg-sky-50 dark:bg-sky-900/30 p-3 rounded-md border border-sky-200 dark:border-sky-700/50">
+                <strong class="text-sky-600 dark:text-sky-400 flex items-center gap-1 mb-1">
+                  <UIcon name="i-heroicons-sparkles" />
+                  {{ t.excursionNote || '������� ������:' }}
+                </strong>
+                <p class="leading-relaxed" v-html="renderInlineMarkup(storyCustomMessages[storyCurrentIndex])"></p>
+              </div>
+            </transition>
+
+            <!-- Notes / Mentions Info -->
+            <transition name="fade">
+              <div v-if="!(selectedNode.type === 'term' && termPopupLoading) && contextUpNode && (selectedNode.type === 'term' ? contextLinkBetweenUpAndNode : true)" class="text-[11px] mt-2 mb-2 text-gray-500 dark:text-gray-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-md border border-amber-100 dark:border-amber-700/50">
+                <strong>{{ t.notes }}:</strong>
+                
+                <!-- Notes for Term -->
+                <div v-if="selectedNode.type === 'term'" class="mt-1">
+                  {{ t.notesMentioned }} <strong>{{ contextLinkBetweenUpAndNode?.mentionCount || t.notesSeveralTimesInArticle.replace('раз в статье', '').replace('times in the article', '') }}</strong> {{ contextLinkBetweenUpAndNode?.mentionCount ? t.notesTimesInArticle : t.notesSeveralTimesInArticle }} «<strong>{{ contextUpNode.title }}</strong>».
+                  <span v-if="contextUpNodeParent">{{ t.notesArticleInType }} <strong>{{ contextUpNodeParent.type === 'book' ? t.notesBookWord : t.notesSectionWord }}</strong> «<strong>{{ contextUpNodeParent.title }}</strong>».</span>
+                </div>
+                
+                <!-- Notes for Article -->
+                <div v-else-if="selectedNode.type === 'article'" class="mt-1">
+                  {{ t.notesThisArticleInType }} <strong>{{ contextUpNode.type === 'book' ? t.notesBookWord : t.notesSectionWord }}</strong> «<strong>{{ contextUpNode.title }}</strong>».
+                </div>
+                
+                <!-- Notes for Book -->
+                <div v-else-if="selectedNode.type === 'book'" class="mt-1">
+                  {{ t.notesThisBookInCategory }} «<strong>{{ contextUpNode.title }}</strong>».
+                </div>
+              </div>
+            </transition>
+
             <div class="graph-popup__footer">
-              <span v-if="selectedNode.type === 'term' && termPopupLoading"
-                class="graph-popup__loading graph-popup__loading--footer">
-                <UIcon name="i-heroicons-arrow-path" class="graph-popup__spin" />
-                {{ t.loadingDetail }}
-              </span>
-              <button v-if="contextUpNode" type="button" class="graph-popup__focus-btn" @click.stop="goContextUp()">
-                <UIcon name="i-heroicons-arrow-up" class="graph-popup__focus-btn-icon"
-                  style="color: var(--gv-primary);" />
-                Вверх
-              </button>
-              <button v-if="contextDownNode" type="button" class="graph-popup__focus-btn" @click.stop="goContextDown()">
-                <UIcon name="i-heroicons-arrow-down" class="graph-popup__focus-btn-icon"
-                  style="color: var(--gv-primary);" />
-                Вниз
-              </button>
-              <button v-if="!isFocusMode || selectedNode.id !== focusNodeId" type="button"
-                class="graph-popup__focus-btn" @click.stop="enterFocusMode(selectedNode.id)">
-                <UIcon name="i-heroicons-viewfinder-circle" class="graph-popup__focus-btn-icon" />
-                {{ t.focusMode }}
-              </button>
-              <NuxtLink v-if="enableNavigation && selectedNodePath" :to="selectedNodePath" class="graph-popup__link"
-                @click.stop>{{ t.openEntity }}</NuxtLink>
+              <div v-if="storyState !== 'IDLE'" class="flex w-full items-center justify-between gap-2">
+                <GvButton type="button" size="xs" color="gray" variant="ghost" :disabled="storyCurrentIndex === 0" @click="prevStoryStep">{{ t.prev || '�����' }}</GvButton>
+                <span class="text-xs text-gray-500 font-semibold">{{ storyCurrentIndex + 1 }} / {{ storyPath.length }}</span>
+                <GvButton type="button" size="xs" color="primary" @click="nextStoryStep">{{ storyCurrentIndex === storyPath.length - 1 ? (t.finish || '���������') : (t.next || '�����') }}</GvButton>
+              </div>
+              <template v-else>
+                <span v-if="selectedNode.type === 'term' && termPopupLoading"
+                  class="graph-popup__loading graph-popup__loading--footer">
+                  <UIcon name="i-heroicons-arrow-path" class="graph-popup__spin" />
+                  {{ t.loadingDetail }}
+                </span>
+                <button v-if="!isFocusMode || selectedNode.id !== focusNodeId" type="button"
+                  class="graph-popup__focus-btn" @click.stop="enterFocusMode(selectedNode.id)">
+                  <UIcon name="i-heroicons-viewfinder-circle" class="graph-popup__focus-btn-icon" />
+                  {{ t.focusMode }}
+                </button>
+                <NuxtLink v-if="enableNavigation && selectedNodePath" :to="selectedNodePath" class="graph-popup__link"
+                  @click.stop>{{ t.openEntity }}</NuxtLink>
+              </template>
             </div>
           </div>
         </transition>
@@ -335,7 +391,7 @@
           </div>
         </transition>
 
-        <FeaturedStoriesPanel :stories="availableStories" @play="playStory" />
+        <ExcursionsModal v-model="isExcursionsModalOpen" :stories="availableStories" :t="t" @play="playStory" />
       </div>
     </div>
   </div>
@@ -346,7 +402,7 @@ import { shallowRef } from 'vue'
 import * as d3 from 'd3'
 import { useMediaQuery } from '@vueuse/core'
 import { useLanguageStore } from '~/stores/language'
-import FeaturedStoriesPanel from '~/components/FeaturedStoriesPanel.vue'
+import ExcursionsModal from '~/components/ExcursionsModal.vue'
 import { renderInlineMarkup } from '~/utils/renderInlineMarkup'
 import {
   ANCHORED_POPUP_GAP_PX,
@@ -365,6 +421,7 @@ const storyPath = ref<any[]>([])
 const storyCurrentIndex = ref(0)
 const storyCustomMessages = ref<Record<number, string>>({})
 const availableStories = ref<any[]>([])
+const isExcursionsModalOpen = ref(false)
 
 
 const uiDict: Record<string, any> = {
@@ -404,6 +461,15 @@ const uiDict: Record<string, any> = {
     focusMode: 'Focus',
     exitFocus: 'Exit focus',
     zoomForMore: 'Zoom in for more',
+    notes: 'Notes',
+    notesMentioned: 'Mentioned',
+    notesTimesInArticle: 'times in the article',
+    notesSeveralTimesInArticle: 'several times in the article',
+    notesArticleInType: 'The article is contained in the',
+    notesThisArticleInType: 'This article is contained in the',
+    notesThisBookInCategory: 'This book belongs to the category',
+    notesBookWord: 'book',
+    notesSectionWord: 'section',
   },
   ru: {
     title: 'Граф знаний Gativus',
@@ -481,7 +547,15 @@ const uiDict: Record<string, any> = {
   }
 }
 
-const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+const t = computed(() => {
+  const current = uiDict[langStore.currentLang] || uiDict.ru
+  return new Proxy(current, {
+    get(target, prop) {
+      if (target[prop] !== undefined) return target[prop]
+      return uiDict.ru[prop] || uiDict.en[prop] || ''
+    }
+  })
+})
 
 const isMobileChrome = useMediaQuery('(max-width: 640px)')
 const isMobileToolbarExpanded = ref(false)
@@ -615,6 +689,110 @@ const contextDownNode = computed(() => {
   return null
 })
 
+const contextLinkBetweenUpAndNode = computed(() => {
+  if (!selectedNode.value || !contextUpNode.value) return null
+  return props.graphData?.links?.find((l: any) => {
+    const sid = typeof l.source === 'object' ? l.source.id : l.source
+    const tid = typeof l.target === 'object' ? l.target.id : l.target
+    return (sid === contextUpNode.value.id && tid === selectedNode.value.id) ||
+           (tid === contextUpNode.value.id && sid === selectedNode.value.id)
+  })
+})
+
+const contextUpNodeParent = computed(() => {
+  if (!contextUpNode.value) return null
+  const links = props.graphData?.links || []
+  const nodes = props.graphData?.nodes || []
+  for (const l of links) {
+    const sid = typeof l.source === 'object' ? l.source.id : l.source
+    const tid = typeof l.target === 'object' ? l.target.id : l.target
+    if (sid === contextUpNode.value.id) {
+      const n = nodes.find((n: any) => n.id === tid)
+      if (n?.type === 'category' || n?.type === 'book') return n
+    }
+    if (tid === contextUpNode.value.id) {
+      const n = nodes.find((n: any) => n.id === sid)
+      if (n?.type === 'category' || n?.type === 'book') return n
+    }
+  }
+  return null
+})
+
+const contextSiblings = computed(() => {
+  if (!selectedNode.value || !contextUpNode.value) return []
+  const links = props.graphData?.links || []
+  const nodes = props.graphData?.nodes || []
+  const pId = contextUpNode.value.id
+  const myType = selectedNode.value.type
+  const siblings = []
+  for (const l of links) {
+    const sid = typeof l.source === 'object' ? l.source.id : l.source
+    const tid = typeof l.target === 'object' ? l.target.id : l.target
+    if (sid === pId) {
+      const n = nodes.find((n: any) => n.id === tid)
+      if (n?.type === myType) siblings.push(n)
+    }
+    if (tid === pId) {
+      const n = nodes.find((n: any) => n.id === sid)
+      if (n?.type === myType) siblings.push(n)
+    }
+  }
+  siblings.sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+  const uniqueSiblings = []
+  const seen = new Set()
+  for (const s of siblings) {
+    if (!seen.has(s.id)) { seen.add(s.id); uniqueSiblings.push(s) }
+  }
+  return uniqueSiblings
+})
+
+const contextLeftNode = computed(() => {
+  const sibs = contextSiblings.value
+  if (sibs.length < 2) return null
+  const idx = sibs.findIndex((n: any) => n.id === selectedNode.value.id)
+  if (idx > 0) return sibs[idx - 1]
+  return sibs[sibs.length - 1]
+})
+
+const contextRightNode = computed(() => {
+  const sibs = contextSiblings.value
+  if (sibs.length < 2) return null
+  const idx = sibs.findIndex((n: any) => n.id === selectedNode.value.id)
+  if (idx !== -1 && idx < sibs.length - 1) return sibs[idx + 1]
+  return sibs[0]
+})
+
+function goContextLeft() {
+  const left = contextLeftNode.value
+  if (left) startInteractiveContext([selectedNode.value, left], 'Предыдущий')
+}
+
+function goContextRight() {
+  const right = contextRightNode.value
+  if (right) startInteractiveContext([selectedNode.value, right], 'Следующий')
+}
+
+function handleKeydown(e: KeyboardEvent) {
+  if (!selectedNode.value || nodePopupPanelClosed.value) return
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' '].includes(e.key)) {
+    e.preventDefault()
+  }
+  if (e.key === 'ArrowUp' && contextUpNode.value) goContextUp()
+  if (e.key === 'ArrowDown' && contextDownNode.value) goContextDown()
+  if (e.key === 'ArrowLeft' && contextLeftNode.value) goContextLeft()
+  if (e.key === 'ArrowRight' && contextRightNode.value) goContextRight()
+  if ((e.key === 'Enter' || e.key === ' ') && contextDownNode.value) goContextDown() // Forward on Enter/Space
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
+
+
 
 async function fetchStories() {
   try {
@@ -694,8 +872,20 @@ function stopStory() {
   storyState.value = 'IDLE'
   storyPath.value = []
   storyCurrentIndex.value = 0
+  storyCustomMessages.value = {}
   if (wasPlaying) {
     nextTick(() => initGraph()) // Restore normal graph
+  }
+}
+
+function prevStoryStep() {
+  if (storyState.value === 'IDLE') return
+  if (storyCurrentIndex.value > 0) {
+    if (storyState.value === 'STORY_START') storyState.value = 'PLAYING_NODE'
+    storyCurrentIndex.value--
+    const n = storyPath.value[storyCurrentIndex.value]
+    zoomToNode(n.id)
+    selectedNode.value = n
   }
 }
 
@@ -1135,205 +1325,10 @@ function graphPopupHostPosition(
   const w = el.getBoundingClientRect().width
   const rawNaturalH = el.getBoundingClientRect().height
   const viewportStrip = screenBottom - screenTop
-  const viewportCap = Math.max(160, Math.floor(viewportStrip - gap * 4))
+  const viewportCap = Math.max(280, Math.floor(viewportStrip - gap * 4))
   const availBelow = Math.max(0, screenBottom - cy - gap * 2)
   const availAbove = Math.max(0, cy - screenTop - gap * 2)
-  const adjacentCap = Math.max(availBelow, availAbove, 140)
-  const hPlacement = Math.min(rawNaturalH, viewportCap, adjacentCap)
-
-  let { left: leftClient, top: topClient, placeBelow: initialPlaceBelow } = pickPopupRectFromPoint(
-    cx,
-    cy,
-    w,
-    hPlacement,
-    gap,
-    screenLeft,
-  if (parent.type === 'category' && child.type === 'category') return 1.5
-  return 1
-}
-
-/** Радиус круга узла — единый источник для hitbox/collide */
-function nodeGlyphRadius(d: any): number {
-  if (d.type === 'book') return 14
-  if (d.type === 'category') return Math.max(8, 14 - (d.depth || 0) * 3)
-  if (d.type === 'article') return 8
-  return 6
-}
-
-/**
- * Радиус для forceCollide: чуть больше глифа + оценка половины ширины подписи,
- * чтобы подписи реже наезжали друг на друга без сильного «раздувания» графа.
- */
-function nodeCollisionRadius(d: any): number {
-  const r = nodeGlyphRadius(d)
-  const len = String(d.title ?? '').length
-  const labelPad = Math.min(110, Math.max(20, len * 4.8))
-  return r + labelPad + 8
-}
-
-/** На сколько px шире видимую линию делаем невидимый hit-line (тонкий клубок без «ложных» попаданий). */
-function linkHitStrokeWidthPx(d: any): number {
-  return Math.max(getLinkBaseWidth(d) + 2, 3)
-}
-
-/** Zoom / focus tween easing. */
-const KG_BOUNCE_OUT = d3.easeBounceOut
-const KG_GRAPH_BOUNCE_MS = 520
-
-function graphPrefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-const updateHighlights = () => {
-  if (!svgRef.value) return
-
-  const focusNode = selectedNode.value
-  const focusLink = selectedLink.value
-  const neighbors = focusNode ? getNeighbors(focusNode) : null
-  const linkEndpointIds = focusLink
-    ? [normalizeLinkEndpointId(focusLink.source), normalizeLinkEndpointId(focusLink.target)]
-    : null
-
-  const layer = d3.select(svgRef.value)
-
-  // 1. Update Nodes — поджим только при выделении по клику
-  layer.selectAll('.node-group')
-    .style('opacity', (n: any) => {
-      let v: number
-      if (focusLink && linkEndpointIds) {
-        v = linkEndpointIds.includes(n.id) ? 1 : 0.08
-      }
-      else if (focusNode) {
-        const isNeighbor = neighbors?.includes(n.id)
-        v = isNeighbor ? 1 : 0.05
-      }
-      else {
-        v = 1
-      }
-      return String(v)
-    })
-
-  // 2. Update Links — то же без hover-слоёв CSS
-  layer.selectAll('.visual-link')
-    .style('opacity', (l: any) => {
-      let v: number
-      if (focusLink) {
-        v = isSameLink(l, focusLink) ? 1 : 0.05
-      }
-      else if (focusNode) {
-        const isConnected = l.source.id === focusNode.id || l.target.id === focusNode.id
-        v = isConnected ? 1 : 0.02
-      }
-      else {
-        v = 0.4
-      }
-      return String(v)
-    })
-    .attr('stroke-width', (l: any) => {
-      const baseWidth = getLinkBaseWidth(l)
-      if (focusLink && isSameLink(l, focusLink)) return baseWidth * 2
-      return baseWidth
-    })
-}
-
-// Manifest CSS cubic-bezier(0.705, 0.010, 0.000, 0.915) approximation for D3
-// This is a "slow build-up, fast middle, very slow finish" type of curve
-const designSystemEase = (t: number) => {
-  // Cubic Bezier approximation formula
-  // For (0.705, 0.01, 0, 0.915)
-  const x1 = 0.705, y1 = 0.01, x2 = 0, y2 = 0.915
-  // Since x2 is 0 and x1 is large, it's a very specific curve.
-  // Let's use a simpler power-based approximation that feels similar:
-  // It starts slow and peaks late.
-  return Math.pow(t, 2.5) * (1.5 - 0.5 * t) // Roughly approximates the feel
-}
-
-// Поджим графа / рёбер только пока есть выделение по клику (или строка поиска → выбранный узел)
-// applyLOD перезапускаем тоже — чтобы найденный узел сразу стал виден при любом уровне зума
-watch([selectedNode, selectedLink], () => {
-  updateHighlights()
-  applyLOD(graphLiveZoomTransform.k)
-})
-
-watch(() => langStore.currentLang, async () => {
-  cancelPendingSearchFocusZoom()
-  selectedNode.value = null
-  selectedLink.value = null
-  isFilterMenuOpen.value = false
-  await nextTick()
-  initGraph()
-})
-
-const selectedNodePath = computed(() => {
-  const node = selectedNode.value
-  if (!node?.slug) return null
-  if (node.type === 'term') return `/glossary/${node.slug}`
-  if (node.type === 'article') return `/articles/${node.slug}`
-  if (node.type === 'book') return `/books/${node.slug}`
-  if (node.type === 'category') return `/categories?slug=${node.slug}`
-  return null
-})
-
-const closeNodePopupPanel = (e?: MouseEvent) => {
-  e?.stopPropagation()
-  nodePopupPanelClosed.value = true
-}
-
-const closeLinkPopupPanel = (e?: MouseEvent) => {
-  e?.stopPropagation()
-  linkPopupPanelClosed.value = true
-}
-
-watch([selectedNode, () => langStore.currentLang], async ([node]) => {
-  termPopupDetail.value = null
-  if (!process.client || !node || node.type !== 'term' || !node.slug) {
-    termPopupLoading.value = false
-    return
-  }
-  termPopupLoading.value = true
-  try {
-    termPopupDetail.value = await $fetch(`/api/terms/${encodeURIComponent(node.slug)}`, {
-      query: { lang: langStore.currentLang },
-    })
-  }
-  catch {
-    termPopupDetail.value = null
-  }
-  finally {
-    termPopupLoading.value = false
-  }
-}, { immediate: true })
-
-/** Удерживаем попап в пересечении .graph-viewport с видимой областью окна (прокрутка страницы, dynamic toolbar). */
-let graphPopupClampRaf = 0
-
-/**
- * Позиция попапа в координатах хоста (.graph-viewport): квадранты от точки якоря, как у theTermPopover.
- * Высота для pickPopupRectFromPoint ограничивается окном и зоной у точки — иначе высокий скелетон уносит карточку вверх.
- */
-function graphPopupHostPosition(
-  el: HTMLElement,
-  host: HTMLElement,
-  anchorXHost: number,
-  anchorYHost: number,
-  gap: number,
-) {
-  const hr = host.getBoundingClientRect()
-  const cx = hr.left + anchorXHost
-  const cy = hr.top + anchorYHost
-  const { screenLeft, screenRight, screenTop, screenBottom } = viewportScreenBox()
-
-  el.style.maxHeight = ''
-  el.style.overflowY = ''
-  void el.offsetHeight
-
-  const w = el.getBoundingClientRect().width
-  const rawNaturalH = el.getBoundingClientRect().height
-  const viewportStrip = screenBottom - screenTop
-  const viewportCap = Math.max(160, Math.floor(viewportStrip - gap * 4))
-  const availBelow = Math.max(0, screenBottom - cy - gap * 2)
-  const availAbove = Math.max(0, cy - screenTop - gap * 2)
-  const adjacentCap = Math.max(availBelow, availAbove, 140)
+  const adjacentCap = Math.max(availBelow, availAbove, 240)
   const hPlacement = Math.min(rawNaturalH, viewportCap, adjacentCap)
 
   let { left: leftClient, top: topClient, placeBelow: initialPlaceBelow } = pickPopupRectFromPoint(
@@ -1345,28 +1340,30 @@ function graphPopupHostPosition(
     screenLeft,
     screenRight,
     screenTop,
-    screenBottom,
+    screenBottom
   )
 
   let leftHost = leftClient - hr.left
-  if (!initialPlaceBelow) {
-    const bottomHost = hr.height - ((topClient - hr.top) + hPlacement)
+  el.style.left = `${leftHost}px`
+  if (el.classList.contains('graph-popup-node')) {
+    el.style.maxHeight = `${hPlacement}px`
+  } else {
+    el.style.maxHeight = ''
+  }
+
+  if (initialPlaceBelow) {
+    el.style.top = `${topClient - hr.top}px`
+    el.style.bottom = 'auto'
+    el.classList.remove('graph-popup--place-top')
+    el.classList.add('graph-popup--place-bottom')
+  } else {
+    const bottomClient = topClient + hPlacement
+    const bottomHost = hr.height - (bottomClient - hr.top)
     el.style.bottom = `${bottomHost}px`
     el.style.top = 'auto'
-  } else {
-    const topHost = topClient - hr.top
-    el.style.top = `${topHost}px`
-    el.style.bottom = 'auto'
+    el.classList.remove('graph-popup--place-bottom')
+    el.classList.add('graph-popup--place-top')
   }
-  el.style.left = `${leftHost}px`
-  void el.offsetHeight
-
-  const r = el.getBoundingClientRect()
-  const hRefined = Math.min(r.height, viewportCap, adjacentCap)
-  let placeBelow = true
-  el.style.overflowY = ''
-}
-void el.offsetHeight
 }
 
 function graphPopupClampNeeded(): boolean {
@@ -3802,13 +3799,13 @@ watch([focusNodeId, focusDepth], () => {
 }
 
 .graph-popup__alias-chip {
-  padding: 4px 9px;
-  border-radius: 8px;
+  padding: 2px 6px;
+  border-radius: 6px;
   background: var(--gv-surface-header);
   border: 1px solid var(--gv-border-principal);
   color: var(--gv-text-secondary);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 500;
 }
 
 .graph-popup__definition {
@@ -4200,6 +4197,24 @@ watch([focusNodeId, focusDepth], () => {
 .graph-popup__wrapper-inner {
   position: relative;
   width: 100%;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px;
+}
+
+.graph-popup__wrapper-inner::-webkit-scrollbar {
+  width: 4px;
+}
+.graph-popup__wrapper-inner::-webkit-scrollbar-track {
+  background: transparent;
+}
+.graph-popup__wrapper-inner::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--gv-border-principal) 50%, transparent);
+  border-radius: 4px;
+}
+.graph-popup__wrapper-inner::-webkit-scrollbar-thumb:hover {
+  background: var(--gv-border-principal);
 }
 
 .graph-popup__body {

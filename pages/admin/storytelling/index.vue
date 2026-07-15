@@ -6,7 +6,7 @@
         :class="activeTab === 'routes' ? 'border-sky-500 text-sky-600 dark:text-sky-400' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'"
         @click="activeTab = 'routes'"
       >
-        Маршруты
+        Экскурсии
       </button>
       <button 
         class="py-3 text-sm font-semibold border-b-2 transition-colors"
@@ -28,8 +28,8 @@
               <UIcon name="i-heroicons-sparkles" class="text-xl" />
             </div>
             <div>
-              <h1 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Storytelling</h1>
-              <p class="text-[10px] text-gray-500 font-medium">Маршруты (Stories)</p>
+              <h1 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Экскурсии</h1>
+              <p class="text-[10px] text-gray-500 font-medium">Управление экскурсиями</p>
             </div>
           </div>
           <div class="flex items-center gap-2">
@@ -73,7 +73,7 @@
         <div class="list-controls p-4 shrink-0 border-b border-gray-200 dark:border-gray-800">
           <BaseSearch
             v-model="searchQuery"
-            placeholder="Поиск маршрута..."
+            placeholder="Поиск экскурсии..."
             :is-pending="false"
             class="flex-1"
           />
@@ -82,7 +82,7 @@
         <div class="category-scroll-container flex-1 overflow-y-auto">
           <div v-if="!filteredRoutes || filteredRoutes.length === 0" class="p-8 text-center text-gray-400">
             <UIcon name="i-heroicons-sparkles" class="text-3xl mb-2 opacity-50" />
-            <p class="text-xs">Маршруты не найдены</p>
+            <p class="text-xs">Экскурсии не найдены</p>
           </div>
           <div v-else class="p-3 space-y-2">
             <div
@@ -108,19 +108,19 @@
       <div class="workspace-editor-pane col-span-8 bg-[#fafafa] dark:bg-[#161618] flex flex-col relative overflow-hidden min-h-0 border-l border-gray-200 dark:border-gray-800">
         <div v-if="!mode" class="empty-state flex-1 flex flex-col items-center justify-center opacity-60">
           <UIcon name="i-heroicons-cursor-arrow-rays" class="text-6xl text-gray-300 dark:text-gray-700 mb-4" />
-          <p class="text-sm font-medium text-gray-500">Выберите маршрут слева для редактирования или создайте новый</p>
+          <p class="text-sm font-medium text-gray-500">Выберите экскурсию слева для редактирования или создайте новый</p>
         </div>
 
         <div v-else class="workspace-editor-scroll flex-1 overflow-y-auto p-6 bg-white dark:bg-[#111113]">
           <div class="max-w-3xl mx-auto">
             <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-6 uppercase tracking-wider">
-              {{ mode === 'create' ? 'Создать маршрут' : 'Редактировать маршрут' }}
+              {{ mode === 'create' ? 'Создать экскурсию' : 'Редактировать экскурсию' }}
             </h2>
             <UForm :state="form" @submit="saveRoute" class="space-y-6">
               
               <GvInput 
                 v-model="form.title" 
-                label="Название маршрута" 
+                label="Название экскурсии" 
                 placeholder="Введение в Gativus"
                 required
               />
@@ -133,7 +133,7 @@
 
               <div class="border border-gray-200 dark:border-gray-800 rounded-lg p-4 bg-gray-50 dark:bg-[#161618]">
                 <div class="flex justify-between items-center mb-4">
-                  <h3 class="text-sm font-bold text-gray-900 dark:text-white">Шаги маршрута (Узлы графа)</h3>
+                  <h3 class="text-sm font-bold text-gray-900 dark:text-white">Шаги экскурсии (Узлы графа)</h3>
                   <span class="text-xs text-gray-500">{{ form.nodes_path.length }} / 25</span>
                 </div>
 
@@ -141,10 +141,9 @@
                 <div class="mb-4 flex gap-2">
                   <USelectMenu
                     v-model="selectedNodeToAdd"
-                    :options="searchableNodes"
+                    :searchable="searchNodes"
                     option-attribute="title"
                     value-attribute="id"
-                    searchable
                     searchable-placeholder="Поиск узла (книга, статья, термин)..."
                     placeholder="Выберите узел для добавления"
                     class="flex-1"
@@ -287,6 +286,12 @@ const searchableNodes = computed(() => {
   }))
 })
 
+const searchNodes = async (q: string) => {
+  if (!q) return searchableNodes.value.slice(0, 50)
+  const query = q.toLowerCase()
+  return searchableNodes.value.filter(n => n.title.toLowerCase().includes(query)).slice(0, 50)
+}
+
 const filteredRoutes = computed(() => {
   if (!searchQuery.value) return routes.value
   const q = searchQuery.value.toLowerCase()
@@ -308,7 +313,7 @@ const loadRoutes = async () => {
 
 const loadNodes = async () => {
   try {
-    const data = await $fetch<any>('/api/public/graph-data')
+    const data = await $fetch<any>('/api/knowledge-graph')
     nodes.value = data.nodes || []
   } catch (e) {
     console.error(e)
@@ -408,7 +413,7 @@ const saveRoute = async () => {
 }
 
 const deleteRoute = async (id: number) => {
-  if (!confirm('Удалить маршрут?')) return
+  if (!confirm('Удалить экскурсию?')) return
   try {
     await $fetch(`/api/admin/storytelling/${id}`, { method: 'DELETE' })
     if (selectedRouteId.value === id) mode.value = null
