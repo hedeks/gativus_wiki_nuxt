@@ -23,8 +23,10 @@
             class="p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-sky-500 dark:hover:border-sky-500 cursor-pointer transition-colors bg-gray-50 dark:bg-[#161618] hover:bg-sky-50 dark:hover:bg-sky-900/20"
             @click="selectStory(story)"
           >
-            <div class="font-bold text-gray-900 dark:text-white mb-1">{{ story.title }}</div>
-            <div v-if="story.description" class="text-sm text-gray-500 dark:text-gray-400 mb-3">{{ story.description }}</div>
+            <div class="font-bold text-gray-900 dark:text-white mb-1">{{ story[`title_${currentLang}`] || story.title }}</div>
+            <div v-if="story[`description_${currentLang}`] || story.description" class="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              {{ story[`description_${currentLang}`] || story.description }}
+            </div>
             <div class="text-xs font-semibold text-sky-600 dark:text-sky-400">
               {{ story.nodes_path?.length || 0 }} {{ t?.stepsCount || 'шагов' }}
             </div>
@@ -37,6 +39,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useLanguageStore } from '~/stores/language'
+
+const langStore = useLanguageStore()
+const currentLang = computed(() => langStore.currentLang)
 
 const props = defineProps<{
   modelValue: boolean

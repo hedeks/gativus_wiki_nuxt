@@ -103,7 +103,7 @@
               <!-- Excursions -->
               <GvButton type="button" unstyled chromeless square class="action-btn"
                 :class="{ active: isExcursionsModalOpen }"
-                icon="i-heroicons-sparkles" :title="t.guidedTours || '���������'"
+                icon="i-heroicons-sparkles" :title="t.guidedTours"
                 @click="isExcursionsModalOpen = !isExcursionsModalOpen" />
 
               <div class="control-divider control-divider--toolbar"></div>
@@ -145,6 +145,20 @@
             </div>
             <GvButton type="button" unstyled chromeless square class="action-btn kg-ego-bar__exit"
               icon="i-heroicons-x-mark" :title="t.exitFocus" :aria-label="t.exitFocus" @click="exitFocusMode" />
+          </div>
+          
+          <div v-else-if="storyState === 'STORY_START' || storyState === 'PLAYING_NODE'" class="kg-ego-bar kg-glass-surface" @wheel.stop @mousewheel.stop>
+            <UIcon name="i-heroicons-sparkles" class="kg-ego-bar__icon text-sky-500" />
+            <span class="kg-ego-bar__label" style="font-weight: 500;">
+              {{ storyTitle }}
+            </span>
+            <div class="kg-depth-switcher" style="padding: 0 4px; display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="kg-depth-btn" style="border:none; background:transparent;" :disabled="storyCurrentIndex === 0" @click="prevStoryStep" title="Назад"><UIcon name="i-heroicons-chevron-left" /></button>
+              <span class="text-[11px] font-semibold text-gray-700 dark:text-gray-300">{{ storyCurrentIndex + 1 }} / {{ storyPath.length }}</span>
+              <button type="button" class="kg-depth-btn" style="border:none; background:transparent;" @click="nextStoryStep" :title="storyCurrentIndex === storyPath.length - 1 ? (t.finish || 'Завершить') : 'Вперед'"><UIcon :name="storyCurrentIndex === storyPath.length - 1 ? 'i-heroicons-check' : 'i-heroicons-chevron-right'" /></button>
+            </div>
+            <GvButton type="button" unstyled chromeless square class="action-btn kg-ego-bar__exit"
+              icon="i-heroicons-x-mark" title="Выйти из экскурсии" aria-label="Выйти" @click="stopStory" />
           </div>
         </transition>
 
@@ -203,38 +217,40 @@
         </aside>
 
         <!-- Node detail: как theTermPopover для терминов + адаптив -->
-        <transition name="pop">
-          <div v-if="selectedNode && !nodePopupPanelClosed" class="graph-popup graph-popup-node relative !p-6 !pb-8"
-            :aria-busy="selectedNode.type === 'term' && termPopupLoading" @mousedown.stop @wheel.stop @mousewheel.stop>
-            
-            <!-- Context Navigation Arrows -->
-            <button v-if="contextUpNode" type="button" class="absolute -top-1 left-1/2 -translate-x-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextUp()" title="Вверх (↑)">
-              <UIcon name="i-heroicons-chevron-up" class="w-5 h-5" />
-            </button>
-            <button v-if="contextDownNode" type="button" class="absolute -bottom-1 left-1/2 -translate-x-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextDown()" title="Вниз (↓)">
-              <UIcon name="i-heroicons-chevron-down" class="w-5 h-5" />
-            </button>
-            <button v-if="contextLeftNode" type="button" class="absolute -left-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextLeft()" title="Влево (←)">
-              <UIcon name="i-heroicons-chevron-left" class="w-5 h-5" />
-            </button>
-            <button v-if="contextRightNode" type="button" class="absolute -right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextRight()" title="Вправо (→)">
-              <UIcon name="i-heroicons-chevron-right" class="w-5 h-5" />
-            </button>
+        <Teleport to="body">
+          <transition name="pop">
+            <div v-if="selectedNode && !nodePopupPanelClosed" class="graph-popup graph-popup-node fixed !p-6 !pb-8"
+              :aria-busy="selectedNode.type === 'term' && termPopupLoading" @mousedown.stop @wheel.stop @mousewheel.stop>
+              
+              <!-- Context Navigation Arrows -->
+              <button v-if="contextUpNode" type="button" class="absolute -top-1 left-1/2 -translate-x-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextUp()" title="Вверх (↑)">
+                <UIcon name="i-heroicons-chevron-up" class="w-5 h-5" />
+              </button>
+              <button v-if="contextDownNode" type="button" class="absolute -bottom-1 left-1/2 -translate-x-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextDown()" title="Вниз (↓)">
+                <UIcon name="i-heroicons-chevron-down" class="w-5 h-5" />
+              </button>
+              <button v-if="contextLeftNode" type="button" class="absolute -left-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextLeft()" title="Влево (←)">
+                <UIcon name="i-heroicons-chevron-left" class="w-5 h-5" />
+              </button>
+              <button v-if="contextRightNode" type="button" class="absolute -right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextRight()" title="Вправо (→)">
+                <UIcon name="i-heroicons-chevron-right" class="w-5 h-5" />
+              </button>
             
             <div class="graph-popup__top">
               <div class="graph-popup__head">
                 <UIcon :name="getNodeIcon(selectedNode)" :style="{ color: getNodeColor(selectedNode) }"
                   class="graph-popup__head-icon" />
-                <span class="graph-popup__type-label">{{ getTypeLabel(selectedNode.type) }}</span>
+                <span class="graph-popup__type-label">
+                  {{ (storyState === 'STORY_START' || storyState === 'PLAYING_NODE') ? storyTitle : getTypeLabel(selectedNode.type) }}
+                </span>
               </div>
-              <GvButton type="button" unstyled chromeless square class="action-btn graph-popup__close"
+              <GvButton v-if="!((storyState === 'STORY_START' || storyState === 'PLAYING_NODE') && selectedNode.id === storyPath[storyCurrentIndex]?.id)" type="button" unstyled chromeless square class="action-btn graph-popup__close"
                 icon="i-heroicons-x-mark" :title="t.popupClose" :aria-label="t.popupClose"
                 @click="closeNodePopupPanel" />
             </div>
 
-            <div class="graph-popup__wrapper-inner" :style="nodePopupStyle">
-              <Transition name="fade" @before-leave="onPopupBeforeLeave" @enter="onPopupEnter"
-                @after-enter="onPopupAfterEnter">
+            <div class="graph-popup__wrapper-inner">
+              <Transition name="fade">
                 <div v-if="selectedNode.type === 'term' && termPopupLoading" class="graph-popup__body">
                   <div class="graph-popup__title-text graph-popup__title-text--loading-preview">
                     {{ selectedNode.title }}
@@ -285,18 +301,18 @@
 
                         <!-- Custom Excursion Message -->
             <transition name="fade">
-              <div v-if="storyState !== 'IDLE' && storyCustomMessages[storyCurrentIndex]" class="text-[13px] mt-2 mb-2 text-sky-900 dark:text-sky-100 bg-sky-50 dark:bg-sky-900/30 p-3 rounded-md border border-sky-200 dark:border-sky-700/50">
+              <div v-if="(storyState === 'STORY_START' || storyState === 'PLAYING_NODE') && selectedNode.id === storyPath[storyCurrentIndex]?.id && storyCustomMessages[storyCurrentIndex]" class="text-[11px] mt-1 mb-1 text-sky-900 dark:text-sky-100 bg-sky-50 dark:bg-sky-900/30 p-1.5 rounded-md border border-sky-200 dark:border-sky-700/50">
                 <strong class="text-sky-600 dark:text-sky-400 flex items-center gap-1 mb-1">
                   <UIcon name="i-heroicons-sparkles" />
-                  {{ t.excursionNote || '������� ������:' }}
+                  {{ t.excursionNote || 'Примечание экскурсовода' }}
                 </strong>
-                <p class="leading-relaxed" v-html="renderInlineMarkup(storyCustomMessages[storyCurrentIndex])"></p>
+                <div class="leading-relaxed" v-html="renderInlineMarkup(storyCustomMessages[storyCurrentIndex])"></div>
               </div>
             </transition>
 
             <!-- Notes / Mentions Info -->
             <transition name="fade">
-              <div v-if="!(selectedNode.type === 'term' && termPopupLoading) && contextUpNode && (selectedNode.type === 'term' ? contextLinkBetweenUpAndNode : true)" class="text-[11px] mt-2 mb-2 text-gray-500 dark:text-gray-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-md border border-amber-100 dark:border-amber-700/50">
+              <div v-if="!(selectedNode.type === 'term' && termPopupLoading) && contextUpNode && (selectedNode.type === 'term' ? contextLinkBetweenUpAndNode : true)" class="text-[11px] mt-1 mb-1 text-amber-900 dark:text-amber-100 bg-amber-50 dark:bg-amber-900/20 p-1.5 rounded-md border border-amber-100 dark:border-amber-700/50">
                 <strong>{{ t.notes }}:</strong>
                 
                 <!-- Notes for Term -->
@@ -318,12 +334,7 @@
             </transition>
 
             <div class="graph-popup__footer">
-              <div v-if="storyState !== 'IDLE'" class="flex w-full items-center justify-between gap-2">
-                <GvButton type="button" size="xs" color="gray" variant="ghost" :disabled="storyCurrentIndex === 0" @click="prevStoryStep">{{ t.prev || '�����' }}</GvButton>
-                <span class="text-xs text-gray-500 font-semibold">{{ storyCurrentIndex + 1 }} / {{ storyPath.length }}</span>
-                <GvButton type="button" size="xs" color="primary" @click="nextStoryStep">{{ storyCurrentIndex === storyPath.length - 1 ? (t.finish || '���������') : (t.next || '�����') }}</GvButton>
-              </div>
-              <template v-else>
+              <template v-if="true">
                 <span v-if="selectedNode.type === 'term' && termPopupLoading"
                   class="graph-popup__loading graph-popup__loading--footer">
                   <UIcon name="i-heroicons-arrow-path" class="graph-popup__spin" />
@@ -339,12 +350,14 @@
               </template>
             </div>
           </div>
-        </transition>
+          </transition>
+        </Teleport>
 
         <!-- Link popup -->
-        <transition name="pop">
-          <div v-if="selectedLink && !linkPopupPanelClosed" class="graph-popup link-popup graph-popup-link"
-            @mousedown.stop @wheel.stop @mousewheel.stop>
+        <Teleport to="body">
+          <transition name="pop">
+            <div v-if="selectedLink && !linkPopupPanelClosed" class="graph-popup link-popup graph-popup-link fixed"
+              @mousedown.stop @wheel.stop @mousewheel.stop>
             <div class="link-popup-accent" :style="{
               borderColor: getNodeColor(getLinkHierarchy(selectedLink).child),
               borderLeftStyle: getLinkHierarchy(selectedLink).parent.type === 'category' ? 'dashed' : 'solid'
@@ -390,6 +403,7 @@
             </p>
           </div>
         </transition>
+        </Teleport>
 
         <ExcursionsModal v-model="isExcursionsModalOpen" :stories="availableStories" :t="t" @play="playStory" />
       </div>
@@ -420,6 +434,7 @@ const storyState = ref<StoryState>('IDLE')
 const storyPath = ref<any[]>([])
 const storyCurrentIndex = ref(0)
 const storyCustomMessages = ref<Record<number, string>>({})
+const storyTitle = ref('')
 const availableStories = ref<any[]>([])
 const isExcursionsModalOpen = ref(false)
 
@@ -470,6 +485,12 @@ const uiDict: Record<string, any> = {
     notesThisBookInCategory: 'This book belongs to the category',
     notesBookWord: 'book',
     notesSectionWord: 'section',
+      guidedTours: 'Guided Tours',
+      excursionNote: 'Author\'s note:',
+      exitExcursion: 'Exit Tour',
+      prev: 'Prev',
+      next: 'Next',
+      finish: 'Finish',
   },
   ru: {
     title: 'Граф знаний Gativus',
@@ -507,6 +528,12 @@ const uiDict: Record<string, any> = {
     focusMode: 'Фокус',
     exitFocus: 'Выйти из фокуса',
     zoomForMore: 'Приблизьте для деталей',
+      guidedTours: 'Экскурсии',
+      excursionNote: 'Заметка автора:',
+      exitExcursion: 'Выйти из экскурсии',
+      prev: 'Назад',
+      next: 'Далее',
+      finish: 'Завершить',
   },
   zh: {
     title: 'Gativus 知识图谱',
@@ -544,6 +571,12 @@ const uiDict: Record<string, any> = {
     focusMode: '聚焦',
     exitFocus: '退出聚焦',
     zoomForMore: '放大查看更多',
+      guidedTours: '导览',
+      excursionNote: '作者笔记:',
+      exitExcursion: '退出导览',
+      prev: '上一步',
+      next: '下一步',
+      finish: '完成',
   }
 }
 
@@ -773,6 +806,28 @@ function goContextRight() {
 }
 
 function handleKeydown(e: KeyboardEvent) {
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+  if (e.key === 'Escape') {
+    if (storyState.value !== 'IDLE') {
+      stopStory()
+      return
+    }
+  }
+
+  // Handle Excursion / Story mode navigation
+  if (storyState.value === 'STORY_START' || storyState.value === 'PLAYING_NODE') {
+    if (['ArrowRight', 'Enter', ' '].includes(e.key)) {
+      e.preventDefault()
+      nextStoryStep()
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      prevStoryStep()
+    }
+    return // Do not process context navigation while in an excursion
+  }
+
+  // Handle regular Context Mode / IDLE navigation
   if (!selectedNode.value || nodePopupPanelClosed.value) return
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' '].includes(e.key)) {
     e.preventDefault()
@@ -810,10 +865,20 @@ function playStory(story: any) {
   const path = (story.nodes_path || []).map((id: string) => nodes.find((n: any) => n.id === id)).filter(Boolean)
   if (path.length > 0) {
     storyPath.value = path
-    storyCustomMessages.value = story.custom_messages || {}
+    
+    const lang = langStore.currentLang
+    storyTitle.value = story[`title_${lang}`] || story.title
+    const customMsgsKey = `custom_messages_${lang}`
+    let msgs = story[customMsgsKey]
+    if (!msgs || Object.keys(msgs).length === 0) {
+      msgs = story.custom_messages || {}
+    }
+    storyCustomMessages.value = msgs
+    
     storyState.value = 'STORY_START'
     storyCurrentIndex.value = 0
     selectedNode.value = path[0]
+    nodePopupPanelClosed.value = false
     nextTick(() => {
       initGraph() // Re-render as Ego Graph
       setTimeout(() => zoomToNode(path[0].id), 50)
@@ -847,6 +912,7 @@ function zoomToNode(nodeId: string) {
   // Position the popup exactly over the node's new on-screen location
   nodePopupPointerHost.value = { x: centerX, y: centerY }
   nodePopupPanelClosed.value = false
+  return n
 }
 
 function goContextUp() {
@@ -873,7 +939,10 @@ function stopStory() {
   storyPath.value = []
   storyCurrentIndex.value = 0
   storyCustomMessages.value = {}
+  storyTitle.value = ''
   if (wasPlaying) {
+    selectedNode.value = null
+    selectedLink.value = null
     nextTick(() => initGraph()) // Restore normal graph
   }
 }
@@ -886,6 +955,7 @@ function prevStoryStep() {
     const n = storyPath.value[storyCurrentIndex.value]
     zoomToNode(n.id)
     selectedNode.value = n
+    nodePopupPanelClosed.value = false
   }
 }
 
@@ -897,66 +967,19 @@ function nextStoryStep() {
     const n = storyPath.value[storyCurrentIndex.value]
     zoomToNode(n.id)
     selectedNode.value = n
+    nodePopupPanelClosed.value = false
   } else {
     stopStory()
   }
 }
 
-// Global keydown listener
-if (typeof window !== 'undefined') {
-  window.addEventListener('keydown', (e) => {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-    if (storyState.value !== 'IDLE') {
-      if (e.key === 'Escape') {
-        stopStory()
-      } else if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault()
-        nextStoryStep()
-      }
-    }
-  })
-}
+
 
 
 const termPopupDetail = ref<any>(null)
 const termPopupLoading = ref(false)
 
 const nodePopupStyle = ref<Record<string, string>>({})
-let oldNodePopupHeight = 0
-
-function onPopupBeforeLeave(el: Element) {
-  const htmlEl = el as HTMLElement
-  oldNodePopupHeight = htmlEl.offsetHeight
-  nodePopupStyle.value.height = `${oldNodePopupHeight}px`
-  nodePopupStyle.value.overflow = 'hidden'
-}
-
-function onPopupEnter(el: Element, done: () => void) {
-  const htmlEl = el as HTMLElement
-  if (oldNodePopupHeight > 0) {
-    const origHeightStyle = htmlEl.style.height
-    htmlEl.style.height = 'auto'
-    const newHeight = htmlEl.offsetHeight
-    htmlEl.style.height = origHeightStyle
-
-    void htmlEl.offsetHeight // reflow
-
-    nodePopupStyle.value.transition = 'height 0.2s cubic-bezier(0.19, 1, 0.22, 1)'
-    nodePopupStyle.value.height = `${newHeight}px`
-    nodePopupStyle.value.overflow = 'hidden'
-
-    setTimeout(done, 210)
-  } else {
-    done()
-  }
-}
-
-function onPopupAfterEnter(el: Element) {
-  delete nodePopupStyle.value.height
-  delete nodePopupStyle.value.transition
-  delete nodePopupStyle.value.overflow
-  oldNodePopupHeight = 0
-}
 
 /** Актуальная матрица зума для clamp попапов (сразу при каждом событии d3-zoom). */
 let graphLiveZoomTransform: d3.ZoomTransform = d3.zoomIdentity
@@ -1050,7 +1073,7 @@ function applyLOD(k: number) {
   if (!svgRef.value || isFocusMode.value) return
 
   const nodeCount = props.graphData?.nodes?.length || 0
-  const isLodDisabled = props.disableLod || nodeCount < 100
+  const isLodDisabled = props.disableLod || nodeCount < 100 || storyState.value === 'STORY_START' || storyState.value === 'PLAYING_NODE'
 
   const level = isLodDisabled ? 3 : getLodLevel(k)
   currentLodLevel.value = level
@@ -1271,6 +1294,9 @@ const selectedNodePath = computed(() => {
 
 const closeNodePopupPanel = (e?: MouseEvent) => {
   e?.stopPropagation()
+  if (selectedNode.value && (storyState.value === 'STORY_START' || storyState.value === 'PLAYING_NODE') && selectedNode.value.id === storyPath.value[storyCurrentIndex.value]?.id) {
+    return // Prevent closing active excursion popup
+  }
   nodePopupPanelClosed.value = true
 }
 
@@ -1279,8 +1305,13 @@ const closeLinkPopupPanel = (e?: MouseEvent) => {
   linkPopupPanelClosed.value = true
 }
 
-watch([selectedNode, () => langStore.currentLang], async ([node]) => {
-  termPopupDetail.value = null
+  watch([selectedNode, () => langStore.currentLang], async ([node]) => {
+    // Clean up any interrupted height transitions to prevent stuck popup sizes
+    delete nodePopupStyle.value.height
+    delete nodePopupStyle.value.transition
+    delete nodePopupStyle.value.overflow
+
+    termPopupDetail.value = null
   if (!process.client || !node || node.type !== 'term' || !node.slug) {
     termPopupLoading.value = false
     return
@@ -1298,6 +1329,7 @@ watch([selectedNode, () => langStore.currentLang], async ([node]) => {
     termPopupLoading.value = false
   }
 }, { immediate: true })
+
 
 /** Удерживаем попап в пересечении .graph-viewport с видимой областью окна (прокрутка страницы, dynamic toolbar). */
 let graphPopupClampRaf = 0
@@ -1343,8 +1375,7 @@ function graphPopupHostPosition(
     screenBottom
   )
 
-  let leftHost = leftClient - hr.left
-  el.style.left = `${leftHost}px`
+  el.style.left = `${leftClient}px`
   if (el.classList.contains('graph-popup-node')) {
     el.style.maxHeight = `${hPlacement}px`
   } else {
@@ -1352,14 +1383,14 @@ function graphPopupHostPosition(
   }
 
   if (initialPlaceBelow) {
-    el.style.top = `${topClient - hr.top}px`
+    el.style.top = `${topClient}px`
     el.style.bottom = 'auto'
     el.classList.remove('graph-popup--place-top')
     el.classList.add('graph-popup--place-bottom')
   } else {
     const bottomClient = topClient + hPlacement
-    const bottomHost = hr.height - (bottomClient - hr.top)
-    el.style.bottom = `${bottomHost}px`
+    const bottomViewport = screenBottom - bottomClient
+    el.style.bottom = `${bottomViewport}px`
     el.style.top = 'auto'
     el.classList.remove('graph-popup--place-bottom')
     el.classList.add('graph-popup--place-top')
@@ -2500,6 +2531,7 @@ const handleOutsideClick = (event: MouseEvent) => {
   if (target.closest('.kg-graph-ui-cluster')) return
   if (target.closest('.graph-stats-panel')) return
   if (target.closest('.node-group')) return
+  if (target.closest('.kg-ego-bar')) return
   if (target.tagName.toLowerCase() === 'line') return
 
   selectedNode.value = null
@@ -2517,6 +2549,9 @@ const handleWindowClick = (event: MouseEvent) => {
 function onGraphPopupEscape(e: KeyboardEvent) {
   if (e.key !== 'Escape') return
   if (selectedNode.value && !nodePopupPanelClosed.value) {
+    if ((storyState.value === 'STORY_START' || storyState.value === 'PLAYING_NODE') && selectedNode.value.id === storyPath.value[storyCurrentIndex.value]?.id) {
+      return // Prevent closing active excursion popup via Esc
+    }
     nodePopupPanelClosed.value = true
     e.preventDefault()
     return
@@ -3605,6 +3640,28 @@ watch([focusNodeId, focusDepth], () => {
   margin: 0 4px;
 }
 
+/* Language switcher rebranding to match TheHeader */
+.lang-switcher-wrap :deep(.gv-lang-select__control) {
+  min-height: 34px;
+  padding: 5px 10px;
+  border-radius: var(--gv-radius-control);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.lang-switcher-wrap :deep(.gv-lang-select__control:hover) {
+  background: color-mix(in srgb, var(--gv-primary) 8%, transparent);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.lang-switcher-wrap :deep(.gv-lang-select__control--open) {
+  background: color-mix(in srgb, var(--gv-primary) 12%, transparent);
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .graph-svg {
   width: 100%;
   height: 100%;
@@ -3627,6 +3684,7 @@ watch([focusNodeId, focusDepth], () => {
   z-index: 100;
   width: min(320px, calc(100vw - 24px));
   max-width: min(320px, calc(100vw - 24px));
+  max-height: 70vh !important;
   background: color-mix(in srgb, var(--gv-surface-card) 92%, transparent);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
