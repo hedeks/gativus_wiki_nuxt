@@ -194,9 +194,15 @@ export async function runMigrations(db: Database) {
     CREATE TABLE IF NOT EXISTS story_routes (
       id              INTEGER PRIMARY KEY AUTOINCREMENT,
       title           TEXT NOT NULL,
+      title_ru        TEXT,
+      title_zh        TEXT,
       description     TEXT,
+      description_ru  TEXT,
+      description_zh  TEXT,
       nodes_path      TEXT,
       custom_messages TEXT,
+      custom_messages_ru TEXT,
+      custom_messages_zh TEXT,
       created_at      DATETIME DEFAULT (datetime('now')),
       created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL
     )
@@ -212,7 +218,7 @@ export async function runMigrations(db: Database) {
   `)
 
   // ─── 10. Robust Migration Checks (for existing databases) ───
-  const tables = ['users', 'categories', 'terms', 'books', 'articles']
+  const tables = ['users', 'categories', 'terms', 'books', 'articles', 'story_routes']
   for (const table of tables) {
     try {
       const columns = await db.prepare(`PRAGMA table_info(${table})`).all() as any[]
@@ -227,6 +233,15 @@ export async function runMigrations(db: Database) {
 
       if (table === 'users') {
         await ensureColumn('role', "TEXT NOT NULL DEFAULT 'editor'")
+      }
+
+      if (table === 'story_routes') {
+        await ensureColumn('title_ru', 'TEXT')
+        await ensureColumn('title_zh', 'TEXT')
+        await ensureColumn('description_ru', 'TEXT')
+        await ensureColumn('description_zh', 'TEXT')
+        await ensureColumn('custom_messages_ru', 'TEXT')
+        await ensureColumn('custom_messages_zh', 'TEXT')
       }
 
       if (table === 'articles') {
