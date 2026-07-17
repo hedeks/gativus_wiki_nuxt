@@ -81,12 +81,18 @@ export default defineNuxtConfig({
     },
   },
   nitro: {
+    compressPublicAssets: true,
     experimental: {
       database: true
     }
   },
+  routeRules: {
+    '/api/knowledge-graph': { swr: 300 }, // 5 min background caching for heavy D3 graph
+    '/api/landing': { swr: 300 },
+    '/api/search': { swr: 60 } // Anti-DDoS and speedup for search
+  },
   runtimeConfig: {
-    jwtSecret: process.env.JWT_SECRET || 'fallback-dev-secret',
+    jwtSecret: process.env.JWT_SECRET || (process.env.NODE_ENV !== 'production' ? 'fallback-dev-secret' : ''),
   },
   pinia: {
     storesDirs: ['./stores/**', './custom-folder/stores/**'],
@@ -100,5 +106,18 @@ export default defineNuxtConfig({
   }],
   build: {
     transpile: ['pdfjs-dist']
+  },
+  vite: {
+    build: {
+      chunkSizeWarningLimit: 1500,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules/d3')) return 'vendor-d3';
+            if (id.includes('node_modules/pdfjs-dist')) return 'vendor-pdfjs';
+          }
+        }
+      }
+    }
   }
 })
