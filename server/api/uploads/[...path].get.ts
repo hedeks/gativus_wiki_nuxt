@@ -5,7 +5,7 @@
  */
 
 import { createReadStream, existsSync, statSync } from 'fs'
-import { join, extname } from 'path'
+import { join, extname, resolve } from 'path'
 import { sendStream, setResponseHeader, getRequestHeader } from 'h3'
 
 const MIME_TYPES: Record<string, string> = {
@@ -27,17 +27,21 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Path is required' })
   }
 
-  // Sanitize path to prevent directory traversal
-  const safePath = pathParam.replace(/\.\./g, '').replace(/\\/g, '/')
-  const filePath = join(process.cwd(), 'server', 'storage', 'uploads', safePath)
+  // Prevent directory traversal
+  const uploadsDir = resolve(process.cwd(), 'server', 'storage', 'uploads')
+  const filePath = resolve(uploadsDir, pathParam)
+
+  if (!filePath.startsWith(uploadsDir)) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: 'Access denied: Directory traversal detected' })
+  }
 
   if (!existsSync(filePath)) {
-    throw createError({ statusCode: 404, statusMessage: 'Файл не найден' })
+    throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'Файл не найден' })
   }
 
   const stat = statSync(filePath)
   if (!stat.isFile()) {
-    throw createError({ statusCode: 404, statusMessage: 'Файл не найден' })
+    throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'Ожидался файл, а не директория' })
   }
 
   const ext = extname(filePath).toLowerCase()
@@ -49,6 +53,9 @@ export default defineEventHandler(async (event) => {
   setResponseHeader(event, 'Accept-Ranges', 'bytes')
   if (isPdf) {
     setResponseHeader(event, 'Content-Disposition', 'inline')
+  } else if (ext === '.svg') {
+    // Prevent XSS from user-uploaded SVG files
+    setResponseHeader(event, 'Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox")
   }
 
   // Handle byte-range requests (required by PDF.js and iOS for streaming)
