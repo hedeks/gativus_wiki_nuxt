@@ -77,14 +77,16 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  let articlesToInvalidate: any[] = []
   if (deleteArticles && articleCount?.count > 0) {
     const articles = await db.prepare(`
-      SELECT id, raw_odt_path, 
+      SELECT id, slug, raw_odt_path, 
              presentation_path, presentation_path_ru, presentation_path_zh,
              html_content, html_content_ru, html_content_zh
       FROM articles WHERE book_id = ?
     `).all(book.id) as any[]
 
+    articlesToInvalidate = articles
     for (const article of articles) {
       // Очистка физических файлов статей книги
       safeUnlink(article.raw_odt_path)
@@ -112,6 +114,20 @@ export default defineEventHandler(async (event) => {
 
   await db.prepare('DELETE FROM book_categories WHERE book_id = ?').run(book.id)
   await db.prepare('DELETE FROM books WHERE id = ?').run(book.id)
+
+  const storage = useStorage('cache')
+  const langs = ['en', 'ru', 'zh']
+  for (const l of langs) {
+    await storage.removeItem(`nitro:handlers:books:${slug}:role_editor:lang_${l}`)
+    await storage.removeItem(`nitro:handlers:books:${slug}:role_guest:lang_${l}`)
+  }
+
+  for (const article of articlesToInvalidate) {
+    for (const l of langs) {
+      await storage.removeItem(`nitro:handlers:articles:${article.slug}:role_editor:lang_${l}`)
+      await storage.removeItem(`nitro:handlers:articles:${article.slug}:role_guest:lang_${l}`)
+    }
+  }
 
   return {
     message: 'Книга удалена',

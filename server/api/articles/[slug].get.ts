@@ -5,11 +5,15 @@
 
 import { isEditorOrAbove } from '~/server/utils/requireRole'
 
-export default defineEventHandler(async (event) => {
+export default defineCachedEventHandler(async (event) => {
   const db = useDatabase()
   const slug = getRouterParam(event, 'slug')
   const query = getQuery(event)
   const lang = (query.lang as string) || 'ru'
+
+  if (!['en', 'ru', 'zh'].includes(lang)) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid language' })
+  }
 
   if (!slug) {
     throw createError({ statusCode: 400, statusMessage: 'Slug is required' })
@@ -181,5 +185,16 @@ export default defineEventHandler(async (event) => {
     prev: prevArticle || null,
     next: nextArticle || null,
     book_chapters,
+  }
+}, {
+  maxAge: 3600,
+  name: 'articles',
+  getKey: (event) => {
+    const role = event.context.auth?.role || 'guest'
+    const slug = getRouterParam(event, 'slug')
+    const lang = getQuery(event).lang || 'ru'
+    // Normalize lang to prevent cache key explosion
+    const safeLang = ['en', 'ru', 'zh'].includes(lang as string) ? lang : 'ru'
+    return `${slug}:role_${role}:lang_${safeLang}`
   }
 })

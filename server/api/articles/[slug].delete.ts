@@ -88,5 +88,13 @@ export default defineEventHandler(async (event) => {
   await db.prepare('DELETE FROM article_revisions WHERE article_id = ?').run(article.id)
   await db.prepare('DELETE FROM articles WHERE id = ?').run(article.id)
 
+  // Invalidate cache
+  const storage = useStorage('cache')
+  const langs = ['en', 'ru', 'zh']
+  for (const l of langs) {
+    await storage.removeItem(`nitro:handlers:articles:${slug}:role_editor:lang_${l}`)
+    await storage.removeItem(`nitro:handlers:articles:${slug}:role_guest:lang_${l}`)
+  }
+
   return { message: 'Статья удалена' }
 })

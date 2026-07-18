@@ -4,11 +4,15 @@
  * Public endpoint.
  */
 
-export default defineEventHandler(async (event) => {
+export default defineCachedEventHandler(async (event) => {
   const db = useDatabase()
   const slug = getRouterParam(event, 'slug')
   const query = getQuery(event)
   const lang = (query.lang as string) || 'ru'
+
+  if (!['en', 'ru', 'zh'].includes(lang)) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid language' })
+  }
 
   if (!slug) {
     throw createError({ statusCode: 400, statusMessage: 'Slug is required' })
@@ -110,5 +114,15 @@ export default defineEventHandler(async (event) => {
     })(),
     has_article: Boolean(term.term_article_id),
     presentation_path: resolvedPres,
+  }
+}, {
+  maxAge: 3600,
+  name: 'terms',
+  getKey: (event) => {
+    const role = event.context.auth?.role || 'guest'
+    const slug = getRouterParam(event, 'slug')
+    const lang = getQuery(event).lang || 'ru'
+    const safeLang = ['en', 'ru', 'zh'].includes(lang as string) ? lang : 'ru'
+    return `${slug}:role_${role}:lang_${safeLang}`
   }
 })

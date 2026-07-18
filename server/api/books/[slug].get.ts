@@ -5,19 +5,23 @@
 
 import { isEditorOrAbove } from '~/server/utils/requireRole'
 
-export default defineEventHandler(async (event) => {
+export default defineCachedEventHandler(async (event) => {
   const db = useDatabase()
   const slug = getRouterParam(event, 'slug')
   
   const auth = event.context.auth as { role: string } | null
   const isEditor = isEditorOrAbove(auth?.role)
 
+  const query = getQuery(event)
+  const locale = (query.locale as string) || (query.lang as string) || 'en'
+  if (!['en', 'ru', 'zh'].includes(locale)) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid language' })
+  }
+
   if (!slug) {
     throw createError({ statusCode: 400, statusMessage: 'Slug is required' })
   }
 
-  const query = getQuery(event)
-  const locale = (query.locale as string) || (query.lang as string) || null
   const isRu = locale === 'ru'
   const isZh = locale === 'zh'
 
@@ -162,5 +166,16 @@ export default defineEventHandler(async (event) => {
         locale: 'global',
       }
     }),
+  }
+}, {
+  maxAge: 3600,
+  name: 'books',
+  getKey: (event) => {
+    const role = event.context.auth?.role || 'guest'
+    const slug = getRouterParam(event, 'slug')
+    const query = getQuery(event)
+    const locale = (query.locale as string) || (query.lang as string) || 'en'
+    const safeLang = ['en', 'ru', 'zh'].includes(locale) ? locale : 'en'
+    return `${slug}:role_${role}:lang_${safeLang}`
   }
 })

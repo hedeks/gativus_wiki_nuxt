@@ -112,6 +112,18 @@ export default defineEventHandler(async (event) => {
     `).run(existing.id, finalHtml, nextNum, change_summary || null, auth.id)
   }
 
+  // Invalidate cache
+  const storage = useStorage('cache')
+  const langs = ['en', 'ru', 'zh']
+  for (const l of langs) {
+    await storage.removeItem(`nitro:handlers:articles:${existing.slug}:role_editor:lang_${l}`)
+    await storage.removeItem(`nitro:handlers:articles:${existing.slug}:role_guest:lang_${l}`)
+    if (newSlug !== existing.slug) {
+      await storage.removeItem(`nitro:handlers:articles:${newSlug}:role_editor:lang_${l}`)
+      await storage.removeItem(`nitro:handlers:articles:${newSlug}:role_guest:lang_${l}`)
+    }
+  }
+
   return {
     slug: newSlug,
     message: 'Статья обновлена'

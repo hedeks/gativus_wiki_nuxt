@@ -84,6 +84,12 @@ export default defineNuxtConfig({
     compressPublicAssets: true,
     experimental: {
       database: true
+    },
+    storage: {
+      cache: {
+        driver: 'lruCache',
+        max: 500
+      }
     }
   },
   routeRules: {

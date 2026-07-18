@@ -107,5 +107,13 @@ export default defineEventHandler(async (event) => {
   // 3. Удаляем сам термин из БД
   await db.prepare('DELETE FROM terms WHERE id = ?').run(term.id)
 
+  // Invalidate cache
+  const storage = useStorage('cache')
+  const langs = ['en', 'ru', 'zh']
+  for (const l of langs) {
+    await storage.removeItem(`nitro:handlers:terms:${slug}:role_editor:lang_${l}`)
+    await storage.removeItem(`nitro:handlers:terms:${slug}:role_guest:lang_${l}`)
+  }
+
   return { message: 'Термин удалён' }
 })

@@ -50,8 +50,9 @@ export default defineEventHandler(async (event) => {
   if (sort_order !== null) { updates.push('sort_order = ?'); params.push(sort_order) }
   else if (body.sort_order !== undefined) { updates.push('sort_order = ?'); params.push(body.sort_order) }
 
+  let newSlug = existing.slug
   if (body.slug && body.slug !== existing.slug) {
-    const newSlug = await ensureUniqueSlug(db, 'books', slugify(body.slug), existing.id)
+    newSlug = await ensureUniqueSlug(db, 'books', slugify(body.slug), existing.id)
     updates.push('slug = ?')
     params.push(newSlug)
   }
@@ -72,6 +73,18 @@ export default defineEventHandler(async (event) => {
       for (const catId of categoryIds) {
         await insertStmt.run(existing.id, catId)
       }
+    }
+  }
+
+  // Invalidate cache
+  const storage = useStorage('cache')
+  const langs = ['en', 'ru', 'zh']
+  for (const l of langs) {
+    await storage.removeItem(`nitro:handlers:books:${existing.slug}:role_editor:lang_${l}`)
+    await storage.removeItem(`nitro:handlers:books:${existing.slug}:role_guest:lang_${l}`)
+    if (newSlug !== existing.slug) {
+      await storage.removeItem(`nitro:handlers:books:${newSlug}:role_editor:lang_${l}`)
+      await storage.removeItem(`nitro:handlers:books:${newSlug}:role_guest:lang_${l}`)
     }
   }
 

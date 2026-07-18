@@ -202,6 +202,18 @@ export default defineEventHandler(async (event) => {
     ).run(...params, existing.id)
   }
 
+  // Invalidate cache
+  const storage = useStorage('cache')
+  const langs = ['en', 'ru', 'zh']
+  for (const l of langs) {
+    await storage.removeItem(`nitro:handlers:terms:${existing.slug}:role_editor:lang_${l}`)
+    await storage.removeItem(`nitro:handlers:terms:${existing.slug}:role_guest:lang_${l}`)
+    if (newSlug !== existing.slug) {
+      await storage.removeItem(`nitro:handlers:terms:${newSlug}:role_editor:lang_${l}`)
+      await storage.removeItem(`nitro:handlers:terms:${newSlug}:role_guest:lang_${l}`)
+    }
+  }
+
   return { slug: newSlug, message: 'Термин обновлён' }
 })
 
