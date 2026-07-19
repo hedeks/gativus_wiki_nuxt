@@ -87,8 +87,7 @@ export default defineNuxtConfig({
     },
     storage: {
       cache: {
-        driver: 'lruCache',
-        max: 500
+        driver: 'memory'
       }
     }
   },
