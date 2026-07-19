@@ -223,16 +223,16 @@
               :aria-busy="selectedNode.type === 'term' && termPopupLoading" @mousedown.stop @wheel.stop @mousewheel.stop>
               
               <!-- Context Navigation Arrows -->
-              <button v-if="contextUpNode" type="button" class="absolute -top-1 left-1/2 -translate-x-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextUp()" title="Вверх (↑)">
+              <button v-if="contextUpNode && !(storyState === 'STORY_START' || storyState === 'PLAYING_NODE')" type="button" class="absolute -top-1 left-1/2 -translate-x-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextUp()" :title="t.popupUp">
                 <UIcon name="i-heroicons-chevron-up" class="w-5 h-5" />
               </button>
-              <button v-if="contextDownNode" type="button" class="absolute -bottom-1 left-1/2 -translate-x-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextDown()" title="Вниз (↓)">
+              <button v-if="contextDownNode && !(storyState === 'STORY_START' || storyState === 'PLAYING_NODE')" type="button" class="absolute -bottom-1 left-1/2 -translate-x-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextDown()" :title="t.popupDown">
                 <UIcon name="i-heroicons-chevron-down" class="w-5 h-5" />
               </button>
-              <button v-if="contextLeftNode" type="button" class="absolute -left-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextLeft()" title="Влево (←)">
+              <button v-if="(storyState === 'STORY_START' || storyState === 'PLAYING_NODE') ? storyCurrentIndex > 0 : contextLeftNode" type="button" class="absolute -left-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="(storyState === 'STORY_START' || storyState === 'PLAYING_NODE') ? prevStoryStep() : goContextLeft()" :title="(storyState === 'STORY_START' || storyState === 'PLAYING_NODE') ? t.prev : t.popupLeft">
                 <UIcon name="i-heroicons-chevron-left" class="w-5 h-5" />
               </button>
-              <button v-if="contextRightNode" type="button" class="absolute -right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="goContextRight()" title="Вправо (→)">
+              <button v-if="(storyState === 'STORY_START' || storyState === 'PLAYING_NODE') ? storyCurrentIndex < storyPath.length - 1 : contextRightNode" type="button" class="absolute -right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-500 hover:bg-white/10 dark:hover:bg-black/20 rounded-full p-2 opacity-30 hover:opacity-100 transition-all flex items-center justify-center z-10" @click.stop="(storyState === 'STORY_START' || storyState === 'PLAYING_NODE') ? nextStoryStep() : goContextRight()" :title="(storyState === 'STORY_START' || storyState === 'PLAYING_NODE') ? t.next : t.popupRight">
                 <UIcon name="i-heroicons-chevron-right" class="w-5 h-5" />
               </button>
             
@@ -317,7 +317,12 @@
                 
                 <!-- Notes for Term -->
                 <div v-if="selectedNode.type === 'term'" class="mt-1">
-                  {{ t.notesMentioned }} <strong>{{ contextLinkBetweenUpAndNode?.mentionCount || t.notesSeveralTimesInArticle.replace('раз в статье', '').replace('times in the article', '') }}</strong> {{ contextLinkBetweenUpAndNode?.mentionCount ? t.notesTimesInArticle : t.notesSeveralTimesInArticle }} «<strong>{{ contextUpNode.title }}</strong>».
+                  <template v-if="contextLinkBetweenUpAndNode?.mentionCount">
+                    {{ t.notesMentioned }} <strong>{{ contextLinkBetweenUpAndNode.mentionCount }}</strong> {{ t.notesTimesInArticle }} «<strong>{{ contextUpNode.title }}</strong>».
+                  </template>
+                  <template v-else>
+                    {{ t.notesMentioned }} <strong>{{ t.notesSeveralTimesInArticle }}</strong> «<strong>{{ contextUpNode.title }}</strong>».
+                  </template>
                   <span v-if="contextUpNodeParent">{{ t.notesArticleInType }} <strong>{{ contextUpNodeParent.type === 'book' ? t.notesBookWord : t.notesSectionWord }}</strong> «<strong>{{ contextUpNodeParent.title }}</strong>».</span>
                 </div>
                 
@@ -491,6 +496,12 @@ const uiDict: Record<string, any> = {
       prev: 'Prev',
       next: 'Next',
       finish: 'Finish',
+      noStories: 'No tours available',
+      stepsCount: 'steps',
+      popupUp: 'Up',
+      popupDown: 'Down',
+      popupLeft: 'Left',
+      popupRight: 'Right',
   },
   ru: {
     title: 'Граф знаний Gativus',
@@ -534,6 +545,12 @@ const uiDict: Record<string, any> = {
       prev: 'Назад',
       next: 'Далее',
       finish: 'Завершить',
+      noStories: 'Нет доступных экскурсий',
+      stepsCount: 'шагов',
+      popupUp: 'Вверх (↑)',
+      popupDown: 'Вниз (↓)',
+      popupLeft: 'Влево (←)',
+      popupRight: 'Вправо (→)',
   },
   zh: {
     title: 'Gativus 知识图谱',
@@ -577,6 +594,12 @@ const uiDict: Record<string, any> = {
       prev: '上一步',
       next: '下一步',
       finish: '完成',
+      noStories: '没有可用的导览',
+      stepsCount: '步',
+      popupUp: '向上',
+      popupDown: '向下',
+      popupLeft: '向左',
+      popupRight: '向右',
   }
 }
 
@@ -2105,6 +2128,12 @@ function renderDagEgoGraph(
       selectedLink.value = null
       nodePopupPointerHost.value = clientToPointerHost(event.clientX, event.clientY)
       nodePopupPanelClosed.value = false
+      if (storyState.value === 'PLAYING_NODE' || storyState.value === 'STORY_START') {
+        const idx = storyPath.value.findIndex((n: any) => n.id === d.id)
+        if (idx !== -1 && idx !== storyCurrentIndex.value) {
+          storyCurrentIndex.value = idx
+        }
+      }
       event.stopPropagation()
     })
 
@@ -2450,6 +2479,12 @@ const initGraph = () => {
       selectedLink.value = null
       nodePopupPointerHost.value = clientToPointerHost(event.clientX, event.clientY)
       nodePopupPanelClosed.value = false
+      if (storyState.value === 'PLAYING_NODE' || storyState.value === 'STORY_START') {
+        const idx = storyPath.value.findIndex((n: any) => n.id === d.id)
+        if (idx !== -1 && idx !== storyCurrentIndex.value) {
+          storyCurrentIndex.value = idx
+        }
+      }
       event.stopPropagation()
     })
 
@@ -2533,6 +2568,7 @@ const handleOutsideClick = (event: MouseEvent) => {
   if (target.closest('.node-group')) return
   if (target.closest('.kg-ego-bar')) return
   if (target.tagName.toLowerCase() === 'line') return
+  if (target.closest('.link-hit')) return
 
   selectedNode.value = null
   selectedLink.value = null
