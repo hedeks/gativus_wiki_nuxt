@@ -91,8 +91,8 @@ export function useLandingSectionObserver(blockCount: MaybeRefOrGetter<number>) 
     io = new IntersectionObserver(
       entries => applyIoEntries(entries, count),
       {
-        threshold: [0, 0.04, 0.11, 0.22, 0.38, 0.55, 0.72, 0.9],
-        rootMargin: '-8% 0px -10% 0px',
+        threshold: [0, 0.05, 0.15, 0.3, 0.5, 0.75],
+        rootMargin: '10% 0px 10% 0px',
       },
     )
     root.querySelectorAll<HTMLElement>('[data-home-block]').forEach(el => io!.observe(el))

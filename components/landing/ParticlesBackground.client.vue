@@ -119,18 +119,25 @@ onMounted(() => {
     }
   }
 
-  nextTick(() => {
+  const loadAndInit = () => {
     if ((window as any).particlesJS) {
       initParticles()
     } else {
-      // Dynamically load the particles script
       scriptEl = document.createElement('script')
       scriptEl.src = '/particles.min.js'
       scriptEl.async = true
       scriptEl.onload = initParticles
       document.head.appendChild(scriptEl)
     }
-  })
+  }
+
+  if ('requestIdleCallback' in window) {
+    (window as any).requestIdleCallback(() => {
+      setTimeout(loadAndInit, 200)
+    })
+  } else {
+    setTimeout(loadAndInit, 1000)
+  }
 })
 
 onUnmounted(() => {
