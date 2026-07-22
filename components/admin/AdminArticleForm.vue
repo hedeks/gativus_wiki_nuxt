@@ -198,6 +198,7 @@ const isSaving = ref(false)
 const showTermModal = ref(false)
 const showBookModal = ref(false)
 const showArticleModal = ref(false)
+const isRelinking = ref(false)
 
 function insertBook(book: any) {
   if (!editorRef.value) return
@@ -406,6 +407,24 @@ async function save() {
   isSaving.value = false
 }
 
+async function relinkArticle() {
+  if (!props.articleId) return
+  isRelinking.value = true
+  try {
+    const res = await $fetch<any>(`/api/admin/relink-article/${props.articleId}`, {
+      method: 'POST',
+      headers: store.getAuthHeader(),
+    })
+    toast.add({ title: res.message, color: 'green' })
+    if (res.bodyChanged) {
+      await loadArticle()
+    }
+  } catch (err: any) {
+    toast.add({ title: 'Ошибка перелинковки', description: err?.data?.statusMessage || err.message, color: 'red' })
+  }
+  isRelinking.value = false
+}
+
 function handleOdtParsed(metadata: any) {
   if (activeTab.value === 'en') {
     if (metadata.title) title.value = metadata.title
@@ -456,6 +475,18 @@ function handleOdtParsed(metadata: any) {
         </div>
       </div>
       <div class="editor-topbar-right">
+        <button 
+          v-if="isEditing" 
+          type="button" 
+          class="history-btn" 
+          :disabled="isRelinking"
+          @click="relinkArticle"
+          title="Перелинковать (только эту статью)"
+        >
+          <UIcon v-if="!isRelinking" name="i-heroicons-link" />
+          <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
+          <span>Перелинковать</span>
+        </button>
         <NuxtLink v-if="isEditing && slug" :to="`/admin/articles/${articleId}/history`" class="history-btn">
           <UIcon name="i-heroicons-clock" />
           <span>История</span>

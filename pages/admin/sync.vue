@@ -16,12 +16,13 @@ const store = userStore()
 const toast = useToast()
 
 // Workspace Tab State
-const activeTab = ref<'export' | 'import'>('export')
+const activeTab = ref<'export' | 'import' | 'cache'>('export')
 
 // Sync States
 const isDragging = ref(false)
 const selectedFile = ref<File | null>(null)
 const isImportLoading = ref(false)
+const isClearingCache = ref(false)
 const importResult = ref<any>(null)
 const lastDump = ref<any>(null)
 const syncJsonInputRef = ref<HTMLInputElement | null>(null)
@@ -158,6 +159,24 @@ async function runImport() {
 
   isImportLoading.value = false
 }
+
+// Clear Server Cache
+async function clearCache() {
+  if (!confirm('Вы уверены, что хотите очистить весь серверный кеш?')) return
+  isClearingCache.value = true
+  
+  try {
+    const result = await $fetch<any>('/api/admin/cache/clear', {
+      method: 'POST',
+      headers: store.getAuthHeader(),
+    })
+    toast.add({ title: result.message, color: 'green' })
+  } catch (err: any) {
+    toast.add({ title: 'Ошибка очистки', description: err?.data?.message || err.message, color: 'red' })
+  }
+  
+  isClearingCache.value = false
+}
 </script>
 
 <template>
@@ -197,6 +216,18 @@ async function runImport() {
           >
             <UIcon name="i-heroicons-cloud-arrow-up" class="text-lg" />
             <span>Импорт (ZIP/JSON)</span>
+          </button>
+          
+          <div class="h-px w-full bg-gray-200 dark:bg-gray-800 my-2"></div>
+
+          <button 
+            type="button"
+            class="operation-item text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+            :class="{ 'operation-item--active': activeTab === 'cache' }"
+            @click="activeTab = 'cache'"
+          >
+            <UIcon name="i-heroicons-trash" class="text-lg" />
+            <span>Очистка кеша</span>
           </button>
         </div>
       </div>
@@ -359,6 +390,33 @@ async function runImport() {
               </GvButton>
             </div>
 
+          </div>
+        </div>
+
+        <!-- CACHE CONTENT -->
+        <div v-if="activeTab === 'cache'" class="workspace-editor-scroll flex-1 overflow-y-auto p-8 bg-white dark:bg-[#111113]">
+          <div class="max-w-xl mx-auto py-12 flex flex-col items-center text-center gap-6">
+            <div class="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500">
+              <UIcon name="i-heroicons-trash" class="text-4xl" />
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-wider">Очистка серверного кеша</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
+                Полностью сбрасывает весь кешированный контент (статьи, глоссарий, книги) из памяти сервера. 
+                Это заставит сервер заново сформировать страницы при следующем запросе.
+              </p>
+            </div>
+            <GvButton
+              type="button"
+              color="red"
+              size="lg"
+              icon="i-heroicons-fire"
+              class="px-8 py-3 rounded-xl mt-4"
+              :loading="isClearingCache"
+              @click="clearCache"
+            >
+              Сбросить кеш
+            </GvButton>
           </div>
         </div>
 
