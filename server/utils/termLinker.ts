@@ -53,6 +53,8 @@ export async function buildTermsMaps(db: any): Promise<{
     
     // RU
     add(ru, term.title_ru, data, term.title_ru || '')
+    add(ru, term.title, data, term.title || '') // Base language fallback
+    add(ru, term.slug, data, term.title || '')  // Base slug fallback
     if (term.aliases_ru) {
       try {
         JSON.parse(term.aliases_ru).forEach((a: string) => add(ru, a, data, a))
@@ -61,6 +63,8 @@ export async function buildTermsMaps(db: any): Promise<{
     
     // ZH
     add(zh, term.title_zh, data, term.title_zh || '')
+    add(zh, term.title, data, term.title || '') // Base language fallback
+    add(zh, term.slug, data, term.title || '')  // Base slug fallback
     if (term.aliases_zh) {
       try {
         JSON.parse(term.aliases_zh).forEach((a: string) => add(zh, a, data, a))
@@ -192,6 +196,13 @@ function stripOrphanGlossaryFragments(html: string): string {
   return out
 }
 
+interface CompiledPhrase {
+  phrase: string
+  phraseLen: number
+  meta: TermMeta
+  regex: RegExp
+}
+
 /**
  * Replace term occurrences in HTML with <a class="wiki-term"> links.
  * Считает число вхождений на термин (mention_count для графа).
@@ -207,12 +218,25 @@ export function linkTermsInHtml(html: string, termsMap: Map<string, TermMeta>): 
 
   const cleanHtml = stripWikiTermLinks(html)
   const phrases = Array.from(termsMap.keys()).filter(Boolean).sort((a, b) => b.length - a.length)
+  
+  const suffixRange = 'a-zA-Z0-9\\u0400-\\u04FF\\-'
+  const compiledPhrases: CompiledPhrase[] = phrases.map(phrase => {
+    const meta = termsMap.get(phrase)!
+    const escaped = escapeRegex(phrase)
+    return {
+      phrase,
+      phraseLen: phrase.length,
+      meta,
+      regex: new RegExp(`(${escaped}[${suffixRange}]*)`, 'iy')
+    }
+  })
+
   const parts = splitHtmlIntoSegments(cleanHtml)
   const mentionCountByTermId = new Map<number, number>()
 
   const linkedHtml = parts.map(part => {
     if (part.isTag) return part.content
-    return linkPlainTextSegment(part.content, phrases, termsMap, mentionCountByTermId)
+    return linkPlainTextSegment(part.content, compiledPhrases, mentionCountByTermId)
   }).join('')
 
   return {
@@ -226,44 +250,31 @@ const WORD_BOUNDARY_BEFORE = new RegExp(`[a-zA-Z0-9_\\u0400-\\u04FF\\-]`)
 const WORD_BOUNDARY_AFTER = WORD_BOUNDARY_BEFORE
 
 /** Longest span wins; on equal span, longer phrase key wins (more specific alias). */
-function tryTermMatchAt(
+function tryTermMatchFast(
   text: string,
   start: number,
-  phrase: string,
-  suffixRange: string,
-  originalTitle?: string,
+  cp: CompiledPhrase
 ): { end: number, originalWord: string } | null {
-  if (!phrase) return null
-  if (start > 0 && WORD_BOUNDARY_BEFORE.test(text[start - 1]!)) return null
-  const escaped = escapeRegex(phrase)
-  const re = new RegExp(`^(${escaped}[${suffixRange}]*)`, 'i')
-  const m = text.slice(start).match(re)
-  if (!m?.[1]) return null
-  const originalWord = m[1]
+  cp.regex.lastIndex = start
+  const m = cp.regex.exec(text)
+  if (!m) return null
+  
+  const originalWord = m[1]!
   const end = start + originalWord.length
-  
-  // Calculate suffix length
-  const suffixLen = originalWord.length - phrase.length
-  
-  // Apply constraints on suffix length to avoid false positives (e.g., CONT -> contour, MOVE -> movement)
-  // Use originalTitle to check if the term is written in ALL CAPS Latin (abbreviation)
-  const casingToCheck = originalTitle || phrase
+
+  const casingToCheck = cp.meta.originalTitle || cp.phrase
   const isAllCapsLatin = /^[A-Z0-9\-_]+$/.test(casingToCheck)
-  const isPureLatin = /^[a-zA-Z0-9\-_'\s]+$/.test(phrase)
+  const isPureLatin = /^[a-zA-Z0-9\-_'\s]+$/.test(cp.phrase)
+
+  const suffixChar = originalWord.slice(cp.phraseLen)
 
   if (isAllCapsLatin) {
-    // Abbreviations: strict match or plural suffix 's' / 'S' (suffix length <= 1)
-    if (suffixLen > 1) return null
-    if (suffixLen === 1) {
-      const suffixChar = originalWord.slice(phrase.length)
-      if (suffixChar !== 's' && suffixChar !== 'S') return null
-    }
+    if (!/^[sS]?$/.test(suffixChar)) return null
   } else if (isPureLatin) {
-    // English words: allow suffixes up to 3 characters (e.g. s, es, ed, ing, 's)
-    if (suffixLen > 3) return null
+    if (!/^(s|es|ed|ing|er|ly)?$/i.test(suffixChar)) return null
   } else {
-    // Russian words (case inflections): allow suffixes up to 3 characters
-    if (suffixLen > 3) return null
+    // Russian case endings
+    if (!/^(а|у|е|ом|ой|и|ов|ам|ами|ях|ям|ев|ей|ый|ого|ому|ым|ая|ую|ое|ые|ых|ыми|ь|я|ю|ем|ью|мя)?$/i.test(suffixChar)) return null
   }
 
   if (end < text.length && WORD_BOUNDARY_AFTER.test(text[end]!)) return null
@@ -272,11 +283,9 @@ function tryTermMatchAt(
 
 function linkPlainTextSegment(
   segment: string,
-  phrases: string[],
-  termsMap: Map<string, TermMeta>,
+  compiledPhrases: CompiledPhrase[],
   mentionCountByTermId: Map<number, number>,
 ): string {
-  const suffixRange = 'a-zA-Z0-9\\u0400-\\u04FF\\-'
   let i = 0
   let out = ''
 
@@ -290,21 +299,23 @@ function linkPlainTextSegment(
       }
     }
 
+    if (i > 0 && WORD_BOUNDARY_BEFORE.test(segment[i - 1]!)) {
+      out += segment[i]
+      i += 1
+      continue
+    }
+
     let best: { end: number, originalWord: string, id: number, slug: string, phraseLen: number } | null = null
-    for (const phrase of phrases) {
-      const meta = termsMap.get(phrase)
-      if (!meta) continue
-      const hit = tryTermMatchAt(segment, i, phrase, suffixRange, meta.originalTitle)
+    for (const cp of compiledPhrases) {
+      const hit = tryTermMatchFast(segment, i, cp)
       if (!hit) continue
-      if (!best
-        || hit.end > best.end
-        || (hit.end === best.end && phrase.length > best.phraseLen)) {
+      if (!best || hit.end > best.end || (hit.end === best.end && cp.phraseLen > best.phraseLen)) {
         best = {
           end: hit.end,
           originalWord: hit.originalWord,
-          id: meta.id,
-          slug: meta.slug,
-          phraseLen: phrase.length,
+          id: cp.meta.id,
+          slug: cp.meta.slug,
+          phraseLen: cp.phraseLen,
         }
       }
     }
