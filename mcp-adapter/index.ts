@@ -11,7 +11,6 @@ const WIKI_URL = process.env.WIKI_URL;
 const WIKI_LOGIN = process.env.WIKI_LOGIN;
 const WIKI_PASSWORD = process.env.WIKI_PASSWORD;
 const MCP_ROLE = process.env.MCP_ROLE || 'editor';
-const isExpert = MCP_ROLE === 'expert';
 
 if (!WIKI_URL || !WIKI_LOGIN || !WIKI_PASSWORD) {
     console.error("Missing required environment variables: WIKI_URL, WIKI_LOGIN, WIKI_PASSWORD");
@@ -117,7 +116,7 @@ server.resource(
     new ResourceTemplate("wiki://context", { list: undefined }),
     async (uri) => {
         try {
-            const contextPath = path.join(__dirname, 'gativus-context.md');
+            const contextPath = path.join(__dirname, 'gativus-editor.md');
             const content = fs.readFileSync(contextPath, 'utf-8');
             return {
                 contents: [{
@@ -130,7 +129,7 @@ server.resource(
             return {
                 contents: [{
                     uri: uri.href,
-                    text: "Error: gativus-context.md not found or unreadable.",
+                    text: "Error: gativus-editor.md not found or unreadable.",
                     mimeType: "text/markdown"
                 }]
             };
@@ -141,11 +140,11 @@ server.resource(
 // MCP Prompts allow the user to instantly load this context in Claude Desktop
 server.prompt(
     "gativus_editor",
-    "Load the full philosophical context and become a Gativus Wiki expert",
+    "Load the full philosophical context and become a Gativus Wiki Editor",
     undefined as any,
     () => {
         try {
-            const contextPath = path.join(__dirname, 'gativus-context.md');
+            const contextPath = path.join(__dirname, 'gativus-editor.md');
             const content = fs.readFileSync(contextPath, 'utf-8');
             return {
                 messages: [{
@@ -160,7 +159,35 @@ server.prompt(
             return {
                 messages: [{
                     role: "user",
-                    content: { type: "text", text: "Error loading context file." }
+                    content: { type: "text", text: "Error loading editor context file." }
+                }]
+            };
+        }
+    }
+);
+
+server.prompt(
+    "gativus_expert",
+    "Load the read-only RAG context and become a Gativus Wiki Expert",
+    undefined as any,
+    () => {
+        try {
+            const contextPath = path.join(__dirname, 'gativus-expert.md');
+            const content = fs.readFileSync(contextPath, 'utf-8');
+            return {
+                messages: [{
+                    role: "user",
+                    content: {
+                        type: "text",
+                        text: `You are a read-only Gativus Wiki Expert. Please internalize the following philosophy, rules, and constraints:\n\n${content}\n\nCRITICAL INSTRUCTION: You are strictly in Read-Only mode. Do NOT use any editing, creating, or deleting tools. Start by greeting the user and offering help with information retrieval or RAG consultations.`
+                    }
+                }]
+            };
+        } catch (e) {
+            return {
+                messages: [{
+                    role: "user",
+                    content: { type: "text", text: "Error loading expert context file." }
                 }]
             };
         }
@@ -202,7 +229,6 @@ function registerCrudTools(resourceName: string, basePath: string, idParamName: 
         }
     );
 
-    if (!isExpert) {
         server.tool(`create_${resourceName}`,
             `Create a new ${resourceName}.`,
             { payload: createSchema.describe(`Data for the new ${resourceName}`) },
@@ -244,7 +270,6 @@ function registerCrudTools(resourceName: string, basePath: string, idParamName: 
                 return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
             }
         );
-    }
 }
 
 // Schemas based on database structure
@@ -337,7 +362,6 @@ server.tool(`get_dashboard_stats`,
     }
 );
 
-if (!isExpert) {
 server.tool(`update_book_skeleton`,
     `Reorder or add chapters to a book. This rebuilds the book's skeleton in the database.`,
     {
@@ -376,7 +400,6 @@ server.tool(`clear_server_cache`,
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     }
 );
-}
 
 server.tool(`get_uploaded_files`,
     `Get a list of all uploaded files (images, documents) currently on the server.`,
@@ -387,7 +410,6 @@ server.tool(`get_uploaded_files`,
     }
 );
 
-if (!isExpert) {
 server.tool(`delete_uploaded_file`,
     `Delete a specific uploaded file from the server.`,
     {
@@ -639,7 +661,6 @@ server.tool(`relink_single_term`,
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     }
 );
-}
 
 server.tool(`global_search`,
     `Perform a global full-text search across all entities (articles, terms, books, etc.) just like the main site search.`,
