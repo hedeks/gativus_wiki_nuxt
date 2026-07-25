@@ -8,14 +8,19 @@
 import jwt from 'jsonwebtoken'
 
 export default defineEventHandler((event) => {
-  const authHeader = getHeader(event, 'authorization')
+  let token: string | undefined
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const authHeader = getHeader(event, 'authorization')
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7)
+  } else {
+    token = getCookie(event, 'gativus_token')
+  }
+
+  if (!token) {
     event.context.auth = null
     return
   }
-
-  const token = authHeader.slice(7)
   const config = useRuntimeConfig()
 
   try {
