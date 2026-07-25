@@ -246,6 +246,12 @@ function onSelectCategory(id: number | null) {
 
 function getArticleBadges(article: any): CardBadge[] {
   const badges: CardBadge[] = []
+  if (article.is_published === 0 || article.is_published === false) {
+    badges.push({
+      label: 'Неопубликованное',
+      class: '!bg-amber-500/10 !text-amber-600 !border-amber-500/20'
+    })
+  }
   if (article.category_title) {
     badges.push({
       label: article.category_title,
