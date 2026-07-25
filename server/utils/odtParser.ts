@@ -206,7 +206,10 @@ function extractImages(
   }
 
   for (const entry of entries) {
-    if (entry.entryName.startsWith('Pictures/') && !entry.isDirectory) {
+    const isMedia = entry.entryName.startsWith('Pictures/') || 
+                    entry.entryName.startsWith('ObjectReplacements/') || 
+                    entry.entryName.startsWith('media/');
+    if (isMedia && !entry.isDirectory) {
       const fileName = `${Date.now()}-${basename(entry.entryName)}`
       const savePath = join(uploadDir, fileName)
       const data = entry.getData()
@@ -214,6 +217,10 @@ function extractImages(
 
       results.push({
         originalPath: entry.entryName,
+        savedPath: `/api/uploads/${subDir}/${fileName}`,
+      })
+      results.push({
+        originalPath: `./${entry.entryName}`,
         savedPath: `/api/uploads/${subDir}/${fileName}`,
       })
     }
