@@ -425,15 +425,16 @@ const articleTitleHighlightHtml = computed((): string | null => {
   return highlightPlainInTitle(title, needle)
 })
 
-// Declared placeholders before await to avoid ReferenceError in template during suspension
-const articleData = ref<any | null>(null)
-const pending = ref(true)
-const error = ref<any>(null)
+const { data: articleData, pending, error, refresh: nuxtRefresh } = await useAsyncData(
+  `article-${slug.value}`,
+  () => $fetch<any>(`/api/articles/${slug.value}`, {
+    params: { lang: langStore.currentLang }
+  })
+)
 
 const article = computed(() => articleData.value)
 const hasPresentation = computed(() => !!article.value?.presentation_path)
 
-/** Номер главы для подписей (совпадает с порядком в оглавлении книги), не сырое поле sort_order. */
 function displayChapterNo(nav: { chapter_number?: number | null; sort_order?: number | null } | null | undefined): number | null {
   if (!nav)
     return null
@@ -497,30 +498,12 @@ watch(
 )
 
 const refresh = async () => {
-  pending.value = true
-  try {
-    const res = await $fetch<any>(`/api/articles/${slug.value}`, {
-      params: { lang: langStore.currentLang }
-    })
-    articleData.value = res
-  } catch (e) {
-    error.value = e
-  } finally {
-    pending.value = false
-  }
+  await nuxtRefresh()
 }
 
-// Initial Fetch
-const initialData = await $fetch<any>(`/api/articles/${slug.value}`, {
-  params: { lang: langStore.currentLang },
-}).catch((e) => {
-  error.value = e
-  return null
-})
-
-if (error.value && !initialData) {
+if (error.value && !articleData.value) {
   throw createError({
-    statusCode: error.value.statusCode || 404,
+    statusCode: error.value?.statusCode || 404,
     statusMessage: 'Статья не найдена',
     fatal: true,
   })
@@ -528,17 +511,14 @@ if (error.value && !initialData) {
 
 /** Канонический URL — основной slug (англ. / articles.slug), даже если открыли slug_ru или slug_zh */
 if (
-  initialData?.slug
-  && String(route.params.slug) !== String(initialData.slug)
+  articleData.value?.slug
+  && String(route.params.slug) !== String(articleData.value.slug)
 ) {
   await navigateTo(
-    { path: `/articles/${initialData.slug}`, query: { ...route.query } },
+    { path: `/articles/${articleData.value.slug}`, query: { ...route.query } },
     { replace: true, redirectCode: 301 },
   )
 }
-
-articleData.value = initialData
-pending.value = false
 
 const seoTitle = computed(() =>
   article.value?.title ? `${article.value.title} — Gativus` : 'Gativus',

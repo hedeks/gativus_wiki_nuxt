@@ -288,10 +288,12 @@ const uiDict: Record<string, any> = {
 
 const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
 
-// Declared placeholders before await to avoid ReferenceError in template during suspension
-const termData = ref<any | null>(null)
-const pending = ref(true)
-const error = ref<any>(null)
+const { data: termData, pending, error, refresh: nuxtRefresh } = await useAsyncData(
+  `term-${slug}`,
+  () => $fetch<any>(`/api/terms/${slug}`, {
+    params: { lang: langStore.currentLang }
+  })
+)
 
 const term = computed(() => termData.value)
 const isTheory = ref(true)
@@ -304,35 +306,14 @@ const contentHtml = computed(() => {
 })
 
 const refresh = async () => {
-  pending.value = true
-  try {
-    const res = await $fetch<any>(`/api/terms/${slug}`, {
-      params: { lang: langStore.currentLang }
-    })
-    termData.value = res
-  } catch (e) {
-    error.value = e
-  } finally {
-    pending.value = false
-  }
+  await nuxtRefresh()
 }
-
-// Initial Fetch
-const initialData = await $fetch<any>(`/api/terms/${slug}`, {
-  params: { lang: langStore.currentLang }
-}).catch(e => {
-  error.value = e
-  return null
-})
-
-termData.value = initialData
-pending.value = false
 
 if (error.value && !termData.value) {
   const lang = langStore.currentLang
   const errMsg = lang === 'zh' ? '未找到术语' : lang === 'en' ? 'Term not found' : 'Термин не найден'
   throw createError({
-    statusCode: error.value.statusCode || 404,
+    statusCode: error.value?.statusCode || 404,
     statusMessage: errMsg,
     fatal: true,
   })
