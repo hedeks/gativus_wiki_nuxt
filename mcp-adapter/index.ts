@@ -10,6 +10,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WIKI_URL = process.env.WIKI_URL;
 const WIKI_LOGIN = process.env.WIKI_LOGIN;
 const WIKI_PASSWORD = process.env.WIKI_PASSWORD;
+const MCP_ROLE = process.env.MCP_ROLE || 'editor';
+const isExpert = MCP_ROLE === 'expert';
 
 if (!WIKI_URL || !WIKI_LOGIN || !WIKI_PASSWORD) {
     console.error("Missing required environment variables: WIKI_URL, WIKI_LOGIN, WIKI_PASSWORD");
@@ -200,47 +202,49 @@ function registerCrudTools(resourceName: string, basePath: string, idParamName: 
         }
     );
 
-    server.tool(`create_${resourceName}`,
-        `Create a new ${resourceName}.`,
-        { payload: createSchema.describe(`Data for the new ${resourceName}`) },
-        async (args) => {
-            const result = await fetchApi(`${basePath}`, 'POST', args.payload);
+    if (!isExpert) {
+        server.tool(`create_${resourceName}`,
+            `Create a new ${resourceName}.`,
+            { payload: createSchema.describe(`Data for the new ${resourceName}`) },
+            async (args) => {
+                const result = await fetchApi(`${basePath}`, 'POST', args.payload);
+                return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+            }
+        );
+
+        const updateAction = async (args: any) => {
+            const method = basePath.includes('users') ? 'PATCH' : 'PUT'; 
+            const result = await fetchApi(`${basePath}/${args[idParamName]}`, method, args.payload);
             return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-        }
-    );
+        };
 
-    const updateAction = async (args: any) => {
-        const method = basePath.includes('users') ? 'PATCH' : 'PUT'; 
-        const result = await fetchApi(`${basePath}/${args[idParamName]}`, method, args.payload);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    };
+        server.tool(`update_${resourceName}`,
+            `Update an existing ${resourceName}. This performs a PARTIAL update. Only provide the fields you want to change. Missing fields will NOT be modified or wiped.`,
+            {
+                [idParamName]: z.string().describe(idDesc),
+                payload: updateSchema.describe(`Data to update in the ${resourceName}. Omit fields you do not want to change.`)
+            },
+            updateAction
+        );
 
-    server.tool(`update_${resourceName}`,
-        `Update an existing ${resourceName}. This performs a PARTIAL update. Only provide the fields you want to change. Missing fields will NOT be modified or wiped.`,
-        {
-            [idParamName]: z.string().describe(idDesc),
-            payload: updateSchema.describe(`Data to update in the ${resourceName}. Omit fields you do not want to change.`)
-        },
-        updateAction
-    );
+        server.tool(`patch_${resourceName}`,
+            `Alias for update_${resourceName}. Safely update only specific fields of a SINGLE ${resourceName}. For multiple items, use bulk_patch_${resourceName}s.`,
+            {
+                [idParamName]: z.string().describe(idDesc),
+                payload: updateSchema.describe(`Data to update in the ${resourceName}. Omit fields you do not want to change.`)
+            },
+            updateAction
+        );
 
-    server.tool(`patch_${resourceName}`,
-        `Alias for update_${resourceName}. Safely update only specific fields of a SINGLE ${resourceName}. For multiple items, use bulk_patch_${resourceName}s.`,
-        {
-            [idParamName]: z.string().describe(idDesc),
-            payload: updateSchema.describe(`Data to update in the ${resourceName}. Omit fields you do not want to change.`)
-        },
-        updateAction
-    );
-
-    server.tool(`delete_${resourceName}`,
-        `WARNING: IRREVERSIBLE. Delete a single ${resourceName}. For multiple items, use bulk_delete_${resourceName}s. Always ask user confirmation.`,
-        { [idParamName]: z.string().describe(idDesc) },
-        async (args) => {
-            const result = await fetchApi(`${basePath}/${args[idParamName]}`, 'DELETE');
-            return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-        }
-    );
+        server.tool(`delete_${resourceName}`,
+            `WARNING: IRREVERSIBLE. Delete a single ${resourceName}. For multiple items, use bulk_delete_${resourceName}s. Always ask user confirmation.`,
+            { [idParamName]: z.string().describe(idDesc) },
+            async (args) => {
+                const result = await fetchApi(`${basePath}/${args[idParamName]}`, 'DELETE');
+                return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+            }
+        );
+    }
 }
 
 // Schemas based on database structure
@@ -333,6 +337,7 @@ server.tool(`get_dashboard_stats`,
     }
 );
 
+if (!isExpert) {
 server.tool(`update_book_skeleton`,
     `Reorder or add chapters to a book. This rebuilds the book's skeleton in the database.`,
     {
@@ -371,6 +376,7 @@ server.tool(`clear_server_cache`,
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     }
 );
+}
 
 server.tool(`get_uploaded_files`,
     `Get a list of all uploaded files (images, documents) currently on the server.`,
@@ -381,6 +387,7 @@ server.tool(`get_uploaded_files`,
     }
 );
 
+if (!isExpert) {
 server.tool(`delete_uploaded_file`,
     `Delete a specific uploaded file from the server.`,
     {
@@ -632,6 +639,7 @@ server.tool(`relink_single_term`,
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     }
 );
+}
 
 server.tool(`global_search`,
     `Perform a global full-text search across all entities (articles, terms, books, etc.) just like the main site search.`,
