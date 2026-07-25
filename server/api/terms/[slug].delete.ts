@@ -111,8 +111,8 @@ export default defineEventHandler(async (event) => {
   const storage = useStorage('cache')
   const langs = ['en', 'ru', 'zh']
   for (const l of langs) {
-    await storage.removeItem(`nitro:handlers:terms:${slug}:role_editor:lang_${l}`)
-    await storage.removeItem(`nitro:handlers:terms:${slug}:role_guest:lang_${l}`)
+    await storage.removeItem(`nitro:handlers:terms:${slug}:role_editor:lang_${l}.json`)
+    await storage.removeItem(`nitro:handlers:terms:${slug}:role_guest:lang_${l}.json`)
   }
 
   return { message: 'Термин удалён' }

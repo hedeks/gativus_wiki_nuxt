@@ -118,14 +118,13 @@ export default defineEventHandler(async (event) => {
   const storage = useStorage('cache')
   const langs = ['en', 'ru', 'zh']
   for (const l of langs) {
-    await storage.removeItem(`nitro:handlers:books:${slug}:role_editor:lang_${l}`)
-    await storage.removeItem(`nitro:handlers:books:${slug}:role_guest:lang_${l}`)
-  }
-
-  for (const article of articlesToInvalidate) {
-    for (const l of langs) {
-      await storage.removeItem(`nitro:handlers:articles:${article.slug}:role_editor:lang_${l}`)
-      await storage.removeItem(`nitro:handlers:articles:${article.slug}:role_guest:lang_${l}`)
+    await storage.removeItem(`nitro:handlers:books:${slug}:role_editor:lang_${l}.json`)
+    await storage.removeItem(`nitro:handlers:books:${slug}:role_guest:lang_${l}.json`)
+    
+    // Also invalidate cache for child articles
+    for (const article of articlesToInvalidate) {
+      await storage.removeItem(`nitro:handlers:articles:${article.slug}:role_editor:lang_${l}.json`)
+      await storage.removeItem(`nitro:handlers:articles:${article.slug}:role_guest:lang_${l}.json`)
     }
   }
 

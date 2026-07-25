@@ -92,8 +92,8 @@ export default defineEventHandler(async (event) => {
   const storage = useStorage('cache')
   const langs = ['en', 'ru', 'zh']
   for (const l of langs) {
-    await storage.removeItem(`nitro:handlers:articles:${slug}:role_editor:lang_${l}`)
-    await storage.removeItem(`nitro:handlers:articles:${slug}:role_guest:lang_${l}`)
+    await storage.removeItem(`nitro:handlers:articles:${slug}:role_editor:lang_${l}.json`)
+    await storage.removeItem(`nitro:handlers:articles:${slug}:role_guest:lang_${l}.json`)
   }
 
   return { message: 'Статья удалена' }

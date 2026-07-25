@@ -37,22 +37,25 @@ export default defineEventHandler(async (event) => {
   if (image_url !== undefined) { updates.push('image_url = ?'); params.push(image_url || null) }
   if (video_url !== undefined) { updates.push('video_url = ?'); params.push(video_url || null) }
 
+  const parseAliases = (val: any) => {
+    if (!val || val === '') return '[]';
+    let parsed = val;
+    if (typeof val === 'string') {
+      try { parsed = JSON.parse(val) } catch(e) { parsed = [val] }
+    }
+    return JSON.stringify(Array.isArray(parsed) ? parsed : [parsed]);
+  };
+
   if (aliases !== undefined) {
-    const json = Array.isArray(aliases) ? JSON.stringify(aliases) : JSON.stringify([aliases])
-    updates.push('aliases = ?')
-    params.push(json)
+    updates.push('aliases = ?'); params.push(parseAliases(aliases));
   }
   
   if (aliases_ru !== undefined) {
-    const json = Array.isArray(aliases_ru) ? JSON.stringify(aliases_ru) : JSON.stringify([aliases_ru])
-    updates.push('aliases_ru = ?')
-    params.push(json)
+    updates.push('aliases_ru = ?'); params.push(parseAliases(aliases_ru));
   }
   
   if (aliases_zh !== undefined) {
-    const json = Array.isArray(aliases_zh) ? JSON.stringify(aliases_zh) : JSON.stringify([aliases_zh])
-    updates.push('aliases_zh = ?')
-    params.push(json)
+    updates.push('aliases_zh = ?'); params.push(parseAliases(aliases_zh));
   }
 
   // Handle slug change
@@ -206,11 +209,11 @@ export default defineEventHandler(async (event) => {
   const storage = useStorage('cache')
   const langs = ['en', 'ru', 'zh']
   for (const l of langs) {
-    await storage.removeItem(`nitro:handlers:terms:${existing.slug}:role_editor:lang_${l}`)
-    await storage.removeItem(`nitro:handlers:terms:${existing.slug}:role_guest:lang_${l}`)
+    await storage.removeItem(`nitro:handlers:terms:${existing.slug}:role_editor:lang_${l}.json`)
+    await storage.removeItem(`nitro:handlers:terms:${existing.slug}:role_guest:lang_${l}.json`)
     if (newSlug !== existing.slug) {
-      await storage.removeItem(`nitro:handlers:terms:${newSlug}:role_editor:lang_${l}`)
-      await storage.removeItem(`nitro:handlers:terms:${newSlug}:role_guest:lang_${l}`)
+      await storage.removeItem(`nitro:handlers:terms:${newSlug}:role_editor:lang_${l}.json`)
+      await storage.removeItem(`nitro:handlers:terms:${newSlug}:role_guest:lang_${l}.json`)
     }
   }
 

@@ -33,17 +33,18 @@ export default defineEventHandler(async (event) => {
     finalSlugZh = await ensureUniqueSlug(db, 'terms', baseSlugZh)
   }
 
-  const aliasesJson = aliases
-    ? JSON.stringify(Array.isArray(aliases) ? aliases : [aliases])
-    : null
-    
-  const aliasesRuJson = aliases_ru
-    ? JSON.stringify(Array.isArray(aliases_ru) ? aliases_ru : [aliases_ru])
-    : null
-    
-  const aliasesZhJson = aliases_zh
-    ? JSON.stringify(Array.isArray(aliases_zh) ? aliases_zh : [aliases_zh])
-    : null
+  const parseAliases = (val: any) => {
+    if (!val) return null;
+    let parsed = val;
+    if (typeof val === 'string') {
+      try { parsed = JSON.parse(val) } catch(e) { parsed = [val] }
+    }
+    return JSON.stringify(Array.isArray(parsed) ? parsed : [parsed]);
+  };
+
+  const aliasesJson = parseAliases(aliases);
+  const aliasesRuJson = parseAliases(aliases_ru);
+  const aliasesZhJson = parseAliases(aliases_zh);
 
   let termArticleId: number | null = null
 
