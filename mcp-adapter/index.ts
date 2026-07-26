@@ -329,7 +329,8 @@ const bookSchema = z.object({
     title_zh: z.string().optional(),
     slug: z.string().optional(),
     description: z.string().optional(),
-    sort_order: z.number().optional()
+    sort_order: z.number().optional(),
+    cover_image: z.string().optional()
 });
 
 const userSchema = z.object({
@@ -448,7 +449,9 @@ server.tool(`upload_file`,
         }
         
         const fileBuffer = fs.readFileSync(args.file_path);
-        const blob = new Blob([fileBuffer]);
+        const ext = path.extname(args.file_path).toLowerCase();
+        const mimeType = ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : ext === '.gif' ? 'image/gif' : 'application/octet-stream';
+        const blob = new Blob([fileBuffer], { type: mimeType });
         const fileName = path.basename(args.file_path);
         formData.append(fieldName, blob, fileName);
         
@@ -474,7 +477,9 @@ server.tool(`upload_media`,
             throw new Error(`File not found: ${args.file_path}`);
         }
         const fileBuffer = fs.readFileSync(args.file_path);
-        const blob = new Blob([fileBuffer]);
+        const ext = path.extname(args.file_path).toLowerCase();
+        const mimeType = ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : ext === '.gif' ? 'image/gif' : 'application/octet-stream';
+        const blob = new Blob([fileBuffer], { type: mimeType });
         formData.append("file", blob, path.basename(args.file_path));
         
         const result = await fetchMultipart('/api/admin/uploads/article-image', 'POST', formData);
@@ -586,6 +591,57 @@ server.tool(`import_odt_as_book_chapter`,
     }
 );
 
+server.tool(`create_odm_project`,
+    `Step 1 of ODM Import: Upload an .odm file to create a draft project and book skeleton. Returns the project ID and slots.`,
+    {
+        file_path: z.string().describe(`Absolute path to the .odm file`),
+        lang: z.enum(['en', 'ru', 'zh']).describe(`The language of the uploaded .odm file`),
+        book_title: z.string().describe(`The title of the new book to create`),
+        category_id: z.number().optional().describe(`Optional category ID for the new book`)
+    },
+    async (args) => {
+        const formData = new FormData();
+        if (!fs.existsSync(args.file_path)) throw new Error(`File not found: ${args.file_path}`);
+        const fileBuffer = fs.readFileSync(args.file_path);
+        const blob = new Blob([fileBuffer]);
+        formData.append(`file_${args.lang}`, blob, path.basename(args.file_path));
+        
+        const options = {
+            create_book: { title: args.book_title, category_ids: args.category_id ? [args.category_id] : [] },
+            content_locale: args.lang
+        };
+        formData.append("options", JSON.stringify(options));
+        
+        const result = await fetchMultipart('/api/import/odm/project', 'POST', formData);
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+);
+
+server.tool(`upload_bulk_odt_to_project`,
+    `Step 2 of ODM Import: Upload multiple .odt files to an existing ODM project to fill the content.`,
+    {
+        project_id: z.number().describe(`The ID of the ODM project`),
+        file_paths: z.array(z.string()).describe(`Array of absolute paths to .odt files`),
+        heading_locale: z.enum(['en', 'ru', 'zh', 'none']).optional().describe(`Locale for heading markers, defaults to 'none'`)
+    },
+    async (args) => {
+        const formData = new FormData();
+        for (const filePath of args.file_paths) {
+            if (!fs.existsSync(filePath)) throw new Error(`File not found: ${filePath}`);
+            const fileBuffer = fs.readFileSync(filePath);
+            const blob = new Blob([fileBuffer]);
+            formData.append("files", blob, path.basename(filePath));
+        }
+        
+        if (args.heading_locale) {
+            formData.append("heading_locale", args.heading_locale);
+        }
+        
+        const result = await fetchMultipart(`/api/import/odm/project/${args.project_id}/bulk-odt`, 'POST', formData);
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+);
+
 server.tool(`bulk_patch_articles`,
     `Bulk update multiple articles (e.g. change category_id or is_published for many articles at once).`,
     {
@@ -609,6 +665,57 @@ server.tool(`bulk_delete_articles`,
     },
     async (args) => {
         const result = await fetchApi(`/api/admin/articles/bulk`, 'DELETE', { ids: args.ids });
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+);
+
+function generateSlugIfMissing(title: string, slug?: string): string {
+    if (slug) return slug;
+    if (!title) return '';
+    return title.toString().toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^\w\-а-яА-ЯёЁ]+/g, '')
+        .replace(/\-\-+/g, '-')
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
+}
+
+server.tool(`bulk_create_terms`,
+    `Create multiple terms at once. Returns the import result. For bulk terms, use this instead of creating them one by one. If you need to attach a term-article to one of the bulk-imported terms later, first bulk import them, then create an article (with is_term_article: 1), and finally patch_term to set term_article_id.`,
+    {
+        terms: z.array(z.object({
+            title: z.string(),
+            title_ru: z.string().optional(),
+            title_zh: z.string().optional(),
+            slug: z.string().optional().describe("Provide a slug if possible, otherwise it will be auto-generated from title"),
+            slug_ru: z.string().optional(),
+            slug_zh: z.string().optional(),
+            definition: z.string(),
+            definition_ru: z.string().optional(),
+            definition_zh: z.string().optional(),
+            aliases: z.string().optional(),
+            aliases_ru: z.string().optional(),
+            aliases_zh: z.string().optional(),
+        })).describe(`Array of terms to create`)
+    },
+    async (args) => {
+        const terms = args.terms.map(t => ({
+            ...t,
+            slug: generateSlugIfMissing(t.title, t.slug),
+            slug_ru: t.title_ru ? generateSlugIfMissing(t.title_ru, t.slug_ru) : undefined,
+            slug_zh: t.title_zh ? generateSlugIfMissing(t.title_zh, t.slug_zh) : undefined,
+        }));
+        
+        const dump = {
+            version: "1.3",
+            terms: terms
+        };
+        
+        const formData = new FormData();
+        const blob = new Blob([JSON.stringify(dump)], { type: 'application/json' });
+        formData.append("file", blob, "dump.json");
+        
+        const result = await fetchMultipart('/api/admin/sync/import', 'POST', formData);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     }
 );
