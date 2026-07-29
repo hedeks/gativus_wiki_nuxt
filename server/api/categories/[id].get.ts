@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const params = event.context.params || {}
   const slug = params.id || params.slug || Object.values(params)[0]
-  const lang = (query.lang as string) || 'ru'
+  const lang = (query.lang as string) || 'en'
 
   if (!slug) {
     throw createError({

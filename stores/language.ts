@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 export const useLanguageStore = defineStore('language', () => {
   // Try to load from cookie first
   const langCookie = useCookie<string>('gt_lang', {
-    default: () => 'ru',
+    default: () => 'en',
     maxAge: 60 * 60 * 24 * 365 // 1 year
   })
   

@@ -29,7 +29,7 @@ export interface OdmChapterSlot {
   displayTitle: string
 }
 
-export function defaultOdmChapterTitle(order: number, locale: OdmContentLocale = 'ru'): string {
+export function defaultOdmChapterTitle(order: number, locale: OdmContentLocale = 'en'): string {
   switch (locale) {
     case 'en': return `Chapter ${order}`
     case 'zh': return `第${order}章`
@@ -104,7 +104,7 @@ function isMeaningfulSectionName(name: string, hrefBasename: string): boolean {
  * Возвращает список слотов с реальными названиями глав.
  */
 export function parseOdmOutline(buffer: Buffer, options?: ParseOdmOutlineOptions): OdmChapterSlot[] {
-  const locale: OdmContentLocale = options?.contentLocale ?? 'ru'
+  const locale: OdmContentLocale = options?.contentLocale ?? 'en'
   const zip = new AdmZip(buffer)
   const entry = zip.getEntry('content.xml')
   if (!entry) throw new Error('ODM: нет content.xml')

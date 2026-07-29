@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
     const db = useDatabase()
     const query = getQuery(event)
   
-    const lang = (query.lang as string) || (query.locale as string) || 'ru'
+    const lang = (query.lang as string) || (query.locale as string) || 'en'
   
     // Books
     const books = await db.prepare(`

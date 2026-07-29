@@ -7,7 +7,7 @@ function pickLocalizedArticleHtml(row: {
   html_content_ru?: string | null
   html_content_zh?: string | null
 }, lang: string): string {
-  const l = (lang || 'ru').toLowerCase()
+  const l = (lang || 'en').toLowerCase()
   if (l === 'ru' && String(row.html_content_ru ?? '').trim())
     return String(row.html_content_ru)
   if (l === 'zh' && String(row.html_content_zh ?? '').trim())
@@ -94,7 +94,7 @@ export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const query = getQuery(event)
   const qRaw = (query.q as string || '').trim()
-  const locale = String(query.locale || 'ru').trim().toLowerCase()
+  const locale = String(query.locale || 'en').trim().toLowerCase()
 
   if (qRaw.length < 2) {
     return { items: [] }

@@ -9,7 +9,7 @@ export default defineCachedEventHandler(async (event) => {
   const db = useDatabase()
   const slug = getRouterParam(event, 'slug')
   const query = getQuery(event)
-  const lang = (query.lang as string) || 'ru'
+  const lang = (query.lang as string) || 'en'
 
   if (!['en', 'ru', 'zh'].includes(lang)) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid language' })
@@ -192,9 +192,9 @@ export default defineCachedEventHandler(async (event) => {
   getKey: (event) => {
     const role = event.context.auth?.role || 'guest'
     const slug = getRouterParam(event, 'slug')
-    const lang = getQuery(event).lang || 'ru'
+    const lang = getQuery(event).lang || 'en'
     // Normalize lang to prevent cache key explosion
-    const safeLang = ['en', 'ru', 'zh'].includes(lang as string) ? lang : 'ru'
+    const safeLang = ['en', 'ru', 'zh'].includes(lang as string) ? lang : 'en'
     return `${slug}:role_${role}:lang_${safeLang}`
   }
 })

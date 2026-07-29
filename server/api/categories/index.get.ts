@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const query = getQuery(event)
   const isTree = query.tree === '1' || query.tree === 'true'
-  const lang = (query.lang as string) || 'ru'
+  const lang = (query.lang as string) || 'en'
 
   // Fetch all categories ordered by sort_order
   const categories = await db.prepare(`

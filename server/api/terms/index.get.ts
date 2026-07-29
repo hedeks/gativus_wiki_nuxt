@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   const search = (query.search as string) || null
   const letter = (query.letter as string) || null
   const categoryId = query.category_id ? parseInt(query.category_id as string) : null
-  const lang = (query.lang as string) || 'ru'
+  const lang = (query.lang as string) || 'en'
   const translationFilter = (query.translation_filter as string) || null
 
   const conditions: string[] = []
