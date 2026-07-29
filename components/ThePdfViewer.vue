@@ -37,8 +37,11 @@
 
     <!-- Main View Area (Panning Container) -->
     <div class="w-full flex-1 relative overflow-hidden h-full p-4 transition-all duration-300 flex" ref="container"
-      :class="{ 'cursor-grab': scale > 1 && !isDragging, 'cursor-grabbing': isDragging }" @mousedown="startDragging"
-      @mousemove="onDragging" @mouseup="stopDragging" @mouseleave="stopDragging" @wheel.prevent="handleWheel">
+      style="touch-action: none;"
+      :class="{ 'cursor-grab': scale > 1 && !isDragging, 'cursor-grabbing': isDragging }" 
+      @mousedown="startDragging" @mousemove="onDragging" @mouseup="stopDragging" @mouseleave="stopDragging" 
+      @touchstart="startDragging" @touchmove="onDragging" @touchend="stopDragging" @touchcancel="stopDragging"
+      @wheel="handleWheel">
       <!-- Center Wrapper: margin auto centers it when smaller than container, scroll works when larger -->
       <div class="m-auto relative flex items-center justify-center">
         <div v-for="p in visiblePages" :key="p"
@@ -191,78 +194,148 @@ const processQueue = () => {
 const nextPage = () => triggerNav('next')
 const prevPage = () => triggerNav('prev')
 
-// Panning (Drag to Scroll)
+// Touch and Panning state
 const isDragging = ref(false)
 let startX = 0
 let startY = 0
 let initialScrollLeft = 0
 let initialScrollTop = 0
+let initialPinchDistance = 0
+let initialScale = 1.0
+let swipeStartX = 0
+const SWIPE_THRESHOLD = 50
 
-const startDragging = (e: MouseEvent) => {
-  if (scale.value <= 1) return
+const getClientX = (e: MouseEvent | TouchEvent) => 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
+const getClientY = (e: MouseEvent | TouchEvent) => 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY
+
+const getPinchDistance = (e: TouchEvent) => {
+  if (e.touches.length < 2) return 0
+  const dx = e.touches[0].clientX - e.touches[1].clientX
+  const dy = e.touches[0].clientY - e.touches[1].clientY
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+const startDragging = (e: MouseEvent | TouchEvent) => {
+  if ('touches' in e && e.touches.length === 2) {
+    initialPinchDistance = getPinchDistance(e)
+    initialScale = scale.value
+    isDragging.value = false
+    return
+  }
+
+  startX = getClientX(e)
+  startY = getClientY(e)
+
+  if (scale.value <= 1) {
+    if ('touches' in e && e.touches.length === 1) {
+      swipeStartX = startX
+    }
+    return
+  }
+  
   isDragging.value = true
-  // We use client coordinates to be more stable
-  startX = e.clientX
-  startY = e.clientY
   initialScrollLeft = container.value?.scrollLeft || 0
   initialScrollTop = container.value?.scrollTop || 0
 }
 
-const onDragging = (e: MouseEvent) => {
+const onDragging = (e: MouseEvent | TouchEvent) => {
+  if ('touches' in e && e.touches.length === 2) {
+    if (e.cancelable) e.preventDefault()
+    const currentDistance = getPinchDistance(e)
+    if (initialPinchDistance > 0) {
+      const ratio = currentDistance / initialPinchDistance
+      let newScale = initialScale * ratio
+      if (newScale < 0.2) newScale = 0.2
+      if (newScale > 6.0) newScale = 6.0
+      scale.value = newScale
+    }
+    return
+  }
+
   if (!isDragging.value || !container.value) return
-  e.preventDefault()
-  const dx = e.clientX - startX
-  const dy = e.clientY - startY
+  if (e.cancelable) e.preventDefault()
+  
+  const dx = getClientX(e) - startX
+  const dy = getClientY(e) - startY
   container.value.scrollLeft = initialScrollLeft - dx
   container.value.scrollTop = initialScrollTop - dy
 }
 
-const stopDragging = () => {
+const stopDragging = (e: MouseEvent | TouchEvent) => {
+  if (scale.value <= 1 && 'changedTouches' in e && swipeStartX > 0) {
+    const swipeEndX = e.changedTouches[0].clientX
+    const dx = swipeStartX - swipeEndX
+    if (dx > SWIPE_THRESHOLD) {
+      nextPage()
+    } else if (dx < -SWIPE_THRESHOLD) {
+      prevPage()
+    }
+  }
+  
+  swipeStartX = 0
   isDragging.value = false
+  initialPinchDistance = 0
 }
 
 // Scroll to Zoom with Smart Navigation
+let wheelTimeout: any = null
 const handleWheel = (e: WheelEvent) => {
-  const zoomStep = 0.1
-  const oldScale = scale.value
-  let newScale = oldScale
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault()
+    const zoomStep = 0.1
+    const oldScale = scale.value
+    let newScale = oldScale
 
-  // Determine direction
-  const isZoomIn = e.deltaY < 0
-  if (isZoomIn) {
-    if (oldScale < 6.0) newScale = oldScale + zoomStep
-  } else {
-    if (oldScale > 0.2) newScale = oldScale - zoomStep
-  }
-
-  if (newScale !== oldScale && container.value) {
-    const ratio = newScale / oldScale
-    const rect = container.value.getBoundingClientRect()
-
-    let targetX, targetY
-
+    const isZoomIn = e.deltaY < 0
     if (isZoomIn) {
-      // Zoom In -> Target Mouse position relative to viewport content
-      targetX = e.clientX - rect.left
-      targetY = e.clientY - rect.top
+      if (oldScale < 6.0) newScale = oldScale + zoomStep
     } else {
-      // Zoom Out -> Target Center of Viewport
-      targetX = rect.width / 2
-      targetY = rect.height / 2
+      if (oldScale > 0.2) newScale = oldScale - zoomStep
     }
 
-    const scrollLeft = container.value.scrollLeft
-    const scrollTop = container.value.scrollTop
-
-    scale.value = newScale
-
-    // Use nextTick and a slight timeout to ensure DOM has updated sizes
-    nextTick(() => {
-      if (container.value) {
-        container.value.scrollLeft = (scrollLeft + targetX) * ratio - targetX
-        container.value.scrollTop = (scrollTop + targetY) * ratio - targetY
+    if (newScale !== oldScale && container.value) {
+      const ratio = newScale / oldScale
+      const rect = container.value.getBoundingClientRect()
+      
+      let targetX, targetY
+      if (isZoomIn) {
+        targetX = e.clientX - rect.left
+        targetY = e.clientY - rect.top
+      } else {
+        targetX = rect.width / 2
+        targetY = rect.height / 2
       }
-    })
+
+      const scrollLeft = container.value.scrollLeft
+      const scrollTop = container.value.scrollTop
+      scale.value = newScale
+
+      nextTick(() => {
+        if (container.value) {
+          container.value.scrollLeft = (scrollLeft + targetX) * ratio - targetX
+          container.value.scrollTop = (scrollTop + targetY) * ratio - targetY
+        }
+      })
+    }
+  } else {
+    // Not zooming, so pan or page turn
+    if (scale.value > 1 && container.value) {
+      e.preventDefault()
+      container.value.scrollLeft += e.deltaX
+      container.value.scrollTop += e.deltaY
+    } else if (scale.value === 1) {
+      // Turn pages on wheel if significant delta
+      if (Math.abs(e.deltaY) > 20) {
+        if (!wheelTimeout) {
+          if (e.deltaY > 0) nextPage()
+          else prevPage()
+          
+          wheelTimeout = setTimeout(() => {
+            wheelTimeout = null
+          }, 800)
+        }
+      }
+    }
   }
 }
 
