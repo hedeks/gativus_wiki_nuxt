@@ -9,59 +9,33 @@
  */
 
 export function buildWikiFtsPrefixMatch(raw: string): string | null {
-
   const normalized = raw.normalize('NFKC').trim()
-
   if (!normalized)
-
     return null
 
-
-
-  const segments = normalized.split(/\s+/).filter(Boolean)
-
+  // Заменяем все символы, не являющиеся буквами или цифрами, на пробел.
+  // Это позволит корректно разбивать слова с дефисами (k-вектор -> k вектор),
+  // чтобы FTS5 мог найти их через AND.
+  const cleanStr = normalized.replace(/[^\p{L}\p{N}_]+/gu, ' ')
+  
+  const segments = cleanStr.split(/\s+/).filter(Boolean)
   const tokens: string[] = []
 
-
-
-  for (const seg of segments) {
-
-    const t = seg.replace(/[^\p{L}\p{N}_]+/gu, '')
-
+  for (const t of segments) {
     if (!t)
-
       continue
-
-    if (t.length >= 2) {
-
-      tokens.push(t)
-
-      continue
-
-    }
-
-    const cp = t.codePointAt(0)!
-
-    if (cp > 127)
-
-      tokens.push(t)
-
+    // Оставляем все слова, включая однобуквенные (важно для k-вектор, x-ray и т.д.)
+    tokens.push(t)
   }
 
-
-
   if (tokens.length === 0)
-
     return null
 
-
-
+  // Собираем токены через пробел. В синтаксисе FTS5 пробел означает AND.
+  // Оборачиваем в кавычки для защиты от служебных слов FTS (OR, NOT).
   return tokens
-
     .map((t) => `"${t.replace(/"/g, '""')}"*`)
-
     .join(' ')
-
 }
 
 

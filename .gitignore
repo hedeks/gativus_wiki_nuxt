@@ -9,6 +9,8 @@ dist_deploy
 json_work
 temp
 claude_cfg.txt
+.deploy-tool
+deploy.tar 
 # Node dependencies
 node_modules
 

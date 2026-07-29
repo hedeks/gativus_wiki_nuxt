@@ -83,11 +83,12 @@ const renderPage = async () => {
     const currentScale = props.scale
     const viewport = page.getViewport({ scale: currentScale })
     
-    const ctx = canvas.value.getContext('2d', { alpha: false })
+    // Важно: не используем { alpha: false } на iOS, это частая причина пустых белых квадратов из-за бага WebKit
+    const ctx = canvas.value.getContext('2d')
     if (!ctx) return
 
     let outputScale = Math.min(window.devicePixelRatio || 1, 2)
-    const MAX_CANVAS_DIMENSION = 3000 // Safe limit for iOS memory
+    const MAX_CANVAS_DIMENSION = 2048 // Жесткий и 100% безопасный лимит для iOS (2048x2048)
     
     if (viewport.width * outputScale > MAX_CANVAS_DIMENSION || viewport.height * outputScale > MAX_CANVAS_DIMENSION) {
       const scaleDownWidth = MAX_CANVAS_DIMENSION / viewport.width
@@ -128,6 +129,12 @@ const renderPage = async () => {
   align-items: center;
   justify-content: center;
   /* Use a fixed container but allow content to overflow during CSS scale */
-  overflow: visible;
+}
+
+canvas {
+  /* Форсируем аппаратное ускорение для iOS, чтобы избежать пропадания контекста */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform, opacity;
 }
 </style>
