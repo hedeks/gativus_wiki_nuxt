@@ -3,7 +3,7 @@ export function useLandingSectionObserver(blockCount: MaybeRefOrGetter<number>) 
   const seen = reactive<boolean[]>([])
   const inBand = reactive<boolean[]>([])
   const position = reactive<('above' | 'below' | 'in')[]>([])
-  const ratioSnap = reactive<number[]>([])
+  const ratioSnap: number[] = []
   const activeFocusBlock = ref(0)
   const ioInitialized = ref(false)
 
@@ -76,8 +76,9 @@ export function useLandingSectionObserver(blockCount: MaybeRefOrGetter<number>) 
         bestIdx = i
       }
     }
-    if (bestRatio >= 0.04)
+    if (bestRatio >= 0.04 && activeFocusBlock.value !== bestIdx) {
       activeFocusBlock.value = bestIdx
+    }
   }
 
   function bindObserver() {
@@ -91,7 +92,7 @@ export function useLandingSectionObserver(blockCount: MaybeRefOrGetter<number>) 
     io = new IntersectionObserver(
       entries => applyIoEntries(entries, count),
       {
-        threshold: [0, 0.05, 0.15, 0.3, 0.5, 0.75],
+        threshold: [0, 0.2, 0.5, 0.8],
         rootMargin: '10% 0px 10% 0px',
       },
     )

@@ -22,39 +22,35 @@
   }
 }
 
-/* Premium Entrance & Exit Animations */
+/* Premium Entrance & Exit Animations (Optimized for Mobile Performance) */
 .home-section--idle .home-anim-target {
   opacity: 0;
-  transform: translateY(40px) rotateX(8deg);
-  filter: blur(12px);
+  transform: translateY(30px);
   pointer-events: none;
+  will-change: transform, opacity;
   transition: 
-    opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.2s ease;
+    opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .home-section--leave-up .home-anim-target {
   opacity: 0;
-  transform: translateY(-40px) rotateX(-8deg);
-  filter: blur(12px);
+  transform: translateY(-30px);
   pointer-events: none;
+  will-change: transform, opacity;
   transition: 
-    opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.2s ease;
+    opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .home-section--enter .home-anim-target {
   opacity: 1;
-  transform: translateY(0) rotateX(0deg);
-  filter: blur(0px);
+  transform: translateY(0);
   pointer-events: auto;
-  backface-visibility: hidden;
+  will-change: transform, opacity;
   transition: 
-    opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -63,7 +59,6 @@
   .home-section--enter .home-anim-target {
     opacity: 1;
     transform: none;
-    filter: none;
     transition: none;
   }
 }
