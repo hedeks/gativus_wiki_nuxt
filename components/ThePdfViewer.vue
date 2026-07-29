@@ -53,7 +53,7 @@
             { 'translate-y-[-150px] scale-[0.85] opacity-0 blur-lg': pageNum > p },
             { 'opacity-100 blur-0 translate-y-0': pageNum === p }
           ]">
-          <PdfPage :pdfDoc="pdfDoc" :pageNum="p" :scale="scale" class="shadow-2xl rounded-lg pointer-events-auto" />
+          <PdfPage :pdfDoc="pdfDoc" :pageNum="p" :scale="scale * baseScale" class="shadow-2xl rounded-lg pointer-events-auto" />
         </div>
       </div>
 
@@ -131,6 +131,7 @@ const pdfDoc = shallowRef<any>(null)
 const pageNum = ref(1)
 const numPages = ref(0)
 const scale = ref(1.0)
+const baseScale = ref(1.0)
 const loading = ref(true)
 const isFullscreen = ref(false)
 const error = ref(false)
@@ -441,6 +442,16 @@ const loadPdf = async () => {
     const loadingTask = pdfjsLib.getDocument(props.src)
     pdfDoc.value = await loadingTask.promise
     numPages.value = pdfDoc.value.numPages
+    
+    if (container.value) {
+      const firstPage = await pdfDoc.value.getPage(1)
+      const vp = firstPage.getViewport({ scale: 1.0 })
+      const padding = 40 // some padding to ensure it fits visually
+      const availableHeight = container.value.clientHeight - padding
+      if (vp.height > 0) {
+        baseScale.value = availableHeight / vp.height
+      }
+    }
   } catch (error) {
     console.error('Error loading PDF:', error)
   } finally {

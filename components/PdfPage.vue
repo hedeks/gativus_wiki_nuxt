@@ -86,7 +86,15 @@ const renderPage = async () => {
     const ctx = canvas.value.getContext('2d', { alpha: false })
     if (!ctx) return
 
-    const outputScale = Math.min(window.devicePixelRatio || 1, 2)
+    let outputScale = Math.min(window.devicePixelRatio || 1, 2)
+    const MAX_CANVAS_DIMENSION = 3000 // Safe limit for iOS memory
+    
+    if (viewport.width * outputScale > MAX_CANVAS_DIMENSION || viewport.height * outputScale > MAX_CANVAS_DIMENSION) {
+      const scaleDownWidth = MAX_CANVAS_DIMENSION / viewport.width
+      const scaleDownHeight = MAX_CANVAS_DIMENSION / viewport.height
+      outputScale = Math.min(outputScale, scaleDownWidth, scaleDownHeight)
+    }
+
     canvas.value.width = Math.floor(viewport.width * outputScale)
     canvas.value.height = Math.floor(viewport.height * outputScale)
     canvas.value.style.width = Math.floor(viewport.width) + "px"
