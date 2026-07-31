@@ -439,7 +439,13 @@ const loadPdf = async () => {
   if (!props.src || !pdfjsLib) return
   loading.value = true
   try {
-    const loadingTask = pdfjsLib.getDocument(props.src)
+    // Загружаем документ со стандартными шрифтами и cMap для поддержки всех символов (исправляет пустой текст на iOS)
+    const loadingTask = pdfjsLib.getDocument({
+      url: props.src,
+      cMapUrl: '/pdfjs/cmaps/',
+      cMapPacked: true,
+      standardFontDataUrl: '/pdfjs/standard_fonts/'
+    })
     pdfDoc.value = await loadingTask.promise
     numPages.value = pdfDoc.value.numPages
     
