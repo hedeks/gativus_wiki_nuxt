@@ -20,7 +20,7 @@ const emit = defineEmits<{
 const store = userStore()
 const toast = useToast()
 
-const viewMode = ref<'code' | 'split' | 'preview'>('code')
+const viewMode = ref<'code' | 'split' | 'preview'>('preview')
 const showPreview = computed(() => viewMode.value === 'preview')
 
 const viewModeIcons: Record<string, string> = {

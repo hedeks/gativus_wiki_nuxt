@@ -5,11 +5,13 @@ import AdminArticleWysiwyg from '~/components/admin/AdminArticleWysiwyg.vue'
 const props = defineProps<{
   articleId?: number | string
   termId?: number | string
+  inlineMode?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'article-created', id: number): void
   (e: 'article-saved', id: number): void
+  (e: 'cancel-inline'): void
 }>()
 
 const store = userStore()
@@ -447,12 +449,20 @@ function handleOdtParsed(metadata: any) {
 
 <template>
   <div 
-    class="admin-page-stack admin-page-stack--fluid editor-page gv-admin-page" 
-    :class="{ 'editor-page--fullscreen': isFullscreen }"
+    class="gv-admin-form flex flex-col h-full bg-white dark:bg-[#111113] relative overflow-hidden" 
+    :class="{ 'gv-admin-form--fullscreen': isFullscreen, 'gv-admin-form--inline': inlineMode }"
     tabindex="-1"
   >
+    <!-- Fullscreen loader -->
+    <div v-if="pending" class="absolute inset-0 z-50 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm transition-opacity duration-200">
+      <div class="flex flex-col items-center gap-3 bg-white dark:bg-[#1e1e21] p-6 rounded-xl shadow-xl">
+        <UIcon name="i-heroicons-arrow-path" class="animate-spin text-3xl text-sky-500" />
+        <span class="text-sm font-bold text-gray-500 uppercase tracking-wider">Загрузка статьи...</span>
+      </div>
+    </div>
+
     <!-- Top Bar -->
-    <div class="editor-topbar">
+    <div v-if="!inlineMode" class="editor-topbar">
       <div class="editor-topbar-left">
         <NuxtLink to="/admin/articles" class="back-btn">
           <UIcon name="i-heroicons-arrow-left" />
@@ -510,7 +520,7 @@ function handleOdtParsed(metadata: any) {
 
     <div class="editor-body">
       <!-- Sidebar meta -->
-      <aside class="editor-sidebar">
+      <aside v-if="!inlineMode" class="editor-sidebar">
         <UTabs :items="[{ label: '🇬🇧 EN', slot: 'en' }, { label: '🇷🇺 RU', slot: 'ru' }, { label: '🇨🇳 ZH', slot: 'zh' }]" @change="activeTab = ['en', 'ru', 'zh'][$event] as 'en' | 'ru' | 'zh'" class="w-full mb-4">
           <template #en>
             <div class="space-y-4 pt-2">
@@ -656,6 +666,24 @@ function handleOdtParsed(metadata: any) {
 
       <!-- Editor area -->
       <div class="editor-main-container">
+        <!-- Inline Mode Toolbar -->
+        <div v-if="inlineMode" class="flex items-center justify-between p-2 bg-gray-50 dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-gray-500 uppercase">INLINE EDITOR</span>
+            <div class="flex gap-1 ml-4 bg-gray-200/50 dark:bg-black/20 p-1 rounded-md">
+              <button v-for="l in ['en','ru','zh']" :key="l" @click="activeTab = l as any"
+                class="px-2 py-0.5 text-[10px] font-bold rounded uppercase transition-colors"
+                :class="activeTab === l ? 'bg-white dark:bg-[#2a2a2e] shadow-sm text-sky-600 dark:text-sky-400' : 'text-gray-500 hover:bg-white/50 dark:hover:bg-white/5'">
+                {{ l }}
+              </button>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <GvButton @click="$emit('cancel-inline')" size="xs" color="gray" variant="soft">Отмена</GvButton>
+            <GvButton @click="save" size="xs" color="sky" :loading="isSaving">Сохранить</GvButton>
+          </div>
+        </div>
+
         <AdminArticleWysiwyg
           ref="editorRef"
           v-model:en="htmlContent"
@@ -703,6 +731,12 @@ function handleOdtParsed(metadata: any) {
 }
 .dark .editor-page--fullscreen {
   background: #111113;
+}
+
+.gv-admin-form--inline {
+  height: calc(100vh - var(--header-height) - 2rem);
+  min-height: 600px;
+  border-radius: 12px;
 }
 
 .editor-topbar {
