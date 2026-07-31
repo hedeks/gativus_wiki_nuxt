@@ -110,6 +110,12 @@
     </div>
 
     <TheScrollToTop />
+    <InPlaceEditor 
+      v-if="book?.id" 
+      type="book" 
+      :id="book.id" 
+      @saved="refresh" 
+    />
   </div>
 </template>
 

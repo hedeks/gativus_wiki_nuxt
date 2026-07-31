@@ -202,6 +202,12 @@
     <TheImageViewer :src="lightboxImage" :visible="isLightboxOpen" @close="closeLightbox" />
 
     <theScrollToTop @scrolled="resetToFirstHeading" />
+    <InPlaceEditor 
+      v-if="term?.id" 
+      type="term" 
+      :id="term.id" 
+      @saved="refresh" 
+    />
   </div>
 
   <!-- Loading / Not Found -->

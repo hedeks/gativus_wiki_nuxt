@@ -61,22 +61,48 @@
             </button>
           </div>
 
-          <h1
-            class="gv-article-title text-3xl lg:text-4xl mb-0 font-bold text-[#233a4d] dark:text-gray-100 uppercase tracking-widest leading-snug m-0 mb-0 min-w-0 break-words hyphens-auto">
-            <span v-if="articleTitleHighlightHtml !== null" v-html="articleTitleHighlightHtml" />
-            <template v-else>{{ article.title }}</template>
-          </h1>
+          <div class="flex items-start justify-between gap-4">
+            <h1
+              class="gv-article-title text-3xl lg:text-4xl mb-0 font-bold text-[#233a4d] dark:text-gray-100 uppercase tracking-widest leading-snug m-0 mb-0 min-w-0 break-words hyphens-auto">
+              <span v-if="articleTitleHighlightHtml !== null" v-html="articleTitleHighlightHtml" />
+              <template v-else>{{ article.title }}</template>
+            </h1>
+            <div v-if="canEdit" class="hidden md:block shrink-0 not-prose mt-1">
+              <GvButton 
+                v-if="!isEditingInPlace" 
+                @click="isEditingInPlace = true" 
+                color="sky" 
+                variant="soft" 
+                size="xs" 
+                icon="i-heroicons-pencil-square"
+              >
+                Редактировать
+              </GvButton>
+            </div>
+          </div>
         </div>
         <!-- Article HTML Content -->
-        <div
-          v-if="article?.html_content"
-          class="parent w-full flex-col article-prose"
-          v-html="articleBodyHighlightHtml"
-          @click="handleArticleClick"
-        />
-        <div v-else class="text-gray-400 py-10 text-center">
-          <p>{{ t.noContent }}</p>
-        </div>
+        <template v-if="isEditingInPlace">
+          <div class="not-prose mb-8">
+            <AdminArticleForm 
+              :article-id="article.id" 
+              :inline-mode="true" 
+              @cancel-inline="isEditingInPlace = false" 
+              @article-saved="onInlineSaved" 
+            />
+          </div>
+        </template>
+        <template v-else>
+          <div
+            v-if="article?.html_content"
+            class="parent w-full flex-col article-prose"
+            v-html="articleBodyHighlightHtml"
+            @click="handleArticleClick"
+          />
+          <div v-else class="text-gray-400 py-10 text-center">
+            <p>{{ t.noContent }}</p>
+          </div>
+        </template>
 
         <!-- Lightbox Overlay -->
         <TheImageViewer :src="lightboxImage" :visible="isLightboxOpen" @close="closeLightbox" />
@@ -222,6 +248,12 @@
       </aside>
     </div>
     <theScrollToTop @scrolled="resetToFirstHeading" />
+    <InPlaceEditor 
+      v-if="article?.id" 
+      type="article" 
+      :id="article.id" 
+      @saved="refresh" 
+    />
   </div>
 </template>
 
@@ -237,6 +269,21 @@ const route = useRoute()
 const router = useRouter()
 const slug = computed(() => String(route.params.slug ?? ''))
 const navHistory = useNavHistoryStore()
+
+import { userStore } from '~/stores/userStore'
+import AdminArticleForm from '~/components/admin/AdminArticleForm.vue'
+const store = userStore()
+const isEditingInPlace = ref(false)
+const canEdit = computed(() => {
+  if (!store.isLoggedIn || !store.userInfo) return false
+  const role = store.userInfo.role
+  return role === 'editor' || role === 'admin'
+})
+
+function onInlineSaved() {
+  isEditingInPlace.value = false
+  refresh()
+}
 
 // ─── Article view state persistence ───
 function lsKey() { return `gv:article-state:${route.path}` }
