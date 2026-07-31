@@ -1,5 +1,5 @@
 <template>
-  <UModal v-model="isOpen">
+  <UModal v-model="isOpen" :ui="{ wrapper: 'z-[200]' }">
     <div class="term-selector-modal">
       <div class="modal-header">
         <h3>Выбрать термин</h3>

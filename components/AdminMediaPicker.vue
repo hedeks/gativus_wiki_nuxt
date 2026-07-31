@@ -42,7 +42,7 @@
     />
 
     <!-- Preview Modal -->
-    <UModal v-model="previewOpen">
+    <UModal v-model="previewOpen" :ui="{ wrapper: 'z-[200]' }">
       <div class="p-4">
         <h3 class="text-lg font-bold mb-4">Предпросмотр</h3>
         <div class="flex justify-center bg-gray-100 dark:bg-zinc-800 rounded-lg overflow-hidden min-h-[200px]">
@@ -61,7 +61,7 @@
     </UModal>
 
     <!-- Gallery Modal -->
-    <UModal v-model="galleryOpen" :ui="{ width: 'w-full sm:max-w-3xl' }">
+    <UModal v-model="galleryOpen" :ui="{ wrapper: 'z-[200]', width: 'w-full sm:max-w-3xl' }">
       <div class="p-6">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-bold">Галерея файлов</h3>
