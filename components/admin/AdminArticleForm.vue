@@ -6,6 +6,8 @@ const props = defineProps<{
   articleId?: number | string
   termId?: number | string
   inlineMode?: boolean
+  seamlessMode?: boolean
+  initialHtml?: string
 }>()
 
 const emit = defineEmits<{
@@ -18,11 +20,12 @@ const store = userStore()
 const toast = useToast()
 
 const isEditing = computed(() => props.articleId !== undefined)
+const pending = ref(false)
 
 const title = ref('')
 const titleRu = ref('')
 const titleZh = ref('')
-const htmlContent = ref('')
+const htmlContent = ref(props.initialHtml || '')
 const htmlContentRu = ref('')
 const htmlContentZh = ref('')
 const articleSlug = ref('')
@@ -55,7 +58,7 @@ const fullArticle = ref<any>(null)
 const slug = computed(() => fullArticle.value?.slug || '')
 
 // Categories list
-const { data: categoriesData } = await useFetch('/api/categories', {
+const { data: categoriesData } = useFetch('/api/categories', {
   headers: store.getAuthHeader()
 })
 const categories = computed(() => (Array.isArray(categoriesData.value) ? categoriesData.value : []) as any[])
@@ -69,8 +72,10 @@ const syncSlugRu = ref(true)
 const syncSlugZh = ref(true)
 
 async function loadArticle() {
-  if (isEditing.value) {
-    syncSlug.value = false
+  pending.value = true
+  try {
+    if (isEditing.value) {
+      syncSlug.value = false
     syncSlugRu.value = false
     syncSlugZh.value = false
 
@@ -81,8 +86,9 @@ async function loadArticle() {
       fullArticle.value = data
       title.value = data.title || ''
       titleRu.value = data.title_ru || ''
-      titleZh.value = data.title_zh || ''
-      htmlContent.value = data.html_content || ''
+      if (htmlContent.value === props.initialHtml || htmlContent.value === '') {
+        htmlContent.value = data.html_content || ''
+      }
       htmlContentRu.value = data.html_content_ru || ''
       htmlContentZh.value = data.html_content_zh || ''
       articleSlug.value = data.slug || ''
@@ -156,6 +162,9 @@ async function loadArticle() {
         }
       }
     }
+  } // close else block
+  } finally {
+    pending.value = false
   }
 }
 
@@ -450,8 +459,15 @@ function handleOdtParsed(metadata: any) {
 <template>
   <div 
     class="gv-admin-form flex flex-col h-full bg-white dark:bg-[#111113] relative overflow-hidden" 
-    :class="{ 'gv-admin-form--fullscreen': isFullscreen, 'gv-admin-form--inline': inlineMode }"
+    :class="{ 
+      'gv-admin-form--fullscreen': isFullscreen, 
+      'gv-admin-form--inline': inlineMode && !seamlessMode,
+      'gv-admin-form--seamless': seamlessMode
+    }"
     tabindex="-1"
+    @keydown.ctrl.s.prevent="save"
+    @keydown.meta.s.prevent="save"
+    @keydown.esc.prevent="$emit('cancel-inline')"
   >
     <!-- Fullscreen loader -->
     <div v-if="pending" class="absolute inset-0 z-50 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm transition-opacity duration-200">
@@ -666,8 +682,8 @@ function handleOdtParsed(metadata: any) {
 
       <!-- Editor area -->
       <div class="editor-main-container">
-        <!-- Inline Mode Toolbar -->
-        <div v-if="inlineMode" class="flex items-center justify-between p-2 bg-gray-50 dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800">
+        <!-- Inline Mode Toolbar (Hidden in seamless mode) -->
+        <div v-if="inlineMode && !seamlessMode" class="flex items-center justify-between p-2 bg-gray-50 dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800">
           <div class="flex items-center gap-2">
             <span class="text-xs font-bold text-gray-500 uppercase">INLINE EDITOR</span>
             <div class="flex gap-1 ml-4 bg-gray-200/50 dark:bg-black/20 p-1 rounded-md">
@@ -691,6 +707,7 @@ function handleOdtParsed(metadata: any) {
           v-model:zh="htmlContentZh"
           :active-lang="activeTab"
           :article-id="isEditing ? Number(articleId) : undefined"
+          :seamless-mode="seamlessMode"
           @show-term-modal="showTermModal = true"
           @show-book-modal="showBookModal = true"
           @show-article-modal="showArticleModal = true"
@@ -707,6 +724,29 @@ function handleOdtParsed(metadata: any) {
 
     <!-- Modal for articles -->
     <ArticleSelectorModal v-model="showArticleModal" :exclude-id="isEditing ? Number(articleId) : undefined" @select="insertArticle" />
+
+    <!-- Floating Action Bar for Seamless Mode -->
+    <Teleport to="body">
+      <Transition name="fade-up">
+        <div v-if="seamlessMode" class="gv-seamless-action-bar flex items-center justify-between p-2 shadow-2xl z-50">
+          <div class="flex gap-1 bg-white/10 dark:bg-black/20 p-1 rounded-lg backdrop-blur-md">
+            <button v-for="l in ['en','ru','zh']" :key="l" @click="activeTab = l as any"
+              class="px-3 py-1 text-xs font-bold rounded-md uppercase transition-all duration-300"
+              :class="activeTab === l ? 'bg-white dark:bg-zinc-800 shadow-md text-sky-600 dark:text-sky-400' : 'text-gray-600 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-white/5'">
+              {{ l }}
+            </button>
+          </div>
+          <div class="flex items-center gap-3">
+            <button @click="$emit('cancel-inline')" class="px-4 py-1.5 text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors">Отмена</button>
+            <button @click="save" :disabled="isSaving" class="gv-seamless-save-btn group flex items-center gap-2 px-5 py-1.5 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-full text-xs shadow-lg shadow-sky-500/20 transition-all duration-300">
+              <UIcon v-if="!isSaving" name="i-heroicons-check-circle" class="w-4 h-4 transition-transform group-hover:scale-110" />
+              <UIcon v-else name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
+              <span>Сохранить</span>
+            </button>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -737,6 +777,53 @@ function handleOdtParsed(metadata: any) {
   height: calc(100vh - var(--header-height) - 2rem);
   min-height: 600px;
   border-radius: 12px;
+}
+
+.gv-admin-form--seamless {
+  background: transparent !important;
+  height: auto;
+  min-height: 200px;
+}
+
+/* Floating Action Bar */
+:global(.gv-seamless-action-bar) {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 100px;
+  width: 90%;
+  max-width: 400px;
+}
+/* Адаптация для мобильных: избегание перекрытия клавиатурой (если возможно) и уменьшение отступов */
+@media (max-width: 640px) {
+  :global(.gv-seamless-action-bar) {
+    width: calc(100% - 2rem);
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    padding: 0.5rem;
+    border-radius: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+}
+:global(.dark .gv-seamless-action-bar) {
+  background: rgba(24, 24, 27, 0.75);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.fade-up-enter-active,
+.fade-up-leave-active {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fade-up-enter-from,
+.fade-up-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 20px) scale(0.95);
 }
 
 .editor-topbar {

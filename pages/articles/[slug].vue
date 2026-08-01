@@ -83,13 +83,28 @@
         </div>
         <!-- Article HTML Content -->
         <template v-if="isEditingInPlace">
-          <div class="not-prose mb-8">
-            <AdminArticleForm 
-              :article-id="article.id" 
-              :inline-mode="true" 
-              @cancel-inline="isEditingInPlace = false" 
-              @article-saved="onInlineSaved" 
-            />
+          <!-- Seamless wrapper -->
+          <div class="gv-seamless-editor-wrapper">
+            <Suspense>
+              <AdminArticleForm 
+                :article-id="article.id" 
+                :inline-mode="true" 
+                :seamless-mode="true"
+                :initial-html="article.html_content"
+                @cancel-inline="isEditingInPlace = false" 
+                @article-saved="onInlineSaved" 
+              />
+              <template #fallback>
+                <div class="flex flex-col items-center justify-center min-h-[400px] w-full rounded-2xl bg-white/40 dark:bg-zinc-900/40 backdrop-blur-md border border-gray-100 dark:border-zinc-800 animate-pulse my-4">
+                  <div class="relative flex h-16 w-16 items-center justify-center mb-6">
+                    <div class="absolute inset-0 rounded-full border-t-2 border-sky-400 animate-[spin_1.5s_linear_infinite]"></div>
+                    <div class="absolute inset-2 rounded-full border-r-2 border-indigo-400 animate-[spin_2s_linear_infinite_reverse]"></div>
+                    <UIcon name="i-heroicons-pencil-square" class="h-6 w-6 text-sky-500/80" />
+                  </div>
+                  <p class="text-[11px] font-bold tracking-[0.2em] text-gray-400 dark:text-gray-500 uppercase">Подготовка редактора</p>
+                </div>
+              </template>
+            </Suspense>
           </div>
         </template>
         <template v-else>
@@ -280,9 +295,15 @@ const canEdit = computed(() => {
   return role === 'editor' || role === 'admin'
 })
 
-function onInlineSaved() {
+async function onInlineSaved() {
+  // Clear Nuxt's internal payload cache to guarantee a hard fetch
+  clearNuxtData(`article-${slug.value}`)
+  
+  // Await the fetch so that the DOM updates with fresh data BEFORE we close the editor
+  await refresh()
+  
+  // Now close the editor, revealing the freshly fetched content seamlessly
   isEditingInPlace.value = false
-  refresh()
 }
 
 // ─── Article view state persistence ───
@@ -475,7 +496,14 @@ const articleTitleHighlightHtml = computed((): string | null => {
 const { data: articleData, pending, error, refresh: nuxtRefresh } = await useAsyncData(
   `article-${slug.value}`,
   () => $fetch<any>(`/api/articles/${slug.value}`, {
-    params: { lang: langStore.currentLang }
+    params: { 
+      lang: langStore.currentLang,
+      _t: import.meta.client ? Date.now() : undefined 
+    },
+    headers: {
+      ...store.getAuthHeader(),
+      'Cache-Control': 'no-cache'
+    }
   })
 )
 

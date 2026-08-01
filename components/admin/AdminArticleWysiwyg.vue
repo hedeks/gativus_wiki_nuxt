@@ -4,6 +4,7 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted, reactive } from
 const props = defineProps<{
   activeLang: 'en' | 'ru' | 'zh'
   articleId?: number
+  seamlessMode?: boolean
 }>()
 
 const htmlEn = defineModel<string>('en', { default: '' })
@@ -59,6 +60,14 @@ const previewRef = ref<HTMLDivElement | null>(null)
 const previewEditMode = ref(false)
 let _syncingPreview = false
 
+// Force seamless mode
+watch(() => props.seamlessMode, (val) => {
+  if (val) {
+    viewMode.value = 'preview'
+    previewEditMode.value = true
+  }
+}, { immediate: true })
+
 function onPreviewInput(e: Event) {
   if (_syncingPreview) return
   const html = (e.target as HTMLDivElement).innerHTML
@@ -77,12 +86,24 @@ watch(previewEditMode, (val) => {
   if (val) nextTick(syncPreviewContent)
 })
 
+watch(activeHtmlContent, (val) => {
+  if (previewEditMode.value && previewRef.value && previewRef.value.innerHTML !== val) {
+    syncPreviewContent()
+  }
+})
+
 watch(() => props.activeLang, () => {
   if (previewEditMode.value) nextTick(syncPreviewContent)
 })
 
 watch(viewMode, (val) => {
   if (val !== 'preview') previewEditMode.value = false
+})
+
+onMounted(() => {
+  if (previewEditMode.value) {
+    nextTick(syncPreviewContent)
+  }
 })
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -363,9 +384,20 @@ function updateContextToolbars() {
   if (!previewRef.value?.contains(range.commonAncestorContainer)) { selBubble.show = false; return }
   const rect = range.getBoundingClientRect()
   if (rect.width === 0) { selBubble.show = false; return }
-  const bw = 280
-  const left = Math.max(8, Math.min(rect.left + rect.width / 2 - bw / 2, window.innerWidth - bw - 8))
-  selBubble.style = `top:${rect.top - 46}px;left:${left}px`
+  
+  // Для мобильных устройств и позиционирования с transform: translateX(-50%)
+  // мы просто ставим left по центру выделения.
+  let left = rect.left + rect.width / 2
+  // Ограничиваем, чтобы меню не уехало за края экрана на мобилках
+  left = Math.max(160, Math.min(left, window.innerWidth - 160))
+  
+  let top = rect.top - 54
+  // Если выделение слишком высоко и тулбар уходит за верх экрана, показываем его ПОД текстом
+  if (top < 10) {
+    top = rect.bottom + 10
+  }
+
+  selBubble.style = `top:${top}px;left:${left}px`
   selBubble.show = true
 }
 
@@ -682,9 +714,9 @@ defineExpose({
 </script>
 
 <template>
-  <div class="wysiwyg-container" @keydown="onEditorKeydown" tabindex="-1">
+  <div class="wysiwyg-container" :class="{ 'wysiwyg-container--seamless': seamlessMode }" @keydown="onEditorKeydown" tabindex="-1">
     <!-- Inline Toolbar -->
-    <div class="editor-toolbar">
+    <div v-if="!seamlessMode" class="editor-toolbar">
       <div class="toolbar-left">
         <div class="toolbar-group">
           <button @click="insertTag('h2')" title="Заголовок 2">H2</button>
@@ -961,25 +993,37 @@ defineExpose({
       </div>
     </Teleport>
 
-    <!-- Floating selection bubble -->
+    <!-- Floating selection bubble (Premium Luxe UI) -->
     <Teleport to="body">
-      <div v-if="selBubble.show" class="float-sel-bubble" :style="selBubble.style">
-        <button @mousedown.prevent @click="applyFormat('strong')" title="Жирный"><strong>B</strong></button>
-        <button @mousedown.prevent @click="applyFormat('em')" title="Курсив"><em>I</em></button>
-        <button @mousedown.prevent @click="applyFormat('u')" title="Подчёркивание"><u>U</u></button>
-        <button @mousedown.prevent @click="applyFormat('s')" title="Зачёркивание"><s>S</s></button>
-        <button @mousedown.prevent @click="applyFormat('code')" title="Код"><UIcon name="i-heroicons-code-bracket" /></button>
-        <div class="float-sep"></div>
-        <button @mousedown.prevent @click="openTermModal" title="Термин">
-          <UIcon name="i-heroicons-academic-cap" class="text-sky-500" />
-        </button>
-        <button @mousedown.prevent @click="openBookModal" title="Книга">
-          <UIcon name="i-heroicons-book-open" class="text-indigo-500" />
-        </button>
-        <button @mousedown.prevent @click="openArticleModal" title="Статья">
-          <UIcon name="i-heroicons-document-text" class="text-violet-500" />
-        </button>
-      </div>
+      <Transition name="fade-pop">
+        <div v-if="selBubble.show" class="gv-luxe-sel-bubble" :style="selBubble.style" @mousedown.prevent>
+          <div class="gv-luxe-sel-group">
+            <button @mousedown.prevent @click="applyFormat('h2')" title="Заголовок 2" class="gv-luxe-btn">H2</button>
+            <button @mousedown.prevent @click="applyFormat('h3')" title="Заголовок 3" class="gv-luxe-btn">H3</button>
+            <button @mousedown.prevent @click="applyFormat('blockquote')" title="Цитата" class="gv-luxe-btn"><UIcon name="i-heroicons-chat-bubble-bottom-center-text" class="w-4 h-4" /></button>
+          </div>
+          <div class="gv-luxe-sep"></div>
+          <div class="gv-luxe-sel-group">
+            <button @mousedown.prevent @click="applyFormat('strong')" title="Жирный" class="gv-luxe-btn"><strong>B</strong></button>
+            <button @mousedown.prevent @click="applyFormat('em')" title="Курсив" class="gv-luxe-btn"><em>I</em></button>
+            <button @mousedown.prevent @click="applyFormat('u')" title="Подчёркивание" class="gv-luxe-btn"><u>U</u></button>
+            <button @mousedown.prevent @click="applyFormat('s')" title="Зачёркивание" class="gv-luxe-btn"><s>S</s></button>
+            <button @mousedown.prevent @click="applyFormat('code')" title="Код" class="gv-luxe-btn"><UIcon name="i-heroicons-code-bracket" class="w-4 h-4" /></button>
+          </div>
+          <div class="gv-luxe-sep"></div>
+          <div class="gv-luxe-sel-group">
+            <button @mousedown.prevent @click="openTermModal" title="Термин" class="gv-luxe-btn text-sky-500">
+              <UIcon name="i-heroicons-academic-cap" class="w-4 h-4" />
+            </button>
+            <button @mousedown.prevent @click="openBookModal" title="Книга" class="gv-luxe-btn text-indigo-500">
+              <UIcon name="i-heroicons-book-open" class="w-4 h-4" />
+            </button>
+            <button @mousedown.prevent @click="openArticleModal" title="Статья" class="gv-luxe-btn text-violet-500">
+              <UIcon name="i-heroicons-document-text" class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </Transition>
     </Teleport>
 
     <!-- Reindex modal -->
@@ -1000,7 +1044,19 @@ defineExpose({
 </template>
 
 <style scoped>
-.wysiwyg-container { display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; overflow: hidden; }
+.wysiwyg-container {
+  display: flex; flex-direction: column; height: 100%; overflow: hidden; background: #fff; position: relative;
+}
+.wysiwyg-container--seamless {
+  background: transparent !important;
+  overflow: visible;
+}
+.dark .wysiwyg-container { background: #111113; }
+.dark .wysiwyg-container--seamless { background: transparent !important; }
+
+.editor-toolbar {
+  display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: #fafafa; border-bottom: 1px solid #e5e7eb; flex-wrap: wrap; gap: 8px; flex-shrink: 0;
+}
 
 /* ?oC?oC?oC Top Bar ?oC?oC?oC */
 .editor-topbar {
@@ -1206,16 +1262,6 @@ defineExpose({
   color: #4ade80;
 }
 
-.wysiwyg-container {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
 .preview-pane--editable {
   cursor: text;
 }
@@ -1324,20 +1370,6 @@ defineExpose({
   overflow: hidden;
   display: flex;
   flex-direction: column;
-}
-
-/* ?oC?oC?oC Toolbar ?oC?oC?oC */
-.editor-toolbar { justify-content: space-between;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e5e7eb;
-}
-.dark .editor-toolbar { justify-content: space-between;
-  background: #1e1e21;
-  border-bottom-color: #2a2a2e;
 }
 
 .toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .toolbar-group {
@@ -1476,6 +1508,21 @@ defineExpose({
   background: #18181b;
   border-color: #27272a;
   box-shadow: 0 1px 2px 0 rgba(0,0,0,0.25);
+}
+
+/* Seamless Mode Overrides */
+.wysiwyg-container--seamless .preview-pane {
+  background: transparent !important;
+  overflow: visible !important;
+}
+.wysiwyg-container--seamless .preview-content {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  max-width: none !important;
+  min-height: 200px !important;
 }
 
 /* ?oC?oC?oC Presentation Upload ?oC?oC?oC */
@@ -1898,6 +1945,84 @@ defineExpose({
   background: #e5e7eb;
   margin: 0 2px;
   flex-shrink: 0;
+}
+
+/* Premium Luxe Selection Bubble */
+:global(.gv-luxe-sel-bubble) {
+  position: fixed;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 10px 40px -10px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.05);
+  transform: translateX(-50%);
+  transition: opacity 0.2s, transform 0.2s;
+}
+:global(.dark .gv-luxe-sel-bubble) {
+  background: rgba(24, 24, 27, 0.85);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+}
+
+:global(.gv-luxe-sel-group) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+:global(.gv-luxe-btn) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+:global(.gv-luxe-btn:hover) {
+  background: rgba(0,0,0,0.04);
+  color: var(--gv-primary);
+  transform: translateY(-1px);
+}
+:global(.dark .gv-luxe-btn) {
+  color: #d1d5db;
+}
+:global(.dark .gv-luxe-btn:hover) {
+  background: rgba(255,255,255,0.05);
+  color: var(--gv-primary);
+}
+
+:global(.gv-luxe-sep) {
+  width: 1px;
+  height: 24px;
+  background: rgba(0,0,0,0.08);
+  margin: 0 8px;
+  border-radius: 1px;
+}
+:global(.dark .gv-luxe-sep) {
+  background: rgba(255,255,255,0.1);
+}
+
+:global(.fade-pop-enter-active),
+:global(.fade-pop-leave-active) {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+:global(.fade-pop-enter-from),
+:global(.fade-pop-leave-to) {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px) scale(0.95);
 }
 
 /* ?oC?oC?oC Responsive ?oC?oC?oC */
