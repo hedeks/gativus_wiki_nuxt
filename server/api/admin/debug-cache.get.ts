@@ -1,0 +1,1 @@
+export default defineEventHandler(async (event) => { const storage = useStorage('cache'); const keys = await storage.getKeys('nitro:handlers:articles'); const removed = []; for (const key of keys) { if (key.includes('domz')) { await storage.removeItem(key); removed.push(key); } } return { removed, remaining: await storage.getKeys('nitro:handlers:articles') } })

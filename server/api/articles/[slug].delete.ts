@@ -90,11 +90,17 @@ export default defineEventHandler(async (event) => {
 
   // Invalidate cache
   const storage = useStorage('cache')
-  const langs = ['en', 'ru', 'zh']
-  for (const l of langs) {
-    await storage.removeItem(`nitro:handlers:articles:${slug}:role_editor:lang_${l}.json`)
-    await storage.removeItem(`nitro:handlers:articles:${slug}:role_guest:lang_${l}.json`)
+  const clearKeysForSlug = async (s: string) => {
+    const keys = await storage.getKeys('nitro:handlers:articles')
+    const prefix = `nitro:handlers:articles:${s}_role_`
+    for (const key of keys) {
+      if (key.startsWith(prefix) || key.startsWith(`nitro:handlers:articles:${s}.json`)) {
+        await storage.removeItem(key)
+      }
+    }
   }
+
+  await clearKeysForSlug(slug)
 
   return { message: 'Статья удалена' }
 })

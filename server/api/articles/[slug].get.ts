@@ -189,12 +189,16 @@ export default defineCachedEventHandler(async (event) => {
 }, {
   maxAge: 3600,
   name: 'articles',
+  shouldBypassCache: (event) => {
+    const role = event.context.auth?.role
+    return role === 'admin' || role === 'editor'
+  },
   getKey: (event) => {
     const role = event.context.auth?.role || 'guest'
     const slug = getRouterParam(event, 'slug')
     const lang = getQuery(event).lang || 'en'
     // Normalize lang to prevent cache key explosion
     const safeLang = ['en', 'ru', 'zh'].includes(lang as string) ? lang : 'en'
-    return `${slug}:role_${role}:lang_${safeLang}`
+    return `${slug}_role_${role}_lang_${safeLang}`
   }
 })

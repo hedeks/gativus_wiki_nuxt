@@ -116,15 +116,26 @@ export default defineEventHandler(async (event) => {
   await db.prepare('DELETE FROM books WHERE id = ?').run(book.id)
 
   const storage = useStorage('cache')
-  const langs = ['en', 'ru', 'zh']
-  for (const l of langs) {
-    await storage.removeItem(`nitro:handlers:books:${slug}:role_editor:lang_${l}.json`)
-    await storage.removeItem(`nitro:handlers:books:${slug}:role_guest:lang_${l}.json`)
+  const clearKeysForSlug = async (s: string) => {
+    const keys = await storage.getKeys('nitro:handlers:books')
+    const prefix = `nitro:handlers:books:${s}_role_`
+    for (const key of keys) {
+      if (key.startsWith(prefix) || key.startsWith(`nitro:handlers:books:${s}.json`)) {
+        await storage.removeItem(key)
+      }
+    }
+  }
+
+  await clearKeysForSlug(book.slug)
     
-    // Also invalidate cache for child articles
-    for (const article of articlesToInvalidate) {
-      await storage.removeItem(`nitro:handlers:articles:${article.slug}:role_editor:lang_${l}.json`)
-      await storage.removeItem(`nitro:handlers:articles:${article.slug}:role_guest:lang_${l}.json`)
+  // Also invalidate cache for child articles
+  const articleKeys = await storage.getKeys('nitro:handlers:articles')
+  for (const article of articlesToInvalidate) {
+    const prefix = `nitro:handlers:articles:${article.slug}_role_`
+    for (const key of articleKeys) {
+      if (key.startsWith(prefix) || key.startsWith(`nitro:handlers:articles:${article.slug}.json`)) {
+        await storage.removeItem(key)
+      }
     }
   }
 

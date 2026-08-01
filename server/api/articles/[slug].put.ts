@@ -114,14 +114,23 @@ export default defineEventHandler(async (event) => {
 
   // Invalidate cache
   const storage = useStorage('cache')
-  const langs = ['en', 'ru', 'zh']
-  for (const l of langs) {
-    await storage.removeItem(`nitro:handlers:articles:${existing.slug}:role_editor:lang_${l}.json`)
-    await storage.removeItem(`nitro:handlers:articles:${existing.slug}:role_guest:lang_${l}.json`)
-    if (newSlug !== existing.slug) {
-      await storage.removeItem(`nitro:handlers:articles:${newSlug}:role_editor:lang_${l}.json`)
-      await storage.removeItem(`nitro:handlers:articles:${newSlug}:role_guest:lang_${l}.json`)
+  
+  const clearKeysForSlug = async (s: string) => {
+    const keys = await storage.getKeys('nitro:handlers:articles')
+    const prefix = `nitro:handlers:articles:${s}_role_`
+    let deleted = 0
+    for (const key of keys) {
+      if (key.startsWith(prefix) || key.startsWith(`nitro:handlers:articles:${s}.json`)) {
+        await storage.removeItem(key)
+        deleted++
+      }
     }
+    console.log(`[Cache Clear] Removed ${deleted} keys for prefix ${prefix}`)
+  }
+
+  await clearKeysForSlug(existing.slug)
+  if (newSlug !== existing.slug) {
+    await clearKeysForSlug(newSlug)
   }
 
   return {

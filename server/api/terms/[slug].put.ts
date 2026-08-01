@@ -207,14 +207,19 @@ export default defineEventHandler(async (event) => {
 
   // Invalidate cache
   const storage = useStorage('cache')
-  const langs = ['en', 'ru', 'zh']
-  for (const l of langs) {
-    await storage.removeItem(`nitro:handlers:terms:${existing.slug}:role_editor:lang_${l}.json`)
-    await storage.removeItem(`nitro:handlers:terms:${existing.slug}:role_guest:lang_${l}.json`)
-    if (newSlug !== existing.slug) {
-      await storage.removeItem(`nitro:handlers:terms:${newSlug}:role_editor:lang_${l}.json`)
-      await storage.removeItem(`nitro:handlers:terms:${newSlug}:role_guest:lang_${l}.json`)
+  const clearKeysForSlug = async (s: string) => {
+    const keys = await storage.getKeys('nitro:handlers:terms')
+    const prefix = `nitro:handlers:terms:${s}_role_`
+    for (const key of keys) {
+      if (key.startsWith(prefix) || key.startsWith(`nitro:handlers:terms:${s}.json`)) {
+        await storage.removeItem(key)
+      }
     }
+  }
+
+  await clearKeysForSlug(existing.slug)
+  if (newSlug !== existing.slug) {
+    await clearKeysForSlug(newSlug)
   }
 
   return { slug: newSlug, message: 'Термин обновлён' }

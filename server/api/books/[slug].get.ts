@@ -170,6 +170,10 @@ export default defineCachedEventHandler(async (event) => {
 }, {
   maxAge: 3600,
   name: 'books',
+  shouldBypassCache: (event) => {
+    const role = event.context.auth?.role
+    return role === 'admin' || role === 'editor'
+  },
   getKey: (event) => {
     const role = event.context.auth?.role || 'guest'
     const slug = getRouterParam(event, 'slug')

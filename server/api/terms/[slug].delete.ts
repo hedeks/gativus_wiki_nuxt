@@ -109,11 +109,17 @@ export default defineEventHandler(async (event) => {
 
   // Invalidate cache
   const storage = useStorage('cache')
-  const langs = ['en', 'ru', 'zh']
-  for (const l of langs) {
-    await storage.removeItem(`nitro:handlers:terms:${slug}:role_editor:lang_${l}.json`)
-    await storage.removeItem(`nitro:handlers:terms:${slug}:role_guest:lang_${l}.json`)
+  const clearKeysForSlug = async (s: string) => {
+    const keys = await storage.getKeys('nitro:handlers:terms')
+    const prefix = `nitro:handlers:terms:${s}_role_`
+    for (const key of keys) {
+      if (key.startsWith(prefix) || key.startsWith(`nitro:handlers:terms:${s}.json`)) {
+        await storage.removeItem(key)
+      }
+    }
   }
+
+  await clearKeysForSlug(term.slug)
 
   return { message: 'Термин удалён' }
 })
