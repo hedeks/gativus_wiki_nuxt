@@ -45,6 +45,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useLanguageStore } from '~/stores/language'
+import { userStore as useUserStore } from '~/stores/userStore'
 
 const props = defineProps<{
   modelValue: boolean
@@ -53,6 +54,7 @@ const props = defineProps<{
 
 const emit = defineEmits(['update:modelValue', 'select'])
 const langStore = useLanguageStore()
+const authStore = useUserStore()
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -62,7 +64,8 @@ const isOpen = computed({
 const query = ref('')
 
 const { data: articles, pending } = await useFetch<any[]>('/api/articles/all', {
-  query: computed(() => ({ lang: langStore.currentLang }))
+  query: computed(() => ({ lang: langStore.currentLang })),
+  headers: authStore.getAuthHeader()
 })
 
 const results = computed(() => {

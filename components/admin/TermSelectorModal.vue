@@ -63,7 +63,7 @@ const { data, pending } = await useAsyncData(
   { watch: [dQuery] }
 )
 
-const results = computed(() => data.value || [])
+const results = computed(() => data.value?.items || [])
 
 function select(term: any) {
   emit('select', term)
