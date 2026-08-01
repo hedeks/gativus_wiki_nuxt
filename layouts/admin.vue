@@ -117,6 +117,7 @@
     </div>
     
     <theTermPopover />
+    <AdminReauthModal />
   </div>
 </template>
 
