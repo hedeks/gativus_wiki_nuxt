@@ -40,6 +40,16 @@
     <div class="card-arrow">
       <UIcon name="i-heroicons-arrow-right" class="w-4 h-4" />
     </div>
+
+    <div
+      v-if="previewLabel"
+      role="button"
+      class="preview-btn"
+      :title="previewLabel"
+      @click.stop.prevent="$emit('preview')"
+    >
+      <UIcon name="i-heroicons-ellipsis-horizontal" class="w-4 h-4" />
+    </div>
   </NuxtLink>
 </template>
 
@@ -68,12 +78,17 @@ withDefaults(
     index?: string | number
     variant?: KnowledgeEntityVariant
     categoryLinkKind?: CategoryLinkKind
+    previewLabel?: string
   }>(),
   {
     variant: 'book',
     categoryLinkKind: 'virtual',
   }
 )
+
+defineEmits<{
+  preview: []
+}>()
 </script>
 
 <style scoped>
@@ -368,5 +383,45 @@ withDefaults(
     font-size: 12px;
     line-height: 1.45;
   }
+
+  .preview-btn {
+    opacity: 0.5;
+  }
+}
+
+/* Preview button */
+.preview-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0;
+  z-index: 10;
+}
+
+.list-item-card:hover .preview-btn,
+.preview-btn:hover {
+  opacity: 1;
+}
+
+.preview-btn:hover {
+  color: var(--accent);
+  background: var(--accent-arrow-bg);
+  border-color: color-mix(in srgb, var(--accent) 20%, transparent);
+  transform: scale(1.1);
+}
+
+.dark .preview-btn:hover {
+  background: var(--accent-arrow-bg-dark);
 }
 </style>

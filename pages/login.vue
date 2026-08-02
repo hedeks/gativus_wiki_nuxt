@@ -6,6 +6,9 @@ definePageMeta({
 })
 
 const store = userStore()
+import { useLanguageStore } from '~/stores/language'
+const langStore = useLanguageStore()
+
 store.checkAuth()
 if (store.isLoggedIn) {
   await navigateTo('/profile')
@@ -15,24 +18,57 @@ const toast = useToast()
 
 const email = ref('')
 const password = ref('')
-const loginName = ref('')
-const isSignup = ref(false)
 const errorMain = ref<string | null>(null)
 const isLoading = ref(false)
 
-const pageTitle = computed(() => 'Вход')
+const uiDict = {
+  en: {
+    title: 'Sign In',
+    subtitle: 'Sign in to access your profile and private areas.',
+    email: 'Email address',
+    password: 'Password',
+    emailPlaceholder: 'you@example.com',
+    submit: 'Sign In',
+    noReg: 'Registration is temporarily closed.',
+    footerMsg: 'Viewing some content and profile features requires sign in.',
+    success: 'Signed in as:',
+    error: 'Login failed',
+  },
+  ru: {
+    title: 'Вход',
+    subtitle: 'Войдите, чтобы открыть профиль и закрытые разделы.',
+    email: 'Электронная почта',
+    password: 'Пароль',
+    emailPlaceholder: 'you@example.com',
+    submit: 'Войти',
+    noReg: 'Регистрация временно закрыта.',
+    footerMsg: 'Просмотр части контента и личного кабинета доступен после входа.',
+    success: 'Вы вошли:',
+    error: 'Ошибка входа',
+  },
+  zh: {
+    title: '登录',
+    subtitle: '登录以访问您的个人资料和私人区域。',
+    email: '电子邮件地址',
+    password: '密码',
+    emailPlaceholder: 'you@example.com',
+    submit: '登录',
+    noReg: '注册暂时关闭。',
+    footerMsg: '查看某些内容和个人资料功能需要登录。',
+    success: '已登录：',
+    error: '登录失败',
+  }
+}
+
+const t = computed(() => uiDict[langStore.currentLang as keyof typeof uiDict] || uiDict.en)
+
 useHead({
-  title: pageTitle,
+  title: computed(() => t.value.title),
 })
 
-watch(isSignup, () => {
+watch([email, password], () => {
   errorMain.value = null
 })
-
-watch([email, password, loginName], () => {
-  errorMain.value = null
-})
-
 
 async function loginFunc(): Promise<void> {
   isLoading.value = true
@@ -49,7 +85,7 @@ async function loginFunc(): Promise<void> {
     if (user) {
       store.setUser(user, data.res.access_token)
       toast.add({
-        title: `Вы вошли: ${user.email}`,
+        title: `${t.value.success} ${user.email}`,
         ui: {
           background: 'bg-white dark:bg-zinc-900',
           progress: { background: 'bg-sky-600 dark:bg-sky-400' },
@@ -61,7 +97,7 @@ async function loginFunc(): Promise<void> {
     const msg = err && typeof err === 'object' && 'data' in err
       ? (err as { data?: { message?: string } }).data?.message
       : undefined
-    errorMain.value = msg || 'Ошибка входа'
+    errorMain.value = msg || t.value.error
   } finally {
     isLoading.value = false
   }
@@ -79,16 +115,16 @@ async function onSubmit(): Promise<void> {
     >
       <div class="auth-card-head border-b border-zinc-200/70 dark:border-zinc-800 px-6 py-5 bg-[var(--gv-surface-header)]">
         <h1 class="text-xl font-bold tracking-tight text-[var(--gv-text-primary)]">
-          Вход
+          {{ t.title }}
         </h1>
         <p class="text-sm text-[var(--gv-text-secondary)] mt-1">
-          Войдите, чтобы открыть профиль и закрытые разделы.
+          {{ t.subtitle }}
         </p>
       </div>
 
       <form class="auth-card-body px-6 py-6 flex flex-col gap-4" @submit.prevent="onSubmit">
         <label class="auth-field">
-          <span class="auth-label">Электронная почта</span>
+          <span class="auth-label">{{ t.email }}</span>
           <input
             v-model="email"
             type="email"
@@ -96,13 +132,12 @@ async function onSubmit(): Promise<void> {
             autocomplete="email"
             required
             class="auth-input"
-            placeholder="you@example.com"
+            :placeholder="t.emailPlaceholder"
           >
         </label>
 
-
         <label class="auth-field">
-          <span class="auth-label">Пароль</span>
+          <span class="auth-label">{{ t.password }}</span>
           <input
             v-model="password"
             type="password"
@@ -132,12 +167,12 @@ async function onSubmit(): Promise<void> {
           class="mt-2 shadow-lg shadow-sky-500/15"
           :loading="isLoading"
         >
-          Войти
+          {{ t.submit }}
         </GvButton>
       </form>
 
       <div class="auth-card-foot px-6 py-4 border-t border-zinc-200/70 dark:border-zinc-800 text-center">
-        <span class="text-sm text-[var(--gv-text-secondary)]">Регистрация временно закрыта.</span>
+        <span class="text-sm text-[var(--gv-text-secondary)]">{{ t.noReg }}</span>
       </div>
     </div>
 
@@ -145,7 +180,7 @@ async function onSubmit(): Promise<void> {
       v-if="!store.isLoggedIn"
       class="mt-6 text-center text-sm text-[var(--gv-text-secondary)] max-w-md"
     >
-      Просмотр части контента и личного кабинета доступен после входа.
+      {{ t.footerMsg }}
     </p>
   </div>
 </template>
@@ -202,23 +237,6 @@ async function onSubmit(): Promise<void> {
   color: #fca5a5;
   background: color-mix(in srgb, #7f1d1d 45%, transparent);
   border-color: color-mix(in srgb, #b91c1c 50%, transparent);
-}
-
-.auth-toggle {
-  width: 100%;
-  background: none;
-  border: none;
-  padding: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--gv-primary);
-  cursor: pointer;
-  border-radius: var(--gv-radius-control);
-  transition: background 0.15s ease;
-}
-
-.auth-toggle:hover {
-  background: color-mix(in srgb, var(--gv-primary) 12%, transparent);
 }
 
 .auth-card-foot {

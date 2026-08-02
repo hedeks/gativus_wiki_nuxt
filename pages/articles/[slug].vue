@@ -1,6 +1,7 @@
 <template>
   <div
     class="flex flex-col p-3 lg:p-10 flex-wrap-reverse lg:grid lg:grid-cols-10 lg:flex-nowrap gap-10 prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert w-full prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold">
+    <div class="fixed top-0 lg:top-[var(--header-height)] left-0 h-1 bg-[var(--gv-primary)] z-[9999] transition-all duration-150 ease-out" :style="{ width: scrollProgress + '%' }"></div>
     <theLeftQuizSelector
       @changeView="changeView"
       :is-theory="isTheory"
@@ -67,17 +68,29 @@
               <span v-if="articleTitleHighlightHtml !== null" v-html="articleTitleHighlightHtml" />
               <template v-else>{{ article.title }}</template>
             </h1>
-            <div v-if="canEdit" class="hidden md:block shrink-0 not-prose mt-1">
+            <div class="flex items-center gap-2 mt-1 shrink-0 not-prose">
               <GvButton 
-                v-if="!isEditingInPlace" 
-                @click="isEditingInPlace = true" 
-                color="sky" 
-                variant="soft" 
+                v-if="store.isLoggedIn"
+                @click="toggleBookmark" 
+                :color="isBookmarked ? 'sky' : 'gray'" 
+                :variant="isBookmarked ? 'solid' : 'soft'" 
                 size="xs" 
-                icon="i-heroicons-pencil-square"
+                :icon="isBookmarked ? 'i-heroicons-bookmark-solid' : 'i-heroicons-bookmark'"
               >
-                Редактировать
+                <span class="hidden md:inline">{{ isBookmarked ? t.bookmarked : t.bookmark }}</span>
               </GvButton>
+              <div v-if="canEdit" class="hidden md:block">
+                <GvButton 
+                  v-if="!isEditingInPlace" 
+                  @click="isEditingInPlace = true" 
+                  color="sky" 
+                  variant="soft" 
+                  size="xs" 
+                  icon="i-heroicons-pencil-square"
+                >
+                  Редактировать
+                </GvButton>
+              </div>
             </div>
           </div>
         </div>
@@ -157,6 +170,7 @@
         </div>
       </div>
       <theToc
+        :key="tocKey"
         v-if="tocLinks.length"
         :activeID="activeID"
         :has-presentation="hasPresentation"
@@ -289,11 +303,31 @@ import { userStore } from '~/stores/userStore'
 import AdminArticleForm from '~/components/admin/AdminArticleForm.vue'
 const store = userStore()
 const isEditingInPlace = ref(false)
+const tocKey = ref(0)
+const scrollProgress = ref(0)
 const canEdit = computed(() => {
   if (!store.isLoggedIn || !store.userInfo) return false
   const role = store.userInfo.role
   return role === 'editor' || role === 'admin'
 })
+
+const { data: bookmarkedIds, refresh: refreshBookmarks } = await useFetch<number[]>('/api/user/bookmarks', {
+  headers: useRequestHeaders(['cookie', 'authorization']),
+  server: false,
+})
+
+const isBookmarked = computed(() => !!(bookmarkedIds.value && article.value?.id && bookmarkedIds.value.includes(article.value.id)))
+
+const toggleBookmark = async () => {
+  if (!store.isLoggedIn) return navigateTo('/login')
+  const action = isBookmarked.value ? 'remove' : 'add'
+  await $fetch('/api/user/bookmarks', {
+    method: 'POST',
+    body: { articleId: article.value.id, action },
+    headers: store.token ? { Authorization: `Bearer ${store.token}` } : {}
+  })
+  await refreshBookmarks()
+}
 
 async function onInlineSaved() {
   // Clear Nuxt's internal payload cache to guarantee a hard fetch
@@ -304,6 +338,7 @@ async function onInlineSaved() {
   
   // Now close the editor, revealing the freshly fetched content seamlessly
   isEditingInPlace.value = false
+  tocKey.value++
 }
 
 // ─── Article view state persistence ───
@@ -332,7 +367,9 @@ const uiDict: Record<string, any> = {
     zoom: 'Zoom',
     download: 'Download Original',
     backToText: 'Back to Text',
-    dismissSearchHighlight: 'Clear search highlights'
+    dismissSearchHighlight: 'Clear search highlights',
+    bookmark: 'Add to bookmarks',
+    bookmarked: 'Bookmarked'
   },
   ru: {
     library: 'БИБЛИОТЕКА',
@@ -354,7 +391,9 @@ const uiDict: Record<string, any> = {
     zoom: 'Zoom',
     download: 'Скачать оригинал',
     backToText: 'Вернуться к тексту',
-    dismissSearchHighlight: 'Убрать подсветку поиска'
+    dismissSearchHighlight: 'Убрать подсветку поиска',
+    bookmark: 'В закладки',
+    bookmarked: 'В закладках'
   },
   zh: {
     library: '图书馆',
@@ -376,7 +415,9 @@ const uiDict: Record<string, any> = {
     zoom: '缩放',
     download: '下载原件',
     backToText: '返回正文',
-    dismissSearchHighlight: '清除搜索高亮'
+    dismissSearchHighlight: '清除搜索高亮',
+    bookmark: '添加到书签',
+    bookmarked: '已收藏'
   }
 }
 
@@ -614,13 +655,22 @@ watch(() => langStore.currentLang, () => {
   refresh()
 })
 
-const { saveFromArticle } = useReadingProgress()
+const { saveProgress } = useReadingProgress()
 
 watch(
   () => article.value,
   (a) => {
-    if (a?.book_id)
-      saveFromArticle(a)
+    if (a && store.isLoggedIn) {
+      saveProgress({
+        book_slug: (a.book_slug as string) || a.slug,
+        book_title: (a.book_title as string) || a.title,
+        article_slug: a.slug,
+        article_title: a.title,
+        sort_order: a.chapter_number ?? a.sort_order ?? 0,
+        progress_percent: 0,
+        updated_at: new Date().toISOString()
+      })
+    }
   },
   { immediate: true },
 )
@@ -747,12 +797,36 @@ function saveArticleState() {
     window.history.replaceState({ ...window.history.state, gv_article: state }, '')
   } catch {}
   navHistory.record(route.path, state.scroll, state.isPresentation)
+
+  const a = article.value
+  if (store.isLoggedIn && a) {
+    saveProgress({
+      book_slug: (a.book_slug as string) || a.slug,
+      book_title: (a.book_title as string) || a.title,
+      article_slug: a.slug,
+      article_title: a.title,
+      sort_order: a.chapter_number ?? a.sort_order ?? 0,
+      progress_percent: Math.round(scrollProgress.value),
+      anchor: activeID.value || null,
+      updated_at: new Date().toISOString()
+    })
+  }
 }
 
 let _saveTimer: ReturnType<typeof setTimeout> | null = null
-function debouncedSave() {
-  if (_saveTimer) clearTimeout(_saveTimer)
-  _saveTimer = setTimeout(saveArticleState, 350)
+let _lastSaveTime = 0
+function throttledSave() {
+  const now = Date.now()
+  if (now - _lastSaveTime >= 300) {
+    _lastSaveTime = now
+    saveArticleState()
+  } else {
+    if (_saveTimer) clearTimeout(_saveTimer)
+    _saveTimer = setTimeout(() => {
+      _lastSaveTime = Date.now()
+      saveArticleState()
+    }, 300)
+  }
 }
 
 const lection = ref<HTMLElement | undefined>()
@@ -846,6 +920,7 @@ function updateActiveHeadingFromScroll() {
     activeID.value = currentId
 }
 
+let hasScrolledToHash = false
 let scrollSpyRaf: number | null = null
 function scheduleScrollSpy() {
   if (!process.client)
@@ -874,6 +949,24 @@ const updateHeadingsAndObserve = () => {
       })
 
       headingElements.value = Array.from(headings).filter(el => el.id !== '')
+      
+      if (route.hash && !hasScrolledToHash) {
+        hasScrolledToHash = true
+        const targetId = route.hash.substring(1)
+        const tryScroll = (attempts = 3) => {
+          const targetEl = document.getElementById(targetId)
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'instant', block: 'start' })
+            const headerH = document.getElementById('header')?.clientHeight ?? 80
+            window.scrollBy(0, -headerH - 24)
+            activeID.value = targetId
+          } else if (attempts > 0) {
+            setTimeout(() => tryScroll(attempts - 1), 100)
+          }
+        }
+        tryScroll()
+      }
+
       scheduleScrollSpy()
     }
   })
@@ -922,6 +1015,7 @@ const scrollRestoreWithRetry = (targetScroll: number, retries = 5) => {
 watch(slug, (newSlug, oldSlug) => {
   if (newSlug && newSlug !== oldSlug) {
     activeID.value = ''
+    hasScrolledToHash = false
     const gvState = window.history.state?.gv_article
     if (gvState) {
       if (gvState.isPresentation) {
@@ -940,15 +1034,25 @@ watch(slug, (newSlug, oldSlug) => {
   }
 })
 
+const onScrollProgress = () => {
+  const winScroll = document.body.scrollTop || document.documentElement.scrollTop
+  const height = document.documentElement.scrollHeight - document.documentElement.clientHeight
+  scrollProgress.value = height > 0 ? (winScroll / height) * 100 : 0
+}
+
+let isNavigatingAway = false
+
 onMounted(() => {
   checkSize()
   window.addEventListener('resize', checkSize)
   window?.addEventListener('scroll', () => {
+    if (isNavigatingAway) return
     if (isTheory.value) {
       currentPosition.value = scrollY
       scheduleScrollSpy()
     }
-    debouncedSave()
+    throttledSave()
+    onScrollProgress()
   }, { passive: true })
   updateHeadingsAndObserve()
   window.addEventListener('keydown', handleKeydown)
@@ -976,6 +1080,7 @@ onMounted(() => {
 })
 
 onBeforeRouteLeave(() => {
+  isNavigatingAway = true
   saveArticleState()
 })
 
@@ -985,6 +1090,8 @@ onBeforeRouteUpdate(() => {
 
 onBeforeUnmount(() => {
   if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null }
+  isNavigatingAway = true
+  saveArticleState()
 })
 
 onUnmounted(() => {

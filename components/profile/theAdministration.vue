@@ -169,40 +169,64 @@ const lastArticleTouch = computed(() => {
 </template>
 
 <style scoped>
+/* Glassmorphic Profile Cards */
+.gv-surface-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 20px -5px rgba(0, 0, 0, 0.02);
+  transition: box-shadow 0.3s ease;
+}
+
+.gv-surface-card:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 15px 30px -5px rgba(0, 0, 0, 0.04);
+}
+
+.dark .gv-surface-card {
+  background: rgba(24, 24, 27, 0.75);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.gv-card-header {
+  padding: 1.5rem 1.5rem 0;
+}
+
 .admin-eyebrow {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.375rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: 9999px;
   font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 800;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  background: color-mix(in srgb, var(--gv-primary) 14%, var(--gv-surface-header));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--gv-primary) 15%, transparent), color-mix(in srgb, var(--gv-primary) 5%, transparent));
   color: var(--gv-primary);
-  border: 1px solid color-mix(in srgb, var(--gv-primary) 28%, var(--gv-border-principal));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gv-primary) 20%, transparent);
 }
 
 .admin-card-title {
   margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--gv-text-primary);
 }
 
 .admin-card-lead {
-  font-size: 0.8125rem;
-  line-height: 1.55;
+  font-size: 0.875rem;
+  line-height: 1.6;
   color: var(--gv-text-secondary);
   max-width: 52rem;
 }
 
 .admin-card-body {
-  padding: 1.25rem 1.5rem;
+  padding: 1.25rem 1.5rem 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.125rem;
+  gap: 1.25rem;
 }
 
 .admin-kpi-grid {
@@ -210,62 +234,74 @@ const lastArticleTouch = computed(() => {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.625rem;
-  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
 }
 
 .admin-kpi {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.75rem 0.875rem;
-  border-radius: var(--gv-radius-control);
-  border: 1px solid var(--gv-border-principal);
-  background: var(--gv-surface);
+  gap: 0.375rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--gv-border-principal) 60%, transparent);
+  background: color-mix(in srgb, var(--gv-surface) 60%, transparent);
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.02);
   min-width: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dark .admin-kpi {
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.2);
+}
+
+.admin-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.05);
 }
 
 .admin-kpi-value {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: var(--gv-text-primary);
+  color: var(--gv-primary);
   line-height: 1.2;
 }
 
 .admin-kpi-label {
   font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gv-text-secondary);
 }
 
 .admin-graph-teaser {
-  padding: 0.875rem 1rem;
-  border-radius: var(--gv-radius-control);
-  border: 1px solid color-mix(in srgb, var(--gv-primary) 22%, var(--gv-border-principal));
-  background: color-mix(in srgb, var(--gv-primary) 7%, var(--gv-surface-card));
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--gv-primary) 10%, transparent), color-mix(in srgb, var(--gv-primary) 3%, transparent));
+  border: 1px solid color-mix(in srgb, var(--gv-primary) 20%, transparent);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.1);
 }
 
 .admin-graph-title {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gv-primary);
-  margin-bottom: 0.375rem !important;
+  margin-bottom: 0.5rem !important;
 }
 
 .admin-graph-desc {
-  font-size: 0.8125rem;
-  line-height: 1.5;
+  font-size: 0.875rem;
+  line-height: 1.6;
   color: var(--gv-text-secondary);
 }
 
 .admin-graph-desc strong {
   color: var(--gv-text-primary);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .admin-meta {
@@ -280,8 +316,8 @@ const lastArticleTouch = computed(() => {
 }
 
 .admin-message--warn {
-  padding: 0.75rem 0.875rem;
-  border-radius: var(--gv-radius-control);
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
   border: 1px solid var(--gv-border-principal);
   background: color-mix(in srgb, var(--gv-surface-header) 88%, var(--gv-primary) 12%);
   color: var(--gv-text-primary);
@@ -289,12 +325,17 @@ const lastArticleTouch = computed(() => {
 
 .admin-inline-link {
   color: var(--gv-primary);
-  font-weight: 600;
+  font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .admin-inline-link:hover {
   color: var(--gv-primary-hover);
+}
+
+@media (max-width: 640px) {
+  .gv-card-header { padding: 1.25rem 1.25rem 0; }
+  .admin-card-body { padding: 1rem 1.25rem 1.25rem; }
 }
 </style>
