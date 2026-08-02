@@ -217,8 +217,36 @@ export async function runMigrations(db: Database) {
     )
   `)
 
+  // ─── 9d. User Bookmarks ───
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS user_bookmarks (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      article_id      INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+      created_at      DATETIME DEFAULT (datetime('now')),
+      UNIQUE(user_id, article_id)
+    )
+  `)
+
+  // ─── 9e. User Reading Progress ───
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS user_reading_progress (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      book_slug       TEXT NOT NULL,
+      book_title      TEXT,
+      article_slug    TEXT NOT NULL,
+      article_title   TEXT,
+      sort_order      INTEGER,
+      progress_percent INTEGER DEFAULT 0,
+      anchor          TEXT,
+      updated_at      DATETIME DEFAULT (datetime('now')),
+      UNIQUE(user_id, book_slug)
+    )
+  `)
+
   // ─── 10. Robust Migration Checks (for existing databases) ───
-  const tables = ['users', 'categories', 'terms', 'books', 'articles', 'story_routes']
+  const tables = ['users', 'categories', 'terms', 'books', 'articles', 'story_routes', 'user_reading_progress']
   for (const table of tables) {
     try {
       const columns = await db.prepare(`PRAGMA table_info(${table})`).all() as any[]
@@ -233,6 +261,11 @@ export async function runMigrations(db: Database) {
 
       if (table === 'users') {
         await ensureColumn('role', "TEXT NOT NULL DEFAULT 'editor'")
+        await ensureColumn('time_on_site_seconds', 'INTEGER DEFAULT 0')
+      }
+
+      if (table === 'user_reading_progress') {
+        await ensureColumn('anchor', 'TEXT')
       }
 
       if (table === 'story_routes') {

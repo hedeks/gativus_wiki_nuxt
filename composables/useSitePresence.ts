@@ -58,6 +58,15 @@ export function useSitePresence() {
       byDay,
     }
     persist()
+
+    const store = userStore()
+    if (store.isLoggedIn) {
+      $fetch('/api/user/time', {
+        method: 'POST',
+        body: { secondsAdded: seconds },
+        headers: store.token ? { Authorization: `Bearer ${store.token}` } : {}
+      }).catch(() => {})
+    }
   }
 
   /** Запуск тикающего учёта (только клиент). */
