@@ -535,6 +535,7 @@ async function showPopover(slug: string, type: 'term' | 'book' | 'article', anch
   pointerClient.value = { x: clientX, y: clientY }
   lastAnchorEl.value = anchor
   term.value = placeholderTerm(slug, type, anchor)
+  isEditorOpen.value = false
   visible.value = true
   loading.value = true
 

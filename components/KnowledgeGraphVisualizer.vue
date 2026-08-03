@@ -2476,6 +2476,7 @@ const initGraph = () => {
           .on('click', (event: any, d: any) => {
             selectedNode.value = null
             selectedLink.value = d
+            isEditorOpen.value = false
             linkPopupPointerHost.value = clientToPointerHost(event.clientX, event.clientY)
             linkPopupPanelClosed.value = false
             event.stopPropagation()
@@ -2495,6 +2496,7 @@ const initGraph = () => {
     .on('click', (event: any, d: any) => {
       selectedNode.value = d
       selectedLink.value = null
+      isEditorOpen.value = false
       nodePopupPointerHost.value = clientToPointerHost(event.clientX, event.clientY)
       nodePopupPanelClosed.value = false
       if (storyState.value === 'PLAYING_NODE' || storyState.value === 'STORY_START') {
@@ -3735,7 +3737,7 @@ watch([focusNodeId, focusDepth], () => {
 /* Popups */
 .graph-popup {
   position: absolute;
-  z-index: 100;
+  z-index: 100000;
   width: min(320px, calc(100vw - 24px));
   max-width: min(320px, calc(100vw - 24px));
   max-height: 70vh !important;
