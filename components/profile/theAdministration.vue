@@ -8,17 +8,91 @@ const canAccess = computed(
   () => role.value === 'admin' || role.value === 'editor',
 )
 
+import { useLanguageStore } from '~/stores/language'
+const langStore = useLanguageStore()
+
+const uiDict = {
+  en: {
+    panel: 'Panel',
+    adminHeading: 'Knowledge Base Management',
+    editorHeading: 'Content Management',
+    adminLead: 'You configure the global structure of the wiki: categories, books, articles, glossary, and graph links. The dashboard shows data volumes synchronized with the public graph and knowledge page.',
+    editorLead: 'You maintain content: books, articles, terms, and their place in the structure. The administration panel is a single point for edits; metrics below match what the reader sees on the site.',
+    categories: 'Categories',
+    books: 'Books',
+    articles: 'Articles',
+    terms: 'Terms',
+    users: 'Users',
+    loadError: 'Failed to load summary. Open the',
+    dashboard: 'dashboard',
+    loadErrorSuffix: '— data will be requested there.',
+    graphTitle: 'Knowledge Graph (snapshot as on site)',
+    nodes: 'public graph nodes',
+    structural: 'structural links',
+    mentions: 'term mentions in articles',
+    lastUpdate: 'Last content update of articles:',
+    unavailable: 'Summary is unavailable in this session.',
+    openAdmin: 'Open administration panel'
+  },
+  ru: {
+    panel: 'Панель',
+    adminHeading: 'Управление базой знаний',
+    editorHeading: 'Работа с контентом',
+    adminLead: 'Вы настраиваете глобальную структуру вики: категории, книги, статьи, глоссарий и связи в графе. Дашборд показывает объёмы данных, согласованные с публичным графом и страницей знаний.',
+    editorLead: 'Вы ведёте контент: книги, статьи, термины и их место в структуре. Панель администрирования — единая точка правок; метрики ниже совпадают с тем, что видит читатель на сайте.',
+    categories: 'Категории',
+    books: 'Книги',
+    articles: 'Статьи',
+    terms: 'Термины',
+    users: 'Пользователи',
+    loadError: 'Не удалось загрузить сводку. Откройте',
+    dashboard: 'дашборд',
+    loadErrorSuffix: '— данные будут запрошены там.',
+    graphTitle: 'Граф знаний (срез как на сайте)',
+    nodes: 'узлов публичного графа',
+    structural: 'структурных связей',
+    mentions: 'упоминаний терминов в статьях',
+    lastUpdate: 'Последнее обновление контента статей:',
+    unavailable: 'Сводка недоступна в этом сеансе.',
+    openAdmin: 'Открыть панель администрирования'
+  },
+  zh: {
+    panel: '面板',
+    adminHeading: '知识库管理',
+    editorHeading: '内容管理',
+    adminLead: '您可以配置 wiki 的全局结构：类别、书籍、文章、词汇表和图表链接。仪表板显示与公共图表和知识页面同步的数据量。',
+    editorLead: '您维护内容：书籍、文章、术语及其在结构中的位置。管理面板是编辑的单一入口；下面的指标与读者在网站上看到的一致。',
+    categories: '类别',
+    books: '图书',
+    articles: '文章',
+    terms: '术语',
+    users: '用户',
+    loadError: '无法加载摘要。打开',
+    dashboard: '仪表板',
+    loadErrorSuffix: '— 将在那里请求数据。',
+    graphTitle: '知识图谱 (如网站上的快照)',
+    nodes: '公共图谱节点',
+    structural: '结构链接',
+    mentions: '文章中的术语提及',
+    lastUpdate: '文章的最后内容更新:',
+    unavailable: '此会话中摘要不可用。',
+    openAdmin: '打开管理面板'
+  }
+}
+
+const t = computed(() => uiDict[langStore.currentLang as keyof typeof uiDict] || uiDict.ru)
+
 const heading = computed(() =>
   role.value === 'admin'
-    ? 'Управление базой знаний'
-    : 'Работа с контентом',
+    ? t.value.adminHeading
+    : t.value.editorHeading
 )
 
 const lead = computed(() => {
   if (role.value === 'admin') {
-    return 'Вы настраиваете глобальную структуру вики: категории, книги, статьи, глоссарий и связи в графе. Дашборд показывает объёмы данных, согласованные с публичным графом и страницей знаний.'
+    return t.value.adminLead
   }
-  return 'Вы ведёте контент: книги, статьи, термины и их место в структуре. Панель администрирования — единая точка правок; метрики ниже совпадают с тем, что видит читатель на сайте.'
+  return t.value.editorLead
 })
 
 const { data: stats, pending, error } = await useAsyncData(
@@ -41,13 +115,13 @@ const summaryItems = computed(() => {
   if (!s)
     return []
   const rows: { value: number; label: string }[] = [
-    { value: s.categories, label: 'Категории' },
-    { value: s.books, label: 'Книги' },
-    { value: s.articles, label: 'Статьи' },
-    { value: s.terms, label: 'Термины' },
+    { value: s.categories, label: t.value.categories },
+    { value: s.books, label: t.value.books },
+    { value: s.articles, label: t.value.articles },
+    { value: s.terms, label: t.value.terms },
   ]
   if (role.value === 'admin')
-    rows.push({ value: s.users, label: 'Пользователи' })
+    rows.push({ value: s.users, label: t.value.users })
   return rows
 })
 
@@ -66,7 +140,8 @@ const lastArticleTouch = computed(() => {
   const raw = stats.value?.meta?.lastArticleUpdatedAt
   if (!raw)
     return null
-  return new Date(raw).toLocaleString('ru-RU', {
+  const locale = langStore.currentLang === 'ru' ? 'ru-RU' : (langStore.currentLang === 'zh' ? 'zh-CN' : 'en-US')
+  return new Date(raw).toLocaleString(locale, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -84,7 +159,7 @@ const lastArticleTouch = computed(() => {
   >
     <div class="gv-card-header flex flex-col gap-2">
       <div class="flex flex-wrap items-center gap-3">
-        <span class="admin-eyebrow">Панель</span>
+        <span class="admin-eyebrow">{{ t.panel }}</span>
         <h2 class="admin-card-title">
           {{ heading }}
         </h2>
@@ -99,11 +174,11 @@ const lastArticleTouch = computed(() => {
         class="admin-message admin-message--warn"
         role="status"
       >
-        Не удалось загрузить сводку. Откройте
+        {{ t.loadError }}
         <NuxtLink to="/admin" class="admin-inline-link">
-          дашборд
+          {{ t.dashboard }}
         </NuxtLink>
-        — данные будут запрошены там.
+        {{ t.loadErrorSuffix }}
       </div>
 
       <template v-else-if="stats">
@@ -126,15 +201,15 @@ const lastArticleTouch = computed(() => {
           class="admin-graph-teaser"
         >
           <p class="admin-graph-title m-0">
-            Граф знаний (срез как на сайте)
+            {{ t.graphTitle }}
           </p>
           <p class="admin-graph-desc m-0">
             <strong>{{ graphTeaser.nodes }}</strong>
-            узлов публичного графа ·
+            {{ t.nodes }} &middot;
             <strong>{{ graphTeaser.structural }}</strong>
-            структурных связей ·
+            {{ t.structural }} &middot;
             <strong>{{ graphTeaser.mentions }}</strong>
-            упоминаний терминов в статьях
+            {{ t.mentions }}
           </p>
         </div>
 
@@ -142,7 +217,7 @@ const lastArticleTouch = computed(() => {
           v-if="lastArticleTouch"
           class="admin-meta m-0"
         >
-          Последнее обновление контента статей:
+          {{ t.lastUpdate }}
           <time :datetime="stats.meta.lastArticleUpdatedAt ?? undefined">{{ lastArticleTouch }}</time>
         </p>
       </template>
@@ -151,7 +226,7 @@ const lastArticleTouch = computed(() => {
         v-else-if="!pending"
         class="admin-message m-0"
       >
-        Сводка недоступна в этом сеансе.
+        {{ t.unavailable }}
       </p>
 
       <GvButton
@@ -161,7 +236,7 @@ const lastArticleTouch = computed(() => {
         color="sky"
         variant="solid"
         to="/admin"
-        label="Открыть панель администрирования"
+        :label="t.openAdmin"
         :loading="pending"
       />
     </div>
