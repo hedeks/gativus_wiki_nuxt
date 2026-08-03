@@ -1,14 +1,16 @@
 <template>
-  <div v-if="canEdit" class="hidden md:flex fixed bottom-6 right-6 z-50 group">
-    <!-- Main Floating Button -->
-    <UTooltip text="Редактировать на лету" placement="left">
-      <button 
-        @click="isOpen = true"
-        class="flex items-center justify-center w-14 h-14 rounded-full bg-sky-500/90 hover:bg-sky-500 text-white shadow-lg hover:shadow-sky-500/50 transition-all duration-300 hover:scale-105 active:scale-95 border border-white/20"
-      >
-        <UIcon name="i-heroicons-pencil-square-solid" class="w-6 h-6" />
-      </button>
-    </UTooltip>
+  <div v-if="canEdit" :class="wrapperClass">
+    <slot name="trigger" :open="openEditor">
+      <!-- Main Floating Button -->
+      <UTooltip text="Редактировать на лету" placement="left">
+        <button 
+          @click="openEditor"
+          class="flex items-center justify-center w-14 h-14 rounded-full bg-sky-500/90 hover:bg-sky-500 text-white shadow-lg hover:shadow-sky-500/50 transition-all duration-300 hover:scale-105 active:scale-95 border border-white/20"
+        >
+          <UIcon name="i-heroicons-pencil-square-solid" class="w-6 h-6" />
+        </button>
+      </UTooltip>
+    </slot>
 
     <!-- Slideover -->
     <USlideover v-model="isOpen" :ui="{ width: 'w-screen max-w-4xl' }">
@@ -79,19 +81,31 @@ import AdminArticleForm from '~/components/admin/AdminArticleForm.vue'
 import WorkspaceEditor from '~/components/admin/WorkspaceEditor.vue'
 import AdminBookForm from '~/components/admin/AdminBookForm.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   type: 'article' | 'term' | 'book'
   id: number | string
-}>()
+  wrapperClass?: string
+}>(), {
+  wrapperClass: 'hidden md:flex fixed bottom-6 right-6 z-50 group'
+})
 
 const emit = defineEmits<{
   (e: 'saved'): void
+  (e: 'update:isOpen', value: boolean): void
 }>()
 
 const store = userStore()
 const isOpen = ref(false)
 const isEditorLoading = ref(false)
 const toast = useToast()
+
+watch(isOpen, (val) => {
+  emit('update:isOpen', val)
+})
+
+function openEditor() {
+  isOpen.value = true
+}
 
 const canEdit = computed(() => {
   if (!store.isLoggedIn || !store.userInfo) return false

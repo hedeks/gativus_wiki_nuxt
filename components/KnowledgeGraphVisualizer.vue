@@ -220,6 +220,7 @@
         <Teleport to="body">
           <transition name="pop">
             <div v-if="selectedNode && !nodePopupPanelClosed" class="graph-popup graph-popup-node fixed !p-6 !pb-8"
+              :style="isEditorOpen ? { opacity: 0, pointerEvents: 'none' } : {}"
               :aria-busy="selectedNode.type === 'term' && termPopupLoading" @mousedown.stop @wheel.stop @mousewheel.stop>
               
               <!-- Context Navigation Arrows -->
@@ -339,6 +340,22 @@
             </transition>
 
             <div class="graph-popup__footer">
+              <InPlaceEditor 
+                v-if="selectedNode.type !== 'category' && selectedNode.originalId" 
+                :type="selectedNode.type" 
+                :id="selectedNode.originalId" 
+                wrapper-class="mr-auto flex shrink-0"
+                @update:is-open="isEditorOpen = $event"
+              >
+                <template #trigger="{ open }">
+                  <UTooltip :text="t.editLabel || 'Редактировать'" placement="top">
+                    <button type="button" @click.prevent="open" class="flex items-center justify-center p-1.5 rounded-md text-zinc-400 hover:text-sky-500 hover:bg-sky-500/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+                      <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
+                    </button>
+                  </UTooltip>
+                </template>
+              </InPlaceEditor>
+
               <template v-if="true">
                 <span v-if="selectedNode.type === 'term' && termPopupLoading"
                   class="graph-popup__loading graph-popup__loading--footer">
@@ -678,6 +695,7 @@ watch(() => props.graphData, () => {
 const selectedNode = ref<any>(null)
 const selectedLink = ref<any>(null)
 const nodePopupPanelClosed = ref(false)
+const isEditorOpen = ref(false)
 const linkPopupPanelClosed = ref(false)
 /** Якорь попапа в координатах .graph-viewport (от верхнего левого угла хоста) — точка курсора при клике */
 const nodePopupPointerHost = ref<{ x: number, y: number } | null>(null)

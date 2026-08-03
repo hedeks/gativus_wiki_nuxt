@@ -5,7 +5,7 @@
         v-if="visible && term"
         ref="popoverEl"
         class="term-popover"
-        :style="popoverStyle"
+        :style="[popoverStyle, isEditorOpen ? { opacity: 0, pointerEvents: 'none' } : {}]"
         :aria-busy="loading"
         @click.stop
       >
@@ -79,6 +79,22 @@
             <p v-else-if="term.definition" class="popover-definition" v-html="renderInlineMarkup(term.definition)" />
             
             <div v-if="term.slug" class="popover-footer">
+              <InPlaceEditor 
+                v-if="term.id" 
+                :type="term.type" 
+                :id="term.id" 
+                wrapper-class="mr-auto flex shrink-0"
+                @update:is-open="isEditorOpen = $event"
+              >
+                <template #trigger="{ open }">
+                  <UTooltip :text="t.editLabel" placement="top">
+                    <button @click="open" class="flex items-center justify-center p-1.5 rounded-md text-zinc-400 hover:text-sky-500 hover:bg-sky-500/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+                      <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
+                    </button>
+                  </UTooltip>
+                </template>
+              </InPlaceEditor>
+
               <NuxtLink v-if="term.type === 'book'" :to="`/books/${term.slug}`" class="popover-link" :style="{ '--link-hover-color': linkHoverColor }" @click="close">
                 {{ t.openBook }}
               </NuxtLink>
@@ -133,6 +149,7 @@ const uiDict: Record<string, {
   bookLabel: string;
   articleLabel: string;
   termLabel: string;
+  editLabel: string;
 }> = {
   en: {
     loading: 'Loading...',
@@ -142,6 +159,7 @@ const uiDict: Record<string, {
     bookLabel: 'Book',
     articleLabel: 'Article',
     termLabel: 'Term',
+    editLabel: 'Edit',
   },
   ru: {
     loading: 'Загрузка...',
@@ -151,6 +169,7 @@ const uiDict: Record<string, {
     bookLabel: 'Книга',
     articleLabel: 'Статья',
     termLabel: 'Термин',
+    editLabel: 'Редактировать',
   },
   zh: {
     loading: '加载中...',
@@ -160,6 +179,7 @@ const uiDict: Record<string, {
     bookLabel: '图书',
     articleLabel: '文章',
     termLabel: '词条',
+    editLabel: '编辑',
   },
 }
 
@@ -206,7 +226,9 @@ const linkHoverColor = computed(() => {
 
 /** Координаты клика в системе клиента (viewport) — единственный якорь позиции попапа. */
 const pointerClient = ref<{ x: number, y: number } | null>(null)
+
 const lastAnchorEl = ref<HTMLElement | null>(null)
+const isEditorOpen = ref(false)
 
 const cache = new Map<string, KnowledgeData>()
 
