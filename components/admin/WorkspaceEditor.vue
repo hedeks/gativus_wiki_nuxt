@@ -146,7 +146,7 @@
                   <button 
                     type="button" 
                     class="wiki-term py-2 px-3 border border-sky-200 dark:border-sky-900/50 rounded-lg bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-colors font-bold flex justify-center items-center gap-1.5 text-xs w-full max-w-[200px]" 
-                    :data-term-slug="term.slug"
+                    :data-term-slug="activeLang === 'en' ? form.slug : (activeLang === 'ru' ? (form.slug_ru || form.slug) : (form.slug_zh || form.slug))"
                     :data-term-lang="activeLang"
                   >
                     <UIcon name="i-heroicons-eye" class="text-sm" />

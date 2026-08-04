@@ -13,7 +13,7 @@
     </slot>
 
     <!-- Slideover -->
-    <USlideover v-model="isOpen" :ui="{ width: 'w-screen max-w-4xl' }">
+    <USlideover v-model="isOpen" :ui="{ width: 'w-screen max-w-6xl 2xl:max-w-[80vw]' }">
       <div class="flex-1 flex flex-col h-[100dvh] bg-white dark:bg-[#111113] relative overflow-hidden shadow-2xl border-l border-gray-200 dark:border-zinc-800">
         <!-- Header -->
         <div class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-[#161618]">
@@ -85,13 +85,16 @@ const props = withDefaults(defineProps<{
   type: 'article' | 'term' | 'book'
   id: number | string
   wrapperClass?: string
+  modelValue?: boolean
 }>(), {
-  wrapperClass: 'hidden md:flex fixed bottom-6 right-6 z-50 group'
+  wrapperClass: 'hidden md:flex fixed bottom-6 right-6 z-50 group',
+  modelValue: false
 })
 
 const emit = defineEmits<{
   (e: 'saved'): void
   (e: 'update:isOpen', value: boolean): void
+  (e: 'update:modelValue', value: boolean): void
 }>()
 
 const store = userStore()
@@ -99,7 +102,14 @@ const isOpen = ref(false)
 const isEditorLoading = ref(false)
 const toast = useToast()
 
+watch(() => props.modelValue, (val) => {
+  if (val !== isOpen.value) {
+    isOpen.value = val
+  }
+}, { immediate: true })
+
 watch(isOpen, (val) => {
+  emit('update:modelValue', val)
   emit('update:isOpen', val)
 })
 

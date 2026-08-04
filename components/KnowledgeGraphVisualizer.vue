@@ -428,6 +428,64 @@
         </Teleport>
 
         <ExcursionsModal v-model="isExcursionsModalOpen" :stories="availableStories" :t="t" @play="playStory" />
+        
+        <transition name="pop">
+          <div v-if="contextMenu.isOpen"
+               class="kg-glass-surface fixed z-[9999] bg-white dark:bg-[#1a1a1d] rounded-xl shadow-xl border border-gray-200 dark:border-[#2a2a2e] flex flex-col min-w-[200px] overflow-hidden"
+               :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+               @mousedown.stop @touchstart.stop @contextmenu.prevent>
+            <div class="px-3 py-2 border-b border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-black/20">
+              <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                {{ contextMenu.node ? contextMenu.node.title : 'Граф знаний' }}
+              </span>
+            </div>
+            
+            <template v-if="!contextMenu.node">
+              <button type="button" 
+                      class="w-full text-left px-4 py-2 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center gap-2"
+                      @click="openCreator('term')">
+                <UIcon name="i-heroicons-document-text" class="text-emerald-500 text-lg" />
+                Создать новый термин
+              </button>
+              <button type="button" 
+                      class="w-full text-left px-4 py-2 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center gap-2"
+                      @click="openCreator('article')">
+                <UIcon name="i-heroicons-document-duplicate" class="text-indigo-500 text-lg" />
+                Создать новую статью
+              </button>
+              <button type="button" 
+                      class="w-full text-left px-4 py-2 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center gap-2"
+                      @click="openCreator('book')">
+                <UIcon name="i-heroicons-book-open" class="text-sky-500 text-lg" />
+                Создать новую книгу
+              </button>
+            </template>
+            
+            <button v-if="contextMenu.node && (contextMenu.node.type === 'term' || contextMenu.node.type === 'article')" 
+                    type="button" 
+                    class="w-full text-left px-4 py-3 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center gap-2"
+                    :disabled="contextMenuRelinking"
+                    @click="handleRelinkNode()">
+              <UIcon v-if="!contextMenuRelinking" name="i-heroicons-link" class="text-emerald-500 text-lg" />
+              <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin text-emerald-500 text-lg" />
+              <span :class="{'opacity-50': contextMenuRelinking}">
+                {{ contextMenuRelinking ? 'Перелинковка...' : 'Перелинковать узел' }}
+              </span>
+            </button>
+            
+            <div v-if="contextMenu.node && contextMenu.node.type !== 'term' && contextMenu.node.type !== 'article'"
+                 class="px-4 py-3 text-[11px] font-semibold text-gray-400 italic">
+              Перелинковка недоступна для {{ contextMenu.node.type === 'book' ? 'книг' : 'категорий' }}
+            </div>
+          </div>
+        </transition>
+        
+        <InPlaceEditor 
+          v-if="isContextMenuEditorOpen"
+          v-model="isContextMenuEditorOpen"
+          :type="contextMenuCreatorType" 
+          id="new" 
+        />
       </div>
     </div>
   </div>
@@ -438,7 +496,9 @@ import { shallowRef } from 'vue'
 import * as d3 from 'd3'
 import { useMediaQuery } from '@vueuse/core'
 import { useLanguageStore } from '~/stores/language'
+import { userStore } from '~/stores/userStore'
 import ExcursionsModal from '~/components/ExcursionsModal.vue'
+import InPlaceEditor from '~/components/InPlaceEditor.vue'
 import { renderInlineMarkup } from '~/utils/renderInlineMarkup'
 import {
   ANCHORED_POPUP_GAP_PX,
@@ -459,6 +519,78 @@ const storyCustomMessages = ref<Record<number, string>>({})
 const storyTitle = ref('')
 const availableStories = ref<any[]>([])
 const isExcursionsModalOpen = ref(false)
+
+const contextMenu = ref({
+  isOpen: false,
+  x: 0,
+  y: 0,
+  node: null as any | null
+})
+const isContextMenuEditorOpen = ref(false)
+const contextMenuRelinking = ref(false)
+const contextMenuCreatorType = ref<'term'|'article'|'book'>('term')
+const store = userStore()
+const toast = useToast()
+
+const canEdit = computed(() => {
+  if (!store.isLoggedIn || !store.userInfo) return false
+  const role = store.userInfo.role
+  return role === 'editor' || role === 'admin'
+})
+
+function openCreator(type: 'term'|'article'|'book') {
+  contextMenuCreatorType.value = type
+  isContextMenuEditorOpen.value = true
+  closeContextMenu()
+}
+
+function openContextMenu(e: MouseEvent | TouchEvent, node: any | null) {
+  if (!canEdit.value) return
+  e.preventDefault()
+  let cx = 0, cy = 0
+  if (e instanceof MouseEvent) {
+    cx = e.clientX
+    cy = e.clientY
+  } else if (window.TouchEvent && e instanceof TouchEvent && e.touches && e.touches.length > 0) {
+    cx = e.touches[0].clientX
+    cy = e.touches[0].clientY
+  }
+  contextMenu.value = { isOpen: true, x: cx, y: cy, node }
+}
+
+function closeContextMenu() {
+  contextMenu.value.isOpen = false
+}
+
+async function handleRelinkNode() {
+  const node = contextMenu.value.node
+  if (!node || !node.originalId) return
+  contextMenuRelinking.value = true
+  try {
+    const ep = node.type === 'term' ? '/api/admin/relink-term/' : '/api/admin/relink-article/'
+    const res = await $fetch(ep + node.originalId, { method: 'POST', headers: store.getAuthHeader() }) as any
+    toast.add({ title: 'Перелинковка завершена', description: res.message || 'Успех', color: 'green' })
+  } catch (e: any) {
+    toast.add({ title: 'Ошибка перелинковки', description: e.data?.statusMessage || e.message, color: 'red' })
+  } finally {
+    contextMenuRelinking.value = false
+    closeContextMenu()
+  }
+}
+
+let longPressTimer: ReturnType<typeof setTimeout> | null = null
+function handleTouchStart(e: TouchEvent, node: any | null) {
+  if (longPressTimer) clearTimeout(longPressTimer)
+  longPressTimer = setTimeout(() => {
+    openContextMenu(e, node)
+  }, 600)
+}
+function handleTouchEnd() {
+  if (longPressTimer) clearTimeout(longPressTimer)
+}
+function handleTouchMove() {
+  if (longPressTimer) clearTimeout(longPressTimer)
+}
 
 
 const uiDict: Record<string, any> = {
@@ -2154,6 +2286,15 @@ function renderDagEgoGraph(
       }
       event.stopPropagation()
     })
+    .on('contextmenu', (event: any, d: any) => {
+      openContextMenu(event, d)
+      event.stopPropagation()
+    })
+    .on('touchstart', (event: any, d: any) => {
+      handleTouchStart(event, d)
+    })
+    .on('touchend', handleTouchEnd)
+    .on('touchmove', handleTouchMove)
 
   dagNodeGrp.append('circle')
     .attr('r', (d: any) => nodeGlyphRadius(d) * (d.id === rootId ? 2.2 : 1))
@@ -2260,6 +2401,16 @@ const initGraph = () => {
         selectedLink.value = null
       }
     })
+    .on('contextmenu', (event: any) => {
+      if (event.target === svgRef.value) {
+        openContextMenu(event, null)
+      }
+    })
+    .on('touchstart', (event: any) => {
+      if (event.target === svgRef.value) handleTouchStart(event, null)
+    })
+    .on('touchend', handleTouchEnd)
+    .on('touchmove', handleTouchMove)
 
   svg.selectAll('*').remove() // Clear previous
 
@@ -2507,6 +2658,15 @@ const initGraph = () => {
       }
       event.stopPropagation()
     })
+    .on('contextmenu', (event: any, d: any) => {
+      openContextMenu(event, d)
+      event.stopPropagation()
+    })
+    .on('touchstart', (event: any, d: any) => {
+      handleTouchStart(event, d)
+    })
+    .on('touchend', handleTouchEnd)
+    .on('touchmove', handleTouchMove)
 
   // Node circles
   node.append('circle')
@@ -2599,6 +2759,7 @@ const handleWindowClick = (event: MouseEvent) => {
   if (isFilterMenuOpen.value && !target.closest('.custom-popover-wrapper')) {
     isFilterMenuOpen.value = false
   }
+  closeContextMenu()
   handleOutsideClick(event)
 }
 
