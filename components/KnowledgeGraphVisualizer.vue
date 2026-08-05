@@ -3,7 +3,9 @@
     'knowledge-graph-visualizer--frameless': frameless,
     'knowledge-graph-visualizer--canvas-locked': canvasInteractionLocked,
   }">
-    <div ref="graphViewport" class="graph-viewport">
+    <div class="w-full h-full flex flex-col md:flex-row min-h-0 overflow-hidden relative bg-white dark:bg-[#111113]">
+      <div class="flex-1 min-w-0 h-full flex flex-col relative transition-all duration-300" :class="{'md:max-w-[66.666%]': isSidebarOpen}">
+        <div ref="graphViewport" class="graph-viewport w-full h-full">
       <div class="kg-graph-canvas-stack">
         <div ref="graphContainer" class="graph-container" :class="{ 'graph-container--frameless': frameless }">
           <svg ref="svgRef" class="graph-svg"></svg>
@@ -98,7 +100,12 @@
 
               <div class="control-divider control-divider--toolbar"></div>
 
-                            <div class="control-divider control-divider--toolbar"></div>
+              <!-- Sidebar Toggle -->
+              <GvButton type="button" unstyled chromeless square class="action-btn"
+                :class="{ active: isSidebarOpen }" icon="i-heroicons-book-open" title="Боковая панель"
+                @click="isSidebarOpen = !isSidebarOpen" />
+                
+              <div class="control-divider control-divider--toolbar"></div>
 
               <!-- Excursions -->
               <GvButton type="button" unstyled chromeless square class="action-btn"
@@ -340,23 +347,13 @@
             </transition>
 
             <div class="graph-popup__footer">
-              <InPlaceEditor 
-                v-if="selectedNode.type !== 'category' && selectedNode.originalId" 
-                :type="selectedNode.type" 
-                :id="selectedNode.originalId" 
-                wrapper-class="mr-auto flex shrink-0"
-                @update:is-open="isEditorOpen = $event"
-              >
-                <template #trigger="{ open }">
-                  <UTooltip :text="t.editLabel || 'Редактировать'" placement="top">
-                    <button type="button" @click.prevent="open" class="flex items-center justify-center p-1.5 rounded-md text-zinc-400 hover:text-sky-500 hover:bg-sky-500/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
-                      <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
-                    </button>
-                  </UTooltip>
-                </template>
-              </InPlaceEditor>
-
-              <template v-if="true">
+                <UTooltip v-if="canEdit && selectedNode.type !== 'category' && selectedNode.originalId" :text="t.editLabel || 'Редактировать'" placement="top">
+                  <button type="button" @click.prevent="isEditorOpen = true; nodePopupPanelClosed = true" class="mr-auto flex shrink-0 flex items-center justify-center p-1.5 rounded-md text-zinc-400 hover:text-sky-500 hover:bg-sky-500/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+                    <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
+                  </button>
+                </UTooltip>
+                              
+                <template v-if="true">
                 <span v-if="selectedNode.type === 'term' && termPopupLoading"
                   class="graph-popup__loading graph-popup__loading--footer">
                   <UIcon name="i-heroicons-arrow-path" class="graph-popup__spin" />
@@ -480,8 +477,18 @@
           </div>
         </transition>
         
+                
+        
+
         <InPlaceEditor 
-          v-if="isContextMenuEditorOpen"
+          v-if="selectedNode && selectedNode.type !== 'category' && selectedNode.originalId"
+          v-model="isEditorOpen"
+          :type="selectedNode.type" 
+          :id="selectedNode.originalId" 
+        />
+<InPlaceEditor 
+            v-if="isContextMenuEditorOpen"
+
           v-model="isContextMenuEditorOpen"
           :type="contextMenuCreatorType" 
           id="new" 
@@ -489,10 +496,98 @@
       </div>
     </div>
   </div>
+
+      <!-- Content Sidebar -->
+      <transition name="slide-right">
+        <div v-show="isSidebarOpen" class="kg-content-sidebar flex flex-col absolute bottom-0 left-0 right-0 md:relative h-[50vh] md:h-full bg-white dark:bg-[#111113] border-t md:border-t-0 md:border-l border-gray-100 dark:border-zinc-900 z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.1)] md:shadow-2xl overflow-hidden" :style="{ width: windowWidth >= 768 ? sidebarWidthPx + 'px' : '100%' }">
+          <div class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-sky-500/50 z-50 hidden md:block" @mousedown="startSidebarResize"></div>
+          <div class="shrink-0 flex items-center justify-between p-4 border-b border-gray-100 dark:border-zinc-900 bg-white dark:bg-[#111113]">
+            <h3 class="font-bold text-sm text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <UIcon name="i-heroicons-document-text" class="w-5 h-5 text-sky-500" />
+              {{ t.contentPanel || 'Контент' }}
+            </h3>
+              <button v-if="canEdit && selectedNode && selectedNode.type !== 'category' && selectedNode.originalId" type="button" @click.prevent="isEditorOpen = true; isSidebarOpen = false" class="ml-auto flex inline-flex items-center gap-1.5 px-4 py-1.5 border border-gray-200 dark:border-zinc-700 hover:border-sky-500 dark:hover:border-sky-500 text-gray-700 dark:text-gray-300 hover:text-sky-500 dark:hover:text-sky-400 font-semibold text-xs rounded-lg transition-colors mr-2">
+                <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
+                Редактировать
+              </button>
+            <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-zinc-800 transition-colors" @click="isSidebarOpen = false">
+              <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+            </button>
+          </div>
+          <div class="flex-1 overflow-y-auto p-5 md:p-10 gv-admin-scrollbar relative bg-white dark:bg-zinc-900">
+            <div v-if="!selectedNode" class="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500 opacity-60">
+               <UIcon name="i-heroicons-cursor-arrow-rays" class="w-12 h-12 mb-3" />
+               <p class="text-sm font-medium text-center">Выберите узел на графе<br>для просмотра содержимого</p>
+            </div>
+            <div v-else class="space-y-6">
+               <div class="flex flex-col pb-8 mb-8 border-b border-gray-100 dark:border-zinc-800 min-w-0">
+                 <div class="flex items-center gap-2 mb-4">
+                   <UIcon :name="getNodeIcon(selectedNode)" :style="{ color: getNodeColor(selectedNode) }" class="w-5 h-5" />
+                   <span class="text-xs font-bold uppercase tracking-wider text-gray-500">{{ getTypeLabel(selectedNode.type) }}</span>
+                 </div>
+                 <h2 class="gv-article-title text-2xl lg:text-3xl font-bold text-[#233a4d] dark:text-gray-100 uppercase tracking-widest leading-snug m-0 min-w-0 break-words hyphens-auto">
+                   {{ termPopupDetail ? (termPopupDetail.title || selectedNode.title) : selectedNode.title }}
+                 </h2>
+               </div>
+               
+               <div v-if="termPopupDetail?.image_url || termPopupDetail?.cover_url" class="rounded-2xl overflow-hidden shadow-md my-6 ring-1 ring-black/5 dark:ring-white/10">
+                 <img :src="termPopupDetail.image_url || termPopupDetail.cover_url" class="w-full h-auto object-cover max-h-72" alt="" />
+               </div>
+               
+               <!-- Article Layout -->
+               <template v-if="selectedNode.type === 'article'">
+
+                 <div @click="handleContentClick" class="parent w-full flex-col article-prose gv-article-content prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold" 
+                   v-html="termPopupDetail?.html_content || 'Загрузка...'" 
+                 />
+               </template>
+
+               <!-- Book Layout -->
+               <template v-else-if="selectedNode.type === 'book'">
+                 <div @click="handleContentClick" class="parent w-full flex-col article-prose gv-article-content prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold" v-html="termPopupDetail?.description || selectedNode.description" />
+                 
+                 <div v-if="termPopupDetail?.articles?.length" class="mt-8">
+                   <h3 class="text-[10px] font-bold tracking-widest uppercase text-gray-500 mb-3">Содержание</h3>
+                   <div class="flex flex-col gap-2">
+                     <NuxtLink v-for="(art, idx) in termPopupDetail.articles" :key="art.id" :to="`/articles/${art.slug}`" class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-zinc-800 hover:border-sky-500 dark:hover:border-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors group">
+                       <span class="text-sm font-bold text-gray-400 group-hover:text-sky-500 w-6 shrink-0">{{ idx + 1 }}.</span>
+                       <span class="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2">{{ art.title }}</span>
+                     </NuxtLink>
+                   </div>
+                 </div>
+               </template>
+
+               <!-- Term / Default Layout -->
+               <template v-else>
+                 <div @click="handleContentClick" class="parent w-full flex-col article-prose gv-article-content prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold">
+                    <div v-html="renderInlineMarkup(termPopupDetail?.definition || termPopupDetail?.description || selectedNode.description || 'Нет данных')" />
+                    
+                    <template v-if="termPopupDetail?.article_html">
+                      <hr class="my-8 border-gray-200 dark:border-zinc-800">
+                      <div v-html="termPopupDetail.article_html"></div>
+                    </template>
+                 </div>
+               </template>
+               
+               <div class="pt-6 mt-8 border-t border-gray-200 dark:border-zinc-800 flex flex-wrap gap-3">
+                 <NuxtLink v-if="enableNavigation && selectedNodePath" :to="selectedNodePath" class="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 font-semibold text-sm rounded-lg transition-colors">
+                   <UIcon name="i-heroicons-arrow-top-right-on-square" class="w-4 h-4" />
+                   {{ t.openEntity }}
+                 </NuxtLink>
+                 
+                                   
+               </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { shallowRef } from 'vue'
+import theToc from '~/components/theToc.vue'
 import * as d3 from 'd3'
 import { useMediaQuery } from '@vueuse/core'
 import { useLanguageStore } from '~/stores/language'
@@ -527,6 +622,16 @@ const contextMenu = ref({
   node: null as any | null
 })
 const isContextMenuEditorOpen = ref(false)
+  watch(isContextMenuEditorOpen, (val) => {
+    if (!val) {
+      setTimeout(() => {
+        document.documentElement.style.paddingRight = ''
+        document.documentElement.style.overflow = ''
+        document.body.style.paddingRight = ''
+        document.body.style.overflow = ''
+      }, 300)
+    }
+  })
 const contextMenuRelinking = ref(false)
 const contextMenuCreatorType = ref<'term'|'article'|'book'>('term')
 const store = userStore()
@@ -828,6 +933,20 @@ const selectedNode = ref<any>(null)
 const selectedLink = ref<any>(null)
 const nodePopupPanelClosed = ref(false)
 const isEditorOpen = ref(false)
+  watch(isEditorOpen, (val) => {
+    if (val) {
+      isContextMenuOpen.value = false
+      isSidebarOpen.value = false
+      nodePopupPanelClosed.value = true
+    } else {
+      setTimeout(() => {
+        document.documentElement.style.paddingRight = ''
+        document.documentElement.style.overflow = ''
+        document.body.style.paddingRight = ''
+        document.body.style.overflow = ''
+      }, 300)
+    }
+  })
 const linkPopupPanelClosed = ref(false)
 /** Якорь попапа в координатах .graph-viewport (от верхнего левого угла хоста) — точка курсора при клике */
 const nodePopupPointerHost = ref<{ x: number, y: number } | null>(null)
@@ -1217,6 +1336,117 @@ const activeFilters = ref({
 
 const isFullscreen = ref(false)
 const isStatsCollapsed = ref(false)
+const isSidebarOpen = ref(true)
+
+const sidebarWidthPx = ref(400)
+const windowWidth = ref(1024)
+
+let isResizing = false
+const startSidebarResize = (e: MouseEvent) => {
+  isResizing = true
+  document.body.style.userSelect = 'none'
+  document.addEventListener('mousemove', doSidebarResize)
+  document.addEventListener('mouseup', stopSidebarResize)
+}
+const doSidebarResize = (e: MouseEvent) => {
+  if (!isResizing) return
+  const newWidth = window.innerWidth - e.clientX
+  if (newWidth > 300 && newWidth < window.innerWidth * 0.5) {
+    sidebarWidthPx.value = newWidth
+  }
+}
+const stopSidebarResize = () => {
+  isResizing = false
+  document.body.style.userSelect = ''
+  document.removeEventListener('mousemove', doSidebarResize)
+  document.removeEventListener('mouseup', stopSidebarResize)
+}
+
+onMounted(() => {
+  windowWidth.value = window.innerWidth
+  sidebarWidthPx.value = window.innerWidth >= 1024 ? Math.max(400, window.innerWidth * 0.33) : window.innerWidth
+  window.addEventListener('resize', () => { windowWidth.value = window.innerWidth })
+})
+
+const handleContentClick = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  const link = target.closest('a')
+  if (link && link.getAttribute('href') && !link.getAttribute('href')?.startsWith('http')) {
+    const href = link.getAttribute('href')!
+    const parts = href.split('/').filter(Boolean)
+    if (parts.length >= 2) {
+      e.preventDefault()
+      let type = parts[0]
+      const slug = parts[1]
+      
+      if (type === 'articles') type = 'article'
+      if (type === 'terms') type = 'term'
+      if (type === 'books') type = 'book'
+      
+      const nodeInGraph = localNodes.value.find(n => n.type === type && (n.slug === slug || n.id === slug || n.originalId?.toString() === slug))
+      
+      if (nodeInGraph) {
+         selectedNode.value = nodeInGraph
+         enterFocusMode(nodeInGraph.id)
+      } else {
+         selectedNode.value = {
+           id: slug,
+           type: type as any,
+           title: slug,
+           slug: slug,
+           originalId: 0,
+         } as any
+      }
+    }
+  }
+}
+
+
+const tocLinks = computed(() => {
+  if (selectedNode.value?.type !== 'article') return []
+  const html = termPopupDetail.value?.html_content || ''
+  const regex = /<h([2-5])([^>]*)>([\s\S]*?)<\/h\1>/gi
+  const flat: { id: string; text: string; depth: number }[] = []
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(html)) !== null) {
+    const depth = Number.parseInt(match[1], 10)
+    let innerRaw = match[3]
+    
+    // strip odt heading markers by regex
+    innerRaw = innerRaw.replace(/<span[^>]*class="[^"]*odt-heading-marker[^"]*"[^>]*>.*?<\/span>/gi, '')
+    
+    const textDisplay = innerRaw.replace(/<[^>]*>?/gm, '').trim()
+    if (!textDisplay) continue
+    
+    const idMatch = match[2].match(/id=["']([^"']+)["']/)
+    const id = idMatch ? idMatch[1] : textDisplay.replace(/\s+/g, '-').toLowerCase()
+    
+    flat.push({ id, text: textDisplay, depth })
+  }
+  
+  const buildTree = (items: typeof flat): any[] => {
+    const result: any[] = []
+    const stack: { node: any; depth: number }[] = []
+    for (const item of items) {
+      const node: any = { id: item.id, text: item.text, depth: item.depth }
+      while (stack.length > 0 && stack[stack.length - 1].depth >= item.depth) {
+        stack.pop()
+      }
+      if (stack.length === 0) {
+        result.push(node)
+      } else {
+        const parent = stack[stack.length - 1].node
+        if (!parent.children) parent.children = []
+        parent.children.push(node)
+      }
+      stack.push({ node, depth: item.depth })
+    }
+    return result
+  }
+  
+  return buildTree(flat)
+})
+
 const isFilterMenuOpen = ref(false)
 
 // ─── Ego-graph (focus mode) ───────────────────────────────────────────────
@@ -1485,15 +1715,23 @@ const closeLinkPopupPanel = (e?: MouseEvent) => {
     delete nodePopupStyle.value.overflow
 
     termPopupDetail.value = null
-  if (!process.client || !node || node.type !== 'term' || !node.slug) {
+  if (!process.client || !node || !node.slug) {
     termPopupLoading.value = false
     return
   }
   termPopupLoading.value = true
   try {
-    termPopupDetail.value = await $fetch(`/api/terms/${encodeURIComponent(node.slug)}`, {
-      query: { lang: langStore.currentLang },
-    })
+    let endpoint = ''
+    if (node.type === 'term') endpoint = `/api/terms/${encodeURIComponent(node.slug)}`
+    else if (node.type === 'article') endpoint = `/api/articles/${encodeURIComponent(node.slug)}`
+    else if (node.type === 'book') endpoint = `/api/books/${encodeURIComponent(node.slug)}`
+    else if (node.type === 'category') endpoint = `/api/categorys/${encodeURIComponent(node.slug)}`
+    
+    if (endpoint) {
+      termPopupDetail.value = await $fetch(endpoint, {
+        query: { lang: langStore.currentLang },
+      })
+    }
   }
   catch {
     termPopupDetail.value = null
@@ -1521,7 +1759,14 @@ function graphPopupHostPosition(
   const hr = host.getBoundingClientRect()
   const cx = hr.left + anchorXHost
   const cy = hr.top + anchorYHost
-  const { screenLeft, screenRight, screenTop, screenBottom } = viewportScreenBox()
+  let { screenLeft, screenRight, screenTop, screenBottom } = viewportScreenBox()
+  if (isSidebarOpen.value) {
+    if (window.innerWidth >= 768) {
+      screenRight -= sidebarWidthPx.value
+    } else {
+      screenBottom -= window.innerHeight * 0.5
+    }
+  }
 
   el.style.maxHeight = ''
   el.style.overflowY = ''
@@ -2440,6 +2685,8 @@ const initGraph = () => {
     .extent([[0, 0], [width, height]])
     .scaleExtent([0.1, 4])
     .on('zoom', (event: any) => {
+      nodePopupPointerHost.value = null
+      linkPopupPointerHost.value = null
       g.attr('transform', event.transform)
       scheduleVueZoomFromD3(event.transform)
       if (graphPopupClampNeeded())
@@ -2749,6 +2996,8 @@ const handleOutsideClick = (event: MouseEvent) => {
   if (target.closest('.kg-ego-bar')) return
   if (target.tagName.toLowerCase() === 'line') return
   if (target.closest('.link-hit')) return
+    if (target.closest('.kg-content-sidebar')) return
+    if (target.closest('.in-place-editor-wrapper')) return
 
   selectedNode.value = null
   selectedLink.value = null
@@ -2849,7 +3098,25 @@ watch([focusNodeId, focusDepth], () => {
 </script>
 
 
+
 <style scoped>
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.slide-right-enter-from,
+.slide-right-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+@media (max-width: 768px) {
+  .slide-right-enter-from,
+  .slide-right-leave-to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
 .knowledge-graph-visualizer {
   /* Обводка узла и «ореол» подписи — из foundation-токенов (design_system §3) */
   --node-stroke: color-mix(in srgb, var(--gv-border-principal) 78%, var(--gv-surface-card));

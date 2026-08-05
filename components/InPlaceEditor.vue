@@ -1,19 +1,19 @@
 <template>
-  <div v-if="canEdit" :class="wrapperClass">
+  <div :class="wrapperClass">
     <slot name="trigger" :open="openEditor">
       <!-- Main Floating Button -->
       <UTooltip text="Редактировать на лету" placement="left">
         <button 
           @click="openEditor"
-          class="flex items-center justify-center w-14 h-14 rounded-full bg-sky-500/90 hover:bg-sky-500 text-white shadow-lg hover:shadow-sky-500/50 transition-all duration-300 hover:scale-105 active:scale-95 border border-white/20"
+          class="flex items-center justify-center w-16 h-16 rounded-full bg-sky-500/90 hover:bg-sky-500 text-white shadow-lg hover:shadow-sky-500/50 transition-all duration-300 hover:scale-105 active:scale-95 border border-white/20"
         >
-          <UIcon name="i-heroicons-pencil-square-solid" class="w-6 h-6" />
+          <UIcon name="i-heroicons-pencil-square-solid" class="w-7 h-7" />
         </button>
       </UTooltip>
     </slot>
 
     <!-- Slideover -->
-    <USlideover v-model="isOpen" :ui="{ width: 'w-screen max-w-6xl 2xl:max-w-[80vw]' }">
+    <USlideover v-model="isOpen" :ui="{ width: 'w-screen max-w-[95vw]', wrapper: '!z-[99999] in-place-editor-wrapper' }">
       <div class="flex-1 flex flex-col h-[100dvh] bg-white dark:bg-[#111113] relative overflow-hidden shadow-2xl border-l border-gray-200 dark:border-zinc-800">
         <!-- Header -->
         <div class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-[#161618]">
