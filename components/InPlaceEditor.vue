@@ -13,7 +13,7 @@
     </slot>
 
     <!-- Slideover -->
-    <USlideover v-model="isOpen" :ui="{ width: 'w-screen max-w-[95vw]', wrapper: '!z-[99999] in-place-editor-wrapper' }">
+    <USlideover :prevent-scroll="false" v-model="isOpen" :ui="{ width: 'w-screen max-w-[95vw]', wrapper: '!z-[99999] in-place-editor-wrapper' }">
       <div class="flex-1 flex flex-col h-[100dvh] bg-white dark:bg-[#111113] relative overflow-hidden shadow-2xl border-l border-gray-200 dark:border-zinc-800">
         <!-- Header -->
         <div class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-[#161618]">

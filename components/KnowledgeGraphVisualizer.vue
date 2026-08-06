@@ -499,7 +499,7 @@
 
       <!-- Content Sidebar -->
       <transition name="slide-right">
-        <div v-show="isSidebarOpen" class="kg-content-sidebar flex flex-col absolute bottom-0 left-0 right-0 md:relative h-[50vh] md:h-full bg-white dark:bg-[#111113] border-t md:border-t-0 md:border-l border-gray-100 dark:border-zinc-900 z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.1)] md:shadow-2xl overflow-hidden" :style="{ width: windowWidth >= 768 ? sidebarWidthPx + 'px' : '100%' }">
+        <div v-show="isSidebarOpen" class="kg-content-sidebar shrink-0 flex flex-col absolute bottom-0 left-0 right-0 md:relative h-[50vh] md:h-full bg-white dark:bg-[#111113] border-t md:border-t-0 md:border-l border-gray-100 dark:border-zinc-900 z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.1)] md:shadow-2xl overflow-hidden" :style="{ width: windowWidth >= 768 ? sidebarWidthPx + 'px' : '100%' }">
           <div class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-sky-500/50 z-50 hidden md:block" @mousedown="startSidebarResize"></div>
           <div class="shrink-0 flex items-center justify-between p-4 border-b border-gray-100 dark:border-zinc-900 bg-white dark:bg-[#111113]">
             <h3 class="font-bold text-sm text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
@@ -729,6 +729,7 @@ const uiDict: Record<string, any> = {
     toolbarExpand: 'Open toolbar',
     toolbarCollapse: 'Collapse toolbar',
     toolbarCompactLabel: 'Graph panel',
+    contentPanel: 'Content',
     popupClose: 'Close',
     openEntity: 'Open page →',
     loadingDetail: 'Loading...',
@@ -787,6 +788,7 @@ const uiDict: Record<string, any> = {
     toolbarExpand: 'Открыть панель',
     toolbarCollapse: 'Свернуть панель',
     toolbarCompactLabel: 'Граф',
+    contentPanel: 'Контент',
     popupClose: 'Закрыть',
     openEntity: 'Открыть страницу →',
     loadingDetail: 'Загрузка...',
@@ -836,6 +838,7 @@ const uiDict: Record<string, any> = {
     toolbarExpand: '展开工具栏',
     toolbarCollapse: '收起工具栏',
     toolbarCompactLabel: '图谱',
+    contentPanel: '内容',
     popupClose: '关闭',
     openEntity: '打开页面 →',
     loadingDetail: '加载中...',
@@ -1350,10 +1353,12 @@ const startSidebarResize = (e: MouseEvent) => {
 }
 const doSidebarResize = (e: MouseEvent) => {
   if (!isResizing) return
-  const newWidth = window.innerWidth - e.clientX
-  if (newWidth > 300 && newWidth < window.innerWidth * 0.5) {
-    sidebarWidthPx.value = newWidth
-  }
+  let newWidth = window.innerWidth - e.clientX
+  const minW = 300
+  const maxW = window.innerWidth * 0.5
+  if (newWidth < minW) newWidth = minW
+  if (newWidth > maxW) newWidth = maxW
+  sidebarWidthPx.value = newWidth
 }
 const stopSidebarResize = () => {
   isResizing = false
