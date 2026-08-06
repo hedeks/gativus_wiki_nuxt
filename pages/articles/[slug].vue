@@ -1,7 +1,7 @@
 <template>
   <div
     class="flex flex-col p-3 lg:p-10 flex-wrap-reverse lg:grid lg:grid-cols-10 lg:flex-nowrap gap-10 prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert w-full prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold">
-    <div class="fixed top-0 lg:top-[var(--header-height)] left-0 h-1 bg-[var(--gv-primary)] z-[9999] transition-all duration-150 ease-out" :style="{ width: scrollProgress + '%' }"></div>
+    <div class="fixed top-0 lg:top-[var(--header-height)] left-0 h-1 bg-[var(--gv-primary)] z-40 transition-all duration-150 ease-out" :style="{ width: scrollProgress + '%' }"></div>
     <theLeftQuizSelector
       @changeView="changeView"
       :is-theory="isTheory"
