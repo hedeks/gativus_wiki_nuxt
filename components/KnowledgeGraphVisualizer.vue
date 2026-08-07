@@ -4,7 +4,7 @@
     'knowledge-graph-visualizer--canvas-locked': canvasInteractionLocked,
   }">
     <div class="w-full h-full flex flex-col md:flex-row min-h-0 overflow-hidden relative bg-white dark:bg-[#111113]">
-      <div class="flex-1 min-w-0 h-full flex flex-col relative transition-all duration-300" :class="{'md:max-w-[66.666%]': isSidebarOpen}">
+      <div class="flex-1 min-w-0 h-full flex flex-col relative transition-all duration-300">
         <div ref="graphViewport" class="graph-viewport w-full h-full">
       <div class="kg-graph-canvas-stack">
         <div ref="graphContainer" class="graph-container" :class="{ 'graph-container--frameless': frameless }">
@@ -375,7 +375,7 @@
         <!-- Link popup -->
         <Teleport to="body">
           <transition name="pop">
-            <div v-if="selectedLink && !linkPopupPanelClosed" class="graph-popup link-popup graph-popup-link fixed"
+            <div v-if="selectedLink && !linkPopupPanelClosed" class="graph-popup link-popup graph-popup-link"
               @mousedown.stop @wheel.stop @mousewheel.stop>
             <div class="link-popup-accent" :style="{
               borderColor: getNodeColor(getLinkHierarchy(selectedLink).child),
@@ -421,7 +421,7 @@
               {{ t.mentions }}: <strong class="tabular-nums">{{ mentionCountForSelectedLink }}</strong>
             </p>
           </div>
-        </transition>
+         </transition>
         </Teleport>
 
         <ExcursionsModal v-model="isExcursionsModalOpen" :stories="availableStories" :t="t" @play="playStory" />
@@ -480,6 +480,8 @@
                 
         
 
+        <TheImageViewer :src="lightboxImage" :visible="isLightboxOpen" @close="closeLightbox" />
+
         <InPlaceEditor 
           v-if="selectedNode && selectedNode.type !== 'category' && selectedNode.originalId"
           v-model="isEditorOpen"
@@ -517,7 +519,7 @@
           <div class="flex-1 overflow-y-auto p-5 md:p-10 gv-admin-scrollbar relative bg-white dark:bg-zinc-900">
             <div v-if="!selectedNode" class="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500 opacity-60">
                <UIcon name="i-heroicons-cursor-arrow-rays" class="w-12 h-12 mb-3" />
-               <p class="text-sm font-medium text-center">Выберите узел на графе<br>для просмотра содержимого</p>
+               <p class="text-sm font-medium text-center" v-html="t.selectNodeToView"></p>
             </div>
             <div v-else class="space-y-6">
                <div class="flex flex-col pb-8 mb-8 border-b border-gray-100 dark:border-zinc-800 min-w-0">
@@ -732,6 +734,7 @@ const uiDict: Record<string, any> = {
     contentPanel: 'Content',
     popupClose: 'Close',
     openEntity: 'Open page →',
+    selectNodeToView: 'Select a node on the graph<br>to view its contents',
     loadingDetail: 'Loading...',
     focusMode: 'Focus',
     exitFocus: 'Exit focus',
@@ -791,6 +794,7 @@ const uiDict: Record<string, any> = {
     contentPanel: 'Контент',
     popupClose: 'Закрыть',
     openEntity: 'Открыть страницу →',
+    selectNodeToView: 'Выберите узел на графе<br>для просмотра содержимого',
     loadingDetail: 'Загрузка...',
     focusMode: 'Фокус',
     exitFocus: 'Выйти из фокуса',
@@ -841,6 +845,7 @@ const uiDict: Record<string, any> = {
     contentPanel: '内容',
     popupClose: '关闭',
     openEntity: '打开页面 →',
+    selectNodeToView: '在图表上选择一个节点<br>以查看其内容',
     loadingDetail: '加载中...',
     focusMode: '聚焦',
     exitFocus: '退出聚焦',
@@ -1205,7 +1210,7 @@ function zoomToNode(nodeId: string) {
     .call(zoomHandler.transform, d3.zoomIdentity.translate(tx, ty).scale(scale))
 
   // Position the popup exactly over the node's new on-screen location
-  nodePopupPointerHost.value = { x: centerX, y: centerY }
+  nodePopupPointerHost.value = null
   nodePopupPanelClosed.value = false
   return n
 }
@@ -1369,12 +1374,19 @@ const stopSidebarResize = () => {
 
 onMounted(() => {
   windowWidth.value = window.innerWidth
-  sidebarWidthPx.value = window.innerWidth >= 1024 ? Math.max(400, window.innerWidth * 0.33) : window.innerWidth
+  sidebarWidthPx.value = window.innerWidth >= 768 ? (window.innerWidth / 3) : window.innerWidth
   window.addEventListener('resize', () => { windowWidth.value = window.innerWidth })
 })
 
 const handleContentClick = (e: MouseEvent) => {
   const target = e.target as HTMLElement
+  
+  if (target.tagName === 'IMG') {
+    lightboxImage.value = (target as HTMLImageElement).src
+    isLightboxOpen.value = true
+    return
+  }
+  
   const link = target.closest('a')
   if (link && link.getAttribute('href') && !link.getAttribute('href')?.startsWith('http')) {
     const href = link.getAttribute('href')!
@@ -1406,6 +1418,13 @@ const handleContentClick = (e: MouseEvent) => {
   }
 }
 
+
+const isLightboxOpen = ref(false)
+const lightboxImage = ref('')
+
+const closeLightbox = () => {
+  isLightboxOpen.value = false
+}
 
 const tocLinks = computed(() => {
   if (selectedNode.value?.type !== 'article') return []
@@ -1525,21 +1544,28 @@ watch(isMobileToolbarExpanded, (open) => {
 
 const ontologyLevels: Record<string, number> = { category: 0, book: 1, article: 2, term: 3 }
 
+const getNodeObj = (n: any) => {
+  if (typeof n === 'object') return n
+  return props.graphData?.nodes?.find((node: any) => node.id === n) || { id: n, type: 'unknown', title: n }
+}
+
 /**
  * Returns parent and child nodes for a link based on ontology levels.
  */
 const getLinkHierarchy = (link: any) => {
-  const sLevel = ontologyLevels[link.source.type] ?? 99
-  const tLevel = ontologyLevels[link.target.type] ?? 99
+  const src = getNodeObj(link.source)
+  const tgt = getNodeObj(link.target)
+  const sLevel = ontologyLevels[src.type] ?? 99
+  const tLevel = ontologyLevels[tgt.type] ?? 99
 
   if (sLevel < tLevel) {
-    return { parent: link.source, child: link.target }
+    return { parent: src, child: tgt }
   } else if (sLevel > tLevel) {
-    return { parent: link.target, child: link.source }
+    return { parent: tgt, child: src }
   } else {
     // For same-level nodes (Category -> Category)
     // Source is the sub-entity (child), Target is the parent entity.
-    return { parent: link.target, child: link.source }
+    return { parent: tgt, child: src }
   }
 }
 
@@ -1842,8 +1868,16 @@ function applyGraphPopupClamp() {
         hy = nodePopupPointerHost.value.y
       }
       else {
-        hx = graphLiveZoomTransform.applyX(selectedNode.value.x)
-        hy = graphLiveZoomTransform.applyY(selectedNode.value.y)
+        let nx = selectedNode.value.x
+        let ny = selectedNode.value.y
+        const nGroup = d3.select(svgRef.value).selectAll('.node-group').filter((d: any) => d.id === selectedNode.value?.id)
+        if (!nGroup.empty()) {
+          const datum = nGroup.datum() as any
+          nx = datum.x
+          ny = datum.y
+        }
+        hx = graphLiveZoomTransform.applyX(nx)
+        hy = graphLiveZoomTransform.applyY(ny)
       }
       graphPopupHostPosition(el, host, hx, hy, 15)
     }
@@ -1859,10 +1893,29 @@ function applyGraphPopupClamp() {
         hy = linkPopupPointerHost.value.y
       }
       else {
-        const s = selectedLink.value.source
-        const tN = selectedLink.value.target
-        const midX = (s.x + tN.x) / 2
-        const midY = (s.y + tN.y) / 2
+        const sId = typeof selectedLink.value.source === 'object' ? selectedLink.value.source.id : selectedLink.value.source
+        const tId = typeof selectedLink.value.target === 'object' ? selectedLink.value.target.id : selectedLink.value.target
+        
+        let sx = typeof selectedLink.value.source === 'object' && selectedLink.value.source.x !== undefined ? selectedLink.value.source.x : 0
+        let sy = typeof selectedLink.value.source === 'object' && selectedLink.value.source.y !== undefined ? selectedLink.value.source.y : 0
+        let tx = typeof selectedLink.value.target === 'object' && selectedLink.value.target.x !== undefined ? selectedLink.value.target.x : 0
+        let ty = typeof selectedLink.value.target === 'object' && selectedLink.value.target.y !== undefined ? selectedLink.value.target.y : 0
+        
+        // Попытка взять свежие координаты из узлов
+        const svg = d3.select(svgRef.value)
+        const sGroup = svg.selectAll('.node-group').filter((d: any) => d.id === sId)
+        if (!sGroup.empty()) {
+          const sd = sGroup.datum() as any
+          sx = sd.x; sy = sd.y
+        }
+        const tGroup = svg.selectAll('.node-group').filter((d: any) => d.id === tId)
+        if (!tGroup.empty()) {
+          const td = tGroup.datum() as any
+          tx = td.x; ty = td.y
+        }
+
+        const midX = (sx + tx) / 2
+        const midY = (sy + ty) / 2
         hx = graphLiveZoomTransform.applyX(midX)
         hy = graphLiveZoomTransform.applyY(midY)
       }
@@ -1890,7 +1943,16 @@ watch(
     linkPopupPanelClosed,
   ],
   () => {
-    nextTick(() => requestGraphPopupClamp())
+    // Retry up to 10 frames to account for Vue Teleport mounting delay
+    let attempts = 0
+    const tryClamp = () => {
+      requestGraphPopupClamp()
+      attempts++
+      if (attempts < 10) {
+        requestAnimationFrame(tryClamp)
+      }
+    }
+    tryClamp()
   },
 )
 
@@ -2993,16 +3055,13 @@ let resizeObserver: ResizeObserver | null = null
 const handleOutsideClick = (event: MouseEvent) => {
   const target = event.target as HTMLElement
 
-  if (target.closest('.graph-popup')) return
-  if (target.closest('.graph-actions-container')) return
-  if (target.closest('.kg-graph-ui-cluster')) return
-  if (target.closest('.graph-stats-panel')) return
-  if (target.closest('.node-group')) return
-  if (target.closest('.kg-ego-bar')) return
-  if (target.tagName.toLowerCase() === 'line') return
-  if (target.closest('.link-hit')) return
-    if (target.closest('.kg-content-sidebar')) return
-    if (target.closest('.in-place-editor-wrapper')) return
+  if (target.closest && target.closest('.graph-popup')) return
+  if (target.closest && target.closest('.graph-viewport')) return
+  if (target.closest && target.closest('.graph-actions-container')) return
+  if (target.closest && target.closest('.kg-graph-ui-cluster')) return
+  if (target.closest && target.closest('.graph-stats-panel')) return
+  if (target.closest && target.closest('.kg-content-sidebar')) return
+  if (target.closest && target.closest('.in-place-editor-wrapper')) return
 
   selectedNode.value = null
   selectedLink.value = null
@@ -4440,7 +4499,6 @@ watch([focusNodeId, focusDepth], () => {
 }
 
 .link-popup {
-  position: relative;
   padding-left: 20px !important;
   overflow: hidden;
 }

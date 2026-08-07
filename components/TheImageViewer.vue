@@ -385,7 +385,7 @@ onUnmounted(() => {
 .image-viewer-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: 999999;
   display: flex;
   flex-direction: column;
   outline: none;
@@ -404,7 +404,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: flex-end;
   padding: 0 16px;
-  z-index: 10010;
+  z-index: 999999;
   pointer-events: none;
 }
 
@@ -466,7 +466,7 @@ onUnmounted(() => {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 10010;
+  z-index: 999999;
 }
 
 .viewer-controls-glass {
