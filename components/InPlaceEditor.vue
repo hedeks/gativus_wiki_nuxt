@@ -2,7 +2,7 @@
   <div :class="wrapperClass">
     <slot name="trigger" :open="openEditor">
       <!-- Main Floating Button -->
-      <UTooltip text="Редактировать на лету" placement="left">
+      <UTooltip :text="getLocalizedToast(langStore.currentLang, 'editInPlace')" placement="left">
         <button 
           @click="openEditor"
           class="flex items-center justify-center w-16 h-16 rounded-full bg-sky-500/90 hover:bg-sky-500 text-white shadow-lg hover:shadow-sky-500/50 transition-all duration-300 hover:scale-105 active:scale-95 border border-white/20"
@@ -22,8 +22,8 @@
               <UIcon name="i-heroicons-pencil-square" class="text-xl" />
             </div>
             <div>
-              <h2 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Редактор</h2>
-              <p class="text-[10px] text-gray-500 font-medium">In-place editing</p>
+              <h2 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">{{ getLocalizedToast(langStore.currentLang, 'editor') }}</h2>
+              <p class="text-[10px] text-gray-500 font-medium">{{ getLocalizedToast(langStore.currentLang, 'inPlaceEditing') }}</p>
             </div>
           </div>
           <button @click="isOpen = false" class="p-2 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-200 dark:hover:text-white dark:hover:bg-zinc-800 transition-colors">
@@ -77,6 +77,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { userStore } from '~/stores/userStore'
+import { useLanguageStore } from '~/stores/language'
+import { getLocalizedToast } from '~/utils/i18nToasts'
 import AdminArticleForm from '~/components/admin/AdminArticleForm.vue'
 import WorkspaceEditor from '~/components/admin/WorkspaceEditor.vue'
 import AdminBookForm from '~/components/admin/AdminBookForm.vue'
@@ -98,6 +100,7 @@ const emit = defineEmits<{
 }>()
 
 const store = userStore()
+const langStore = useLanguageStore()
 const isOpen = ref(false)
 const isEditorLoading = ref(false)
 const toast = useToast()
@@ -126,7 +129,11 @@ const canEdit = computed(() => {
 function handleSaved() {
   isOpen.value = false
   emit('saved')
-  toast.add({ title: 'Изменения сохранены', description: 'Страница была успешно обновлена.', color: 'green' })
+  toast.add({ 
+    title: getLocalizedToast(langStore.currentLang, 'changesSaved'), 
+    description: getLocalizedToast(langStore.currentLang, 'pageUpdated'), 
+    color: 'green' 
+  })
 }
 </script>
 
