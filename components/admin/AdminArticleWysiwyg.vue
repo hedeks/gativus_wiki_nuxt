@@ -1057,6 +1057,7 @@ defineExpose({
 .editor-toolbar {
   display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: #fafafa; border-bottom: 1px solid #e5e7eb; flex-wrap: wrap; gap: 8px; flex-shrink: 0;
 }
+.dark .editor-toolbar { background: #1a1a1d; border-bottom-color: #2a2a2e; }
 
 /* ?oC?oC?oC Top Bar ?oC?oC?oC */
 .editor-topbar {
