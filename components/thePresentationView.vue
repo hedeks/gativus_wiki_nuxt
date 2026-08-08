@@ -24,7 +24,7 @@ const resolvedPath = computed(() => {
 
     <!-- PDF Embed -->
     <template v-if="hasPresentation && isPdf">
-      <ThePdfViewer :src="resolvedPath" />
+      <LazyThePdfViewer :src="resolvedPath" />
     </template>
 
     <!-- ODP / Other format — Download + Preview -->

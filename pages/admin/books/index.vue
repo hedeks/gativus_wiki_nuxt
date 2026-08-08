@@ -582,7 +582,7 @@ function getCategoryTitle(id: number) {
         </p>
         
         <div class="flex-1 bg-gray-50 dark:bg-[#111113] rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden relative min-h-0">
-          <KnowledgeGraphVisualizer 
+          <LazyKnowledgeGraphVisualizer 
             v-if="isImportPreviewModalOpen"
             :graphData="importPreviewData" 
             :pending="false" 

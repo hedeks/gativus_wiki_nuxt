@@ -2,7 +2,7 @@
   <div class="kg-shell">
     <div class="kg-viewport">
       <div class="kg-graph-stage">
-        <KnowledgeGraphVisualizer
+        <LazyKnowledgeGraphVisualizer
           :graph-data="graphData"
           :pending="pending"
           :graph-initializing="graphInitializing"

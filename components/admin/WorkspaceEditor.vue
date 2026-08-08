@@ -288,7 +288,7 @@
             
             <div class="flex-1 min-h-0 relative">
               <div class="absolute inset-0 w-full h-full">
-                <KnowledgeGraphVisualizer
+                <LazyKnowledgeGraphVisualizer
                   v-if="isGraphModalOpen"
                   :graph-data="graphData"
                   :pending="pendingGraph"

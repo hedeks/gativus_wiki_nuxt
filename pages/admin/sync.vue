@@ -337,7 +337,7 @@ async function clearCache() {
                   </div>
                 </div>
                 <div class="preview-graph-container h-[400px] overflow-hidden w-full bg-[#fdfdfd] dark:bg-[#111113]">
-                  <KnowledgeGraphVisualizer :graphData="previewGraphData" :pending="false" :enableNavigation="false" />
+                  <LazyKnowledgeGraphVisualizer :graphData="previewGraphData" :pending="false" :enableNavigation="false" />
                 </div>
                 <div class="relative z-10 p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111113]" v-if="previewAssetsData.length > 0">
                   <h4 class="text-xs font-bold text-gray-900 dark:text-white mb-2">Ассеты в архиве ({{ previewAssetsData.length }}):</h4>
