@@ -64,17 +64,5 @@ const selectStory = (story: any) => {
 </script>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--gv-border-principal) 50%, transparent);
-  border-radius: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--gv-border-principal);
-}
+
 </style>

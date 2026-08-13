@@ -603,17 +603,5 @@ onMounted(() => {
   background: var(--gv-surface);
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
-  border-radius: 4px;
-}
-.dark .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #334155;
-}
+
 </style>

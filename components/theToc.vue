@@ -235,30 +235,6 @@ const customScroll = (id: string) => {
     opacity: 1;
 }
 
-.scrollable-toc {
-    /* Поддержка Firefox (светлая тема) */
-    scrollbar-width: thin;
-    scrollbar-color: #000000 transparent;
-}
-
-/* Custom slim scrollbar для Chrome, Safari, Edge (светлая) */
-.scrollable-toc::-webkit-scrollbar {
-    width: 4px;
-}
-
-.scrollable-toc::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.scrollable-toc::-webkit-scrollbar-thumb {
-    border-radius: 0px;
-    background-color: #000000;
-}
-
-.scrollable-toc::-webkit-scrollbar-thumb:hover {
-    background-color: #374151;
-}
-
 .toc-extra-title {
     font-size: 10px;
     font-weight: 700;
@@ -375,21 +351,5 @@ const customScroll = (id: string) => {
 
 <style>
 /* Глобальный перехват состояния темной темы Tailwind для ползунков */
-html.dark .scrollable-toc,
-.dark .scrollable-toc {
-    scrollbar-color: #ffffff transparent;
-    /* Белый в темной для Firefox */
-}
 
-html.dark .scrollable-toc::-webkit-scrollbar-thumb,
-.dark .scrollable-toc::-webkit-scrollbar-thumb {
-    background-color: #ffffff;
-    /* Белый в темной для Chrome/Edge */
-}
-
-html.dark .scrollable-toc::-webkit-scrollbar-thumb:hover,
-.dark .scrollable-toc::-webkit-scrollbar-thumb:hover {
-    background-color: #e5e7eb;
-    /* Тонкий ховер в темной */
-}
 </style>

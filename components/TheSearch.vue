@@ -1203,27 +1203,7 @@ function onHitPointerArticle(idx: number) {
   flex-shrink: 0;
 }
 
-.custom-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--gv-border-principal) 85%, transparent) transparent;
-}
 
-.custom-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-
-.custom-scroll::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--gv-border-principal) 85%, transparent);
-  border-radius: 10px;
-}
-
-.dark .custom-scroll {
-  scrollbar-color: color-mix(in srgb, var(--gv-text-secondary) 32%, transparent) transparent;
-}
-
-.dark .custom-scroll::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--gv-text-secondary) 32%, transparent);
-}
 
 /* ─── Адаптив: узкие экраны / тач / safe-area ─── */
 @media (max-width: 639px) {

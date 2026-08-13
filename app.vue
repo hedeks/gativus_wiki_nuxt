@@ -613,40 +613,38 @@ a:hover {
   color: #0c4a6e; /* sky-900 */
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar - Luxe Gativus Style */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.dark * {
+  scrollbar-color: #3f3f46 transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9; /* slate-100 */
-}
-
-.dark ::-webkit-scrollbar-track {
-  background: #18181b; /* zinc-900 */
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1; /* slate-300 */
-  border-radius: 5px;
-  border: 2px solid transparent;
-  background-clip: content-box;
+  background-color: #cbd5e1; /* slate-300 */
+  border-radius: 10px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #3f3f46; /* zinc-700 */
+  background-color: #3f3f46; /* zinc-700 */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #0ea5e9; /* sky-500 */
-  border-radius: 5px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #0284c7; /* sky-600 */
+  background-color: var(--gv-primary);
 }
 </style>
 

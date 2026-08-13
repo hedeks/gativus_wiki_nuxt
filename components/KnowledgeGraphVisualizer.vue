@@ -4808,19 +4808,7 @@ watch([focusNodeId, focusDepth], () => {
   padding-right: 4px;
 }
 
-.graph-popup__wrapper-inner::-webkit-scrollbar {
-  width: 4px;
-}
-.graph-popup__wrapper-inner::-webkit-scrollbar-track {
-  background: transparent;
-}
-.graph-popup__wrapper-inner::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--gv-border-principal) 50%, transparent);
-  border-radius: 4px;
-}
-.graph-popup__wrapper-inner::-webkit-scrollbar-thumb:hover {
-  background: var(--gv-border-principal);
-}
+
 
 .graph-popup__body {
   width: 100%;
