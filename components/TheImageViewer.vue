@@ -6,7 +6,7 @@
         class="image-viewer-overlay"
         role="dialog"
         aria-modal="true"
-        @click="handleOverlayClick"
+        @click.stop="handleOverlayClick"
         @keydown="handleKeyDown"
         tabindex="0"
         ref="overlayRef"
