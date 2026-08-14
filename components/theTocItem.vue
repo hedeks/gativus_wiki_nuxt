@@ -1,10 +1,10 @@
 <template>
   <div class="flex flex-col w-full">
-    <div :data-title="link.id" lang="ru" :class="[
-      'toc py-1 pr-3 cursor-pointer transition-colors ease duration-300 hover:bg-gray-50 dark:hover:bg-zinc-800/20 break-words hyphens-auto',
+    <div :data-title="link.id" lang="ru" tabindex="0" :class="[
+      'toc gv-focusable py-2 lg:py-1 pr-3 min-h-[44px] lg:min-h-0 flex items-center cursor-pointer transition-colors ease duration-300 hover:bg-gray-50 dark:hover:bg-zinc-800/20 break-words hyphens-auto',
       isActive ? 'selectedToc text-black dark:text-white' : 'text-gray-900 dark:text-gray-200',
       paddingClass
-    ]" style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);" @click="handleClick">
+    ]" style="transition-timing-function: cubic-bezier(0.705, 0.010, 0.000, 0.915);" @click="handleClick" @keydown.enter="handleClick" @keydown.space.prevent="handleClick">
       <span>{{ link.text }}</span>
     </div>
 

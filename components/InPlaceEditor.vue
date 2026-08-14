@@ -1,5 +1,5 @@
 <template>
-  <div :class="wrapperClass">
+  <div v-if="canEdit" :class="wrapperClass">
     <slot name="trigger" :open="openEditor">
       <!-- Main Floating Button -->
       <UTooltip :text="getLocalizedToast(langStore.currentLang, 'editInPlace')" placement="left">

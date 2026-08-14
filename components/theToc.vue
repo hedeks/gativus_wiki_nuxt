@@ -33,7 +33,7 @@
         </div>
 
         <Transition name="expand">
-            <div v-show="isDesktop || isMobileOpen" :class="[
+            <div ref="tocScrollContainer" v-show="isDesktop || isMobileOpen" :class="[
                 'flex flex-col dark:text-gray-300 mt-1 overflow-y-auto overflow-x-hidden scrollable-toc lg:pr-2 lg:pb-5',
                 !isDesktop && isMobileOpen ? 'max-h-[60vh] pt-1 pb-1' : 'lg:max-h-[calc(100dvh-var(--header-height)-10rem)] lg:mt-1'
             ]">
@@ -42,7 +42,7 @@
                     @toggle="handleToggle" />
 
                 <div v-if="!isDesktop && hasPresentation" class="toc-extra toc-extra--presentation px-1 pt-2 pb-1">
-                    <button type="button" class="toc-pres-btn" @click.stop="switchToPresentation">
+                    <button type="button" class="toc-pres-btn gv-focusable" @click.stop="switchToPresentation">
                         <svg class="toc-pres-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M7 4v16M17 4v16M3 8h4m10 0h4M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
@@ -58,7 +58,7 @@
                             v-for="ch in chapters"
                             :key="`${ch.slug}-${ch.chapter_number}`"
                             :to="`/articles/${ch.slug}`"
-                            class="toc-extra-row toc-extra-row--chapter"
+                            class="toc-extra-row toc-extra-row--chapter gv-focusable"
                             :class="{ 'toc-row-active': isCurrentChapter(ch) }"
                         >
                             <span class="tabular-nums opacity-50 mr-1">{{ ch.chapter_number }}.</span>
@@ -72,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
 
 type ChapterNav = { slug: string; slug_canonical?: string; title: string; chapter_number: number }
 
@@ -101,6 +101,17 @@ const emit = defineEmits(['updateActiveID', 'changeView']);
 
 const isMobileOpen = ref(false);
 const isDesktop = ref(true);
+const tocScrollContainer = ref<HTMLElement | null>(null);
+
+watch(() => props.activeID, (newId) => {
+    if (!newId || !tocScrollContainer.value) return;
+    nextTick(() => {
+        const activeElem = tocScrollContainer.value?.querySelector('.selectedToc');
+        if (activeElem) {
+            activeElem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    });
+});
 
 const activeText = computed(() => {
     const findText = (id: string, items: any[]): string | null => {
@@ -256,8 +267,8 @@ const customScroll = (id: string) => {
     display: flex;
     align-items: center;
     width: 100%;
-    min-height: 24px;
-    padding: 4px 12px 4px 12px;
+    min-height: 44px;
+    padding: 4px 12px;
     border-left: 2px solid transparent;
     background: transparent;
     color: rgb(17 24 39 / 1);
@@ -302,6 +313,7 @@ const customScroll = (id: string) => {
     align-items: center;
     gap: 7px;
     width: 100%;
+    min-height: 44px;
     padding: 6px 10px;
     border-radius: 0;
     border: none;

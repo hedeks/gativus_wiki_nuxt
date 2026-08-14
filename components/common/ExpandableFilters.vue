@@ -36,6 +36,9 @@
     </div>
 
     <Teleport to="body">
+      <Transition name="filters-backdrop">
+        <div v-if="isOpen" class="filters-backdrop sm:hidden fixed inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-sm z-[990]" @click="isOpen = false"></div>
+      </Transition>
       <Transition name="filters-drop">
         <div
           v-if="isOpen"
@@ -91,10 +94,11 @@ function computeDropdownStyle() {
   if (vw <= 640) {
     dropdownStyle.value = {
       position: 'fixed',
-      top: `${rect.bottom + gap}px`,
-      left: `${pad}px`,
-      right: `${pad}px`,
-      width: 'auto',
+      bottom: '0px',
+      left: '0px',
+      right: '0px',
+      width: '100vw',
+      top: 'auto',
       zIndex: '1000',
       minWidth: '0',
       maxWidth: 'none',
@@ -389,6 +393,16 @@ onUnmounted(() => {
   transform: translateY(-10px) scale(0.97);
 }
 
+.filters-backdrop-enter-active,
+.filters-backdrop-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.filters-backdrop-enter-from,
+.filters-backdrop-leave-to {
+  opacity: 0;
+}
+
 @media (max-width: 640px) {
   .expandable-filters {
     width: 100%;
@@ -403,10 +417,30 @@ onUnmounted(() => {
     width: 100%;
     justify-content: space-between;
   }
+  
+  .filters-dropdown--portal {
+    border-radius: 20px 20px 0 0 !important;
+    padding-bottom: env(safe-area-inset-bottom, 20px) !important;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
 
   .filters-dropdown-inner {
     padding: 18px 16px;
     gap: 22px;
+    border-radius: 20px 20px 0 0 !important;
+    border-bottom: none !important;
+  }
+  
+  .filters-drop-enter-active,
+  .filters-drop-leave-active {
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease !important;
+  }
+
+  .filters-drop-enter-from,
+  .filters-drop-leave-to {
+    opacity: 1 !important;
+    transform: translateY(100%) !important;
   }
 }
 </style>

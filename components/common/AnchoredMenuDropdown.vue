@@ -104,6 +104,9 @@ defineExpose({ open, toggle, close })
     <slot name="trigger" :toggle="toggle" :close="close" :is-open="open" />
   </div>
   <Teleport to="body">
+    <Transition name="anchored-backdrop">
+      <div v-if="open" class="anchored-menu-backdrop sm:hidden fixed inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-sm z-[290]" @click="close"></div>
+    </Transition>
     <Transition name="anchored-menu">
       <div
         v-if="open"
@@ -138,5 +141,40 @@ defineExpose({ open, toggle, close })
 .anchored-menu-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+.anchored-backdrop-enter-active,
+.anchored-backdrop-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.anchored-backdrop-enter-from,
+.anchored-backdrop-leave-to {
+  opacity: 0;
+}
+
+@media (max-width: 639px) {
+  .anchored-menu-panel {
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: 80vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    border-bottom: none !important;
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+  
+  .anchored-menu-enter-active,
+  .anchored-menu-leave-active {
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease;
+  }
+  
+  .anchored-menu-enter-from,
+  .anchored-menu-leave-to {
+    opacity: 1;
+    transform: translateY(100%);
+  }
 }
 </style>

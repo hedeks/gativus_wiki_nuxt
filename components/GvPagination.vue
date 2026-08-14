@@ -176,9 +176,9 @@ function go(p: number): void {
 @media (max-width: 640px) {
   .gv-pagination__step,
   .gv-pagination__num {
-    min-width: 32px !important;
-    min-height: 32px !important;
-    height: 32px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    height: 44px !important;
   }
 }
 </style>
