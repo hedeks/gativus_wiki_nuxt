@@ -217,10 +217,12 @@ const groupedResults = computed(() => {
   return groups
 })
 
-/** Только статьи участвуют в Enter / стрелках и фокусе. */
-const navigableArticleHits = computed(() => [...groupedResults.value.article])
+const navigableHits = computed<SearchHit[]>(() => [
+  ...groupedResults.value.article,
+  ...groupedResults.value.term,
+])
 
-watch(navigableArticleHits, (hits) => {
+watch(navigableHits, (hits) => {
   if (activeHitIndex.value >= hits.length)
     activeHitIndex.value = Math.max(0, hits.length - 1)
 })
@@ -228,10 +230,16 @@ watch(navigableArticleHits, (hits) => {
 function onResultsKeydown(e: KeyboardEvent) {
   if (!isOpen.value)
     return
-  const hits = navigableArticleHits.value
+  const hits = navigableHits.value
   if (e.key === 'Escape') {
     e.preventDefault()
-    closeModal()
+    if (query.value.length > 0) {
+      query.value = ''
+      results.value = []
+      activeHitIndex.value = 0
+    } else {
+      closeModal()
+    }
     return
   }
   if (!hits.length)
@@ -250,7 +258,7 @@ function onResultsKeydown(e: KeyboardEvent) {
   else if (e.key === 'Enter') {
     e.preventDefault()
     const hit = hits[activeHitIndex.value]
-    if (hit?.type === 'article')
+    if (hit)
       void goToResult(hit.url)
   }
 }
@@ -432,7 +440,18 @@ function onHitPointerArticle(idx: number) {
               ref="resultsScrollEl"
               class="gv-search__results custom-scroll"
             >
-              <div v-if="results.length > 0" class="gv-search__groups">
+              <!-- Skeleton Loading State -->
+              <div v-if="(pending || isDebouncing) && query.length >= 2" class="gv-search__loading-skeletons">
+                <div v-for="n in 3" :key="n" class="gv-search__skeleton-card animate-pulse">
+                  <div class="gv-search__skeleton-icon" />
+                  <div class="gv-search__skeleton-content">
+                    <div class="gv-search__skeleton-line gv-search__skeleton-line--title" />
+                    <div class="gv-search__skeleton-line gv-search__skeleton-line--body" />
+                  </div>
+                </div>
+              </div>
+
+              <div v-else-if="results.length > 0" class="gv-search__groups">
                 <!-- Статьи — онтология Article #6366f1 -->
                 <section
                   v-if="groupedResults.article.length > 0"
@@ -451,9 +470,9 @@ function onHitPointerArticle(idx: number) {
                       <button
                         type="button"
                         class="gv-search__hit gv-search__hit--article gv-focusable"
-                        :class="{ 'gv-search__hit--active': isArticleHitActive(idx) }"
+                        :class="{ 'gv-search__hit--active': activeHitIndex === idx }"
                         :data-hit-index="idx"
-                        @pointerenter="onHitPointerArticle(idx)"
+                        @pointerenter="activeHitIndex = idx"
                         @click="goToResult(res.url)"
                       >
                         <span class="gv-search__hit-icon gv-search__hit-icon--article" aria-hidden="true">
@@ -490,11 +509,14 @@ function onHitPointerArticle(idx: number) {
                   </div>
                   <div class="gv-search__group-body gv-search__group-body--term">
                   <ul class="gv-search__list">
-                    <li v-for="res in groupedResults.term" :key="'t-' + res.id">
+                    <li v-for="(res, idx) in groupedResults.term" :key="'t-' + res.id">
                       <button
                         type="button"
                         class="gv-search__hit gv-search__hit--term gv-focusable"
+                        :class="{ 'gv-search__hit--active': activeHitIndex === groupedResults.article.length + idx }"
+                        :data-hit-index="groupedResults.article.length + idx"
                         :aria-label="`${res.title}. ${t.enterTerm}`"
+                        @pointerenter="activeHitIndex = groupedResults.article.length + idx"
                         @click="goToResult(res.url)"
                       >
                         <span class="gv-search__hit-icon gv-search__hit-icon--term" aria-hidden="true">
@@ -1018,6 +1040,62 @@ function onHitPointerArticle(idx: number) {
 
 .dark .gv-search__group--article .gv-search__hit--article.gv-search__hit--active {
   background: color-mix(in srgb, var(--gv-hit-article) 38%, var(--gv-surface-header)) !important;
+}
+
+.gv-search__group--term .gv-search__hit--term.gv-search__hit--active {
+  background: color-mix(in srgb, var(--gv-hit-term) 30%, var(--gv-surface-card)) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--gv-hit-term) 42%, transparent);
+}
+
+.dark .gv-search__group--term .gv-search__hit--term.gv-search__hit--active {
+  background: color-mix(in srgb, var(--gv-hit-term) 38%, var(--gv-surface-header)) !important;
+}
+
+/* Skeletons */
+.gv-search__loading-skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.gv-search__skeleton-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--gv-radius-control);
+  background: color-mix(in srgb, var(--gv-surface-card) 70%, var(--gv-border-subtle));
+  border: 1px solid var(--gv-border-subtle);
+}
+
+.gv-search__skeleton-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--gv-border-principal) 60%, transparent);
+}
+
+.gv-search__skeleton-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gv-search__skeleton-line {
+  height: 10px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--gv-border-principal) 60%, transparent);
+}
+
+.gv-search__skeleton-line--title {
+  width: 45%;
+  height: 12px;
+}
+
+.gv-search__skeleton-line--body {
+  width: 80%;
 }
 
 .gv-search__hit-icon {
