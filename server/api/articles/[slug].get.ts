@@ -12,11 +12,11 @@ export default defineCachedEventHandler(async (event) => {
   const lang = (query.lang as string) || 'en'
 
   if (!['en', 'ru', 'zh'].includes(lang)) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid language' })
+    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Invalid language' })
   }
 
   if (!slug) {
-    throw createError({ statusCode: 400, statusMessage: 'Slug is required' })
+    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Slug is required' })
   }
 
   // 1. Initial lookup by slug
@@ -40,14 +40,14 @@ export default defineCachedEventHandler(async (event) => {
   `).get(slug, slug, slug) as any
 
   if (!article) {
-    throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' })
+    throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'Статья не найдена' })
   }
 
   // Non-editors can't see unpublished
   const auth = event.context.auth
   const isEditor = auth && isEditorOrAbove(auth.role)
   if (!article.is_published && !isEditor) {
-    throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' })
+    throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'Статья не найдена' })
   }
 
   // 3. Localize Metadata
@@ -87,7 +87,7 @@ export default defineCachedEventHandler(async (event) => {
   delete article.excerpt_ru
   delete article.excerpt_zh
 
-  const localizeNavTitle = (row: any) => {
+  const localizeNavTitle = (row: any, rank?: number) => {
     if (!row) return null
     const t = row.title
     const tr = row.title_ru
@@ -95,12 +95,12 @@ export default defineCachedEventHandler(async (event) => {
     return {
       slug: row.slug,
       sort_order: row.sort_order,
-      chapter_number: row.chapter_number != null ? Number(row.chapter_number) : null,
+      chapter_number: rank != null ? rank : (row.chapter_number != null ? Number(row.chapter_number) : null),
       title: String(isRu ? (tr || t) : isZh ? (tz || t) : (t || tr || tz || '')),
     }
   }
 
-  const localizeChapterRow = (row: any) => {
+  const localizeChapterRow = (row: any, rank: number) => {
     if (!row) return null
     const slugOut
       = isZh && row.slug_zh
@@ -111,70 +111,55 @@ export default defineCachedEventHandler(async (event) => {
     return {
       slug: String(slugOut || row.slug),
       slug_canonical: String(row.slug),
-      chapter_number: row.chapter_number != null ? Number(row.chapter_number) : null,
+      chapter_number: rank,
       title: String(
         isRu ? (row.title_ru || row.title) : isZh ? (row.title_zh || row.title) : (row.title || row.title_ru || row.title_zh || ''),
       ),
     }
   }
 
-  const chapterRankSql = `
-    (SELECT COUNT(*) FROM articles b
-     WHERE b.book_id = articles.book_id
-     AND (b.sort_order < articles.sort_order OR (b.sort_order = articles.sort_order AND b.id <= articles.id)))`
-
-  const chapterRankSqlAliased = `
-    (SELECT COUNT(*) FROM articles b
-     WHERE b.book_id = a.book_id
-     AND (b.sort_order < a.sort_order OR (b.sort_order = a.sort_order AND b.id <= a.id)))`
-
   let chapter_number: number | null = null
-
-  // Get prev/next articles in the same book
   let prevArticle = null
   let nextArticle = null
-
-  if (article.book_id) {
-    const rankRow = await db.prepare(`
-      SELECT COUNT(*) as n FROM articles
-      WHERE book_id = ? AND (sort_order < ? OR (sort_order = ? AND id <= ?))
-    `).get(article.book_id, article.sort_order, article.sort_order, article.id) as { n: number } | undefined
-    chapter_number = rankRow?.n != null ? Number(rankRow.n) : null
-
-    prevArticle = await db.prepare(`
-      SELECT slug, title, title_ru, title_zh, sort_order, ${chapterRankSql} AS chapter_number FROM articles
-      WHERE book_id = ? AND sort_order < ? AND is_published = 1
-      ORDER BY sort_order DESC LIMIT 1
-    `).get(article.book_id, article.sort_order) as any
-
-    nextArticle = await db.prepare(`
-      SELECT slug, title, title_ru, title_zh, sort_order, ${chapterRankSql} AS chapter_number FROM articles
-      WHERE book_id = ? AND sort_order > ? AND is_published = 1
-      ORDER BY sort_order ASC LIMIT 1
-    `).get(article.book_id, article.sort_order) as any
-
-    prevArticle = localizeNavTitle(prevArticle)
-    nextArticle = localizeNavTitle(nextArticle)
-  }
-
   let book_chapters: { slug: string; slug_canonical: string; title: string; chapter_number: number }[] | null = null
+
   if (article.book_id) {
-    const chapterRows = await db.prepare(`
-      SELECT a.slug, a.slug_ru, a.slug_zh, a.title, a.title_ru, a.title_zh, a.sort_order, a.id,
-        (${chapterRankSqlAliased}) AS chapter_number
-      FROM articles a
-      WHERE a.book_id = ? AND (a.is_published = 1 OR a.id = ?)
-      ORDER BY a.sort_order ASC, a.id ASC
-    `).all(article.book_id, article.id) as any[]
-    book_chapters = (chapterRows || [])
-      .map(localizeChapterRow)
+    // Single fast query for all chapters of the book (editors see drafts, guests only published)
+    const rawChapters = (await db.prepare(`
+      SELECT id, slug, slug_ru, slug_zh, title, title_ru, title_zh, sort_order, is_published
+      FROM articles
+      WHERE book_id = ? AND (is_published = 1 OR ? = 1 OR id = ?)
+      ORDER BY sort_order ASC, id ASC
+    `).all(article.book_id, isEditor ? 1 : 0, article.id)) as any[]
+
+    const chaptersList = isEditor
+      ? (rawChapters || [])
+      : (rawChapters || []).filter(c => c.is_published === 1 || c.id === article.id)
+    const currentIdx = chaptersList.findIndex(c => c.id === article.id)
+
+    if (currentIdx !== -1) {
+      chapter_number = currentIdx + 1
+
+      // Find previous chapter (published for guests, any for editors)
+      for (let i = currentIdx - 1; i >= 0; i--) {
+        if (isEditor || chaptersList[i].is_published === 1) {
+          prevArticle = localizeNavTitle(chaptersList[i], i + 1)
+          break
+        }
+      }
+
+      // Find next chapter (published for guests, any for editors)
+      for (let i = currentIdx + 1; i < chaptersList.length; i++) {
+        if (isEditor || chaptersList[i].is_published === 1) {
+          nextArticle = localizeNavTitle(chaptersList[i], i + 1)
+          break
+        }
+      }
+    }
+
+    book_chapters = chaptersList
+      .map((row, idx) => localizeChapterRow(row, idx + 1))
       .filter((x): x is { slug: string; slug_canonical: string; title: string; chapter_number: number } => x != null && !!x.slug)
-      .map(x => ({
-        slug: x.slug,
-        slug_canonical: x.slug_canonical,
-        title: x.title,
-        chapter_number: x.chapter_number != null && Number.isFinite(x.chapter_number) ? x.chapter_number : 0,
-      }))
   }
 
   return {
