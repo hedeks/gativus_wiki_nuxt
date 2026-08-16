@@ -14,6 +14,8 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+
 const props = defineProps<{
   pdfDoc: any
   pageNum: number
@@ -27,10 +29,11 @@ const loading = ref(true)
 const renderedScale = ref(props.scale)
 const baseWidth = ref(0)
 const baseHeight = ref(0)
+let activeRenderTask: any = null
 
 // CSS scaling to fill the gap between high-res renders
 const canvasStyle = computed(() => {
-  const s = props.scale / renderedScale.value
+  const s = renderedScale.value > 0 ? props.scale / renderedScale.value : 1
   return {
     transform: `scale(${s})`,
     transformOrigin: 'top left',
@@ -43,7 +46,7 @@ const canvasStyle = computed(() => {
 
 // Ensure the wrapper expands with the scale to keep scroll limits correct
 const wrapperStyle = computed(() => {
-  const s = props.scale / renderedScale.value
+  const s = renderedScale.value > 0 ? props.scale / renderedScale.value : 1
   return {
     width: Math.floor(baseWidth.value * s) + 'px',
     height: Math.floor(baseHeight.value * s) + 'px',
@@ -55,18 +58,22 @@ onMounted(async () => {
   await renderPage()
 })
 
+onBeforeUnmount(() => {
+  if (activeRenderTask) {
+    try {
+      activeRenderTask.cancel()
+    } catch {}
+    activeRenderTask = null
+  }
+})
+
 // Debounced quality sync
-let renderTimeout: NodeJS.Timeout
-watch(() => props.scale, (newScale) => {
-  // If the difference is huge (e.g. 50%), render immediately or more frequently
-  const diff = Math.abs(newScale - renderedScale.value)
-  
+let renderTimeout: any = null
+watch(() => props.scale, () => {
   clearTimeout(renderTimeout)
-  
-  // High quality sync after zoom settles
   renderTimeout = setTimeout(async () => {
     await renderPage()
-  }, 250)
+  }, 200)
 })
 
 // Re-render if doc or page number changes
@@ -76,6 +83,14 @@ watch(() => [props.pdfDoc, props.pageNum], async () => {
 
 const renderPage = async () => {
   if (!props.pdfDoc || !canvas.value) return
+
+  // Cancel previous render task if still in progress
+  if (activeRenderTask) {
+    try {
+      activeRenderTask.cancel()
+    } catch {}
+    activeRenderTask = null
+  }
   
   loading.value = true
   try {
@@ -83,12 +98,11 @@ const renderPage = async () => {
     const currentScale = props.scale
     const viewport = page.getViewport({ scale: currentScale })
     
-    // Важно: не используем { alpha: false } на iOS, это частая причина пустых белых квадратов из-за бага WebKit
     const ctx = canvas.value.getContext('2d')
     if (!ctx) return
 
     let outputScale = Math.min(window.devicePixelRatio || 1, 2)
-    const MAX_CANVAS_DIMENSION = 2048 // Жесткий и 100% безопасный лимит для iOS (2048x2048)
+    const MAX_CANVAS_DIMENSION = 2048 // WebKit safe resolution ceiling
     
     if (viewport.width * outputScale > MAX_CANVAS_DIMENSION || viewport.height * outputScale > MAX_CANVAS_DIMENSION) {
       const scaleDownWidth = MAX_CANVAS_DIMENSION / viewport.width
@@ -96,10 +110,15 @@ const renderPage = async () => {
       outputScale = Math.min(outputScale, scaleDownWidth, scaleDownHeight)
     }
 
-    canvas.value.width = Math.floor(viewport.width * outputScale)
-    canvas.value.height = Math.floor(viewport.height * outputScale)
+    const canvasWidth = Math.floor(viewport.width * outputScale)
+    const canvasHeight = Math.floor(viewport.height * outputScale)
+
+    canvas.value.width = canvasWidth
+    canvas.value.height = canvasHeight
     canvas.value.style.width = Math.floor(viewport.width) + "px"
     canvas.value.style.height = Math.floor(viewport.height) + "px"
+
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight)
 
     const transform = outputScale !== 1
       ? [outputScale, 0, 0, outputScale, 0, 0]
@@ -111,11 +130,17 @@ const renderPage = async () => {
       viewport: viewport
     }
     
-    await page.render(renderContext).promise
+    activeRenderTask = page.render(renderContext)
+    await activeRenderTask.promise
+    activeRenderTask = null
+
     renderedScale.value = currentScale
     baseWidth.value = viewport.width
     baseHeight.value = viewport.height
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'RenderingCancelledException' || error?.message?.includes('cancelled')) {
+      return
+    }
     console.error(`Error rendering page ${props.pageNum}:`, error)
   } finally {
     loading.value = false
@@ -128,11 +153,9 @@ const renderPage = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Use a fixed container but allow content to overflow during CSS scale */
 }
 
 canvas {
-  /* Форсируем аппаратное ускорение для iOS, чтобы избежать пропадания контекста */
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
   will-change: transform, opacity;

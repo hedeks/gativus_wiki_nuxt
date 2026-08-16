@@ -45,13 +45,13 @@
       <!-- Center Wrapper: margin auto centers it when smaller than container, scroll works when larger -->
       <div class="m-auto relative flex items-center justify-center">
         <div v-for="p in visiblePages" :key="p"
-          class="page-container transition-all ease-[cubic-bezier(0.705,0.010,0.000,0.915)] duration-700 flex items-center justify-center pointer-events-none"
+          class="page-container transition-all ease-[cubic-bezier(0.705,0.010,0.000,0.915)] duration-500 flex items-center justify-center pointer-events-none"
           :class="[
             { 'active-page relative z-10': pageNum === p },
             { 'inactive-page absolute z-0': pageNum !== p },
-            { 'translate-y-[150px] scale-[1.15] opacity-0 blur-lg': pageNum < p },
-            { 'translate-y-[-150px] scale-[0.85] opacity-0 blur-lg': pageNum > p },
-            { 'opacity-100 blur-0 translate-y-0': pageNum === p }
+            { 'translate-y-[80px] scale-[0.96] opacity-0': pageNum < p },
+            { 'translate-y-[-80px] scale-[0.96] opacity-0': pageNum > p },
+            { 'opacity-100 translate-y-0': pageNum === p }
           ]">
           <PdfPage :pdfDoc="pdfDoc" :pageNum="p" :scale="scale * baseScale" class="shadow-2xl rounded-lg pointer-events-auto" />
         </div>
@@ -380,7 +380,13 @@ const handleKeyDown = (e: KeyboardEvent) => {
 }
 
 // Lifecycle & Data
+const isIos = computed(() => isIosBrowser())
+
 const visiblePages = computed(() => {
+  // On iOS devices (Safari/WebKit), strictly render only the active page to avoid memory limits and canvas dropping
+  if (isIos.value) {
+    return [pageNum.value]
+  }
   const pages = []
   if (pageNum.value > 1) pages.push(pageNum.value - 1)
   pages.push(pageNum.value)
