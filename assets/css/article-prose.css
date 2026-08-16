@@ -16,6 +16,7 @@
   overflow-wrap: break-word;
   /* Горизонтальный скролл только у .article-table-scroll вокруг таблиц */
   overflow-x: visible;
+  overscroll-behavior-x: contain;
 
   /* Таблицы (шапка + зебра) и нумерация ODT — в тон шапке */
   --article-table-header-bg: #1a365d;
@@ -215,6 +216,7 @@
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y pinch-zoom;
   margin: 2em auto;
   box-sizing: border-box;
 }
@@ -361,6 +363,9 @@
   border: 1px solid color-mix(in srgb, var(--article-table-border, #cfd8e3) 80%, transparent);
   border-radius: 10px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y pinch-zoom;
   font-family: ui-monospace, 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
   font-size: 0.88em;
   line-height: 1.45;

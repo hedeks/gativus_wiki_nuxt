@@ -94,10 +94,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 
-const props = defineProps<{
-  src: string
-  visible: boolean
-}>()
+const props = withDefaults(defineProps<{
+  src?: string
+  visible?: boolean
+}>(), {
+  src: '',
+  visible: false,
+})
 
 const emit = defineEmits(['close'])
 

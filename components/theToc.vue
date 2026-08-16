@@ -77,7 +77,7 @@ import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
 type ChapterNav = { slug: string; slug_canonical?: string; title: string; chapter_number: number }
 
 const props = withDefaults(defineProps<{
-    links: any;
+    links?: any[];
     activeID: string;
     title: string;
     hasPresentation?: boolean;
@@ -88,6 +88,7 @@ const props = withDefaults(defineProps<{
     textTitle?: string;
     presentationTitle?: string;
 }>(), {
+    links: () => [],
     hasPresentation: false,
     isTheory: true,
     chapters: null,
@@ -114,7 +115,8 @@ watch(() => props.activeID, (newId) => {
 });
 
 const activeText = computed(() => {
-    const findText = (id: string, items: any[]): string | null => {
+    const findText = (id: string, items?: any[]): string | null => {
+        if (!Array.isArray(items)) return null;
         for (const item of items) {
             if (item.id === id) return item.text;
             if (item.children) {
@@ -149,7 +151,8 @@ const handleLinkClick = (id: string) => {
     }
 }
 
-const findRootId = (id: string, links: any[]): string | null => {
+const findRootId = (id: string, links?: any[]): string | null => {
+    if (!Array.isArray(links)) return null;
     for (const item of links) {
         if (item.id === id) return item.id;
         if (item.children) {

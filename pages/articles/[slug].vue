@@ -19,9 +19,10 @@
       <div
         ref="articleMainCardRef"
         :class="[
-          'w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col min-w-0 overflow-x-hidden bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm',
-          tocLinks.length ? 'max-lg:mt-[3rem]' : '',
+          'w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col min-w-0 overflow-x-hidden bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm overscroll-x-contain',
+          tocLinks?.length ? 'max-lg:mt-[3rem]' : '',
         ]"
+        style="touch-action: pan-y pinch-zoom; overscroll-behavior-x: contain;"
       >
         <!-- Article Header -->
         <div v-if="article" class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800 min-w-0">
@@ -30,18 +31,35 @@
             v-if="article"
             :items="[
               article.book_id 
-                ? { label: t.library, to: '/books' } 
-                : { label: t.articles, to: '/articles' },
+                ? { label: t?.library || 'БИБЛИОТЕКА', to: '/books' } 
+                : { label: t?.articles || 'СТАТЬИ', to: '/articles' },
               article.book_id 
                 ? { label: article.book_title, to: `/books/${article.book_slug}` } 
                 : null,
               { 
                 label: article.book_id 
-                  ? `${t.chapter} ${article.chapter_number ?? article.sort_order}` 
+                  ? `${t?.chapter || 'ГЛАВА'} ${article.chapter_number ?? article.sort_order}` 
                   : article.title 
               }
             ].filter(Boolean) as any[]"
           />
+
+          <!-- Reading Meta Stats -->
+          <div v-if="readingStats && readingStats.words > 0" class="gv-article-reading-meta flex items-center gap-2.5 text-[11px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mt-2.5 mb-1 not-prose select-none">
+            <span class="inline-flex items-center gap-1 text-sky-600/90 dark:text-sky-400/90">
+              <UIcon name="i-heroicons-clock" class="w-3.5 h-3.5" />
+              <span>~{{ readingStats.minutes }} {{ t?.minRead || 'мин' }}</span>
+            </span>
+            <span class="opacity-40">•</span>
+            <span>{{ readingStats.words }} {{ t?.words || 'слов' }}</span>
+            <template v-if="readingStats.termsCount > 0">
+              <span class="opacity-40">•</span>
+              <span class="text-emerald-600/90 dark:text-emerald-400/90 inline-flex items-center gap-0.5">
+                <UIcon name="i-heroicons-bookmark" class="w-3.5 h-3.5" />
+                {{ readingStats.termsCount }} {{ t?.terms || 'терминов' }}
+              </span>
+            </template>
+          </div>
 
           <div
             v-if="hasSearchQueryBanner"
@@ -50,12 +68,12 @@
             <p
               class="min-w-0 flex-1 text-[11px] font-bold uppercase leading-snug tracking-[0.18em] text-red-900/75 dark:text-red-300/85"
             >
-              {{ t.searchFrom }}: «{{ searchBannerQuote }}»
+              {{ t?.searchFrom || 'Поиск' }}: «{{ searchBannerQuote }}»
             </p>
             <button
               type="button"
               class="gv-article-search-dismiss gv-focusable shrink-0 rounded-md p-1 text-red-800/80 opacity-80 transition hover:bg-red-100/80 hover:opacity-100 dark:text-red-300/90 dark:hover:bg-red-950/50"
-              :aria-label="t.dismissSearchHighlight"
+              :aria-label="t?.dismissSearchHighlight || 'Убрать подсветку поиска'"
               @click="clearSearchHighlightFromRoute"
             >
               <UIcon name="i-heroicons-x-mark-20-solid" class="h-4 w-4" aria-hidden="true" />
@@ -77,7 +95,7 @@
                 size="xs" 
                 :icon="isBookmarked ? 'i-heroicons-bookmark-solid' : 'i-heroicons-bookmark'"
               >
-                <span class="hidden md:inline">{{ isBookmarked ? t.bookmarked : t.bookmark }}</span>
+                <span class="hidden md:inline">{{ isBookmarked ? (t?.bookmarked || 'В закладках') : (t?.bookmark || 'В закладки') }}</span>
               </GvButton>
               <div v-if="canEdit" class="hidden md:block">
                 <GvButton 
@@ -128,7 +146,7 @@
             @click="handleArticleClick"
           />
           <div v-else class="text-gray-400 py-10 text-center">
-            <p>{{ t.noContent }}</p>
+            <p>{{ t?.noContent || 'Контент не найден' }}</p>
           </div>
         </template>
 
@@ -141,16 +159,16 @@
             color="sky"
             icon="i-heroicons-presentation-chart-bar"
             trailing
-            :label="t.presentation"
+            :label="t?.presentation || 'Презентация'"
             @click="changeView('quiz')"
           />
         </div>
 
         <!-- Book Navigation -->
-        <div v-if="article.book_id && (article.prev || article.next)"
+        <div v-if="article?.book_id && (article?.prev || article?.next)"
           class="mt-12 pt-8 border-t border-gray-100 dark:border-zinc-800 flex flex-col sm:flex-row gap-4 not-prose">
-          <NuxtLink v-if="article.prev" :to="`/articles/${article.prev.slug}`" class="nav-card nav-card--prev">
-            <div class="nav-card-label uppercase">{{ t.prevChapter }} {{ displayChapterNo(article.prev) !=
+          <NuxtLink v-if="article?.prev" :to="`/articles/${article.prev.slug}`" class="nav-card nav-card--prev">
+            <div class="nav-card-label uppercase">{{ t?.prevChapter || 'ПРЕДЫДУЩАЯ ГЛАВА' }} {{ displayChapterNo(article.prev) !=
               null ?
               `№${displayChapterNo(article.prev)}` :
               '' }}</div>
@@ -158,9 +176,9 @@
           </NuxtLink>
           <div v-else class="flex-1" />
 
-          <NuxtLink v-if="article.next" :to="`/articles/${article.next.slug}`"
+          <NuxtLink v-if="article?.next" :to="`/articles/${article.next.slug}`"
             class="nav-card nav-card--next text-right">
-            <div class="nav-card-label uppercase">{{ t.nextChapter }} {{ displayChapterNo(article.next) !=
+            <div class="nav-card-label uppercase">{{ t?.nextChapter || 'СЛЕДУЮЩАЯ ГЛАВА' }} {{ displayChapterNo(article.next) !=
               null ?
               `№${displayChapterNo(article.next)}` :
               '' }}</div>
@@ -171,20 +189,20 @@
       </div>
       <theToc
         :key="tocKey"
-        v-if="tocLinks.length"
+        v-if="tocLinks?.length"
         :activeID="activeID"
         :has-presentation="hasPresentation"
         :is-theory="isTheory"
         :chapters="article?.book_chapters ?? null"
         :current-article-slug="slug"
-        :chapters-title="article?.book_title ? `${article.book_title}: ${t.chapters}` : t.chapters"
-        :text-title="t.text"
-        :presentation-title="t.presentation"
+        :chapters-title="article?.book_title ? `${article.book_title}: ${t?.chapters || 'Главы'}` : (t?.chapters || 'Главы')"
+        :text-title="t?.text || 'Текст'"
+        :presentation-title="t?.presentation || 'Презентация'"
         @updateActiveID="handleTocClick"
         @changeView="changeView"
         class="lg:w-auto lg:col-span-2 xl:col-span-2 xl:justify-self-start xl:w-full xl:max-w-[320px] 2xl:max-w-[360px]"
-        :title="t.toc"
-        :links="tocLinks"
+        :title="t?.toc || 'Содержание'"
+        :links="tocLinks || []"
       />
     </div>
     <div v-if="hasPresentation" :class="[{ 'active': !isTheory }, { 'inactive': isTheory }]"
@@ -214,12 +232,12 @@
           @click="isPresSidebarOpen = !isPresSidebarOpen">
           <p
             class="lg:text-sm text-[10px] tracking-widest font-bold text-black dark:text-white uppercase transition-all duration-500 mr-4 flex-shrink-0">
-            {{ t.info }}
+            {{ t?.info || 'Инфо' }}
           </p>
           <div class="flex items-center gap-2 min-w-0">
             <span v-if="!isDesktop && !isPresSidebarOpen"
               class="text-[9px] text-black dark:text-white/80 font-medium truncate min-w-0 max-w-[100px]">
-              {{ t.mobileControls }}
+              {{ t?.mobileControls || 'Клавиши и PDF' }}
             </span>
             <svg :class="{ 'rotate-180': isPresSidebarOpen }"
               class="w-3 h-3 text-gray-400 flex-shrink-0 transition-all duration-500 lg:hidden" fill="none"
@@ -240,24 +258,24 @@
                 class="justify-start"
                 @click="changeView('lection')"
               >
-                {{ t.backToText }}
+                {{ t?.backToText || 'Вернуться к тексту' }}
               </GvButton>
 
               <h3 class="text-[10px] font-bold tracking-widest uppercase text-gray-500 dark:text-gray-400 mt-1">
-                {{ t.controls }}
+                {{ t?.controls || 'Управление' }}
               </h3>
 
               <div class="flex flex-col gap-1">
                 <div class="flex items-center justify-between border-l-2 border-transparent py-1 pl-3 pr-2 text-[10px] text-gray-900 dark:text-gray-200">
-                  <span>{{ t.next }}</span>
+                  <span>{{ t?.next || 'Далее' }}</span>
                   <span class="font-semibold text-sky-700 dark:text-sky-300">SPACE / →</span>
                 </div>
                 <div class="flex items-center justify-between border-l-2 border-transparent py-1 pl-3 pr-2 text-[10px] text-gray-900 dark:text-gray-200">
-                  <span>{{ t.back }}</span>
+                  <span>{{ t?.back || 'Назад' }}</span>
                   <span class="font-semibold text-sky-700 dark:text-sky-300">←</span>
                 </div>
                 <div class="flex items-center justify-between border-l-2 border-transparent py-1 pl-3 pr-2 text-[10px] text-gray-900 dark:text-gray-200">
-                  <span>{{ t.zoom }}</span>
+                  <span>{{ t?.zoom || 'Zoom' }}</span>
                   <span class="font-semibold text-sky-700 dark:text-sky-300">Wheel / ±</span>
                 </div>
               </div>
@@ -269,7 +287,7 @@
                 class="mt-1 flex items-center gap-2 border-l-2 border-transparent py-1 pl-3 pr-2 text-[10px] text-gray-900 transition hover:text-sky-700 dark:text-gray-200 dark:hover:text-sky-300"
               >
                 <UIcon name="i-heroicons-arrow-down-tray" class="h-3.5 w-3.5" />
-                <span>{{ t.download }}</span>
+                <span>{{ t?.download || 'Скачать' }}</span>
               </a>
             </div>
           </div>
@@ -281,7 +299,7 @@
       v-if="article?.id" 
       type="article" 
       :id="article.id" 
-      @saved="refresh" 
+      @saved="onInlineSaved" 
     />
   </div>
 </template>
@@ -292,59 +310,15 @@ import { useLanguageStore } from '~/stores/language'
 import { wrapArticleTables } from '~/utils/wrapArticleTables'
 import { useNavHistoryStore } from '~/stores/navHistory'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
+import { userStore } from '~/stores/userStore'
+import AdminArticleForm from '~/components/admin/AdminArticleForm.vue'
 
 const langStore = useLanguageStore()
+const store = userStore()
 const route = useRoute()
 const router = useRouter()
 const slug = computed(() => String(route.params.slug ?? ''))
 const navHistory = useNavHistoryStore()
-
-import { userStore } from '~/stores/userStore'
-import AdminArticleForm from '~/components/admin/AdminArticleForm.vue'
-const store = userStore()
-const isEditingInPlace = ref(false)
-const tocKey = ref(0)
-const scrollProgress = ref(0)
-const canEdit = computed(() => {
-  if (!store.isLoggedIn || !store.userInfo) return false
-  const role = store.userInfo.role
-  return role === 'editor' || role === 'admin'
-})
-
-const { data: bookmarkedIds, refresh: refreshBookmarks } = await useFetch<number[]>('/api/user/bookmarks', {
-  headers: useRequestHeaders(['cookie', 'authorization']),
-  server: false,
-})
-
-const isBookmarked = computed(() => !!(bookmarkedIds.value && article.value?.id && bookmarkedIds.value.includes(article.value.id)))
-
-const toggleBookmark = async () => {
-  if (!store.isLoggedIn) return navigateTo('/login')
-  const action = isBookmarked.value ? 'remove' : 'add'
-  await $fetch('/api/user/bookmarks', {
-    method: 'POST',
-    body: { articleId: article.value.id, action },
-    headers: store.token ? { Authorization: `Bearer ${store.token}` } : {}
-  })
-  await refreshBookmarks()
-}
-
-async function onInlineSaved() {
-  // Clear Nuxt's internal payload cache to guarantee a hard fetch
-  clearNuxtData(`article-${slug.value}`)
-  
-  // Await the fetch so that the DOM updates with fresh data BEFORE we close the editor
-  await refresh()
-  
-  // Now close the editor, revealing the freshly fetched content seamlessly
-  isEditingInPlace.value = false
-  tocKey.value++
-}
-
-// ─── Article view state persistence ───
-function lsKey() { return `gv:article-state:${route.path}` }
-
-const articleMainCardRef = ref<HTMLElement | null>(null)
 
 const uiDict: Record<string, any> = {
   en: {
@@ -369,7 +343,10 @@ const uiDict: Record<string, any> = {
     backToText: 'Back to Text',
     dismissSearchHighlight: 'Clear search highlights',
     bookmark: 'Add to bookmarks',
-    bookmarked: 'Bookmarked'
+    bookmarked: 'Bookmarked',
+    minRead: 'min read',
+    words: 'words',
+    terms: 'terms',
   },
   ru: {
     library: 'БИБЛИОТЕКА',
@@ -393,7 +370,10 @@ const uiDict: Record<string, any> = {
     backToText: 'Вернуться к тексту',
     dismissSearchHighlight: 'Убрать подсветку поиска',
     bookmark: 'В закладки',
-    bookmarked: 'В закладках'
+    bookmarked: 'В закладках',
+    minRead: 'мин чтения',
+    words: 'слов',
+    terms: 'терминов',
   },
   zh: {
     library: '图书馆',
@@ -417,11 +397,58 @@ const uiDict: Record<string, any> = {
     backToText: '返回正文',
     dismissSearchHighlight: '清除搜索高亮',
     bookmark: '添加到书签',
-    bookmarked: '已收藏'
+    bookmarked: '已收藏',
+    minRead: '分钟阅读',
+    words: '字',
+    terms: '个术语',
   }
 }
 
-const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru)
+const t = computed(() => uiDict[langStore.currentLang] || uiDict.ru || uiDict.en)
+
+const isEditingInPlace = ref(false)
+const tocKey = ref(0)
+const scrollProgress = ref(0)
+const canEdit = computed(() => {
+  if (!store.isLoggedIn || !store.userInfo) return false
+  const role = store.userInfo.role
+  return role === 'editor' || role === 'admin'
+})
+
+const { data: bookmarkedIds, refresh: refreshBookmarks } = useFetch<number[]>('/api/user/bookmarks', {
+  headers: useRequestHeaders(['cookie', 'authorization']),
+  server: false,
+})
+
+const isBookmarked = computed(() => !!(bookmarkedIds.value && article.value?.id && bookmarkedIds.value.includes(article.value.id)))
+
+const toggleBookmark = async () => {
+  if (!store.isLoggedIn) return navigateTo('/login')
+  const action = isBookmarked.value ? 'remove' : 'add'
+  await $fetch('/api/user/bookmarks', {
+    method: 'POST',
+    body: { articleId: article.value.id, action },
+    headers: store.token ? { Authorization: `Bearer ${store.token}` } : {}
+  })
+  await refreshBookmarks()
+}
+
+async function onInlineSaved() {
+  // Clear all Nuxt internal payload cache for this article across locales
+  clearNuxtData((key) => typeof key === 'string' && key.startsWith(`article-${slug.value}`))
+  
+  // Await the fetch so that the DOM updates with fresh data BEFORE we close the editor
+  await nuxtRefresh()
+  
+  // Now close the editor, revealing the freshly fetched content seamlessly
+  isEditingInPlace.value = false
+  tocKey.value++
+}
+
+// ─── Article view state persistence ───
+function lsKey() { return `gv:article-state:${route.path}` }
+
+const articleMainCardRef = ref<HTMLElement | null>(null)
 
 function escapeHtmlPlain(s: string): string {
   return s
@@ -539,17 +566,39 @@ const { data: articleData, pending, error, refresh: nuxtRefresh } = await useAsy
   () => $fetch<any>(`/api/articles/${slug.value}`, {
     params: { 
       lang: langStore.currentLang,
-      _t: import.meta.client ? Date.now() : undefined 
     },
-    headers: {
-      ...store.getAuthHeader(),
-      'Cache-Control': 'no-cache'
-    }
-  })
+    headers: store.getAuthHeader()
+  }),
+  {
+    watch: [() => langStore.currentLang, () => slug.value]
+  }
 )
 
 const article = computed(() => articleData.value)
 const hasPresentation = computed(() => !!article.value?.presentation_path)
+
+const readingStats = computed(() => {
+  const raw = article.value?.html_content || ''
+  if (!raw) return { minutes: 1, words: 0, termsCount: 0 }
+  
+  // Strip HTML tags for clean word/character counting
+  const plainText = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  const isZh = langStore.currentLang === 'zh'
+  
+  let wordCount = 0
+  let minutes = 1
+  
+  if (isZh) {
+    wordCount = plainText.replace(/\s+/g, '').length
+    minutes = Math.max(1, Math.ceil(wordCount / 300))
+  } else {
+    wordCount = plainText.split(/\s+/).filter(Boolean).length
+    minutes = Math.max(1, Math.ceil(wordCount / 200))
+  }
+  
+  const termsCount = (raw.match(/class=["'][^"']*wiki-term[^"']*["']/g) || []).length
+  return { minutes, words: wordCount, termsCount }
+})
 
 function displayChapterNo(nav: { chapter_number?: number | null; sort_order?: number | null } | null | undefined): number | null {
   if (!nav)
