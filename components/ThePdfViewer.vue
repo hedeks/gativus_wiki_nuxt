@@ -53,7 +53,7 @@
             { 'translate-y-[-80px] scale-[0.96] opacity-0': pageNum > p },
             { 'opacity-100 translate-y-0': pageNum === p }
           ]">
-          <PdfPage :pdfDoc="pdfDoc" :pageNum="p" :scale="scale * baseScale" class="shadow-2xl rounded-lg pointer-events-auto" />
+          <PdfPage :pdfDoc="pdfDoc" :pageNum="p" :scale="Math.max(0.1, scale * baseScale)" class="shadow-2xl rounded-lg pointer-events-auto" />
         </div>
       </div>
 
@@ -116,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 let pdfjsLib: any = null
 import PdfPage from './PdfPage.vue'
@@ -136,6 +136,7 @@ const loading = ref(true)
 const isFullscreen = ref(false)
 const error = ref(false)
 const useNativeViewer = ref(false)
+let resizeObserver: ResizeObserver | null = null
 
 // Page Jump Logic
 const jumpPage = ref(1)
@@ -401,6 +402,34 @@ function isIosBrowser(): boolean {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
+const updateBaseScale = async () => {
+  if (!container.value || !pdfDoc.value) return
+  const h = container.value.clientHeight
+  const w = container.value.clientWidth
+  // If container is hidden (e.g. parent has height 0 or display:none), wait for visibility
+  if (h <= 50 || w <= 50) return
+
+  try {
+    const page = await pdfDoc.value.getPage(pageNum.value || 1)
+    const vp = page.getViewport({ scale: 1.0 })
+    const paddingY = 40
+    const paddingX = isIos.value ? 16 : 40
+    const availableHeight = Math.max(0, h - paddingY)
+    const availableWidth = Math.max(0, w - paddingX)
+    
+    if (vp.height > 0 && vp.width > 0 && availableHeight > 50) {
+      const scaleH = availableHeight / vp.height
+      const scaleW = availableWidth > 0 ? availableWidth / vp.width : scaleH
+      const fitScale = Math.min(scaleH, scaleW)
+      if (fitScale > 0.05 && !isNaN(fitScale)) {
+        baseScale.value = fitScale
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to update baseScale:', err)
+  }
+}
+
 const initViewer = async () => {
   if (!import.meta.client) return
 
@@ -432,8 +461,26 @@ function onFullscreenChange() {
 onMounted(async () => {
   await initViewer()
 
+  if (import.meta.client && typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(() => {
+      updateBaseScale()
+    })
+    if (container.value) {
+      resizeObserver.observe(container.value)
+    }
+  }
+
   document.addEventListener('fullscreenchange', onFullscreenChange)
   document.addEventListener('webkitfullscreenchange', onFullscreenChange)
+})
+
+onBeforeUnmount(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+  document.removeEventListener('fullscreenchange', onFullscreenChange)
+  document.removeEventListener('webkitfullscreenchange', onFullscreenChange)
 })
 
 watch(() => props.src, async () => {
@@ -441,31 +488,36 @@ watch(() => props.src, async () => {
   await loadPdf()
 })
 
+watch(pageNum, async () => {
+  if (isIos.value) {
+    await updateBaseScale()
+  }
+})
+
 const loadPdf = async () => {
   if (!props.src || !pdfjsLib) return
   loading.value = true
+  error.value = false
   try {
-    // Загружаем документ со стандартными шрифтами и cMap для поддержки всех символов (исправляет пустой текст на iOS)
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const cMapUrl = `${origin}/pdfjs/cmaps/`
+    const standardFontDataUrl = `${origin}/pdfjs/standard_fonts/`
+
+    // Загружаем документ со стандартными шрифтами и cMap для поддержки всех символов
     const loadingTask = pdfjsLib.getDocument({
       url: props.src,
-      cMapUrl: '/pdfjs/cmaps/',
+      cMapUrl,
       cMapPacked: true,
-      standardFontDataUrl: '/pdfjs/standard_fonts/'
+      standardFontDataUrl,
+      enableXfa: false
     })
     pdfDoc.value = await loadingTask.promise
     numPages.value = pdfDoc.value.numPages
     
-    if (container.value) {
-      const firstPage = await pdfDoc.value.getPage(1)
-      const vp = firstPage.getViewport({ scale: 1.0 })
-      const padding = 40 // some padding to ensure it fits visually
-      const availableHeight = container.value.clientHeight - padding
-      if (vp.height > 0) {
-        baseScale.value = availableHeight / vp.height
-      }
-    }
+    await updateBaseScale()
   } catch (error) {
     console.error('Error loading PDF:', error)
+    error.value = true
   } finally {
     loading.value = false
   }
