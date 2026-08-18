@@ -275,7 +275,8 @@ function scrollActiveIntoView() {
 }
 
 function onCmdKOpenSearch(e: KeyboardEvent) {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+  const isK = e.code === 'KeyK' || e.key?.toLowerCase() === 'k' || e.key === 'л' || e.key === 'Л'
+  if ((e.metaKey || e.ctrlKey) && isK) {
     e.preventDefault()
     isOpen.value = true
   }

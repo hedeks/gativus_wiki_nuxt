@@ -19,10 +19,9 @@
       <div
         ref="articleMainCardRef"
         :class="[
-          'w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col min-w-0 overflow-x-hidden bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm overscroll-x-contain',
+          'w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 flex-col min-w-0 overflow-x-hidden bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 lg:p-10 p-5 rounded-2xl shadow-sm',
           tocLinks?.length ? 'max-lg:mt-[3rem]' : '',
         ]"
-        style="touch-action: pan-y pinch-zoom; overscroll-behavior-x: contain;"
       >
         <!-- Article Header -->
         <div v-if="article" class="flex flex-col pb-8 mb-10 border-b border-gray-100 dark:border-zinc-800 min-w-0">
@@ -214,7 +213,7 @@
           'w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 h-[calc(100dvh_-_var(--header-height)_-_5rem)] flex flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden',
           'max-lg:mt-[2.75rem]',
         ]">
-        <thePresentationView :presentationPath="article?.presentation_path" :articleTitle="article?.title" />
+        <thePresentationView :presentationPath="article?.presentation_path" :articleTitle="article?.title" :is-active="!isTheory" />
       </div>
 
       <!-- Right Side Info Panel (Symmetry with TOC) -->
@@ -904,14 +903,6 @@ const handleArticleClick = (event: MouseEvent) => {
 const closeLightbox = () => {
   isLightboxOpen.value = false
 }
-
-/** Mobile: swipe left/right between book chapters; opens page with scroll-to-top (see app/router.options + session flag). */
-useMobileChapterSwipe({
-  getNextSlug: () => article.value?.next?.slug ?? null,
-  getPrevSlug: () => article.value?.prev?.slug ?? null,
-  isEnabled: () => isTheory.value && !isLightboxOpen.value,
-})
-
 
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape' && isLightboxOpen.value) {
