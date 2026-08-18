@@ -148,7 +148,6 @@ const renderPage = async () => {
     if (!ctx) return
 
     const renderContext = {
-      canvas: canvas.value,
       canvasContext: ctx,
       viewport: scaledViewport
     }

@@ -438,7 +438,7 @@ const initViewer = async () => {
   loading.value = true
   error.value = false
   try {
-    const pdfjsModule = await import('pdfjs-dist')
+    const pdfjsModule = await import('pdfjs-dist/legacy/build/pdf.mjs')
     const pdfjs = pdfjsModule.default || pdfjsModule
 
     if (!pdfjs || !pdfjs.GlobalWorkerOptions) {
