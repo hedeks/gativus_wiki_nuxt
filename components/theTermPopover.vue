@@ -434,25 +434,45 @@ watch(visible, (v) => {
 
 function handleDocClick(e: MouseEvent) {
   const target = e.target as HTMLElement
-  const anchor = target.closest('.wiki-term, .wiki-book, .wiki-article') as HTMLElement | null
+  const anchor = target.closest('.wiki-term, .wiki-book, .wiki-article, a[href^="/glossary/"], a[href^="/books/"], a[href^="/articles/"]') as HTMLElement | null
 
   if (anchor) {
+    // Do not intercept navigation links in header, footer, TOC, breadcrumbs, etc.
+    if (anchor.closest('.gv-header, .the-header, .site-header, .gv-toc, .the-toc, .the-breadcrumbs, nav, footer, .popover-footer, .gv-pres-cta, .nav-card, .nav-card--prev, .nav-card--next')) {
+      return
+    }
+
     e.preventDefault()
+    e.stopPropagation()
+
     let type: 'term' | 'book' | 'article' = 'term'
     let slug = ''
-    if (anchor.classList.contains('wiki-book')) {
+    const href = (anchor as HTMLAnchorElement).getAttribute('href') || ''
+
+    if (anchor.classList.contains('wiki-book') || href.startsWith('/books/')) {
       type = 'book'
-      slug = anchor.dataset.bookSlug || ''
-    } else if (anchor.classList.contains('wiki-article')) {
+      slug = anchor.dataset.bookSlug || href.replace('/books/', '').split('#')[0].split('?')[0] || ''
+    } else if (anchor.classList.contains('wiki-article') || href.startsWith('/articles/')) {
       type = 'article'
-      slug = anchor.dataset.articleSlug || ''
+      slug = anchor.dataset.articleSlug || href.replace('/articles/', '').split('#')[0].split('?')[0] || ''
     } else {
       type = 'term'
-      slug = anchor.dataset.termSlug || ''
+      slug = anchor.dataset.termSlug || href.replace('/glossary/', '').split('#')[0].split('?')[0] || ''
     }
+
+    let clientX = e.clientX
+    let clientY = e.clientY
+    if ((!clientX && !clientY) || (clientX === 0 && clientY === 0)) {
+      const rect = anchor.getBoundingClientRect()
+      clientX = rect.left + rect.width / 2
+      clientY = rect.bottom
+    }
+
     const editorPane = anchor.closest('[data-editor-lang]') as HTMLElement | null
     const lang = anchor.dataset.termLang || anchor.dataset.bookLang || anchor.dataset.articleLang || editorPane?.dataset.editorLang || undefined
-    if (slug) showPopover(slug, type, anchor, e.clientX, e.clientY, lang)
+    if (slug) {
+      showPopover(slug, type, anchor, clientX, clientY, lang)
+    }
     return
   }
 
@@ -630,12 +650,12 @@ watch(() => langStore.currentLang, () => {
 })
 
 onMounted(() => {
-  document.addEventListener('click', handleDocClick)
+  document.addEventListener('click', handleDocClick, { capture: true })
   document.addEventListener('keydown', handleKeydown)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleDocClick)
+  document.removeEventListener('click', handleDocClick, { capture: true })
   document.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', onViewportResize)
   window.visualViewport?.removeEventListener('resize', onViewportResize)
