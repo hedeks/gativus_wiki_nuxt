@@ -40,8 +40,7 @@
       style="touch-action: none;"
       :class="{ 'cursor-grab': scale > 1 && !isDragging, 'cursor-grabbing': isDragging }" 
       @mousedown="startDragging" @mousemove="onDragging" @mouseup="stopDragging" @mouseleave="stopDragging" 
-      @touchstart="startDragging" @touchmove="onDragging" @touchend="stopDragging" @touchcancel="stopDragging"
-      @wheel="handleWheel">
+      @touchstart="startDragging" @touchend="stopDragging" @touchcancel="stopDragging">
       <!-- Center Wrapper: margin auto centers it when smaller than container, scroll works when larger -->
       <div class="m-auto relative flex items-center justify-center">
         <div v-for="p in visiblePages" :key="p"
@@ -53,7 +52,7 @@
             { 'translate-y-[-80px] scale-[0.96] opacity-0': pageNum > p },
             { 'opacity-100 translate-y-0': pageNum === p }
           ]">
-          <PdfPage :pdfDoc="pdfDoc" :pageNum="p" :scale="Math.max(0.1, scale * baseScale)" class="shadow-2xl rounded-lg pointer-events-auto" />
+          <PdfPage :pdfDoc="pdfDoc" :pageNum="p" :scale="Math.max(0.1, scale * baseScale)" :is-active="isActive" class="shadow-2xl rounded-lg pointer-events-auto" />
         </div>
       </div>
 
@@ -121,9 +120,12 @@ import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount, nextTick 
 let pdfjsLib: any = null
 import PdfPage from './PdfPage.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   src: string
-}>()
+  isActive?: boolean
+}>(), {
+  isActive: true
+})
 
 const viewerRoot = ref<HTMLElement | null>(null)
 const container = ref<HTMLElement | null>(null)
@@ -461,6 +463,11 @@ function onFullscreenChange() {
 onMounted(async () => {
   await initViewer()
 
+  if (container.value) {
+    container.value.addEventListener('wheel', handleWheel, { passive: false })
+    container.value.addEventListener('touchmove', onDragging, { passive: false })
+  }
+
   if (import.meta.client && typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver(() => {
       updateBaseScale()
@@ -475,12 +482,23 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  if (container.value) {
+    container.value.removeEventListener('wheel', handleWheel)
+    container.value.removeEventListener('touchmove', onDragging)
+  }
   if (resizeObserver) {
     resizeObserver.disconnect()
     resizeObserver = null
   }
   document.removeEventListener('fullscreenchange', onFullscreenChange)
   document.removeEventListener('webkitfullscreenchange', onFullscreenChange)
+})
+
+watch(() => props.isActive, async (active) => {
+  if (active) {
+    await nextTick()
+    await updateBaseScale()
+  }
 })
 
 watch(() => props.src, async () => {

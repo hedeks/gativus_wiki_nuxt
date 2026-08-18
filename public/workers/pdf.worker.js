@@ -26,7 +26,7 @@
 if (typeof self !== 'undefined') {
   if (typeof URL !== 'undefined' && typeof URL.parse !== 'function') {
     URL.parse = function(url, base) {
-      try { return new URL(url, base); } catch (e) { return null; }
+      try { return base !== undefined ? new URL(url, base) : new URL(url); } catch (e) { return null; }
     };
   }
   if (typeof Promise !== 'undefined' && typeof Promise.withResolvers !== 'function') {

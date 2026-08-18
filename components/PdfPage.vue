@@ -16,14 +16,19 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   pdfDoc: any
   pageNum: number
   scale: number
-}>()
+  isActive?: boolean
+}>(), {
+  isActive: true
+})
 
 const canvas = ref<HTMLCanvasElement | null>(null)
 const loading = ref(true)
+const isRendered = ref(false)
+let observer: IntersectionObserver | null = null
 
 // Base dimensions at current rendered scale
 const renderedScale = ref(Math.max(0.1, props.scale || 1.0))
@@ -59,10 +64,26 @@ const wrapperStyle = computed(() => {
 })
 
 onMounted(async () => {
-  await renderPage()
+  if (props.isActive) {
+    await renderPage()
+  }
+  if (typeof IntersectionObserver !== 'undefined' && canvas.value) {
+    observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting && (!isRendered.value || baseWidth.value === 0)) {
+          renderPage()
+        }
+      }
+    }, { threshold: 0.01 })
+    observer.observe(canvas.value)
+  }
 })
 
 onBeforeUnmount(() => {
+  if (observer) {
+    observer.disconnect()
+    observer = null
+  }
   if (activeRenderTask) {
     try {
       activeRenderTask.cancel()
@@ -89,8 +110,16 @@ watch(() => [props.pdfDoc, props.pageNum], async () => {
   await renderPage()
 }, { deep: true })
 
+watch(() => props.isActive, async (active) => {
+  if (active && (!isRendered.value || baseWidth.value === 0)) {
+    await renderPage()
+  }
+})
+
 const renderPage = async () => {
   if (!props.pdfDoc || !canvas.value) return
+  if (props.isActive === false) return
+  
   const currentScale = Math.max(0.1, props.scale || 1.0)
   if (isNaN(currentScale) || currentScale <= 0) return
 
@@ -107,43 +136,44 @@ const renderPage = async () => {
     const page = await props.pdfDoc.getPage(props.pageNum)
     if (!canvas.value) return
 
-    const viewport = page.getViewport({ scale: currentScale })
-    if (viewport.width <= 0 || viewport.height <= 0) return
-
-    const ctx = canvas.value.getContext('2d', { alpha: false }) || canvas.value.getContext('2d')
-    if (!ctx) return
-
     let outputScale = Math.min(window.devicePixelRatio || 1, 2)
     const MAX_CANVAS_DIMENSION = 2048 // WebKit safe resolution ceiling
     
-    if (viewport.width * outputScale > MAX_CANVAS_DIMENSION || viewport.height * outputScale > MAX_CANVAS_DIMENSION) {
-      const scaleDownWidth = MAX_CANVAS_DIMENSION / viewport.width
-      const scaleDownHeight = MAX_CANVAS_DIMENSION / viewport.height
-      outputScale = Math.min(outputScale, scaleDownWidth, scaleDownHeight)
+    // Scale viewport directly by target scale and device output scale
+    let scaledViewport = page.getViewport({ scale: currentScale * outputScale })
+    if (scaledViewport.width <= 0 || scaledViewport.height <= 0) return
+
+    if (scaledViewport.width > MAX_CANVAS_DIMENSION || scaledViewport.height > MAX_CANVAS_DIMENSION) {
+      const maxDim = Math.max(scaledViewport.width, scaledViewport.height)
+      const downFactor = MAX_CANVAS_DIMENSION / maxDim
+      outputScale = outputScale * downFactor
+      scaledViewport = page.getViewport({ scale: currentScale * outputScale })
     }
 
-    const canvasWidth = Math.max(1, Math.floor(viewport.width * outputScale))
-    const canvasHeight = Math.max(1, Math.floor(viewport.height * outputScale))
+    const canvasWidth = Math.max(1, Math.floor(scaledViewport.width))
+    const canvasHeight = Math.max(1, Math.floor(scaledViewport.height))
 
     if (canvas.value.width !== canvasWidth || canvas.value.height !== canvasHeight) {
       canvas.value.width = canvasWidth
       canvas.value.height = canvasHeight
     }
-    canvas.value.style.width = Math.floor(viewport.width) + "px"
-    canvas.value.style.height = Math.floor(viewport.height) + "px"
+    
+    // CSS display dimensions
+    const displayWidth = Math.floor(scaledViewport.width / outputScale)
+    const displayHeight = Math.floor(scaledViewport.height / outputScale)
+    canvas.value.style.width = `${displayWidth}px`
+    canvas.value.style.height = `${displayHeight}px`
+
+    const ctx = canvas.value.getContext('2d', { alpha: false }) || canvas.value.getContext('2d')
+    if (!ctx) return
 
     // Fill with white background before rendering PDF elements
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvasWidth, canvasHeight)
 
-    const transform = outputScale !== 1
-      ? [outputScale, 0, 0, outputScale, 0, 0]
-      : null
-
     const renderContext = {
       canvasContext: ctx,
-      transform,
-      viewport: viewport,
+      viewport: scaledViewport,
       background: 'rgb(255,255,255)'
     }
     
@@ -152,8 +182,9 @@ const renderPage = async () => {
     activeRenderTask = null
 
     renderedScale.value = currentScale
-    baseWidth.value = viewport.width
-    baseHeight.value = viewport.height
+    baseWidth.value = displayWidth
+    baseHeight.value = displayHeight
+    isRendered.value = true
   } catch (error: any) {
     if (error?.name === 'RenderingCancelledException' || error?.message?.includes('cancelled')) {
       return

@@ -214,7 +214,7 @@
           'w-full max-w-[1040px] 2xl:max-w-[1140px] mx-auto lg:col-span-6 xl:col-span-6 h-[calc(100dvh_-_var(--header-height)_-_5rem)] flex flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden',
           'max-lg:mt-[2.75rem]',
         ]">
-        <thePresentationView :presentationPath="article?.presentation_path" :articleTitle="article?.title" />
+        <thePresentationView :presentationPath="article?.presentation_path" :articleTitle="article?.title" :is-active="!isTheory" />
       </div>
 
       <!-- Right Side Info Panel (Symmetry with TOC) -->

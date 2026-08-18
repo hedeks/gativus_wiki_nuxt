@@ -1,8 +1,11 @@
 <script setup lang="ts">
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   presentationPath?: string
   articleTitle?: string
-}>()
+  isActive?: boolean
+}>(), {
+  isActive: true
+})
 
 const hasPresentation = computed(() => !!props.presentationPath)
 const isPdf = computed(() => props.presentationPath?.toLowerCase().endsWith('.pdf'))
@@ -24,7 +27,7 @@ const resolvedPath = computed(() => {
 
     <!-- PDF Embed -->
     <template v-if="hasPresentation && isPdf">
-      <LazyThePdfViewer :src="resolvedPath" />
+      <LazyThePdfViewer :src="resolvedPath" :is-active="isActive" />
     </template>
 
     <!-- ODP / Other format — Download + Preview -->

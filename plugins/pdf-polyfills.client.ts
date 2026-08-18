@@ -16,7 +16,7 @@ export default defineNuxtPlugin(() => {
   if (typeof (URL as any).parse !== 'function') {
     (URL as any).parse = function (url: string | URL, base?: string | URL) {
       try {
-        return new URL(url, base)
+        return base !== undefined ? new URL(url, base) : new URL(url)
       } catch {
         return null
       }
