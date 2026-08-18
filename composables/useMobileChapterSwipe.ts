@@ -34,6 +34,20 @@ export function useMobileChapterSwipe(opts: {
     if (!isMobileViewport() || !isEnabled()) return
     if (!e.touches.length) return
     const t = e.touches[0]
+
+    // 1. Ignore native iOS browser edge back/forward navigation gestures (24px padding)
+    if (t.clientX <= 24 || (typeof window !== 'undefined' && t.clientX >= window.innerWidth - 24)) {
+      touchId = null
+      return
+    }
+
+    // 2. Completely ignore touches inside tables, code blocks, search banners, and interactive elements
+    const target = e.target as HTMLElement | null
+    if (target?.closest('.article-table-scroll, table, thead, tbody, tr, td, th, pre, code, .gv-article-search-context-row, input, textarea, button, a, select, [data-prevent-swipe]')) {
+      touchId = null
+      return
+    }
+
     touchId = t.identifier
     startX = t.clientX
     startY = t.clientY
