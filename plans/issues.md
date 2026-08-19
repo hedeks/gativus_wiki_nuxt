@@ -81,6 +81,7 @@
 - [x] Мобильные жесты (useMobileChapterSwipe): полностью исключить срабатывание свайпа смены глав при касаниях внутри таблиц (.article-table-scroll, table), блоков кода (pre, code) и интерактивных элементов, а также исключить конфликт с системным свайпом iOS Safari (startX <= 24px).
 - [x] Окончательное исправление белого Canvas в PDF Viewer на iOS Safari: отложенный рендеринг строго при видимости контейнера (защита от GPU Context Discard в скрытом DOM .inactive), канонический scaled viewport рендеринг PDF.js 5, исправление полифила URL.parse и non-passive слушатели жестов.
 - [x] Горячие клавиши поиска (TheSearch.vue): гарантированный перехват Ctrl+K / Cmd+K на любой раскладке клавиатуры (e.code === 'KeyK') на фазе capture: true с preventDefault().
+- [x] Отключить перехват и срабатывание `theTermPopover` на главной (`/`) и index-страницах каталогов (`/articles`, `/books`, `/glossary`, `/categories`), чтобы клики по карточкам и ссылкам выполняли стандартную навигацию.
 
 
 ---
