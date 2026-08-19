@@ -432,43 +432,24 @@ watch(visible, (v) => {
   }
 })
 
-function isPopoverDisabledOnCurrentRoute(): boolean {
-  const path = (route.path || '').replace(/\/+$/, '') || '/'
-  const disabledPaths = ['/', '/articles', '/books', '/glossary', '/categories', '/about']
-  return disabledPaths.includes(path)
-}
-
 function handleDocClick(e: MouseEvent) {
   const target = e.target as HTMLElement
-  const anchor = target.closest('.wiki-term, .wiki-book, .wiki-article, a[href^="/glossary/"], a[href^="/books/"], a[href^="/articles/"]') as HTMLElement | null
+  const anchor = target.closest('.wiki-term, .wiki-book, .wiki-article') as HTMLElement | null
 
   if (anchor) {
-    // Do not intercept on home and index catalog pages
-    if (isPopoverDisabledOnCurrentRoute()) {
-      return
-    }
-
-    // Do not intercept navigation links in header, footer, TOC, breadcrumbs, etc.
-    if (anchor.closest('.gv-header, .the-header, .site-header, .gv-toc, .the-toc, .the-breadcrumbs, nav, footer, .popover-footer, .gv-pres-cta, .nav-card, .nav-card--prev, .nav-card--next')) {
-      return
-    }
-
     e.preventDefault()
-    e.stopPropagation()
 
     let type: 'term' | 'book' | 'article' = 'term'
     let slug = ''
-    const href = (anchor as HTMLAnchorElement).getAttribute('href') || ''
-
-    if (anchor.classList.contains('wiki-book') || href.startsWith('/books/')) {
+    if (anchor.classList.contains('wiki-book')) {
       type = 'book'
-      slug = anchor.dataset.bookSlug || href.replace('/books/', '').split('#')[0].split('?')[0] || ''
-    } else if (anchor.classList.contains('wiki-article') || href.startsWith('/articles/')) {
+      slug = anchor.dataset.bookSlug || ''
+    } else if (anchor.classList.contains('wiki-article')) {
       type = 'article'
-      slug = anchor.dataset.articleSlug || href.replace('/articles/', '').split('#')[0].split('?')[0] || ''
+      slug = anchor.dataset.articleSlug || ''
     } else {
       type = 'term'
-      slug = anchor.dataset.termSlug || href.replace('/glossary/', '').split('#')[0].split('?')[0] || ''
+      slug = anchor.dataset.termSlug || ''
     }
 
     let clientX = e.clientX
@@ -661,12 +642,12 @@ watch(() => langStore.currentLang, () => {
 })
 
 onMounted(() => {
-  document.addEventListener('click', handleDocClick, { capture: true })
+  document.addEventListener('click', handleDocClick)
   document.addEventListener('keydown', handleKeydown)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleDocClick, { capture: true })
+  document.removeEventListener('click', handleDocClick)
   document.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', onViewportResize)
   window.visualViewport?.removeEventListener('resize', onViewportResize)
