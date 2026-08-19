@@ -432,11 +432,22 @@ watch(visible, (v) => {
   }
 })
 
+function isPopoverDisabledOnCurrentRoute(): boolean {
+  const path = (route.path || '').replace(/\/+$/, '') || '/'
+  const disabledPaths = ['/', '/articles', '/books', '/glossary', '/categories', '/about']
+  return disabledPaths.includes(path)
+}
+
 function handleDocClick(e: MouseEvent) {
   const target = e.target as HTMLElement
   const anchor = target.closest('.wiki-term, .wiki-book, .wiki-article, a[href^="/glossary/"], a[href^="/books/"], a[href^="/articles/"]') as HTMLElement | null
 
   if (anchor) {
+    // Do not intercept on home and index catalog pages
+    if (isPopoverDisabledOnCurrentRoute()) {
+      return
+    }
+
     // Do not intercept navigation links in header, footer, TOC, breadcrumbs, etc.
     if (anchor.closest('.gv-header, .the-header, .site-header, .gv-toc, .the-toc, .the-breadcrumbs, nav, footer, .popover-footer, .gv-pres-cta, .nav-card, .nav-card--prev, .nav-card--next')) {
       return
