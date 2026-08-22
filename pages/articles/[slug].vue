@@ -1,7 +1,7 @@
 <template>
   <div
     class="flex flex-col p-3 lg:p-10 flex-wrap-reverse lg:grid lg:grid-cols-10 lg:flex-nowrap gap-10 prose max-w-none prose-pre:text-black dark:prose-pre:text-white xl:prose-lg md:prose-md prose-sky dark:prose-invert w-full prose-img:w-1/2 prose-img:mx-auto prose-img:h-auto prose-pre:bg-gray-100 prose-pre:border dark:prose-pre:border-zinc-800 dark:prose-pre:bg-zinc-900 prose-h1:font-semibold">
-    <div class="fixed top-0 lg:top-[var(--header-height)] left-0 h-1 bg-[var(--gv-primary)] z-40 transition-all duration-150 ease-out" :style="{ width: scrollProgress + '%' }"></div>
+    <div class="fixed top-[var(--header-height)] left-0 h-1 bg-[var(--gv-primary)] z-[45] transition-all duration-150 ease-out" :style="{ width: scrollProgress + '%' }"></div>
     <theLeftQuizSelector
       @changeView="changeView"
       :is-theory="isTheory"
@@ -166,7 +166,7 @@
         <!-- Book Navigation -->
         <div v-if="article?.book_id && (article?.prev || article?.next)"
           class="mt-12 pt-8 border-t border-gray-100 dark:border-zinc-800 flex flex-col sm:flex-row gap-4 not-prose">
-          <NuxtLink v-if="article?.prev" :to="`/articles/${article.prev.slug}`" class="nav-card nav-card--prev">
+          <NuxtLink v-if="article?.prev" :to="`/articles/${article.prev.slug}`" class="nav-card nav-card--prev" @click="handleChapterNavClick">
             <div class="nav-card-label uppercase">{{ t?.prevChapter || 'ПРЕДЫДУЩАЯ ГЛАВА' }} {{ displayChapterNo(article.prev) !=
               null ?
               `№${displayChapterNo(article.prev)}` :
@@ -176,7 +176,7 @@
           <div v-else class="flex-1" />
 
           <NuxtLink v-if="article?.next" :to="`/articles/${article.next.slug}`"
-            class="nav-card nav-card--next text-right">
+            class="nav-card nav-card--next text-right" @click="handleChapterNavClick">
             <div class="nav-card-label uppercase">{{ t?.nextChapter || 'СЛЕДУЮЩАЯ ГЛАВА' }} {{ displayChapterNo(article.next) !=
               null ?
               `№${displayChapterNo(article.next)}` :
@@ -1041,6 +1041,18 @@ watch(() => article.value?.html_content, () => {
   updateHeadingsAndObserve()
 }, { immediate: false }) // Disable immediate to prevent SSR crash
 
+let isPopStateNavigation = false
+const onPopState = () => {
+  isPopStateNavigation = true
+}
+
+function handleChapterNavClick() {
+  isPopStateNavigation = false
+  if (import.meta.client) {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
+}
+
 const scrollRestoreWithRetry = (targetScroll: number, retries = 5) => {
   if (!import.meta.client) return
   window.scrollTo({ top: targetScroll, behavior: 'instant' })
@@ -1056,20 +1068,33 @@ watch(slug, (newSlug, oldSlug) => {
   if (newSlug && newSlug !== oldSlug) {
     activeID.value = ''
     hasScrolledToHash = false
-    const gvState = window.history.state?.gv_article
-    if (gvState) {
-      if (gvState.isPresentation) {
-        isTheory.value = false
+    scrollProgress.value = 0
+
+    const wasPopState = isPopStateNavigation
+    isPopStateNavigation = false
+
+    if (wasPopState) {
+      const gvState = window.history.state?.gv_article
+      if (gvState) {
+        if (gvState.isPresentation) {
+          isTheory.value = false
+        }
+        currentPosition.value = gvState.scroll ?? 0
+        const targetScroll = gvState.scroll ?? 0
+        if (targetScroll > 0) {
+          scrollRestoreWithRetry(targetScroll)
+          return
+        }
       }
-      currentPosition.value = gvState.scroll ?? 0
-      const targetScroll = gvState.scroll ?? 0
-      if (targetScroll > 0) {
-        scrollRestoreWithRetry(targetScroll)
-      }
-    } else if (!route.hash) {
+    }
+
+    if (!route.hash) {
       isTheory.value = true
       currentPosition.value = 0
       window.scrollTo({ top: 0, behavior: 'instant' })
+      nextTick(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' })
+      })
     }
   }
 })
@@ -1085,6 +1110,7 @@ let isNavigatingAway = false
 onMounted(() => {
   checkSize()
   window.addEventListener('resize', checkSize)
+  window.addEventListener('popstate', onPopState)
   window?.addEventListener('scroll', () => {
     if (isNavigatingAway) return
     if (isTheory.value) {
@@ -1141,6 +1167,7 @@ onUnmounted(() => {
   }
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', checkSize)
+  window.removeEventListener('popstate', onPopState)
   if (scrollSpyRaf != null) {
     cancelAnimationFrame(scrollSpyRaf)
     scrollSpyRaf = null
