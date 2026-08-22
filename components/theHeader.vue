@@ -123,7 +123,7 @@ onUnmounted(() => {
               class="gv-header__nav-link gv-focusable"
               :class="{ 'gv-header__nav-link--active': isNavActive(item.to) }"
             >
-              {{ item.label }}
+              <span class="gv-header__nav-label">{{ item.label }}</span>
             </NuxtLink>
           </li>
         </ul>
@@ -333,37 +333,107 @@ onUnmounted(() => {
 }
 
 .gv-header__nav-link {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  padding: 7px 13px;
-  border-radius: var(--gv-radius-control);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: var(--gv-radius-control, 8px);
+  background: transparent;
   color: var(--gv-text-secondary);
   text-decoration: none;
   white-space: nowrap;
+  isolation: isolate;
   transition:
-    color 0.18s cubic-bezier(0.705, 0.01, 0, 0.915),
-    background 0.18s cubic-bezier(0.705, 0.01, 0, 0.915);
+    color 0.2s cubic-bezier(0.705, 0.01, 0, 0.915);
+}
+
+.gv-header__nav-label {
+  position: relative;
+  z-index: 2;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: inherit;
 }
 
 @media (min-width: 1280px) {
   .gv-header__nav-link {
-    font-size: 13.5px;
-    padding: 7px 15px;
+    padding: 6px 16px;
   }
+}
+
+/* Luxe background glass transition */
+.gv-header__nav-link::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--gv-surface-header) 70%, transparent);
+  border: 1px solid transparent;
+  opacity: 0;
+  transform: scale(0.94);
+  transition:
+    opacity 0.2s cubic-bezier(0.705, 0.01, 0, 0.915),
+    transform 0.2s cubic-bezier(0.705, 0.01, 0, 0.915),
+    background 0.2s cubic-bezier(0.705, 0.01, 0, 0.915),
+    border-color 0.2s cubic-bezier(0.705, 0.01, 0, 0.915);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Luxe bottom beam transition */
+.gv-header__nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  border-radius: 9999px;
+  background: var(--gv-primary);
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition:
+    transform 0.2s cubic-bezier(0.705, 0.01, 0, 0.915),
+    opacity 0.2s cubic-bezier(0.705, 0.01, 0, 0.915);
+  pointer-events: none;
+  z-index: 3;
 }
 
 .gv-header__nav-link:hover {
   color: var(--gv-text-primary);
-  background: color-mix(in srgb, var(--gv-primary) 7%, transparent);
+}
+
+.gv-header__nav-link:hover:not(.gv-header__nav-link--active)::before {
+  opacity: 1;
+  transform: scale(1);
+  border-color: color-mix(in srgb, var(--gv-border-principal) 40%, transparent);
 }
 
 .gv-header__nav-link--active {
   color: var(--gv-primary);
-  background: color-mix(in srgb, var(--gv-primary) 12%, transparent);
-  font-weight: 700;
+}
+
+.gv-header__nav-link--active::before {
+  opacity: 1;
+  transform: scale(1);
+  background: color-mix(in srgb, var(--gv-primary) 8%, var(--gv-surface-card));
+  border-color: color-mix(in srgb, var(--gv-primary) 22%, var(--gv-border-principal));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.dark .gv-header__nav-link--active::before {
+  background: color-mix(in srgb, var(--gv-primary) 12%, var(--gv-surface-card));
+  border-color: color-mix(in srgb, var(--gv-primary) 28%, var(--gv-border-principal));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.gv-header__nav-link--active::after {
+  opacity: 1;
+  transform: scaleX(1);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--gv-primary) 70%, transparent);
 }
 
 .gv-header__actions {
@@ -469,43 +539,43 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--gv-border-principal) 55%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--gv-border-principal) 60%, transparent);
   text-decoration: none;
   color: inherit;
-  transition:
-    color 0.18s ease,
-    border-color 0.18s ease;
+  transition: color 0.18s ease;
 }
 
 .gv-header-drawer__link:last-of-type {
   border-bottom: none;
 }
 
-.gv-header-drawer__link:hover {
-  border-bottom-color: color-mix(in srgb, var(--gv-primary) 35%, var(--gv-border-principal));
-}
-
 .gv-header-drawer__link-main {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
 }
 
 .gv-header-drawer__icon {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
+  color: var(--gv-text-secondary);
+  transition: color 0.18s ease;
+}
+
+.gv-header-drawer__link:hover .gv-header-drawer__icon,
+.gv-header-drawer__link--active .gv-header-drawer__icon {
   color: var(--gv-primary);
-  opacity: 0.9;
 }
 
 .gv-header-drawer__label {
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gv-text-secondary);
+  transition: color 0.18s ease;
 }
 
 .gv-header-drawer__link:hover .gv-header-drawer__label {
@@ -513,7 +583,8 @@ onUnmounted(() => {
 }
 
 .gv-header-drawer__link--active .gv-header-drawer__label {
-  color: var(--gv-primary);
+  color: var(--gv-text-primary);
+  font-weight: 750;
 }
 
 .gv-header-drawer__chev {
@@ -524,11 +595,14 @@ onUnmounted(() => {
   opacity: 0.45;
   transition:
     transform 0.2s ease,
-    opacity 0.2s ease;
+    opacity 0.2s ease,
+    color 0.2s ease;
 }
 
-.gv-header-drawer__link:hover .gv-header-drawer__chev {
-  opacity: 0.85;
+.gv-header-drawer__link:hover .gv-header-drawer__chev,
+.gv-header-drawer__link--active .gv-header-drawer__chev {
+  color: var(--gv-primary);
+  opacity: 0.9;
   transform: translateX(4px);
 }
 
