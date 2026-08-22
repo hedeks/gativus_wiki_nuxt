@@ -215,7 +215,7 @@
             <UIcon name="i-heroicons-document-text" class="w-10 h-10" />
           </div>
           <div class="preview-header-info">
-            <div class="preview-badges">
+            <div v-if="getArticleBadges(previewArticle, true).length > 0" class="preview-badges">
               <span
                 v-for="badge in getArticleBadges(previewArticle, true)"
                 :key="badge.label"

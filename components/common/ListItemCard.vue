@@ -17,7 +17,7 @@
     </div>
 
     <div class="card-content">
-      <div class="card-meta">
+      <div v-if="hasBadges" class="card-meta">
         <span
           v-for="(badge, i) in badges"
           :key="i"
@@ -31,7 +31,10 @@
         <span v-if="index !== undefined" class="card-index">{{ index }}</span>
       </div>
 
-      <h3 class="card-title">{{ title }}</h3>
+      <div class="card-title-row">
+        <h3 class="card-title">{{ title }}</h3>
+        <span v-if="index !== undefined && !hasBadges" class="card-index card-index--inline">{{ index }}</span>
+      </div>
 
       <p v-if="descriptionHtml" class="card-description line-clamp-2" v-html="descriptionHtml" />
       <p v-else-if="description" class="card-description line-clamp-2">{{ description }}</p>
@@ -54,6 +57,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type {
   CategoryLinkKind,
   KnowledgeEntityVariant,
@@ -66,7 +70,7 @@ export interface CardBadge {
   style?: Record<string, string>
 }
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     to: string
     icon?: string
@@ -85,6 +89,8 @@ withDefaults(
     categoryLinkKind: 'virtual',
   }
 )
+
+const hasBadges = computed(() => Boolean(props.badges && props.badges.length > 0))
 
 defineEmits<{
   preview: []
@@ -290,12 +296,24 @@ defineEmits<{
   color: #a5b4fc;
 }
 
+.card-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .card-index {
   font-size: 11px;
   color: #94a3b8;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+.card-index--inline {
+  margin-left: 0;
 }
 
 .dark .card-index {
@@ -312,6 +330,7 @@ defineEmits<{
   overflow-wrap: anywhere;
   word-break: break-word;
   hyphens: auto;
+  flex: 1;
 }
 
 .dark .card-title {
