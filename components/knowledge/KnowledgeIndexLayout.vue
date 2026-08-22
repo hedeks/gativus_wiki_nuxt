@@ -110,7 +110,7 @@ const props = defineProps<{
   min-width: 0;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 800px) {
   .knowledge-index .search-filters-row {
     flex-direction: column;
     align-items: stretch;

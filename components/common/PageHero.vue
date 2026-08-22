@@ -76,15 +76,19 @@ withDefaults(
 
 .hero-actions {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 12px;
   position: relative;
   z-index: 40;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 800px) {
   .hero-actions {
-    flex-direction: column;
     gap: 10px;
   }
 }
