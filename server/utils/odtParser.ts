@@ -76,6 +76,7 @@ interface ConvertCtx {
   imageMap: Map<string, string>
   contentLocale?: OdtContentLocale
   usedIds: Map<string, number>
+  zip: AdmZip
 }
 
 export function cloneNumberingState(state: NumberingState): NumberingState {
@@ -178,7 +179,7 @@ export async function parseOdtBuffer(
     : { listCounters: {} }
 
   const imageMap = new Map(images.map(img => [img.originalPath, img.savedPath]))
-  const ctx: ConvertCtx = { styles, listStyles, numbering, imageMap, contentLocale, usedIds: new Map() }
+  const ctx: ConvertCtx = { styles, listStyles, numbering, imageMap, contentLocale, usedIds: new Map(), zip }
   const rawHtml = convertChildren(textNode, ctx)
   const fullHtml = processFigurePlaceholders(rawHtml, images)
 
@@ -751,12 +752,60 @@ function convertNode(
 
     // ─── Images & Graphics (draw:frame) ───
     case 'draw:frame': {
-      // 1. Check for Image
+      // 1. Check for OLE Object (Math formulas)
+      const objectNode = node.getElementsByTagName('draw:object')[0]
+      if (objectNode) {
+        let href = objectNode.getAttribute('xlink:href')
+        if (href) {
+          if (href.startsWith('./')) href = href.slice(2)
+          if (href.startsWith('/')) href = href.slice(1)
+          
+          // Try to get MathML from object folder
+          const mathEntry = ctx.zip.getEntry(`${href}/content.xml`)
+          if (mathEntry) {
+            try {
+              const mathXml = mathEntry.getData().toString('utf-8')
+              // Simple check if it contains MathML
+              if (mathXml.includes('<math:math')) {
+                // Extract math block
+                const mathMatch = mathXml.match(/<math:math[\s\S]*?<\/math:math>/)
+                if (mathMatch && mathMatch[0]) {
+                  // We can't render MathML perfectly in browser without scripts/polyfills natively everywhere,
+                  // but KaTeX has limited MathML support, or we can use `<math>` directly 
+                  // which is supported in modern browsers (Chrome 109+, Safari, Firefox).
+                  // For now, output MathML directly as HTML5 <math> tag
+                  let mathml = mathMatch[0]
+                  // Remove math: namespace prefixes for valid HTML5 MathML
+                  mathml = mathml.replace(/math:/g, '')
+                  mathml = mathml.replace(/xmlns:math="[^"]+"/g, '')
+                  return `<div class="odt-math">${mathml}</div>\n`
+                }
+              }
+            } catch (e) {
+              // ignore and fallback
+            }
+          }
+          
+          // Fallback to ObjectReplacements image
+          const fallbackHref = `ObjectReplacements/${href}`
+          const mappedSrc = ctx.imageMap.get(fallbackHref) || ctx.imageMap.get(`./${fallbackHref}`)
+          if (mappedSrc) {
+            const width = node.getAttribute('svg:width')
+            const height = node.getAttribute('svg:height')
+            let style = ''
+            if (width) style += `max-width: ${convertUnit(width)};`
+            if (height) style += `max-height: ${convertUnit(height)};`
+            return `<img src="${mappedSrc}" alt="Formula" class="odt-math-fallback" style="${style}" loading="lazy" />\n`
+          }
+        }
+      }
+
+      // 2. Check for Image
       const imageNode = node.getElementsByTagName('draw:image')[0]
       if (imageNode) {
         const href = imageNode.getAttribute('xlink:href')
         if (href) {
-          const mappedSrc = imageMap.get(href) || href
+          const mappedSrc = imageMap.get(href) || imageMap.get(`./${href}`) || href
           const width = node.getAttribute('svg:width')
           const height = node.getAttribute('svg:height')
           let style = ''
@@ -767,7 +816,7 @@ function convertNode(
         }
       }
 
-      // 2. Check for Text Box
+      // 3. Check for Text Box
       const textBox = node.getElementsByTagName('draw:text-box')[0]
       if (textBox) {
         const content = convertChildren(textBox, ctx)

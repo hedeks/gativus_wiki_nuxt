@@ -5,7 +5,7 @@
  * Поддерживаемые локали: 'ru' | 'en' | 'zh' | 'none' (только цифра).
  */
 
-import { reindexHeadingMarkers, type HeadingLocale } from '~/server/utils/reindexHeadingMarkers'
+import { reindexHeadingMarkers, autoIndexHeadings, type HeadingLocale } from '~/server/utils/reindexHeadingMarkers'
 import { requireRole } from '~/server/utils/requireRole'
 import { linkTermsInHtml, buildTermsMaps, syncArticleTermsFromArticleRow } from '~/server/utils/termLinker'
 
@@ -18,6 +18,7 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody(event) as {
     chapter_start: number
+    mode?: 'reindex' | 'auto_index'
     locale_en?: HeadingLocale
     locale_ru?: HeadingLocale
     locale_zh?: HeadingLocale
@@ -42,15 +43,19 @@ export default defineEventHandler(async (event) => {
 
   let totalChanged = 0
 
-  const rEn = article.html_content
-    ? reindexHeadingMarkers(article.html_content, chapterStart, localeEn)
-    : null
-  const rRu = article.html_content_ru
-    ? reindexHeadingMarkers(article.html_content_ru, chapterStart, localeRu)
-    : null
-  const rZh = article.html_content_zh
-    ? reindexHeadingMarkers(article.html_content_zh, chapterStart, localeZh)
-    : null
+  const mode = body.mode || 'reindex'
+
+  const processHtml = (html: string | null, locale: HeadingLocale) => {
+    if (!html) return null
+    if (mode === 'auto_index') {
+      return autoIndexHeadings(html, chapterStart, locale)
+    }
+    return reindexHeadingMarkers(html, chapterStart, locale)
+  }
+
+  const rEn = processHtml(article.html_content, localeEn)
+  const rRu = processHtml(article.html_content_ru, localeRu)
+  const rZh = processHtml(article.html_content_zh, localeZh)
 
   if (rEn) totalChanged += rEn.changed
   if (rRu) totalChanged += rRu.changed

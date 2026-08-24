@@ -47,6 +47,7 @@ export default defineNuxtConfig({
     }
   },
   /* Глобальные стили подключаются в app.vue — иначе dev иногда отдаёт 503 на __nuxt_vite_node__/module//assets/… */
+  css: ['katex/dist/katex.min.css'],
   modules: ['@nuxt/ui', '@pinia/nuxt', "@nuxt/content", "@nuxtjs/tailwindcss", 'nuxt-markdown-render', '@nuxtjs/color-mode'],
 
   colorMode: {

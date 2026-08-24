@@ -81,3 +81,62 @@ export function reindexHeadingMarkers(
 
   return { html: result, changed }
 }
+
+/**
+ * Автоматически нумерует все заголовки h2-h6 с нуля на основе их вложенности.
+ * Удаляет старые odt-heading-marker и ручные номера перед вставкой.
+ */
+export function autoIndexHeadings(
+  html: string,
+  chapterStart: number,
+  locale: HeadingLocale,
+): { html: string; changed: number } {
+  if (!html) return { html, changed: 0 }
+
+  let changed = 0
+  const counters = [0, 0, 0, 0, 0, 0] // 0=h1(skip), 1=h2, 2=h3...
+
+  const result = html.replace(
+    /(<h([2-6])[^>]*>)(.*?)(<\/h\2>)/gis,
+    (match, openTag: string, levelStr: string, innerHtml: string, closeTag: string) => {
+      const level = parseInt(levelStr, 10)
+      const depth = level - 1 // h2 -> 1, h3 -> 2
+
+      // Увеличиваем счетчик текущего уровня
+      counters[depth] = (counters[depth] || 0) + 1
+      // Обнуляем все вложенные
+      for (let i = depth + 1; i < counters.length; i++) {
+        counters[i] = 0
+      }
+
+      // Генерируем номер
+      let markerText = ''
+      if (depth === 1) {
+        // h2 (Первый уровень в статье)
+        const actualChapter = chapterStart + counters[1] - 1
+        markerText = `${formatLevel1(actualChapter, locale)}. `
+      } else {
+        // h3, h4 и глубже
+        const actualChapter = chapterStart + counters[1] - 1
+        markerText = `${actualChapter}.`
+        for (let i = 2; i <= depth; i++) {
+          markerText += `${counters[i]}.`
+        }
+        markerText += ' '
+      }
+
+      // Очищаем старые маркеры
+      let cleanInner = innerHtml.replace(/<span class="odt-heading-marker">.*?<\/span>/gis, '').trim()
+
+      // Очищаем от ручных цифр (например "Глава 1. ", "1.2. ")
+      cleanInner = cleanInner.replace(/^(Глава\s+\d+|Chapter\s+\d+|第\d+章|\d+(?:\.\d+)*\.*)\s*/i, '').trim()
+
+      const markerHtml = `<span class="odt-heading-marker">${markerText}</span>`
+      
+      changed++
+      return `${openTag}${markerHtml}${cleanInner}${closeTag}`
+    }
+  )
+
+  return { html: result, changed }
+}
