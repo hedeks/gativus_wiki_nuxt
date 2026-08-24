@@ -608,6 +608,113 @@ async function importOdt(e: Event) {
   input.value = ''
 }
 
+const isParsingMd = ref(false)
+const mdInput = ref<HTMLInputElement | null>(null)
+const showMdImagesModal = ref(false)
+const mdMissingImages = ref<string[]>([])
+const mdImagesFiles = ref<Record<string, File>>({})
+const mdPendingHtml = ref('')
+const mdPendingMetadata = ref<any>(null)
+const isUploadingMdImages = ref(false)
+
+async function importMd(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (!input.files?.length) return
+
+  isParsingMd.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', input.files[0])
+
+    const result = await $fetch<{ html: string; missingImages: string[]; title?: string; excerpt?: string }>('/api/admin/uploads/md-to-html', {
+      method: 'POST',
+      body: formData,
+      headers: store.getAuthHeader(),
+    })
+
+    if (result.missingImages && result.missingImages.length > 0) {
+      // Требуются картинки
+      mdMissingImages.value = result.missingImages
+      mdPendingHtml.value = result.html
+      mdPendingMetadata.value = { title: result.title, description: result.excerpt }
+      mdImagesFiles.value = {}
+      showMdImagesModal.value = true
+    } else {
+      applyParsedMd(result.html, { title: result.title, description: result.excerpt })
+    }
+  } catch (err: any) {
+    toast.add({ title: 'Ошибка парсинга Markdown', description: err?.data?.statusMessage || err.message, color: 'red' })
+  }
+  isParsingMd.value = false
+  input.value = ''
+}
+
+function handleMdImageSelect(path: string, event: Event) {
+  const input = event.target as HTMLInputElement
+  if (input.files && input.files.length > 0) {
+    mdImagesFiles.value[path] = input.files[0]
+  } else {
+    delete mdImagesFiles.value[path]
+  }
+}
+
+async function uploadMissingMdImages() {
+  isUploadingMdImages.value = true
+  let finalHtml = mdPendingHtml.value
+  
+  try {
+    // Загружаем все картинки
+    const promises = Object.entries(mdImagesFiles.value).map(async ([path, file]) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await $fetch<any>('/api/admin/uploads/article-image', {
+        method: 'POST',
+        body: formData,
+        headers: store.getAuthHeader(),
+      })
+      return { path, url: res.url }
+    })
+    
+    const results = await Promise.all(promises)
+    
+    // Заменяем пути в HTML
+    for (const res of results) {
+      // Ищем путь с кавычками, чтобы не заменить похожие пути
+      // mdParser генерирует пути внутри src="..." или src='...'
+      const regex = new RegExp(`src=["']${escapeRegExp(res.path)}["']`, 'g')
+      finalHtml = finalHtml.replace(regex, `src="${res.url}"`)
+    }
+    
+    applyParsedMd(finalHtml, mdPendingMetadata.value)
+    showMdImagesModal.value = false
+    toast.add({ title: 'Изображения загружены', color: 'green' })
+  } catch (err: any) {
+    toast.add({ title: 'Ошибка загрузки изображений', description: err?.data?.statusMessage || err.message, color: 'red' })
+  }
+  
+  isUploadingMdImages.value = false
+}
+
+function skipMissingMdImages() {
+  applyParsedMd(mdPendingHtml.value, mdPendingMetadata.value)
+  showMdImagesModal.value = false
+}
+
+function applyParsedMd(html: string, metadata: any) {
+  updateActiveHtml(html)
+  if (metadata && (metadata.title || metadata.description)) {
+    if (confirm(`В файле найдены мета-теги (Название: ${metadata.title || 'нет'}). Применить их к статье?`)) {
+      emit('odt-parsed', metadata) // Используем существующее событие
+    }
+  }
+  pushHistory(`MD/ZIP → ${props.activeLang.toUpperCase()}`)
+  toast.add({ title: 'Markdown импортирован', description: `Вкладка ${props.activeLang.toUpperCase()} обновлена`, color: 'green' })
+}
+
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 const isUploadingImage = ref(false)
 const imageInput = ref<HTMLInputElement | null>(null)
 
@@ -648,6 +755,11 @@ async function uploadImage(e: Event) {
 
 const reindexOpen = ref(false)
 const reindexChapterStart = ref(1)
+const reindexMode = ref<'reindex' | 'auto_index'>('auto_index')
+const reindexOptions = [
+  { value: 'auto_index', label: 'Создать с нуля (Авто-нумерация)', description: 'Расставит номера всем заголовкам в статье по порядку вложенности.' },
+  { value: 'reindex', label: 'Обновить существующие', description: 'Изменит только уже существующие ODT-маркеры.' }
+]
 const reindexLocaleEn = ref<'en' | 'ru' | 'zh' | 'none'>('en')
 const reindexLocaleRu = ref<'en' | 'ru' | 'zh' | 'none'>('ru')
 const reindexLocaleZh = ref<'en' | 'ru' | 'zh' | 'none'>('zh')
@@ -667,6 +779,7 @@ async function runReindex() {
       headers: store.getAuthHeader(),
       body: {
         chapter_start: reindexChapterStart.value,
+        mode: reindexMode.value,
         locale_en: reindexLocaleEn.value,
         locale_ru: reindexLocaleRu.value,
         locale_zh: reindexLocaleZh.value,
@@ -749,12 +862,19 @@ defineExpose({
         </div>
         <div class="toolbar-sep"></div>
         <div class="toolbar-group">
-          <button @click="odtInput?.click()" :disabled="isParsingOdt" :title="`Импортировать ODT → HTML (${activeLang.toUpperCase()})`" class="odt-import-btn">
-            <UIcon v-if="!isParsingOdt" name="i-heroicons-arrow-up-tray" />
-            <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
-            <span class="toolbar-btn-label">ODT</span>
+          <button @click="odtInput?.click()" :disabled="isParsingOdt" :title="`Импортировать ODT → HTML (${activeLang.toUpperCase()})`" class="odt-import-btn group hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:text-sky-600 dark:hover:text-sky-400 transition-all">
+            <UIcon v-if="!isParsingOdt" name="i-heroicons-document-arrow-up" class="group-hover:scale-110 transition-transform" />
+            <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin text-sky-500" />
+            <span class="toolbar-btn-label font-semibold">ODT</span>
           </button>
           <input ref="odtInput" type="file" accept=".odt" class="hidden" @change="importOdt" />
+
+          <button @click="mdInput?.click()" :disabled="isParsingMd" :title="`Импортировать MD / ZIP → HTML (${activeLang.toUpperCase()})`" class="odt-import-btn md-import-btn group hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
+            <UIcon v-if="!isParsingMd" name="i-heroicons-document-text" class="group-hover:scale-110 transition-transform" />
+            <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin text-indigo-500" />
+            <span class="toolbar-btn-label font-semibold">MD/ZIP</span>
+          </button>
+          <input ref="mdInput" type="file" accept=".md,.zip" class="hidden" @change="importMd" />
         </div>
       </div>
       
@@ -1028,18 +1148,88 @@ defineExpose({
 
     <!-- Reindex modal -->
     <UModal v-model="reindexOpen">
-      <div class="p-6 space-y-5">
-        <h3 class="text-lg font-bold">Переиндексация номеров глав</h3>
-        <UFormGroup label="Номер первой главы">
+      <div class="p-6 space-y-6">
+        <div>
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white">Нумерация глав</h3>
+          <p class="text-sm text-gray-500 mt-1">Автоматическая расстановка номеров для заголовков (h2, h3, h4...)</p>
+        </div>
+        
+        <UFormGroup label="Режим">
+          <URadio v-for="opt in reindexOptions" :key="opt.value" v-model="reindexMode" v-bind="opt" class="mb-3" />
+        </UFormGroup>
+
+        <UFormGroup label="Начать нумерацию с (Глава N):">
           <UInput v-model.number="reindexChapterStart" type="number" :min="1" />
         </UFormGroup>
+        
         <div class="flex justify-end gap-3 pt-2">
-          <GvButton variant="ghost" color="gray" @click="reindexOpen = false">Отмена</GvButton>
-          <GvButton color="sky" :loading="reindexing" @click="runReindex">Переиндексировать</GvButton>
+          <UButton variant="ghost" color="gray" @click="reindexOpen = false">Отмена</UButton>
+          <UButton color="sky" :loading="reindexing" @click="runReindex">Применить</UButton>
         </div>
       </div>
     </UModal>
 
+    <!-- Modal for missing MD images (LUXE) -->
+    <UModal v-model="showMdImagesModal" prevent-close :ui="{ background: 'bg-white/90 dark:bg-black/60', overlay: { background: 'bg-black/20 dark:bg-black/80 backdrop-blur-sm' } }">
+      <UCard :ui="{ ring: 'ring-1 ring-gray-200 dark:ring-white/10', divide: 'divide-y divide-gray-100 dark:divide-white/5', header: { padding: 'px-6 py-5' }, body: { padding: 'px-6 py-6' }, footer: { padding: 'px-6 py-5' } }" class="shadow-2xl">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center border border-amber-200 dark:border-amber-500/30">
+                <UIcon name="i-heroicons-photo" class="text-amber-600 dark:text-amber-400 w-5 h-5" />
+              </div>
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Требуются изображения</h3>
+            </div>
+            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark-20-solid" class="hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors" @click="skipMissingMdImages" />
+          </div>
+        </template>
+        
+        <div class="space-y-6">
+          <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+            В вашем <strong class="text-gray-900 dark:text-white font-semibold">Markdown</strong> файле найдены ссылки на локальные изображения, которых нет на сервере. Загрузите их сейчас, чтобы они корректно отображались в статье.
+          </p>
+          
+          <div class="space-y-3 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+            <div v-for="img in mdMissingImages" :key="img" class="group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-gray-50/50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 rounded-xl hover:border-sky-300 dark:hover:border-sky-700/50 hover:bg-sky-50/30 dark:hover:bg-sky-900/10 transition-all duration-300">
+              
+              <div class="flex items-center gap-3 w-full sm:w-auto min-w-0">
+                <div class="w-10 h-10 rounded-lg bg-white dark:bg-black/40 border border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                  <UIcon name="i-heroicons-document-image" class="w-5 h-5 text-gray-400 group-hover:text-sky-500 transition-colors" />
+                </div>
+                <div class="flex flex-col min-w-0">
+                  <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Ожидаемый файл</span>
+                  <span class="text-sm font-mono text-gray-900 dark:text-gray-200 truncate" :title="img">{{ img.split('/').pop() || img }}</span>
+                </div>
+              </div>
+              
+              <div class="relative w-full sm:w-auto flex-shrink-0">
+                <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="e => handleMdImageSelect(img, e)" />
+                <div class="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm group-hover:border-sky-400 transition-colors" :class="{'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-800 shadow-green-500/10': mdImagesFiles[img]}">
+                  <UIcon :name="mdImagesFiles[img] ? 'i-heroicons-check-circle' : 'i-heroicons-arrow-up-tray'" :class="mdImagesFiles[img] ? 'text-green-500' : 'text-gray-500 group-hover:text-sky-500'" class="w-4 h-4 transition-colors" />
+                  <span class="text-xs font-semibold whitespace-nowrap" :class="mdImagesFiles[img] ? 'text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'">
+                    {{ mdImagesFiles[img] ? mdImagesFiles[img].name : 'Выбрать файл' }}
+                  </span>
+                </div>
+              </div>
+              
+            </div>
+          </div>
+        </div>
+
+        <template #footer>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-gray-500 font-medium">Можно пропустить и загрузить позже</span>
+            <div class="flex justify-end gap-3">
+              <UButton color="gray" variant="ghost" class="hover:bg-gray-100 dark:hover:bg-white/5 font-semibold px-4" @click="skipMissingMdImages">Пропустить</UButton>
+              <UButton color="sky" class="font-bold shadow-lg shadow-sky-500/20 px-5" :loading="isUploadingMdImages" @click="uploadMissingMdImages">
+                <UIcon name="i-heroicons-cloud-arrow-up" class="w-4 h-4 mr-1" />
+                Загрузить и применить
+              </UButton>
+            </div>
+          </div>
+        </template>
+      </UCard>
+    </UModal>
   </div>
 </template>
 
