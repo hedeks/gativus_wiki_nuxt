@@ -591,6 +591,123 @@ server.tool(`import_odt_as_book_chapter`,
     }
 );
 
+server.tool(`import_md_as_book_chapter`,
+    `Macro tool: Uploads a Markdown (.md) file, parses it into an article, and safely appends it to the specified book.`,
+    {
+        file_path: z.string().describe(`Absolute path to the Markdown file`),
+        book_slug: z.string().describe(`The slug of the target book`),
+        title: z.string().optional().describe(`The title for the new article (can be empty if md has frontmatter title)`),
+        lang: z.enum(['en', 'ru', 'zh']).describe(`The language of the imported content`),
+        is_published: z.number().optional().describe(`0 for draft, 1 for published (default 0)`)
+    },
+    async (args) => {
+        // 1. Fetch book to get current chapters
+        const bookData: any = await fetchApi(`/api/books/${args.book_slug}`);
+        const book = typeof bookData === 'string' ? JSON.parse(bookData) : bookData;
+        if (!book || !book.id) throw new Error(`Book not found: ${args.book_slug}`);
+        
+        const currentArticleIds = book.articles ? book.articles.map((a: any) => a.id) : [];
+
+        // 2. Upload and parse MD
+        const formData = new FormData();
+        if (!fs.existsSync(args.file_path)) throw new Error(`File not found: ${args.file_path}`);
+        const fileBuffer = fs.readFileSync(args.file_path);
+        const blob = new Blob([fileBuffer]);
+        formData.append("file", blob, path.basename(args.file_path));
+        
+        const parseResult: any = await fetchMultipart('/api/admin/uploads/md-to-html', 'POST', formData);
+        const parsed = typeof parseResult === 'string' ? JSON.parse(parseResult) : parseResult;
+        const html = parsed.html || '';
+        const mdTitle = parsed.title || args.title || path.basename(args.file_path, '.md');
+
+        // 3. Create Article
+        const articlePayload: any = {
+            title: mdTitle,
+            book_id: book.id,
+            is_published: args.is_published ?? 0,
+            html_content: args.lang === 'en' ? html : '<p><i>Waiting for English translation...</i></p>',
+            translation_valid_en: args.lang === 'en' ? 1 : 0
+        };
+        if (args.lang === 'ru') { articlePayload.html_content_ru = html; articlePayload.translation_valid_ru = 1; }
+        else if (args.lang === 'zh') { articlePayload.html_content_zh = html; articlePayload.translation_valid_zh = 1; }
+
+        const createResult: any = await fetchApi('/api/articles', 'POST', articlePayload);
+        const newArticle = typeof createResult === 'string' ? JSON.parse(createResult) : createResult;
+        const newArticleId = newArticle.id;
+        
+        if (!newArticleId) throw new Error(`Failed to extract new article ID from creation response`);
+
+        // 4. Update Book Skeleton
+        const newArticleIds = [...currentArticleIds, newArticleId];
+        await fetchApi(`/api/admin/books/${book.id}/chapters`, 'PATCH', { article_ids: newArticleIds });
+
+        return { content: [{ type: "text", text: `Successfully imported MD as article ID ${newArticleId} and appended to book ${args.book_slug}` }] };
+    }
+);
+
+server.tool(`bulk_import_md_as_book_chapters`,
+    `Macro tool: Uploads multiple Markdown files, parses them into articles, and appends them all to the specified book in order.`,
+    {
+        file_paths: z.array(z.string()).describe(`Array of absolute paths to Markdown files`),
+        book_slug: z.string().describe(`The slug of the target book`),
+        lang: z.enum(['en', 'ru', 'zh']).describe(`The language of the imported content`),
+        is_published: z.number().optional().describe(`0 for draft, 1 for published (default 0)`)
+    },
+    async (args) => {
+        // 1. Fetch book to get current chapters
+        const bookData: any = await fetchApi(`/api/books/${args.book_slug}`);
+        const book = typeof bookData === 'string' ? JSON.parse(bookData) : bookData;
+        if (!book || !book.id) throw new Error(`Book not found: ${args.book_slug}`);
+        
+        const currentArticleIds = book.articles ? book.articles.map((a: any) => a.id) : [];
+        const addedIds: number[] = [];
+        const log: string[] = [];
+
+        for (const filePath of args.file_paths) {
+            try {
+                const formData = new FormData();
+                if (!fs.existsSync(filePath)) throw new Error(`File not found: ${filePath}`);
+                const fileBuffer = fs.readFileSync(filePath);
+                const blob = new Blob([fileBuffer]);
+                formData.append("file", blob, path.basename(filePath));
+                
+                const parseResult: any = await fetchMultipart('/api/admin/uploads/md-to-html', 'POST', formData);
+                const parsed = typeof parseResult === 'string' ? JSON.parse(parseResult) : parseResult;
+                const html = parsed.html || '';
+                const mdTitle = parsed.title || path.basename(filePath, '.md');
+
+                const articlePayload: any = {
+                    title: mdTitle,
+                    book_id: book.id,
+                    is_published: args.is_published ?? 0,
+                    html_content: args.lang === 'en' ? html : '<p><i>Waiting for English translation...</i></p>',
+                    translation_valid_en: args.lang === 'en' ? 1 : 0
+                };
+                if (args.lang === 'ru') { articlePayload.html_content_ru = html; articlePayload.translation_valid_ru = 1; }
+                else if (args.lang === 'zh') { articlePayload.html_content_zh = html; articlePayload.translation_valid_zh = 1; }
+
+                const createResult: any = await fetchApi('/api/articles', 'POST', articlePayload);
+                const newArticle = typeof createResult === 'string' ? JSON.parse(createResult) : createResult;
+                const newArticleId = newArticle.id;
+                if (!newArticleId) throw new Error('Missing new article ID');
+                
+                addedIds.push(newArticleId);
+                log.push(`Success: ${path.basename(filePath)} -> ID ${newArticleId}`);
+            } catch (err: any) {
+                log.push(`Failed: ${path.basename(filePath)} - ${err.message}`);
+            }
+        }
+
+        if (addedIds.length > 0) {
+            const newArticleIds = [...currentArticleIds, ...addedIds];
+            await fetchApi(`/api/admin/books/${book.id}/chapters`, 'PATCH', { article_ids: newArticleIds });
+            log.push(`Patched book ${args.book_slug} with ${addedIds.length} new articles.`);
+        }
+
+        return { content: [{ type: "text", text: log.join('\\n') }] };
+    }
+);
+
 server.tool(`create_odm_project`,
     `Step 1 of ODM Import: Upload an .odm file to create a draft project and book skeleton. Returns the project ID and slots.`,
     {
