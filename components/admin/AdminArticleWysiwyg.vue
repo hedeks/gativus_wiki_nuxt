@@ -831,19 +831,19 @@ defineExpose({
     <!-- Inline Toolbar -->
     <div v-if="!seamlessMode" class="sticky top-0 z-[11] bg-white/85 dark:bg-[#111113]/85 backdrop-blur-lg border-b border-gray-200/50 dark:border-zinc-800/50 flex items-center justify-between px-4 py-2 overflow-x-auto custom-scrollbar gap-6 shadow-sm">
       <div class="flex items-center gap-2 min-w-max">
-        <div class="toolbar-group">
+        <div class="flex items-center gap-1">
           <UTooltip text="Заголовок 2"><UButton color="gray" variant="ghost" class="font-bold" label="H2" @click="insertTag('h2')" /></UTooltip>
           <UTooltip text="Заголовок 3"><UButton color="gray" variant="ghost" class="font-bold" label="H3" @click="insertTag('h3')" /></UTooltip>
           <UTooltip text="Заголовок 4"><UButton color="gray" variant="ghost" class="font-bold" label="H4" @click="insertTag('h4')" /></UTooltip>
         </div>
-        <div class="toolbar-sep"></div>
-        <div class="toolbar-group">
+        <div class="w-[1px] h-6 bg-gray-200 dark:bg-zinc-700/50 mx-1"></div>
+        <div class="flex items-center gap-1">
           <UTooltip text="Абзац"><UButton color="gray" variant="ghost" icon="i-heroicons-bars-3-bottom-left" @click="insertTag('p')" /></UTooltip>
           <UTooltip text="Цитата"><UButton color="gray" variant="ghost" icon="i-heroicons-chat-bubble-bottom-center-text" @click="insertTag('blockquote')" /></UTooltip>
           <UTooltip text="Код"><UButton color="gray" variant="ghost" icon="i-heroicons-code-bracket" @click="insertTag('pre')" /></UTooltip>
         </div>
-        <div class="toolbar-sep"></div>
-        <div class="toolbar-group">
+        <div class="w-[1px] h-6 bg-gray-200 dark:bg-zinc-700/50 mx-1"></div>
+        <div class="flex items-center gap-1">
           <UTooltip text="Жирный"><UButton color="gray" variant="ghost" icon="i-heroicons-bold" @click="insertTag('strong')" /></UTooltip>
           <UTooltip text="Курсив"><UButton color="gray" variant="ghost" icon="i-heroicons-italic" @click="insertTag('em')" /></UTooltip>
           <UTooltip text="Ссылка"><UButton color="gray" variant="ghost" icon="i-heroicons-link" @click="insertTag('a')" /></UTooltip>
@@ -851,16 +851,16 @@ defineExpose({
           <UTooltip text="Связать с книгой"><UButton color="indigo" variant="soft" icon="i-heroicons-book-open" @click="openBookModal" /></UTooltip>
           <UTooltip text="Связать со статьей"><UButton color="violet" variant="soft" icon="i-heroicons-document-text" @click="openArticleModal" /></UTooltip>
         </div>
-        <div class="toolbar-sep"></div>
-        <div class="toolbar-group">
+        <div class="w-[1px] h-6 bg-gray-200 dark:bg-zinc-700/50 mx-1"></div>
+        <div class="flex items-center gap-1">
           <UTooltip text="Таблица"><UButton color="gray" variant="ghost" icon="i-heroicons-table-cells" @click="insertTag('table')" /></UTooltip>
           <UTooltip text="Загрузить изображение">
             <UButton color="gray" variant="ghost" :icon="isUploadingImage ? 'i-heroicons-arrow-path' : 'i-heroicons-photo'" :loading="isUploadingImage" @click="imageInput?.click()" />
           </UTooltip>
           <input ref="imageInput" type="file" accept="image/*" class="hidden" @change="uploadImage" />
         </div>
-        <div class="toolbar-sep"></div>
-        <div class="toolbar-group">
+        <div class="w-[1px] h-6 bg-gray-200 dark:bg-zinc-700/50 mx-1"></div>
+        <div class="flex items-center gap-2">
           <UTooltip :text="`Импортировать ODT → HTML (${activeLang.toUpperCase()})`">
             <UButton color="sky" variant="soft" :loading="isParsingOdt" :icon="isParsingOdt ? 'i-heroicons-arrow-path' : 'i-heroicons-document-arrow-up'" label="ODT" @click="odtInput?.click()" />
           </UTooltip>
