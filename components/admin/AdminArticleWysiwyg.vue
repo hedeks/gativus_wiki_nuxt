@@ -829,93 +829,72 @@ defineExpose({
 <template>
   <div class="wysiwyg-container" :class="{ 'wysiwyg-container--seamless': seamlessMode }" @keydown="onEditorKeydown" tabindex="-1">
     <!-- Inline Toolbar -->
-    <div v-if="!seamlessMode" class="editor-toolbar">
-      <div class="toolbar-left">
+    <div v-if="!seamlessMode" class="sticky top-0 z-[11] bg-white/85 dark:bg-[#111113]/85 backdrop-blur-lg border-b border-gray-200/50 dark:border-zinc-800/50 flex items-center justify-between px-4 py-2 overflow-x-auto custom-scrollbar gap-6 shadow-sm">
+      <div class="flex items-center gap-2 min-w-max">
         <div class="toolbar-group">
-          <button @click="insertTag('h2')" title="Заголовок 2">H2</button>
-          <button @click="insertTag('h3')" title="Заголовок 3">H3</button>
-          <button @click="insertTag('h4')" title="Заголовок 4">H4</button>
+          <UTooltip text="Заголовок 2"><UButton color="gray" variant="ghost" class="font-bold" label="H2" @click="insertTag('h2')" /></UTooltip>
+          <UTooltip text="Заголовок 3"><UButton color="gray" variant="ghost" class="font-bold" label="H3" @click="insertTag('h3')" /></UTooltip>
+          <UTooltip text="Заголовок 4"><UButton color="gray" variant="ghost" class="font-bold" label="H4" @click="insertTag('h4')" /></UTooltip>
         </div>
         <div class="toolbar-sep"></div>
         <div class="toolbar-group">
-          <button @click="insertTag('p')" title="Абзац"><UIcon name="i-heroicons-bars-3-bottom-left" /></button>
-          <button @click="insertTag('blockquote')" title="Цитата"><UIcon name="i-heroicons-chat-bubble-bottom-center-text" /></button>
-          <button @click="insertTag('pre')" title="Код"><UIcon name="i-heroicons-code-bracket" /></button>
+          <UTooltip text="Абзац"><UButton color="gray" variant="ghost" icon="i-heroicons-bars-3-bottom-left" @click="insertTag('p')" /></UTooltip>
+          <UTooltip text="Цитата"><UButton color="gray" variant="ghost" icon="i-heroicons-chat-bubble-bottom-center-text" @click="insertTag('blockquote')" /></UTooltip>
+          <UTooltip text="Код"><UButton color="gray" variant="ghost" icon="i-heroicons-code-bracket" @click="insertTag('pre')" /></UTooltip>
         </div>
         <div class="toolbar-sep"></div>
         <div class="toolbar-group">
-          <button @click="insertTag('strong')" title="Жирный"><UIcon name="i-heroicons-bold" /></button>
-          <button @click="insertTag('em')" title="Курсив"><UIcon name="i-heroicons-italic" /></button>
-          <button @click="insertTag('a')" title="Ссылка"><UIcon name="i-heroicons-link" /></button>
-          <button @click="openTermModal" title="Связать с термином"><UIcon name="i-heroicons-academic-cap" class="text-sky-500" /></button>
-          <button @click="openBookModal" title="Связать с книгой"><UIcon name="i-heroicons-book-open" class="text-indigo-500" /></button>
-          <button @click="openArticleModal" title="Связать со статьей"><UIcon name="i-heroicons-document-text" class="text-violet-500" /></button>
+          <UTooltip text="Жирный"><UButton color="gray" variant="ghost" icon="i-heroicons-bold" @click="insertTag('strong')" /></UTooltip>
+          <UTooltip text="Курсив"><UButton color="gray" variant="ghost" icon="i-heroicons-italic" @click="insertTag('em')" /></UTooltip>
+          <UTooltip text="Ссылка"><UButton color="gray" variant="ghost" icon="i-heroicons-link" @click="insertTag('a')" /></UTooltip>
+          <UTooltip text="Связать с термином"><UButton color="sky" variant="soft" icon="i-heroicons-academic-cap" @click="openTermModal" /></UTooltip>
+          <UTooltip text="Связать с книгой"><UButton color="indigo" variant="soft" icon="i-heroicons-book-open" @click="openBookModal" /></UTooltip>
+          <UTooltip text="Связать со статьей"><UButton color="violet" variant="soft" icon="i-heroicons-document-text" @click="openArticleModal" /></UTooltip>
         </div>
         <div class="toolbar-sep"></div>
         <div class="toolbar-group">
-          <button @click="insertTag('table')" title="Таблица"><UIcon name="i-heroicons-table-cells" /></button>
-          <button @click="imageInput?.click()" title="Загрузить изображение" :disabled="isUploadingImage">
-            <UIcon v-if="!isUploadingImage" name="i-heroicons-photo" />
-            <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin" />
-          </button>
+          <UTooltip text="Таблица"><UButton color="gray" variant="ghost" icon="i-heroicons-table-cells" @click="insertTag('table')" /></UTooltip>
+          <UTooltip text="Загрузить изображение">
+            <UButton color="gray" variant="ghost" :icon="isUploadingImage ? 'i-heroicons-arrow-path' : 'i-heroicons-photo'" :loading="isUploadingImage" @click="imageInput?.click()" />
+          </UTooltip>
           <input ref="imageInput" type="file" accept="image/*" class="hidden" @change="uploadImage" />
         </div>
         <div class="toolbar-sep"></div>
         <div class="toolbar-group">
-          <button @click="odtInput?.click()" :disabled="isParsingOdt" :title="`Импортировать ODT → HTML (${activeLang.toUpperCase()})`" class="odt-import-btn group hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:text-sky-600 dark:hover:text-sky-400 transition-all">
-            <UIcon v-if="!isParsingOdt" name="i-heroicons-document-arrow-up" class="group-hover:scale-110 transition-transform" />
-            <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin text-sky-500" />
-            <span class="toolbar-btn-label font-semibold">ODT</span>
-          </button>
+          <UTooltip :text="`Импортировать ODT → HTML (${activeLang.toUpperCase()})`">
+            <UButton color="sky" variant="soft" :loading="isParsingOdt" :icon="isParsingOdt ? 'i-heroicons-arrow-path' : 'i-heroicons-document-arrow-up'" label="ODT" @click="odtInput?.click()" />
+          </UTooltip>
           <input ref="odtInput" type="file" accept=".odt" class="hidden" @change="importOdt" />
 
-          <button @click="mdInput?.click()" :disabled="isParsingMd" :title="`Импортировать MD / ZIP → HTML (${activeLang.toUpperCase()})`" class="odt-import-btn md-import-btn group hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
-            <UIcon v-if="!isParsingMd" name="i-heroicons-document-text" class="group-hover:scale-110 transition-transform" />
-            <UIcon v-else name="i-heroicons-arrow-path" class="animate-spin text-indigo-500" />
-            <span class="toolbar-btn-label font-semibold">MD/ZIP</span>
-          </button>
+          <UTooltip :text="`Импортировать MD / ZIP → HTML (${activeLang.toUpperCase()})`">
+            <UButton color="indigo" variant="soft" :loading="isParsingMd" :icon="isParsingMd ? 'i-heroicons-arrow-path' : 'i-heroicons-document-text'" label="MD/ZIP" @click="mdInput?.click()" />
+          </UTooltip>
           <input ref="mdInput" type="file" accept=".md,.zip" class="hidden" @change="importMd" />
         </div>
       </div>
       
-      <div class="toolbar-right">
-        <div class="undo-redo-group">
-          <button class="undo-redo-btn" @click="undo" :disabled="!canUndo" title="Отменить (Ctrl+Z)">
-            <UIcon name="i-heroicons-arrow-uturn-left" />
-          </button>
-          <button class="undo-redo-btn" @click="redo" :disabled="!canRedo" title="Повторить (Ctrl+Y)">
-            <UIcon name="i-heroicons-arrow-uturn-right" />
-          </button>
-          <button
-            class="undo-redo-btn"
-            :class="{ 'undo-redo-btn--active': showHistoryPanel }"
-            @click="showHistoryPanel = !showHistoryPanel"
-            :title="`История (${historyStack.length})`"
-          >
-            <UIcon name="i-heroicons-list-bullet" />
-            <span class="undo-count">{{ historyStack.length }}</span>
-          </button>
+      <div class="flex items-center gap-2 min-w-max">
+        <div class="undo-redo-group flex items-center gap-1 bg-gray-50 dark:bg-zinc-800/50 p-1 rounded-lg border border-gray-200 dark:border-zinc-700/50">
+          <UTooltip text="Отменить (Ctrl+Z)"><UButton color="gray" variant="ghost" :disabled="!canUndo" icon="i-heroicons-arrow-uturn-left" @click="undo" /></UTooltip>
+          <UTooltip text="Повторить (Ctrl+Y)"><UButton color="gray" variant="ghost" :disabled="!canRedo" icon="i-heroicons-arrow-uturn-right" @click="redo" /></UTooltip>
+          <UTooltip :text="`История (${historyStack.length})`">
+            <UButton :color="showHistoryPanel ? 'sky' : 'gray'" :variant="showHistoryPanel ? 'soft' : 'ghost'" icon="i-heroicons-list-bullet" @click="showHistoryPanel = !showHistoryPanel">
+              <span class="text-[10px] font-bold">{{ historyStack.length }}</span>
+            </UButton>
+          </UTooltip>
         </div>
-        <button class="toggle-preview" @click="cycleViewMode" :title="`Следующий режим: ${viewModeLabels[nextViewMode[viewMode]]}`">
-          <UIcon :name="viewModeIcons[viewMode]" />
-          <span>{{ viewModeLabels[viewMode] }}</span>
-        </button>
-        <button
-          v-if="viewMode === 'preview'"
-          class="toggle-preview"
-          :class="{ 'toggle-preview--active': previewEditMode }"
-          @click="previewEditMode = !previewEditMode"
-          :title="previewEditMode ? 'Выключить редактирование' : 'Редактировать в preview'"
-        >
-          <UIcon :name="previewEditMode ? 'i-heroicons-pencil-square' : 'i-heroicons-pencil'" />
-          <span>{{ previewEditMode ? 'Editing' : 'Edit' }}</span>
-        </button>
-        <button class="translate-prompt-btn" @click="copyTranslationPrompt" :title="`Скопировать промт перевода с ${activeLang.toUpperCase()}`">
-          <UIcon :name="promptCopied ? 'i-heroicons-check' : 'i-heroicons-language'" />
-        </button>
-        <button v-if="articleId" class="translate-prompt-btn" @click="reindexOpen = true" title="Переиндексация номеров глав">
-          <UIcon name="i-heroicons-hashtag" />
-        </button>
+        <UTooltip :text="`Следующий режим: ${viewModeLabels[nextViewMode[viewMode]]}`">
+          <UButton color="gray" variant="ghost" :icon="viewModeIcons[viewMode]" :label="viewModeLabels[viewMode]" @click="cycleViewMode" />
+        </UTooltip>
+        <UTooltip v-if="viewMode === 'preview'" :text="previewEditMode ? 'Выключить редактирование' : 'Редактировать в preview'">
+          <UButton :color="previewEditMode ? 'green' : 'gray'" :variant="previewEditMode ? 'soft' : 'ghost'" :icon="previewEditMode ? 'i-heroicons-pencil-square' : 'i-heroicons-pencil'" :label="previewEditMode ? 'Editing' : 'Edit'" @click="previewEditMode = !previewEditMode" />
+        </UTooltip>
+        <UTooltip :text="`Скопировать промт перевода с ${activeLang.toUpperCase()}`">
+          <UButton :color="promptCopied ? 'green' : 'gray'" :variant="promptCopied ? 'soft' : 'ghost'" :icon="promptCopied ? 'i-heroicons-check' : 'i-heroicons-language'" @click="copyTranslationPrompt" />
+        </UTooltip>
+        <UTooltip v-if="articleId" text="Переиндексация номеров глав">
+          <UButton color="gray" variant="ghost" icon="i-heroicons-hashtag" @click="reindexOpen = true" />
+        </UTooltip>
       </div>
     </div>
 
@@ -1244,10 +1223,6 @@ defineExpose({
 .dark .wysiwyg-container { background: #111113; }
 .dark .wysiwyg-container--seamless { background: transparent !important; }
 
-.editor-toolbar {
-  display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: #fafafa; border-bottom: 1px solid #e5e7eb; flex-wrap: wrap; gap: 8px; flex-shrink: 0;
-}
-.dark .editor-toolbar { background: #1a1a1d; border-bottom-color: #2a2a2e; }
 
 /* ?oC?oC?oC Top Bar ?oC?oC?oC */
 .editor-topbar {
@@ -1563,7 +1538,7 @@ defineExpose({
   flex-direction: column;
 }
 
-.toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .toolbar-group {
+ .toolbar-group {
   display: flex;
   align-items: center;
   gap: 4px;

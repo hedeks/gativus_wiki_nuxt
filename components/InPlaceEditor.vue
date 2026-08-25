@@ -13,10 +13,10 @@
     </slot>
 
     <!-- Slideover -->
-    <USlideover :prevent-scroll="false" v-model="isOpen" :ui="{ width: 'w-screen max-w-[95vw]', wrapper: '!z-[99999] in-place-editor-wrapper' }">
-      <div class="flex-1 flex flex-col h-[100dvh] bg-white dark:bg-[#111113] relative overflow-hidden shadow-2xl border-l border-gray-200 dark:border-zinc-800">
+    <USlideover :prevent-scroll="false" v-model="isOpen" :ui="{ width: 'w-screen max-w-[100vw] sm:max-w-[95vw]', wrapper: '!z-[99999] in-place-editor-wrapper' }">
+      <div class="flex-1 flex flex-col h-[100dvh] bg-white dark:bg-[#111113] relative overflow-hidden shadow-2xl sm:border-l border-gray-200 dark:border-zinc-800">
         <!-- Header -->
-        <div class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-[#161618]">
+        <div class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200/50 dark:border-zinc-800/50 bg-white/80 dark:bg-[#161618]/80 backdrop-blur-md">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-500 border border-sky-500/20">
               <UIcon name="i-heroicons-pencil-square" class="text-xl" />
