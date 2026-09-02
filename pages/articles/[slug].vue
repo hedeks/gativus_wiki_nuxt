@@ -415,8 +415,10 @@ const canEdit = computed(() => {
 })
 
 const { data: bookmarkedIds, refresh: refreshBookmarks } = useFetch<number[]>('/api/user/bookmarks', {
-  headers: useRequestHeaders(['cookie', 'authorization']),
+  headers: store.getAuthHeader(),
   server: false,
+  immediate: store.isLoggedIn,
+  watch: [() => store.isLoggedIn]
 })
 
 const isBookmarked = computed(() => !!(bookmarkedIds.value && article.value?.id && bookmarkedIds.value.includes(article.value.id)))
